@@ -44,6 +44,9 @@ public class LoanApplication {
 
     private String selectedProductId;
 
+    @Column(columnDefinition = "TEXT")
+    private String selectedProductJson;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
@@ -104,6 +107,9 @@ public class LoanApplication {
 
     public String getSelectedProductId() { return selectedProductId; }
     public void setSelectedProductId(String selectedProductId) { this.selectedProductId = selectedProductId; }
+
+    public String getSelectedProductJson() { return selectedProductJson; }
+    public void setSelectedProductJson(String selectedProductJson) { this.selectedProductJson = selectedProductJson; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

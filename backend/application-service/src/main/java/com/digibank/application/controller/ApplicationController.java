@@ -54,8 +54,8 @@ public class ApplicationController {
     @PostMapping("/{appRef}/select-product")
     public ResponseEntity<LoanApplication> selectProduct(
             @PathVariable String appRef,
-            @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(applicationService.selectProduct(appRef, body.get("productId")));
+            @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(applicationService.selectProduct(appRef, body));
     }
 
     @PostMapping("/{appRef}/approve")

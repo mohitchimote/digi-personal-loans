@@ -2,7 +2,7 @@
 <header class="landing-header">
   <div class="header-inner">
     <div class="header-brand">
-      <span class="brand-icon">🏦</span>
+      <span class="material-icons mi-lg brand-icon">account_balance</span>
       <div>
         <div class="brand-name">DigiBank</div>
         <div class="brand-sub">Personal Loans</div>
@@ -57,7 +57,7 @@
     <p class="section-desc">A modern lending experience built for today's customers.</p>
     <div class="features-grid">
       <div class="feature-card" *ngFor="let f of features">
-        <div class="feature-icon">{{ f.icon }}</div>
+        <span class="material-icons mi-xl feature-icon">{{ f.icon }}</span>
         <h3>{{ f.title }}</h3>
         <p>{{ f.desc }}</p>
       </div>
@@ -72,7 +72,7 @@
     <p class="section-desc">Competitive rates across a wide range of purposes.</p>
     <div class="products-grid">
       <div class="product-tile" *ngFor="let p of loanTypes">
-        <div class="product-tile-icon">{{ p.icon }}</div>
+        <span class="material-icons mi-xl product-tile-icon">{{ p.icon }}</span>
         <h3>{{ p.title }}</h3>
         <div class="product-tile-amount">{{ p.amount }}</div>
         <div class="product-tile-rate">{{ p.rate }}</div>
@@ -125,7 +125,7 @@
 <footer class="landing-footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <span>🏦</span> <strong>DigiBank</strong> Personal Loans
+      <span class="material-icons mi-sm">account_balance</span> <strong>DigiBank</strong> Personal Loans
     </div>
     <div class="footer-links">
       <a href="#">Privacy Policy</a>

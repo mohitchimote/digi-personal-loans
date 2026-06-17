@@ -82,9 +82,14 @@ public class ApplicationService {
     }
 
     @Transactional
-    public LoanApplication selectProduct(String appRef, String productId) {
+    public LoanApplication selectProduct(String appRef, Map<String, Object> productData) {
         LoanApplication app = getByRef(appRef);
-        app.setSelectedProductId(productId);
+        app.setSelectedProductId(String.valueOf(productData.get("productId")));
+        try {
+            app.setSelectedProductJson(objectMapper.writeValueAsString(productData));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize product data", e);
+        }
         app.setStatus("UNDER_REVIEW");
         return repository.save(app);
     }

@@ -2,7 +2,7 @@
   <!-- Logo / Brand -->
   <div class="sidebar-brand">
     <div class="brand-logo">
-      <span class="brand-icon">🏦</span>
+      <span class="material-icons brand-icon">account_balance</span>
       <span class="brand-name" *ngIf="!collapsed">DigiBank</span>
     </div>
     <div class="brand-tagline" *ngIf="!collapsed">Personal Loans</div>
@@ -34,7 +34,7 @@
 
     <!-- Dashboard -->
     <a class="nav-item" routerLink="/portal/dashboard" routerLinkActive="active">
-      <span class="nav-icon">⊞</span>
+      <span class="material-icons nav-icon">dashboard</span>
       <span class="nav-label" *ngIf="!collapsed">Dashboard</span>
     </a>
 
@@ -42,9 +42,9 @@
     <div class="nav-group" [class.expanded]="isSectionExpanded('apply')">
       <div class="nav-item nav-group-header" (click)="toggleSection('apply')"
            [class.active]="isSectionExpanded('apply')">
-        <span class="nav-icon">📋</span>
+        <span class="material-icons nav-icon">description</span>
         <span class="nav-label" *ngIf="!collapsed">My Application</span>
-        <span class="nav-chevron" *ngIf="!collapsed">{{ isSectionExpanded('apply') ? '▾' : '▸' }}</span>
+        <span class="material-icons nav-chevron" *ngIf="!collapsed">{{ isSectionExpanded('apply') ? 'expand_more' : 'chevron_right' }}</span>
       </div>
 
       <div class="nav-children" *ngIf="isSectionExpanded('apply') && !collapsed">
@@ -54,7 +54,7 @@
            [routerLink]="step.route"
            routerLinkActive="active">
           <span class="step-number">
-            <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNum">✓</ng-container>
+            <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNum"><span class="material-icons mi-sm">check</span></ng-container>
             <ng-template #stepNum>{{ i + 1 }}</ng-template>
           </span>
           <span class="step-label">{{ step.label }}</span>
@@ -64,13 +64,13 @@
 
     <!-- Documents -->
     <a class="nav-item" routerLink="/portal/documents" routerLinkActive="active">
-      <span class="nav-icon">📁</span>
+      <span class="material-icons nav-icon">folder_open</span>
       <span class="nav-label" *ngIf="!collapsed">Documents</span>
     </a>
 
     <!-- Notifications -->
     <a class="nav-item" routerLink="/portal/notifications" routerLinkActive="active">
-      <span class="nav-icon">🔔</span>
+      <span class="material-icons nav-icon">notifications</span>
       <span class="nav-label" *ngIf="!collapsed">Notifications</span>
       <span class="nav-badge" *ngIf="notifications.unreadCount() > 0 && !collapsed">
         {{ notifications.unreadCount() }}
@@ -79,7 +79,7 @@
 
     <!-- FAQ -->
     <a class="nav-item" routerLink="/portal/faq" routerLinkActive="active">
-      <span class="nav-icon">❓</span>
+      <span class="material-icons nav-icon">help_outline</span>
       <span class="nav-label" *ngIf="!collapsed">Help & FAQ</span>
     </a>
 
@@ -88,14 +88,14 @@
   <!-- Reach Your Advisor -->
   <div class="sidebar-footer" *ngIf="!collapsed">
     <button class="advisor-btn" (click)="contactAdvisor()">
-      <span>👨‍💼</span>
+      <span class="material-icons">support_agent</span>
       <div>
         <div class="advisor-label">Reach Your Advisor</div>
         <div class="advisor-sub">Available Mon–Fri 9am–6pm</div>
       </div>
     </button>
     <button class="logout-btn" (click)="auth.logout()">
-      <span>⏻</span> Sign Out
+      <span class="material-icons mi-sm">logout</span> Sign Out
     </button>
   </div>
 </aside>

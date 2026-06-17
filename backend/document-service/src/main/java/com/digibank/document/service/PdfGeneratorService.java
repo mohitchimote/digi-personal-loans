@@ -23,8 +23,8 @@ import java.util.Locale;
 @Service
 public class PdfGeneratorService {
 
-    private static final DeviceRgb TCS_BLUE   = new DeviceRgb(0, 63, 121);
-    private static final DeviceRgb TCS_YELLOW = new DeviceRgb(245, 162, 0);
+    private static final DeviceRgb TCS_BLUE   = new DeviceRgb(0, 51, 102);
+    private static final DeviceRgb TCS_YELLOW = new DeviceRgb(251, 176, 52);
     private static final DeviceRgb LIGHT_GREY = new DeviceRgb(245, 245, 245);
 
     public byte[] generateApprovalLetter(DocumentGenerationRequest req) {

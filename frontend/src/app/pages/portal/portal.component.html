@@ -5,7 +5,7 @@
     <!-- Top header bar -->
     <header class="portal-header">
       <button class="sidebar-toggle" (click)="toggleSidebar()" title="Toggle menu">
-        {{ sidebarCollapsed() ? '☰' : '✕' }}
+        <span class="material-icons mi-sm">{{ sidebarCollapsed() ? 'menu' : 'close' }}</span>
       </button>
       <div class="portal-header-title">
         <span class="portal-breadcrumb">Personal Loans Portal</span>

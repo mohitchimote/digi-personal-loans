@@ -2,12 +2,12 @@
   <!-- Chat window -->
   <div class="chat-window" *ngIf="open()">
     <div class="chat-header">
-      <div class="chat-avatar">🤖</div>
+      <span class="material-icons chat-avatar">smart_toy</span>
       <div>
         <div class="chat-title">DigiBot</div>
         <div class="chat-status">● Online</div>
       </div>
-      <button class="chat-close" (click)="toggle()">✕</button>
+      <button class="chat-close" (click)="toggle()"><span class="material-icons mi-sm">close</span></button>
     </div>
 
     <div class="chat-body">
@@ -26,12 +26,12 @@
     <div class="chat-input">
       <input type="text" [(ngModel)]="input" (keyup)="onKey($event)"
              placeholder="Ask me anything…" />
-      <button (click)="send()">➤</button>
+      <button (click)="send()"><span class="material-icons mi-sm">send</span></button>
     </div>
   </div>
 
   <!-- FAB button -->
   <button class="chatbot-bubble" (click)="toggle()" [title]="open() ? 'Close chat' : 'Chat with DigiBot'">
-    {{ open() ? '✕' : '💬' }}
+    <span class="material-icons">{{ open() ? 'close' : 'chat' }}</span>
   </button>
 </div>

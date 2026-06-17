@@ -88,7 +88,7 @@ public class ProductService {
         List<EligibleProduct> eligible = allProducts.stream()
                 .filter(p -> isEligible(p, req))
                 .map(p -> toEligibleProduct(p, req))
-                .sorted(Comparator.comparing(EligibleProduct::getAnnualInterestRate))
+                .sorted(Comparator.comparing(EligibleProduct::getInterestRate))
                 .collect(Collectors.toList());
 
         // Mark the lowest-rate eligible product as recommended
@@ -147,10 +147,10 @@ public class ProductService {
         BigDecimal total = monthly.multiply(new BigDecimal(term)).setScale(2, RoundingMode.HALF_UP);
 
         return EligibleProduct.builder()
-                .productCode(p.getProductCode())
+                .productId(p.getProductCode())
                 .productName(p.getProductName())
                 .description(p.getDescription())
-                .annualInterestRate(p.getAnnualInterestRate())
+                .interestRate(p.getAnnualInterestRate())
                 .minAmount(p.getMinAmount())
                 .maxAmount(p.getMaxAmount())
                 .minTermMonths(p.getMinTermMonths())
@@ -158,7 +158,7 @@ public class ProductService {
                 .monthlyRepayment(monthly)
                 .totalRepayable(total)
                 .apr(p.getAnnualInterestRate())
-                .isRecommended(false)
+                .recommended(false)
                 .build();
     }
 
