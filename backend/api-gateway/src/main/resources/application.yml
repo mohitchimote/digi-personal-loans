@@ -23,7 +23,7 @@ spring:
             allowCredentials: true
             maxAge: 3600
       default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
       routes:
         - id: auth-service
           uri: http://localhost:8081
