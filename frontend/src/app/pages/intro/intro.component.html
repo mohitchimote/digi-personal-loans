@@ -1,0 +1,85 @@
+<div class="intro-shell">
+  <!-- Header -->
+  <header class="intro-header">
+    <a routerLink="/" class="brand-link">
+      <span>🏦</span>
+      <div>
+        <div class="brand-name">DigiBank</div>
+        <div class="brand-sub">Personal Loans</div>
+      </div>
+    </a>
+    <a routerLink="/login" class="db-btn db-btn--outline db-btn--sm" style="color:#fff;border-color:rgba(255,255,255,0.5)">Sign In</a>
+  </header>
+
+  <main class="intro-main">
+    <!-- Hero -->
+    <section class="intro-hero">
+      <div class="intro-badge">📋 About Your Application</div>
+      <h1>Your loan application, made simple</h1>
+      <p>Before you begin, here's what to expect. The whole process takes around <strong>10–15 minutes</strong> and your progress is saved automatically at every step.</p>
+    </section>
+
+    <!-- Application steps -->
+    <section class="intro-section">
+      <h2>What You'll Complete</h2>
+      <div class="intro-steps">
+        <div class="intro-step" *ngFor="let s of steps">
+          <div class="step-header">
+            <span class="step-num">{{ s.num }}</span>
+            <span class="step-icon">{{ s.icon }}</span>
+            <h3>{{ s.title }}</h3>
+          </div>
+          <p>{{ s.desc }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Documents needed -->
+    <section class="intro-section intro-section--accent">
+      <h2>Documents to Have Ready</h2>
+      <p class="intro-section-sub">You'll upload these after your application is submitted. Having them ready speeds things up.</p>
+      <div class="docs-grid">
+        <div class="doc-card" *ngFor="let d of docs">
+          <span class="doc-icon">{{ d.icon }}</span>
+          <strong>{{ d.title }}</strong>
+          <span>{{ d.desc }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key info -->
+    <section class="intro-section">
+      <h2>Good to Know</h2>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-icon">💾</div>
+          <h4>Auto-Saved</h4>
+          <p>Your application saves automatically after each section. You can close and resume any time.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">⚡</div>
+          <h4>Instant Decision</h4>
+          <p>Our automated system provides a conditional affordability decision in seconds after submission.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">🔒</div>
+          <h4>Secure & Private</h4>
+          <p>All data is encrypted in transit and at rest. We never share your information with third parties without consent.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">👨‍💼</div>
+          <h4>Advisor Support</h4>
+          <p>Our advisors are available Monday to Friday, 9am–6pm if you need help at any point.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <div class="intro-cta">
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--accent db-btn--lg">
+        Start My Application →
+      </a>
+      <p class="intro-cta-note">By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </main>
+</div>

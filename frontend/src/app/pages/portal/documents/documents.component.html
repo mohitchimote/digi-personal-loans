@@ -1,0 +1,74 @@
+<div class="documents-page">
+  <div class="page-header mb-24">
+    <h2>Documents</h2>
+    <p class="page-sub">View your generated loan documents and upload any supporting documentation required to complete your application.</p>
+  </div>
+
+  <!-- Generated documents -->
+  <div class="db-card mb-24">
+    <div class="card-header"><h3>📄 Generated Documents</h3></div>
+
+    <div class="loading-row" *ngIf="loading()">
+      <div class="spinner"></div><span>Loading documents…</span>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading() && generated().length === 0">
+      <div class="empty-icon">📭</div>
+      <p>No documents have been generated yet. Complete your application and select a product to generate your approval letter.</p>
+    </div>
+
+    <div class="doc-list" *ngIf="generated().length > 0">
+      <div class="doc-row" *ngFor="let doc of generated()">
+        <div class="doc-icon">{{ docIcon(doc.documentType) }}</div>
+        <div class="doc-info">
+          <div class="doc-name">{{ docLabel(doc.documentType) }}</div>
+          <div class="doc-meta">{{ doc.applicationRef }} · Generated {{ doc.generatedAt | date:'dd MMM yyyy HH:mm' }} · PDF</div>
+        </div>
+        <div class="doc-actions">
+          <button class="db-btn db-btn--primary db-btn--sm" (click)="download(doc)">⬇ Download</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload area -->
+  <div class="db-card">
+    <div class="card-header"><h3>📎 Upload Supporting Documents</h3></div>
+    <p class="upload-intro">Please upload the following to support your application:</p>
+    <ul class="required-docs">
+      <li>✓ National ID (Teudat Zehut) — front and back</li>
+      <li>✓ Recent payslips (last 3 months)</li>
+      <li>✓ Bank statements (last 3 months)</li>
+      <li>✓ Proof of address (utility bill or bank statement)</li>
+    </ul>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" [class.drop-zone--active]="dragOver()"
+         (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+      <div class="drop-icon">📂</div>
+      <div class="drop-text">Drag & drop files here or</div>
+      <label class="db-btn db-btn--outline">
+        Browse Files
+        <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" (change)="onFileSelect($event)" />
+      </label>
+      <div class="drop-hint">Accepted: PDF, JPG, PNG, DOC · Max 10MB per file</div>
+    </div>
+
+    <div class="uploading-row" *ngIf="uploading()">
+      <div class="spinner"></div><span>Uploading…</span>
+    </div>
+
+    <!-- Uploaded list -->
+    <div class="uploaded-list" *ngIf="uploaded().length > 0">
+      <div class="upload-header">Uploaded Files ({{ uploaded().length }})</div>
+      <div class="doc-row" *ngFor="let u of uploaded()">
+        <div class="doc-icon">📎</div>
+        <div class="doc-info">
+          <div class="doc-name">{{ u.originalFilename }}</div>
+          <div class="doc-meta">{{ u.uploadedAt | date:'dd MMM yyyy HH:mm' }} · {{ u.fileSize | number }} bytes</div>
+        </div>
+        <div class="doc-status db-badge db-badge--in-progress">Under Review</div>
+      </div>
+    </div>
+  </div>
+</div>

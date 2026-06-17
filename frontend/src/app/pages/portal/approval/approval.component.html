@@ -1,0 +1,119 @@
+<div class="approval-page">
+  <!-- Approval banner -->
+  <div class="approval-banner">
+    <div class="banner-icon">✓</div>
+    <div class="banner-content">
+      <h2>Conditional Approval Granted</h2>
+      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has received a conditional approval. Please review the details below and generate your approval letter.</p>
+    </div>
+  </div>
+
+  <div class="approval-grid">
+    <!-- Approval details -->
+    <div class="db-card">
+      <div class="card-header"><h3>Loan Details</h3></div>
+      <div class="detail-list">
+        <div class="detail-row">
+          <span>Application Reference</span>
+          <strong>{{ application()?.applicationRef || '—' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>Product</span>
+          <strong>{{ product.productName || '—' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>Loan Amount</span>
+          <strong>₪{{ loan.loanAmount | number }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>Interest Rate</span>
+          <strong>{{ product.interestRate }}% APR</strong>
+        </div>
+        <div class="detail-row">
+          <span>Loan Term</span>
+          <strong>{{ product.termMonths }} months</strong>
+        </div>
+        <div class="detail-row">
+          <span>Monthly Repayment</span>
+          <strong class="highlight-value">₪{{ product.monthlyRepayment | number:'1.0-0' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>Decision Date</span>
+          <strong>{{ today | date:'dd MMMM yyyy' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>Status</span>
+          <span class="db-badge db-badge--approved">Conditionally Approved</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next steps -->
+    <div class="steps-panel">
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Next Steps</h3></div>
+        <ol class="next-steps">
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>Application Submitted</strong><p>Your application has been received and assessed.</p></div>
+          </li>
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>Affordability Checked</strong><p>Income and outgoings verified against our lending criteria.</p></div>
+          </li>
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>Product Selected</strong><p>Your chosen loan product has been applied to your application.</p></div>
+          </li>
+          <li class="step-item step-active">
+            <div class="step-num">4</div>
+            <div><strong>Generate Documents</strong><p>Download your approval letter and loan agreement below.</p></div>
+          </li>
+          <li class="step-item">
+            <div class="step-num">5</div>
+            <div><strong>Upload Supporting Documents</strong><p>Submit payslips, bank statements and ID in the Documents section.</p></div>
+          </li>
+          <li class="step-item">
+            <div class="step-num">6</div>
+            <div><strong>Final Verification & Drawdown</strong><p>Your advisor will confirm final verification and arrange funds transfer.</p></div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Document generation -->
+      <div class="db-card">
+        <div class="card-header"><h3>Your Documents</h3></div>
+        <p class="doc-intro">Generate your conditional approval letter to confirm the terms of your offer.</p>
+
+        <div class="doc-action" *ngIf="!generated()">
+          <button class="db-btn db-btn--accent db-btn--lg" (click)="generateLetter()" [disabled]="generating()">
+            <span *ngIf="generating()">Generating PDF…</span>
+            <span *ngIf="!generating()">📄 Generate Approval Letter</span>
+          </button>
+        </div>
+
+        <div class="doc-ready" *ngIf="generated()">
+          <div class="db-alert db-alert--success">
+            ✅ Your approval letter has been generated successfully.
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">📄</div>
+            <div class="doc-info">
+              <div class="doc-name">Conditional Approval Letter</div>
+              <div class="doc-meta">Generated {{ today | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadDoc()">Download</button>
+          </div>
+        </div>
+
+        <a routerLink="/portal/documents" class="db-btn db-btn--ghost mt-8" style="display:block; text-align:center; margin-top:12px;">
+          View all documents →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-alert db-alert--info approval-footer">
+    ℹ This is a conditional approval only. Final approval is subject to satisfactory verification of supporting documentation and completion of all required checks. DigiBank reserves the right to withdraw or amend this offer pending final review.
+  </div>
+</div>

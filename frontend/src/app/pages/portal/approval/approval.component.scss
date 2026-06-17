@@ -1,0 +1,55 @@
+.approval-page { max-width: 1000px; }
+
+.approval-banner {
+  display: flex; align-items: flex-start; gap: 20px;
+  background: linear-gradient(135deg, #003F79 0%, #005baa 100%);
+  border-radius: 12px; padding: 28px 32px; margin-bottom: 28px; color: #fff;
+
+  .banner-icon {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--tcs-yellow);
+    color: var(--tcs-blue); font-size: 1.8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  h2 { color: #fff; margin-bottom: 8px; }
+  p  { opacity: 0.9; font-size: 0.95rem; strong { color: var(--tcs-yellow); } }
+}
+
+.approval-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; margin-bottom: 24px; }
+
+.detail-list { display: flex; flex-direction: column; gap: 0; }
+.detail-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--light-grey);
+  &:last-child { border-bottom: none; }
+  span:first-child { font-size: 0.85rem; color: var(--mid-grey); }
+  strong { font-size: 0.9rem; color: var(--dark-text); }
+  .highlight-value { font-size: 1.2rem; color: var(--tcs-blue); }
+}
+
+.mb-16 { margin-bottom: 16px; }
+.mt-8  { margin-top: 8px; }
+
+.next-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.step-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;
+    background: var(--light-grey); color: var(--mid-grey);
+  }
+  strong { display: block; font-size: 0.875rem; color: var(--dark-text); margin-bottom: 2px; }
+  p { font-size: 0.8rem; color: var(--mid-grey); margin: 0; }
+
+  &.step-done .step-num { background: var(--success); color: #fff; }
+  &.step-active .step-num { background: var(--tcs-blue); color: #fff; }
+}
+
+.doc-intro { font-size: 0.875rem; color: var(--mid-grey); margin-bottom: 16px; }
+
+.doc-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--off-white); border-radius: 8px; margin-top: 12px;
+  .doc-icon { font-size: 1.8rem; }
+  .doc-info { flex: 1; .doc-name { font-weight: 600; font-size: 0.875rem; } .doc-meta { font-size: 0.75rem; color: var(--mid-grey); } }
+}
+
+.approval-footer { margin-top: 0; }

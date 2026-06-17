@@ -1,0 +1,118 @@
+<div class="dashboard">
+  <!-- Welcome banner -->
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>Welcome back, {{ auth.userFullName?.split(' ')?.[0] }} 👋</h2>
+      <p>Here's an overview of your loan application.</p>
+    </div>
+    <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--accent">
+      + Start / Resume Application
+    </a>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div class="stat-body">
+        <div class="stat-value">{{ applications().length }}</div>
+        <div class="stat-label">Total Applications</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-body">
+        <div class="stat-value">{{ activeCount }}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-body">
+        <div class="stat-value">{{ approvedCount }}</div>
+        <div class="stat-label">Approved</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--accent">
+      <div class="stat-icon">📞</div>
+      <div class="stat-body">
+        <div class="stat-value">+972-3-123</div>
+        <div class="stat-label">Advisor Line</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Applications table -->
+  <div class="db-card mt-24">
+    <div class="card-header">
+      <h3>My Applications</h3>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--outline db-btn--sm">New Application</a>
+    </div>
+
+    <div *ngIf="applications().length === 0" class="empty-state">
+      <div class="empty-icon">📋</div>
+      <h4>No applications yet</h4>
+      <p>Start your first personal loan application today.</p>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--primary mt-16">Begin Application</a>
+    </div>
+
+    <table class="db-table" *ngIf="applications().length > 0">
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Last Updated</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let app of applications()">
+          <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
+          <td><span class="db-badge" [class]="getStatusClass(app.status)">{{ app.status | titlecase }}</span></td>
+          <td>
+            <div class="table-progress">
+              <div class="progress-bar-container" style="width:120px">
+                <div class="progress-fill" [style.width.%]="app.completionPercentage"></div>
+              </div>
+              <span class="text-muted" style="font-size:0.78rem">{{ app.completionPercentage }}%</span>
+            </div>
+          </td>
+          <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy' }}</td>
+          <td>
+            <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--outline db-btn--sm"
+               *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">Resume</a>
+            <a routerLink="/portal/approval" class="db-btn db-btn--ghost db-btn--sm"
+               *ngIf="app.status === 'APPROVED'">View Approval</a>
+            <span class="text-muted" *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">Under Review</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Info tiles -->
+  <div class="info-tiles mt-24">
+    <div class="info-tile" routerLink="/portal/documents">
+      <span>📁</span>
+      <div>
+        <strong>Upload Documents</strong>
+        <p>Submit your payslips and bank statements</p>
+      </div>
+    </div>
+    <div class="info-tile" routerLink="/portal/faq">
+      <span>❓</span>
+      <div>
+        <strong>FAQs & Guides</strong>
+        <p>Everything you need to know about your loan</p>
+      </div>
+    </div>
+    <div class="info-tile" routerLink="/portal/notifications">
+      <span>🔔</span>
+      <div>
+        <strong>Notifications</strong>
+        <p>Check messages and updates from DigiBank</p>
+      </div>
+    </div>
+  </div>
+</div>

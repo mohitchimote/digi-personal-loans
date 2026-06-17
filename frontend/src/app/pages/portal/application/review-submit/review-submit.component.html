@@ -1,0 +1,114 @@
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">Step 6 of 6</div>
+    <h2 class="section-title">Review & Submit</h2>
+    <p class="section-subtitle">Please review your application details carefully. Once satisfied, sign digitally and submit for assessment.</p>
+  </div>
+
+  <div class="db-alert db-alert--info mb-16">
+    📋 Your application will be assessed automatically. A conditional decision is usually available within minutes.
+  </div>
+
+  <!-- Summary sections -->
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>Loan Requirements</h3>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost db-btn--sm">Edit</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>Loan Amount</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
+      <div class="review-item"><span>Purpose</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+      <div class="review-item"><span>Loan Term</span><strong>{{ loanReqs.loanTerm }} months</strong></div>
+      <div class="review-item"><span>Repayment Day</span><strong>{{ loanReqs.preferredRepaymentDay }}{{ loanReqs.preferredRepaymentDay === 1 ? 'st' : 'th' }} of month</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>Personal Details</h3>
+      <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost db-btn--sm">Edit</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>Full Name</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
+      <div class="review-item"><span>Date of Birth</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+      <div class="review-item"><span>National ID</span><strong>{{ personal.nationalId }}</strong></div>
+      <div class="review-item"><span>Address</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>Income & Employment</h3>
+      <a routerLink="/portal/apply/income-employment" class="db-btn db-btn--ghost db-btn--sm">Edit</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>Employment Status</span><strong>{{ income.employmentStatus }}</strong></div>
+      <div class="review-item"><span>Employer</span><strong>{{ income.employer || '—' }}</strong></div>
+      <div class="review-item"><span>Monthly Gross Income</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
+      <div class="review-item"><span>Monthly Net Income</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>Outgoings</h3>
+      <a routerLink="/portal/apply/outgoings" class="db-btn db-btn--ghost db-btn--sm">Edit</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>Monthly Rent</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
+      <div class="review-item"><span>Existing Loans</span><strong>₪{{ outgoings.monthlyLoans | number }}</strong></div>
+      <div class="review-item"><span>Credit Cards</span><strong>₪{{ outgoings.creditCardPayments | number }}</strong></div>
+      <div class="review-item"><span>Living Expenses</span><strong>₪{{ outgoings.monthlyLivingExpenses | number }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>Credit Declarations</h3>
+      <a routerLink="/portal/apply/credit-declarations" class="db-btn db-btn--ghost db-btn--sm">Edit</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>Previous Default</span><strong>{{ credit.hasDefaulted ? 'Yes' : 'No' }}</strong></div>
+      <div class="review-item"><span>Bankruptcy</span><strong>{{ credit.hasBankruptcy ? 'Yes' : 'No' }}</strong></div>
+      <div class="review-item"><span>CCJ</span><strong>{{ credit.hasCCJ ? 'Yes' : 'No' }}</strong></div>
+      <div class="review-item"><span>Credit Score</span><strong>{{ credit.creditScore }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Declaration and signature -->
+  <div class="db-card">
+    <div class="card-header"><h3>Declaration & Electronic Signature</h3></div>
+
+    <label class="db-checkbox mb-16">
+      <input type="checkbox" [(ngModel)]="agreedToTerms" />
+      <span>I confirm that the information provided in this application is accurate and complete to the best of my knowledge.</span>
+    </label>
+
+    <label class="db-checkbox mb-16">
+      <input type="checkbox" [(ngModel)]="agreedToPrivacy" />
+      <span>I have read and agree to DigiBank's <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.</span>
+    </label>
+
+    <label class="db-checkbox mb-24">
+      <input type="checkbox" [(ngModel)]="agreedToCredit" />
+      <span>I consent to DigiBank conducting a credit search on my behalf as part of this application assessment.</span>
+    </label>
+
+    <div class="db-form-group">
+      <label>Electronic Signature <span class="required">*</span></label>
+      <input class="db-input" type="text" [(ngModel)]="signature"
+             placeholder="Type your full name as your electronic signature" style="font-style:italic; font-size:1rem;" />
+      <div class="db-hint">Typing your full name constitutes a legally binding electronic signature.</div>
+    </div>
+
+    <div class="db-alert db-alert--error" *ngIf="error()">⚠ {{ error() }}</div>
+  </div>
+
+  <div class="form-actions mt-24">
+    <a routerLink="/portal/apply/credit-declarations" class="db-btn db-btn--ghost">← Back</a>
+    <button class="db-btn db-btn--accent db-btn--lg" (click)="submit()" [disabled]="!canSubmit || submitting()">
+      <span *ngIf="submitting()">Submitting Application…</span>
+      <span *ngIf="!submitting()">✓ Submit Application</span>
+    </button>
+  </div>
+</div>

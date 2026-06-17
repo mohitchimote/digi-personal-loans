@@ -1,0 +1,68 @@
+import { Component, OnInit, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AffordabilityService } from '../../../core/services/affordability.service';
+import { ApplicationService } from '../../../core/services/application.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { AffordabilityResult } from '../../../core/models';
+
+@Component({
+  selector: 'app-affordability-results',
+  standalone: true,
+  imports: [CommonModule, RouterLink],
+  templateUrl: './affordability-results.component.html',
+  styleUrl: './affordability-results.component.scss'
+})
+export class AffordabilityResultsComponent implements OnInit {
+  result  = signal<AffordabilityResult | null>(null);
+  loading = signal(true);
+  appRef  = signal('');
+  Math    = Math;
+
+  constructor(
+    private affordability: AffordabilityService,
+    private appSvc: ApplicationService,
+    private auth: AuthService,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    const userId = this.auth.userId; const email = this.auth.userEmail;
+    if (!userId || !email) return;
+
+    this.appSvc.startOrResume(userId, email).subscribe({
+      next: app => {
+        this.appRef.set(app.applicationRef);
+        const income    = JSON.parse(app.incomeEmploymentJson || '{}');
+        const outgoings = JSON.parse(app.outgoingsJson || '{}');
+        const credit    = JSON.parse(app.creditDeclarationsJson || '{}');
+        const loan      = JSON.parse(app.loanRequirementsJson || '{}');
+
+        const request = {
+          monthlyGrossIncome:      income.monthlyGrossIncome || 0,
+          monthlyNetIncome:        income.monthlyNetIncome || 0,
+          monthlyRent:             outgoings.monthlyRent || 0,
+          monthlyMortgage:         outgoings.monthlyMortgage || 0,
+          monthlyLoans:            outgoings.monthlyLoans || 0,
+          creditCardPayments:      outgoings.creditCardPayments || 0,
+          otherMonthlyCommitments: outgoings.otherMonthlyCommitments || 0,
+          monthlyLivingExpenses:   outgoings.monthlyLivingExpenses || 0,
+          requestedLoanAmount:     loan.loanAmount || 50000,
+          requestedTermMonths:     loan.loanTerm || 36,
+          creditScore:             credit.creditScore || 700,
+          hasDefaulted:            credit.hasDefaulted || false,
+          hasBankruptcy:           credit.hasBankruptcy || false,
+        };
+
+        this.affordability.check(request).subscribe({
+          next: res => { this.result.set(res); this.loading.set(false); },
+          error: () => this.loading.set(false)
+        });
+      }
+    });
+  }
+
+  proceed(): void {
+    this.router.navigate(['/portal/products']);
+  }
+}

@@ -1,0 +1,33 @@
+<div class="notifications-page">
+  <div class="page-header mb-24">
+    <div>
+      <h2>Notifications</h2>
+      <p class="page-sub" *ngIf="unreadCount > 0">You have <strong>{{ unreadCount }}</strong> unread notification{{ unreadCount !== 1 ? 's' : '' }}.</p>
+      <p class="page-sub" *ngIf="unreadCount === 0">You are all caught up.</p>
+    </div>
+    <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="unreadCount > 0" (click)="markAllRead()">Mark all as read</button>
+  </div>
+
+  <div class="loading-row" *ngIf="loading()">
+    <div class="spinner"></div><span>Loading notifications…</span>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading() && items().length === 0">
+    <div class="empty-icon">🔔</div>
+    <p>No notifications yet. We'll let you know here when there are updates on your application.</p>
+  </div>
+
+  <div class="notif-list" *ngIf="!loading() && items().length > 0">
+    <div class="notif-item" *ngFor="let n of items()"
+         [class.notif-item--unread]="!n.read"
+         (click)="markRead(n)">
+      <div class="notif-icon">{{ typeIcon(n.type) }}</div>
+      <div class="notif-body">
+        <div class="notif-title">{{ n.title }}</div>
+        <div class="notif-message">{{ n.message }}</div>
+        <div class="notif-time">{{ n.createdAt | date:'dd MMM yyyy · HH:mm' }}</div>
+      </div>
+      <div class="notif-badge" *ngIf="!n.read" title="Unread"></div>
+    </div>
+  </div>
+</div>

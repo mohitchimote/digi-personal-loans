@@ -1,0 +1,92 @@
+<div class="products-page">
+  <div class="page-header">
+    <div>
+      <h2>Your Eligible Loan Products</h2>
+      <p class="page-sub">Based on your affordability assessment, the following products are available to you. Adjust the term to see how it affects your monthly repayment.</p>
+    </div>
+    <div class="loan-amount-chip">Loan Amount: <strong>₪{{ loanAmount() | number }}</strong></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading()">
+    <div class="spinner"></div>
+    <p>Matching you with eligible products…</p>
+  </div>
+
+  <!-- No products -->
+  <div class="db-alert db-alert--warning" *ngIf="!loading() && products().length === 0">
+    No products are currently available for your profile. Please contact your advisor.
+  </div>
+
+  <!-- Product cards -->
+  <div class="products-grid" *ngIf="!loading() && products().length > 0">
+    <div class="product-card-wrap" *ngFor="let p of products()">
+      <div class="recommended-ribbon" *ngIf="p.recommended">⭐ Recommended</div>
+      <div class="db-card product-card" [class.product-card--recommended]="p.recommended">
+
+        <div class="product-header">
+          <div>
+            <div class="product-id">{{ p.productId }}</div>
+            <h3 class="product-name">{{ p.productName }}</h3>
+          </div>
+          <div class="product-rate">
+            <div class="rate-value">{{ p.interestRate }}%</div>
+            <div class="rate-label">APR</div>
+          </div>
+        </div>
+
+        <div class="product-highlights">
+          <div class="highlight">
+            <span>Min Amount</span><strong>₪{{ p.minAmount | number }}</strong>
+          </div>
+          <div class="highlight">
+            <span>Max Amount</span><strong>₪{{ p.maxAmount | number }}</strong>
+          </div>
+          <div class="highlight">
+            <span>Term Range</span><strong>{{ p.minTermMonths }}–{{ p.maxTermMonths }} months</strong>
+          </div>
+          <div class="highlight">
+            <span>Min Credit Score</span><strong>{{ p.minCreditScore }}</strong>
+          </div>
+        </div>
+
+        <!-- Term selector -->
+        <div class="term-selector">
+          <label>Select Term: <strong>{{ selectedTerm[p.productId] || p.minTermMonths }} months</strong></label>
+          <input type="range"
+                 [min]="p.minTermMonths" [max]="p.maxTermMonths" step="6"
+                 [(ngModel)]="selectedTerm[p.productId]"
+                 class="term-range" />
+          <div class="term-labels">
+            <span>{{ p.minTermMonths }}m</span><span>{{ p.maxTermMonths }}m</span>
+          </div>
+        </div>
+
+        <!-- Repayment summary -->
+        <div class="repayment-summary">
+          <div class="repayment-row">
+            <span>Monthly Repayment</span>
+            <strong class="monthly-amount">₪{{ monthlyRepayment(p, p.productId) | number:'1.0-0' }}</strong>
+          </div>
+          <div class="repayment-row repayment-row--sub">
+            <span>Total Repayable</span>
+            <span>₪{{ totalRepayable(p, p.productId) | number:'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <button class="db-btn db-btn--lg product-select-btn"
+                [class.db-btn--accent]="p.recommended"
+                [class.db-btn--primary]="!p.recommended"
+                [disabled]="selecting()"
+                (click)="selectProduct(p)">
+          <span *ngIf="selecting() && selectedId() === p.productId">Processing…</span>
+          <span *ngIf="!(selecting() && selectedId() === p.productId)">Select This Product →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer db-alert db-alert--info">
+    ℹ The rates and repayments shown are indicative and subject to final verification. Your personalised rate will be confirmed in your loan agreement.
+  </div>
+</div>

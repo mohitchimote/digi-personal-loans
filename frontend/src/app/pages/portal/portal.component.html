@@ -1,0 +1,31 @@
+<div class="app-shell">
+  <app-sidebar [application]="application()" [collapsed]="sidebarCollapsed()" />
+
+  <div class="main-content" [class.sidebar-collapsed]="sidebarCollapsed()">
+    <!-- Top header bar -->
+    <header class="portal-header">
+      <button class="sidebar-toggle" (click)="toggleSidebar()" title="Toggle menu">
+        {{ sidebarCollapsed() ? '☰' : '✕' }}
+      </button>
+      <div class="portal-header-title">
+        <span class="portal-breadcrumb">Personal Loans Portal</span>
+      </div>
+      <div class="portal-header-right">
+        <div class="app-ref" *ngIf="application()">
+          Ref: <strong>{{ application()!.applicationRef }}</strong>
+        </div>
+        <div class="header-user">
+          <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
+          <span class="header-name">{{ auth.userFullName }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <div class="page-content">
+      <router-outlet />
+    </div>
+  </div>
+</div>
+
+<app-chatbot />

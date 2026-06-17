@@ -1,0 +1,65 @@
+<div class="auth-shell">
+  <div class="auth-brand">
+    <a routerLink="/" class="brand-link">
+      <span class="brand-icon">🏦</span>
+      <div>
+        <div class="brand-name">DigiBank</div>
+        <div class="brand-sub">Personal Loans</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="auth-card">
+    <h2>Welcome Back</h2>
+    <p class="auth-subtitle">Sign in to continue your loan application</p>
+
+    <div class="db-alert db-alert--error" *ngIf="error()">⚠ {{ error() }}</div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="db-form-group">
+        <label>Email Address <span class="required">*</span></label>
+        <input class="db-input" type="email" formControlName="email" placeholder="you@example.com" autocomplete="email" />
+        <div class="db-error-msg" *ngIf="f('email')?.invalid && f('email')?.touched">
+          Please enter a valid email address.
+        </div>
+      </div>
+
+      <div class="db-form-group">
+        <label>Password <span class="required">*</span></label>
+        <div class="input-with-action">
+          <input class="db-input" [type]="showPassword() ? 'text' : 'password'"
+                 formControlName="password" placeholder="Your password" autocomplete="current-password" />
+          <button type="button" class="toggle-pw" (click)="showPassword.set(!showPassword())">
+            {{ showPassword() ? '🙈' : '👁' }}
+          </button>
+        </div>
+        <div class="db-error-msg" *ngIf="f('password')?.invalid && f('password')?.touched">
+          Password is required.
+        </div>
+      </div>
+
+      <div class="form-footer-row">
+        <label class="db-checkbox">
+          <input type="checkbox" />
+          <span>Remember me</span>
+        </label>
+        <a href="#" class="forgot-link">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()">
+        <span *ngIf="loading()">Signing in…</span>
+        <span *ngIf="!loading()">Sign In</span>
+      </button>
+    </form>
+
+    <div class="auth-switch">
+      Don't have an account? <a routerLink="/register">Apply now — it's free</a>
+    </div>
+  </div>
+
+  <div class="auth-trust">
+    <span>🔒 256-bit Encrypted</span>
+    <span>🏦 Bank of Israel Regulated</span>
+    <span>✓ GDPR Compliant</span>
+  </div>
+</div>

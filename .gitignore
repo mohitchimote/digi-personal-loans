@@ -1,0 +1,47 @@
+# Maven / Spring Boot
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.snap
+.mvn/
+mvnd.pid
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+.npm/
+npm-debug.log*
+
+# Environment & secrets
+*.env
+.env
+application-local.yml
+application-prod.yml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Document store (runtime generated files)
+backend/document-service/document-store/
+
+# MySQL data
+*.sql.bak

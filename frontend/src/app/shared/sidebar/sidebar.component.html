@@ -1,0 +1,101 @@
+<aside class="sidebar" [class.collapsed]="collapsed">
+  <!-- Logo / Brand -->
+  <div class="sidebar-brand">
+    <div class="brand-logo">
+      <span class="brand-icon">🏦</span>
+      <span class="brand-name" *ngIf="!collapsed">DigiBank</span>
+    </div>
+    <div class="brand-tagline" *ngIf="!collapsed">Personal Loans</div>
+  </div>
+
+  <!-- User greeting -->
+  <div class="sidebar-user" *ngIf="!collapsed">
+    <div class="user-avatar">{{ (auth.userFullName || 'U')[0].toUpperCase() }}</div>
+    <div class="user-info">
+      <div class="user-name">{{ auth.userFullName }}</div>
+      <div class="user-role">Customer</div>
+    </div>
+  </div>
+
+  <!-- Application progress (shown when in application) -->
+  <div class="app-progress" *ngIf="application && !collapsed">
+    <div class="progress-header">
+      <span>Application Progress</span>
+      <span class="progress-pct">{{ progressPercent }}%</span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-fill" [style.width.%]="progressPercent"></div>
+    </div>
+    <div class="progress-label">{{ completedCount() }} of {{ applicationSteps.length }} sections complete</div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+
+    <!-- Dashboard -->
+    <a class="nav-item" routerLink="/portal/dashboard" routerLinkActive="active">
+      <span class="nav-icon">⊞</span>
+      <span class="nav-label" *ngIf="!collapsed">Dashboard</span>
+    </a>
+
+    <!-- My Application (expandable) -->
+    <div class="nav-group" [class.expanded]="isSectionExpanded('apply')">
+      <div class="nav-item nav-group-header" (click)="toggleSection('apply')"
+           [class.active]="isSectionExpanded('apply')">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label" *ngIf="!collapsed">My Application</span>
+        <span class="nav-chevron" *ngIf="!collapsed">{{ isSectionExpanded('apply') ? '▾' : '▸' }}</span>
+      </div>
+
+      <div class="nav-children" *ngIf="isSectionExpanded('apply') && !collapsed">
+        <a *ngFor="let step of applicationSteps; let i = index"
+           class="section-step"
+           [class.completed]="isStepCompleted(step.sectionKey!)"
+           [routerLink]="step.route"
+           routerLinkActive="active">
+          <span class="step-number">
+            <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNum">✓</ng-container>
+            <ng-template #stepNum>{{ i + 1 }}</ng-template>
+          </span>
+          <span class="step-label">{{ step.label }}</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Documents -->
+    <a class="nav-item" routerLink="/portal/documents" routerLinkActive="active">
+      <span class="nav-icon">📁</span>
+      <span class="nav-label" *ngIf="!collapsed">Documents</span>
+    </a>
+
+    <!-- Notifications -->
+    <a class="nav-item" routerLink="/portal/notifications" routerLinkActive="active">
+      <span class="nav-icon">🔔</span>
+      <span class="nav-label" *ngIf="!collapsed">Notifications</span>
+      <span class="nav-badge" *ngIf="notifications.unreadCount() > 0 && !collapsed">
+        {{ notifications.unreadCount() }}
+      </span>
+    </a>
+
+    <!-- FAQ -->
+    <a class="nav-item" routerLink="/portal/faq" routerLinkActive="active">
+      <span class="nav-icon">❓</span>
+      <span class="nav-label" *ngIf="!collapsed">Help & FAQ</span>
+    </a>
+
+  </nav>
+
+  <!-- Reach Your Advisor -->
+  <div class="sidebar-footer" *ngIf="!collapsed">
+    <button class="advisor-btn" (click)="contactAdvisor()">
+      <span>👨‍💼</span>
+      <div>
+        <div class="advisor-label">Reach Your Advisor</div>
+        <div class="advisor-sub">Available Mon–Fri 9am–6pm</div>
+      </div>
+    </button>
+    <button class="logout-btn" (click)="auth.logout()">
+      <span>⏻</span> Sign Out
+    </button>
+  </div>
+</aside>

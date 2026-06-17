@@ -1,0 +1,67 @@
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">Step 4 of 6</div>
+    <h2 class="section-title">Outgoings & Household Expenditure</h2>
+    <p class="section-subtitle">Please list your regular monthly commitments. Enter 0 if a category does not apply to you. Accurate figures help us find the right loan for your circumstances.</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card mb-16">
+      <div class="card-header"><h3>Housing Costs (₪ / month)</h3></div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>Monthly Rent (₪)</label>
+          <input class="db-input" type="number" formControlName="monthlyRent" placeholder="0" min="0" />
+          <div class="db-hint">Enter 0 if you own your home</div>
+        </div>
+        <div class="db-form-group">
+          <label>Mortgage Repayment (₪)</label>
+          <input class="db-input" type="number" formControlName="monthlyMortgage" placeholder="0" min="0" />
+          <div class="db-hint">Enter 0 if you rent or have no mortgage</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card mb-16">
+      <div class="card-header"><h3>Existing Debt Commitments (₪ / month)</h3></div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>Existing Loan Repayments (₪)</label>
+          <input class="db-input" type="number" formControlName="monthlyLoans" placeholder="0" min="0" />
+        </div>
+        <div class="db-form-group">
+          <label>Credit Card Minimum Payments (₪)</label>
+          <input class="db-input" type="number" formControlName="creditCardPayments" placeholder="0" min="0" />
+        </div>
+      </div>
+      <div class="db-form-group" style="max-width:360px">
+        <label>Other Regular Commitments (₪)</label>
+        <input class="db-input" type="number" formControlName="otherMonthlyCommitments" placeholder="0" min="0" />
+        <div class="db-hint">Child maintenance, subscriptions, insurance premiums, etc.</div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="card-header"><h3>Living Expenses (₪ / month)</h3></div>
+      <div class="db-form-group" style="max-width:360px">
+        <label>Total Monthly Living Expenses (₪) <span class="required">*</span></label>
+        <input class="db-input" type="number" formControlName="monthlyLivingExpenses" placeholder="e.g. 5000" min="0" />
+        <div class="db-hint">Food, utilities, transport, entertainment, clothing, etc.</div>
+        <div class="db-error-msg" *ngIf="f('monthlyLivingExpenses')?.invalid && f('monthlyLivingExpenses')?.touched">Required.</div>
+      </div>
+
+      <!-- Outgoings total -->
+      <div class="outgoings-total" *ngIf="totalOutgoings > 0">
+        <span>Total Monthly Outgoings</span>
+        <span class="total-amount">₪{{ totalOutgoings | number:'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a routerLink="/portal/apply/income-employment" class="db-btn db-btn--ghost">← Back</a>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : 'Save & Continue →' }}
+      </button>
+    </div>
+  </form>
+</div>
