@@ -46,11 +46,14 @@ export class ProductsComponent implements OnInit {
         const term   = loan.loanTerm || 36;
         this.loanAmount.set(amount);
 
+        const a2Income = income.applicant2?.monthlyGrossIncome || 0;
+        const a2Credit = credit.applicant2?.creditScore;
+
         this.productSvc.getEligible({
           requestedAmount: amount,
           requestedTermMonths: term,
-          creditScore: credit.creditScore || 700,
-          monthlyIncome: income.monthlyGrossIncome || 0
+          creditScore: a2Credit ? Math.min(credit.creditScore || 700, a2Credit) : (credit.creditScore || 700),
+          monthlyIncome: (income.monthlyGrossIncome || 0) + a2Income
         }).subscribe({
           next: list => {
             this.products.set(list);

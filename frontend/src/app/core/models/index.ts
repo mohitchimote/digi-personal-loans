@@ -161,6 +161,27 @@ export interface GeneratedDocument {
   generatedAt: string;
 }
 
+export interface UploadedDocument {
+  id: number;
+  applicationRef: string;
+  customerId: number;
+  documentType: string;
+  originalFilename: string;
+  storagePath: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+}
+
+export interface RequiredDocType { type: string; labelKey: string; }
+
+export const REQUIRED_DOCUMENT_TYPES: RequiredDocType[] = [
+  { type: 'NATIONAL_ID',       labelKey: 'docs.requiredId' },
+  { type: 'PAYSLIPS',          labelKey: 'docs.requiredPayslips' },
+  { type: 'BANK_STATEMENTS',   labelKey: 'docs.requiredBankStatements' },
+  { type: 'PROOF_OF_ADDRESS',  labelKey: 'docs.requiredProofAddress' },
+];
+
 export const LOAN_PURPOSES = [
   'Home Improvement', 'Debt Consolidation', 'Vehicle Purchase',
   'Education', 'Medical Expenses', 'Wedding', 'Travel',

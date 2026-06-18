@@ -87,14 +87,16 @@
               <div>{{ docLabel(d.documentType) }}</div>
               <div class="uw-note-meta">{{ 'docs.generated' | translate }} {{ d.generatedAt | date:'dd MMM yyyy HH:mm' }}</div>
             </div>
+            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewDoc(d)">👁 {{ 'docs.view' | translate }}</button>
             <button class="db-btn db-btn--outline db-btn--sm" (click)="downloadDoc(d)">{{ 'common.download' | translate }}</button>
           </div>
           <div class="uw-doc-row" *ngFor="let d of uploadedDocs()">
             <span class="material-icons mi-sm">attach_file</span>
             <div class="uw-doc-info">
               <div>{{ d.originalFilename }}</div>
-              <div class="uw-note-meta">{{ 'uw.uploaded' | translate }} {{ d.uploadedAt | date:'dd MMM yyyy HH:mm' }} · {{ d.documentType }}</div>
+              <div class="uw-note-meta">{{ uploadedTypeLabel(d.documentType) }} · {{ 'uw.uploaded' | translate }} {{ d.uploadedAt | date:'dd MMM yyyy HH:mm' }}</div>
             </div>
+            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewUploaded(d)">👁 {{ 'docs.view' | translate }}</button>
           </div>
         </div>
 
@@ -117,6 +119,12 @@
             <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.nationalId }}</strong></div>
             <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
           </div>
+          <div class="review-grid mt-16" *ngIf="personal.applicant2">
+            <div class="review-item"><span>{{ 'personal.applicant2Header' | translate }}</span><strong>{{ personal.applicant2.firstName }} {{ personal.applicant2.lastName }}</strong></div>
+            <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.applicant2.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+            <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.applicant2.nationalId }}</strong></div>
+            <div class="review-item"><span>{{ 'personal.relationshipLabel' | translate }}</span><strong>{{ personal.applicant2.relationshipToApplicant1 || '—' }}</strong></div>
+          </div>
           <div class="uw-notes" *ngIf="notesFor('personalDetails').length">
             <div class="uw-note" *ngFor="let n of notesFor('personalDetails')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
@@ -138,6 +146,17 @@
             <div class="uw-note" *ngFor="let n of notesFor('verifyId')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>✅ {{ 'docs.checklistHeader' | translate }}</h3></div>
+          <div class="checklist">
+            <div class="checklist-item" *ngFor="let item of checklist()" [class.received]="item.received">
+              <span class="checklist-icon">{{ item.received ? '✅' : '⬜' }}</span>
+              <span class="checklist-label">{{ item.labelKey | translate }}</span>
+              <span class="checklist-status">{{ item.received ? ('docs.received' | translate) : ('docs.notReceived' | translate) }}</span>
             </div>
           </div>
         </div>
@@ -169,6 +188,11 @@
             <div class="review-item"><span>{{ 'income.employerLabel' | translate }}</span><strong>{{ income.employer || '—' }}</strong></div>
             <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
             <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+          </div>
+          <div class="review-grid mt-16" *ngIf="income.applicant2">
+            <div class="review-item"><span>{{ 'income.applicant2Header' | translate }}</span><strong>{{ income.applicant2.employmentStatus }}</strong></div>
+            <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyGrossIncome | number }}</strong></div>
+            <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyNetIncome | number }}</strong></div>
           </div>
           <div class="uw-notes" *ngIf="notesFor('incomeEmployment').length">
             <div class="uw-note" *ngFor="let n of notesFor('incomeEmployment')">
@@ -234,6 +258,11 @@
             <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
             <div class="review-item"><span>{{ 'reviewSubmit.ccj' | translate }}</span><strong>{{ credit.hasCCJ ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
             <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ credit.creditScore }}</strong></div>
+          </div>
+          <div class="review-grid mt-16" *ngIf="credit.applicant2">
+            <div class="review-item"><span>{{ 'credit.applicant2Header' | translate }}</span><strong>{{ credit.applicant2.creditScore }}</strong></div>
+            <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.applicant2.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+            <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.applicant2.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
           </div>
           <div class="uw-notes" *ngIf="notesFor('creditDeclarations').length">
             <div class="uw-note" *ngFor="let n of notesFor('creditDeclarations')">

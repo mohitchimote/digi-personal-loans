@@ -46,6 +46,16 @@ public class DocumentController {
                 .body(bytes);
     }
 
+    @GetMapping("/{docId}/view")
+    public ResponseEntity<byte[]> view(@PathVariable Long docId) throws IOException {
+        GeneratedDocument doc = storageService.getGeneratedById(docId);
+        byte[] bytes = storageService.getGeneratedBytes(docId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getDocumentName() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(bytes);
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<UploadedDocument> upload(
             @RequestParam("file")            MultipartFile file,
@@ -58,5 +68,27 @@ public class DocumentController {
     @GetMapping("/uploaded/{appRef}")
     public ResponseEntity<List<UploadedDocument>> getUploaded(@PathVariable String appRef) {
         return ResponseEntity.ok(storageService.getUploaded(appRef));
+    }
+
+    @GetMapping("/uploaded/file/{id}/view")
+    public ResponseEntity<byte[]> viewUploaded(@PathVariable Long id) throws IOException {
+        UploadedDocument doc = storageService.getUploadedById(id);
+        byte[] bytes = storageService.getUploadedBytes(id);
+        MediaType mediaType = doc.getMimeType() != null ? MediaType.parseMediaType(doc.getMimeType()) : MediaType.APPLICATION_OCTET_STREAM;
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getOriginalFilename() + "\"")
+                .contentType(mediaType)
+                .body(bytes);
+    }
+
+    @GetMapping("/uploaded/file/{id}/download")
+    public ResponseEntity<byte[]> downloadUploaded(@PathVariable Long id) throws IOException {
+        UploadedDocument doc = storageService.getUploadedById(id);
+        byte[] bytes = storageService.getUploadedBytes(id);
+        MediaType mediaType = doc.getMimeType() != null ? MediaType.parseMediaType(doc.getMimeType()) : MediaType.APPLICATION_OCTET_STREAM;
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getOriginalFilename() + "\"")
+                .contentType(mediaType)
+                .body(bytes);
     }
 }

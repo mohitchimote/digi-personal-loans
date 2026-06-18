@@ -1,11 +1,11 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -22,7 +22,12 @@ export class CaseDetailComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
   notes = signal<UnderwritingNote[]>([]);
   generatedDocs = signal<GeneratedDocument[]>([]);
-  uploadedDocs = signal<any[]>([]);
+  uploadedDocs = signal<UploadedDocument[]>([]);
+  requiredTypes = REQUIRED_DOCUMENT_TYPES;
+  checklist = computed(() => {
+    const receivedTypes = new Set(this.uploadedDocs().map(u => u.documentType));
+    return this.requiredTypes.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
+  });
   loading = signal(true);
   submittingAction = signal(false);
   error = signal('');
@@ -128,6 +133,19 @@ export class CaseDetailComponent implements OnInit {
 
   downloadDoc(doc: GeneratedDocument): void {
     this.docSvc.download(doc.id);
+  }
+
+  viewDoc(doc: GeneratedDocument): void {
+    this.docSvc.view(doc.id);
+  }
+
+  viewUploaded(doc: UploadedDocument): void {
+    this.docSvc.viewUploaded(doc.id);
+  }
+
+  uploadedTypeLabel(type: string): string {
+    const match = this.requiredTypes.find(t => t.type === type);
+    return match ? this.i18n.t(match.labelKey) : type;
   }
 
   docLabel(type: string): string {

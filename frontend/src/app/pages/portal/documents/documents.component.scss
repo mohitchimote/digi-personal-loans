@@ -25,9 +25,18 @@
 }
 
 .upload-intro { font-size: 0.875rem; color: var(--mid-grey); margin-bottom: 10px; }
-.required-docs { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px;
-  li { font-size: 0.85rem; color: var(--body-text); }
+
+.checklist { display: flex; flex-direction: column; gap: 4px; }
+.checklist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 6px; background: var(--off-white);
+
+  &.received { background: var(--success-light); }
 }
+.checklist-icon { font-size: 1.1rem; }
+.checklist-label { flex: 1; font-size: 0.88rem; color: var(--dark-text); }
+.checklist-status { font-size: 0.75rem; color: var(--mid-grey); text-transform: uppercase; letter-spacing: 0.3px; }
+.checklist-item.received .checklist-status { color: var(--success); }
 
 .drop-zone {
   border: 2px dashed var(--mid-grey); border-radius: 10px;

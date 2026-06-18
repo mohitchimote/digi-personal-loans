@@ -281,6 +281,24 @@ html[dir="rtl"] {
   &--error   { background: var(--error-light);   border-left: 4px solid var(--error);   color: var(--error); }
 }
 
+// === REVIEW GRID (label/value summary pairs) ===
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--off-white);
+  border-radius: 6px;
+
+  span   { font-size: 0.75rem; color: var(--mid-grey); text-transform: uppercase; letter-spacing: 0.3px; }
+  strong { color: var(--dark-text); font-size: 0.9rem; }
+}
+
 // === TABLES ===
 .db-table {
   width: 100%;

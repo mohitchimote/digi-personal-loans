@@ -53,10 +53,31 @@ export class DashboardComponent implements OnInit {
     const map: Record<string, string> = {
       DRAFT: 'db-badge--draft', IN_PROGRESS: 'db-badge--in-progress',
       SUBMITTED: 'db-badge--in-progress', UNDER_REVIEW: 'db-badge--review',
-      CONDITIONALLY_APPROVED: 'db-badge--review',
-      APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined',
+      CONDITIONALLY_APPROVED: 'db-badge--review', REFERRED_TO_SENIOR: 'db-badge--review',
+      APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined', WITHDRAWN: 'db-badge--declined',
     };
     return map[status] || 'db-badge--draft';
+  }
+
+  private readonly cancellableStatuses = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR'];
+
+  canCancel(app: LoanApplication): boolean {
+    return this.cancellableStatuses.includes(app.status);
+  }
+
+  cancelling = signal<string | null>(null);
+
+  cancelApplication(app: LoanApplication): void {
+    const confirmMsg = this.i18n.t('dashboard.confirmCancel');
+    if (!window.confirm(confirmMsg)) return;
+    this.cancelling.set(app.applicationRef);
+    this.appSvc.cancel(app.applicationRef).subscribe({
+      next: updated => {
+        this.applications.update(list => list.map(a => a.applicationRef === updated.applicationRef ? updated : a));
+        this.cancelling.set(null);
+      },
+      error: () => this.cancelling.set(null)
+    });
   }
 
   statusLabel(status: string): string {
@@ -76,9 +97,12 @@ export class DashboardComponent implements OnInit {
     const sectionRoutes: Record<string, string> = {
       loanRequirements:   '/portal/apply/loan-requirements',
       personalDetails:    '/portal/apply/personal-details',
+      connectBank:        '/portal/apply/connect-bank',
       incomeEmployment:   '/portal/apply/income-employment',
       outgoings:          '/portal/apply/outgoings',
       creditDeclarations: '/portal/apply/credit-declarations',
+      verifyId:           '/portal/apply/verify-id',
+      directDebit:        '/portal/apply/direct-debit',
       reviewSubmit:       '/portal/apply/review-submit',
     };
     return sectionRoutes[app.currentSection] || '/portal/apply/loan-requirements';

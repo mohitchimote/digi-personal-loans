@@ -99,6 +99,16 @@ public class DocumentStorageService {
         return uploadedRepo.findByApplicationRefOrderByUploadedAtDesc(appRef);
     }
 
+    public UploadedDocument getUploadedById(Long id) {
+        return uploadedRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Uploaded document not found: " + id));
+    }
+
+    public byte[] getUploadedBytes(Long id) throws IOException {
+        UploadedDocument doc = getUploadedById(id);
+        return Files.readAllBytes(Paths.get(doc.getStoragePath()));
+    }
+
     private String friendlyName(String type) {
         return switch (type) {
             case "APPROVAL_LETTER"       -> "Conditional Approval Letter";

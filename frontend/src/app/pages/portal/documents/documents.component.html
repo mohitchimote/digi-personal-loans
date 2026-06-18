@@ -25,8 +25,21 @@
           <div class="doc-meta">{{ doc.applicationRef }} · {{ 'docs.generated' | translate }} {{ doc.generatedAt | date:'dd MMM yyyy HH:mm' }} · PDF</div>
         </div>
         <div class="doc-actions">
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="view(doc)">👁 {{ 'docs.view' | translate }}</button>
           <button class="db-btn db-btn--primary db-btn--sm" (click)="download(doc)">⬇ {{ 'common.download' | translate }}</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Required documents checklist -->
+  <div class="db-card mb-24">
+    <div class="card-header"><h3>✅ {{ 'docs.checklistHeader' | translate }}</h3></div>
+    <div class="checklist">
+      <div class="checklist-item" *ngFor="let item of checklist()" [class.received]="item.received">
+        <span class="checklist-icon">{{ item.received ? '✅' : '⬜' }}</span>
+        <span class="checklist-label">{{ item.labelKey | translate }}</span>
+        <span class="checklist-status">{{ item.received ? ('docs.received' | translate) : ('docs.notReceived' | translate) }}</span>
       </div>
     </div>
   </div>
@@ -35,12 +48,13 @@
   <div class="db-card">
     <div class="card-header"><h3>📎 {{ 'docs.uploadHeader' | translate }}</h3></div>
     <p class="upload-intro">{{ 'docs.uploadIntro' | translate }}</p>
-    <ul class="required-docs">
-      <li>✓ {{ 'docs.requiredId' | translate }}</li>
-      <li>✓ {{ 'docs.requiredPayslips' | translate }}</li>
-      <li>✓ {{ 'docs.requiredBankStatements' | translate }}</li>
-      <li>✓ {{ 'docs.requiredProofAddress' | translate }}</li>
-    </ul>
+
+    <div class="db-form-group" style="max-width:320px">
+      <label>{{ 'docs.whichDocument' | translate }}</label>
+      <select class="db-select" [(ngModel)]="selectedDocType">
+        <option *ngFor="let t of requiredTypes" [value]="t.type">{{ t.labelKey | translate }}</option>
+      </select>
+    </div>
 
     <!-- Drop zone -->
     <div class="drop-zone" [class.drop-zone--active]="dragOver()"
@@ -67,7 +81,10 @@
         <div class="doc-icon">📎</div>
         <div class="doc-info">
           <div class="doc-name">{{ u.originalFilename }}</div>
-          <div class="doc-meta">{{ u.uploadedAt | date:'dd MMM yyyy HH:mm' }} · {{ u.fileSize | number }} bytes</div>
+          <div class="doc-meta">{{ uploadedTypeLabel(u.documentType) }} · {{ u.uploadedAt | date:'dd MMM yyyy HH:mm' }} · {{ u.fileSize | number }} bytes</div>
+        </div>
+        <div class="doc-actions">
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="viewUploaded(u)">👁 {{ 'docs.view' | translate }}</button>
         </div>
         <div class="doc-status db-badge db-badge--in-progress">{{ 'status.UNDER_REVIEW' | translate }}</div>
       </div>

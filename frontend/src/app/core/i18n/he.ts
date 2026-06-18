@@ -81,6 +81,9 @@ export const HE: Record<string, string> = {
   'dashboard.resume': 'המשך',
   'dashboard.viewApproval': 'צפה באישור',
   'dashboard.view': 'צפייה',
+  'dashboard.cancel': 'בטל',
+  'dashboard.cancelling': 'מבטל…',
+  'dashboard.confirmCancel': 'האם אתה בטוח שברצונך לבטל בקשה זו? לא ניתן לבטל פעולה זו.',
   'dashboard.uploadDocuments': 'העלאת מסמכים',
   'dashboard.uploadDocumentsSub': 'הגש תלושי שכר ודפי חשבון בנק',
   'dashboard.faqsGuides': 'שאלות נפוצות ומדריכים',
@@ -106,6 +109,10 @@ export const HE: Record<string, string> = {
   'loanReq.termError': 'אנא הזן תקופה בין 6 ל-84 חודשים.',
   'loanReq.repaymentDayLabel': 'יום החזר מועדף',
   'loanReq.ofEachMonth': 'ה-{{day}} בכל חודש',
+  'loanReq.numberOfApplicantsLabel': 'מספר מבקשים',
+  'loanReq.applicant1Only': '1 — מבקש יחיד',
+  'loanReq.jointApplication': '2 — בקשה משותפת',
+  'loanReq.numberOfApplicantsHint': 'אם ישנם שני מבקשים, נאסוף פרטים עבור שניהם.',
   'loanReq.previewLabel': 'החזר חודשי משוער',
   'loanReq.previewNote': 'מבוסס על ריבית 5.5% שנתית (להמחשה). הריבית בפועל עשויה להיות שונה.',
 
@@ -142,6 +149,11 @@ export const HE: Record<string, string> = {
   'personal.postCodeLabel': 'מיקוד',
   'personal.postCodePlaceholder': 'לדוגמה: 6473417',
   'personal.countryLabel': 'מדינה',
+  'personal.applicant2Header': 'פרטי מבקש 2',
+  'personal.applicant2Intro': 'מכיוון שזו בקשה משותפת, אנא מסור את פרטי המבקש השני.',
+  'personal.applicant2Required': 'אנא השלם את פרטי מבקש 2.',
+  'personal.relationshipLabel': 'קרבה למבקש 1',
+  'personal.relationshipPlaceholder': 'לדוגמה: בן/בת זוג, שותף, אח/אחות',
 
   // Step 3: Income & Employment
   'income.title': 'הכנסה ותעסוקה',
@@ -166,6 +178,8 @@ export const HE: Record<string, string> = {
   'income.netIncomeHint': 'שכר נטו אחרי כל הניכויים',
   'income.otherIncomeLabel': 'הכנסה חודשית נוספת (₪)',
   'income.otherIncomeHint': 'הכנסה משכירות, עבודה עצמאית, קצבאות וכו׳',
+  'income.applicant2Header': 'מבקש 2 — הכנסה ותעסוקה',
+  'income.applicant2Required': 'אנא השלם פרטי תעסוקה והכנסה למבקש 2.',
 
   // Step 4: Outgoings
   'outgoings.title': 'הוצאות ומשק בית',
@@ -203,6 +217,8 @@ export const HE: Record<string, string> = {
   'credit.scoreLabel': 'דירוג אשראי',
   'credit.scoreHint': 'טווח: 300 (חלש) עד 850 (מצוין)',
   'credit.scoreError': 'הזן ערך בין 300 ל-850.',
+  'credit.applicant2Header': 'מבקש 2 — הצהרות אשראי',
+  'credit.applicant2Required': 'אנא השלם את דירוג האשראי של מבקש 2.',
 
   // Aside tips
   'aside.tip.loanRequirements': 'סכום ההלוואה שתבחר משפיע על המוצרים הזמינים לך בהמשך — תמיד תוכל לחזור ולשנות לפני השליחה.',
@@ -335,6 +351,11 @@ export const HE: Record<string, string> = {
   'docs.uploading': 'מעלה…',
   'docs.uploadFailed': 'ההעלאה נכשלה. אנא נסה שוב.',
   'docs.uploadedFiles': 'קבצים שהועלו ({{count}})',
+  'docs.view': 'צפייה',
+  'docs.checklistHeader': 'רשימת מסמכים נדרשים',
+  'docs.received': 'התקבל',
+  'docs.notReceived': 'לא התקבל',
+  'docs.whichDocument': 'איזה מסמך אתה מעלה?',
   'docs.conditionalLetter': 'מכתב אישור בתנאי',
   'docs.finalLetter': 'מכתב אישור סופי',
   'docs.loanAgreement': 'הסכם הלוואה',

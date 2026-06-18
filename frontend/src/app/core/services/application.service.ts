@@ -33,6 +33,10 @@ export class ApplicationService {
     return this.http.post<LoanApplication>(`${API}/${appRef}/withdraw`, {});
   }
 
+  cancel(appRef: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/${appRef}/cancel`, {});
+  }
+
   submit(appRef: string): Observable<LoanApplication> {
     return this.http.post<LoanApplication>(`${API}/${appRef}/submit`, {});
   }

@@ -9,14 +9,4 @@ app-application-aside { flex: 0 0 300px; max-width: 300px; }
 .mb-24 { margin-bottom: 24px; }
 .mt-24 { margin-top: 24px; }
 
-.review-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-  .review-item {
-    display: flex; flex-direction: column; gap: 2px;
-    padding: 10px 12px; background: var(--off-white); border-radius: 6px;
-    span   { font-size: 0.75rem; color: var(--mid-grey); text-transform: uppercase; letter-spacing: 0.3px; }
-    strong { color: var(--dark-text); font-size: 0.9rem; }
-  }
-}
-
 .form-actions { display: flex; justify-content: space-between; align-items: center; }

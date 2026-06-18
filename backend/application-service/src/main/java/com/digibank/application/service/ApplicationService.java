@@ -158,6 +158,19 @@ public class ApplicationService {
         return repository.findByStatusInOrderBySubmittedAtAsc(PIPELINE_STATUSES);
     }
 
+    private static final List<String> CANCELLABLE_STATUSES = List.of(
+            "DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR");
+
+    @Transactional
+    public LoanApplication cancelApplication(String appRef) {
+        LoanApplication app = getByRef(appRef);
+        if (!CANCELLABLE_STATUSES.contains(app.getStatus())) {
+            throw new IllegalStateException("Application cannot be cancelled in its current status: " + appRef);
+        }
+        app.setStatus("WITHDRAWN");
+        return repository.save(app);
+    }
+
     @Transactional
     public LoanApplication declineApplication(String appRef, String reason, String reviewedBy) {
         LoanApplication app = getByRef(appRef);

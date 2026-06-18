@@ -33,6 +33,7 @@ export class LoanRequirementsComponent implements OnInit {
       loanPurpose:           ['', Validators.required],
       loanTerm:              [36, [Validators.required, Validators.min(6), Validators.max(84)]],
       preferredRepaymentDay: [1, Validators.required],
+      numberOfApplicants:    [1, Validators.required],
     });
   }
 

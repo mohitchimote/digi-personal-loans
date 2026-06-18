@@ -1,27 +1,36 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DocumentService } from '../../../core/services/document.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { GeneratedDocument } from '../../../core/models';
+import { GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })
 export class DocumentsComponent implements OnInit {
   generated = signal<GeneratedDocument[]>([]);
-  uploaded  = signal<any[]>([]);
+  uploaded  = signal<UploadedDocument[]>([]);
   loading   = signal(true);
   uploading = signal(false);
   appRef    = signal('');
   dragOver  = signal(false);
   uploadError = signal('');
+
+  requiredTypes = REQUIRED_DOCUMENT_TYPES;
+  selectedDocType = REQUIRED_DOCUMENT_TYPES[0].type;
+
+  checklist = computed(() => {
+    const receivedTypes = new Set(this.uploaded().map(u => u.documentType));
+    return this.requiredTypes.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
+  });
 
   constructor(
     private docSvc: DocumentService,
@@ -66,7 +75,7 @@ export class DocumentsComponent implements OnInit {
   private upload(file: File): void {
     this.uploading.set(true);
     this.uploadError.set('');
-    this.docSvc.upload(this.appRef(), this.auth.userId!, file).subscribe({
+    this.docSvc.upload(this.appRef(), this.auth.userId!, file, this.selectedDocType).subscribe({
       next: doc => {
         this.uploaded.update(u => [doc, ...u]);
         this.uploading.set(false);
@@ -80,6 +89,23 @@ export class DocumentsComponent implements OnInit {
 
   download(doc: GeneratedDocument): void {
     this.docSvc.download(doc.id);
+  }
+
+  view(doc: GeneratedDocument): void {
+    this.docSvc.view(doc.id);
+  }
+
+  viewUploaded(doc: UploadedDocument): void {
+    this.docSvc.viewUploaded(doc.id);
+  }
+
+  downloadUploaded(doc: UploadedDocument): void {
+    this.docSvc.downloadUploaded(doc.id);
+  }
+
+  uploadedTypeLabel(type: string): string {
+    const match = this.requiredTypes.find(t => t.type === type);
+    return match ? this.i18n.t(match.labelKey) : type;
   }
 
   docIcon(type: string): string {

@@ -86,13 +86,67 @@
       </div>
     </div>
 
-    <div class="form-actions">
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
-      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
-      </button>
+  </form>
+
+  <!-- Applicant 2 (joint application) -->
+  <form [formGroup]="applicant2Form" *ngIf="isJoint">
+    <div class="db-card mt-16">
+      <div class="card-header"><h3>{{ 'personal.applicant2Header' | translate }}</h3></div>
+      <p class="text-muted mb-16">{{ 'personal.applicant2Intro' | translate }}</p>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.firstNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="firstName" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.lastNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="lastName" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="date" formControlName="dateOfBirth" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="nationalId" [placeholder]="'personal.nationalIdPlaceholder' | translate" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.nationalityLabel' | translate }}</label>
+          <select class="db-select" formControlName="nationality">
+            <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
+          </select>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.maritalStatusLabel' | translate }}</label>
+          <select class="db-select" formControlName="maritalStatus">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="db-form-group" style="max-width:320px">
+        <label>{{ 'personal.relationshipLabel' | translate }}</label>
+        <input class="db-input" type="text" formControlName="relationshipToApplicant1" [placeholder]="'personal.relationshipPlaceholder' | translate" />
+      </div>
+
+      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">⚠ {{ applicant2Error() }}</div>
     </div>
   </form>
+
+  <div class="form-actions mt-16">
+    <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+    <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
+      {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+    </button>
+  </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.personalDetails' | translate"></app-application-aside>
 </div>

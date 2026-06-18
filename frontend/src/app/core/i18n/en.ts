@@ -81,6 +81,9 @@ export const EN: Record<string, string> = {
   'dashboard.resume': 'Resume',
   'dashboard.viewApproval': 'View Approval',
   'dashboard.view': 'View',
+  'dashboard.cancel': 'Cancel',
+  'dashboard.cancelling': 'Cancelling…',
+  'dashboard.confirmCancel': 'Are you sure you want to cancel this application? This cannot be undone.',
   'dashboard.uploadDocuments': 'Upload Documents',
   'dashboard.uploadDocumentsSub': 'Submit your payslips and bank statements',
   'dashboard.faqsGuides': 'FAQs & Guides',
@@ -106,6 +109,10 @@ export const EN: Record<string, string> = {
   'loanReq.termError': 'Please enter a term between 6 and 84 months.',
   'loanReq.repaymentDayLabel': 'Preferred Repayment Day',
   'loanReq.ofEachMonth': '{{day}} of each month',
+  'loanReq.numberOfApplicantsLabel': 'Number of Applicants',
+  'loanReq.applicant1Only': '1 — Sole Applicant',
+  'loanReq.jointApplication': '2 — Joint Application',
+  'loanReq.numberOfApplicantsHint': "If there are two applicants, we'll collect details for both.",
   'loanReq.previewLabel': 'Indicative Monthly Repayment',
   'loanReq.previewNote': 'Based on 5.5% APR (representative). Your actual rate may differ.',
 
@@ -142,6 +149,11 @@ export const EN: Record<string, string> = {
   'personal.postCodeLabel': 'Post Code',
   'personal.postCodePlaceholder': 'e.g. 6473417',
   'personal.countryLabel': 'Country',
+  'personal.applicant2Header': 'Applicant 2 Details',
+  'personal.applicant2Intro': "Since this is a joint application, please provide the second applicant's details.",
+  'personal.applicant2Required': 'Please complete Applicant 2 details.',
+  'personal.relationshipLabel': 'Relationship to Applicant 1',
+  'personal.relationshipPlaceholder': 'e.g. Spouse, Partner, Sibling',
 
   // Step 3: Income & Employment
   'income.title': 'Income & Employment',
@@ -166,6 +178,8 @@ export const EN: Record<string, string> = {
   'income.netIncomeHint': 'Take-home pay after all deductions',
   'income.otherIncomeLabel': 'Other Monthly Income (₪)',
   'income.otherIncomeHint': 'Rental income, freelance, benefits, etc.',
+  'income.applicant2Header': "Applicant 2 — Income & Employment",
+  'income.applicant2Required': 'Please complete Applicant 2 employment and income details.',
 
   // Step 4: Outgoings
   'outgoings.title': 'Outgoings & Household Expenditure',
@@ -203,6 +217,8 @@ export const EN: Record<string, string> = {
   'credit.scoreLabel': 'Credit Score',
   'credit.scoreHint': 'Range: 300 (Poor) to 850 (Excellent)',
   'credit.scoreError': 'Enter a value between 300 and 850.',
+  'credit.applicant2Header': 'Applicant 2 — Credit Declarations',
+  'credit.applicant2Required': "Please complete Applicant 2's credit score.",
 
   // Aside tips
   'aside.tip.loanRequirements': 'The loan amount you choose affects your eligible products later — you can always come back and adjust before submitting.',
@@ -335,6 +351,11 @@ export const EN: Record<string, string> = {
   'docs.uploading': 'Uploading…',
   'docs.uploadFailed': 'Upload failed. Please try again.',
   'docs.uploadedFiles': 'Uploaded Files ({{count}})',
+  'docs.view': 'View',
+  'docs.checklistHeader': 'Required Documents Checklist',
+  'docs.received': 'Received',
+  'docs.notReceived': 'Not Received',
+  'docs.whichDocument': 'Which document are you uploading?',
   'docs.conditionalLetter': 'Conditional Approval Letter',
   'docs.finalLetter': 'Final Approval Letter',
   'docs.loanAgreement': 'Loan Agreement',

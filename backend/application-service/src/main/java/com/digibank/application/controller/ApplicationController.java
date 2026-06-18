@@ -62,6 +62,11 @@ public class ApplicationController {
         return ResponseEntity.ok(applicationService.withdrawApplication(appRef));
     }
 
+    @PostMapping("/{appRef}/cancel")
+    public ResponseEntity<LoanApplication> cancelApplication(@PathVariable String appRef) {
+        return ResponseEntity.ok(applicationService.cancelApplication(appRef));
+    }
+
     @GetMapping("/pipeline")
     public ResponseEntity<List<LoanApplication>> getPipeline() {
         return ResponseEntity.ok(applicationService.getPipeline());

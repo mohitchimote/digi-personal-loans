@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { GeneratedDocument } from '../models';
+import { GeneratedDocument, UploadedDocument } from '../models';
 
 const API = 'http://localhost:8080/api/documents';
 
@@ -21,8 +21,8 @@ export class DocumentService {
     return this.http.get<GeneratedDocument[]>(`${API}/application/${appRef}`);
   }
 
-  getUploaded(appRef: string): Observable<any[]> {
-    return this.http.get<any[]>(`${API}/uploaded/${appRef}`);
+  getUploaded(appRef: string): Observable<UploadedDocument[]> {
+    return this.http.get<UploadedDocument[]>(`${API}/uploaded/${appRef}`);
   }
 
   upload(appRef: string, customerId: number, file: File, docType = 'SUPPORTING'): Observable<any> {
@@ -36,5 +36,17 @@ export class DocumentService {
 
   download(docId: string | number): void {
     window.open(`${API}/${docId}/download`, '_blank');
+  }
+
+  view(docId: string | number): void {
+    window.open(`${API}/${docId}/view`, '_blank');
+  }
+
+  downloadUploaded(id: string | number): void {
+    window.open(`${API}/uploaded/file/${id}/download`, '_blank');
+  }
+
+  viewUploaded(id: string | number): void {
+    window.open(`${API}/uploaded/file/${id}/view`, '_blank');
   }
 }

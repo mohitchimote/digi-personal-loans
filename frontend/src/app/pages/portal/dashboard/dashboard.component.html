@@ -101,6 +101,10 @@
                *ngIf="app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED'">{{ 'dashboard.viewApproval' | translate }}</a>
             <a [routerLink]="['/portal/view-application', app.applicationRef]" class="db-btn db-btn--outline db-btn--sm"
                *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">{{ 'dashboard.view' | translate }}</a>
+            <button class="db-btn db-btn--ghost db-btn--sm" style="color:#c62828;"
+               *ngIf="canCancel(app)" [disabled]="cancelling() === app.applicationRef" (click)="cancelApplication(app)">
+              {{ cancelling() === app.applicationRef ? ('dashboard.cancelling' | translate) : ('dashboard.cancel' | translate) }}
+            </button>
           </td>
         </tr>
       </tbody>

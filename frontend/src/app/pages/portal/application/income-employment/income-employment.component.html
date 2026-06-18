@@ -73,13 +73,66 @@
       </div>
     </div>
 
-    <div class="form-actions">
-      <a routerLink="/portal/apply/connect-bank" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
-      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
-      </button>
+  </form>
+
+  <!-- Applicant 2 (joint application) -->
+  <form [formGroup]="applicant2Form" *ngIf="isJoint">
+    <div class="db-card mb-16 mt-16">
+      <div class="card-header"><h3>{{ 'income.applicant2Header' | translate }}</h3></div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="employmentStatus">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="db-form-group" *ngIf="isEmployed2()">
+          <label>{{ 'income.employerLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="employer" [placeholder]="'income.employerPlaceholder' | translate" />
+        </div>
+      </div>
+
+      <div class="form-row" *ngIf="isEmployed2()">
+        <div class="db-form-group">
+          <label>{{ 'income.jobTitleLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="jobTitle" [placeholder]="'income.jobTitlePlaceholder' | translate" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'income.durationLabel' | translate }}</label>
+          <select class="db-select" formControlName="employmentDuration">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option value="Less than 6 months">{{ 'income.duration.lt6' | translate }}</option>
+            <option value="6–12 months">{{ 'income.duration.6to12' | translate }}</option>
+            <option value="1–2 years">{{ 'income.duration.1to2' | translate }}</option>
+            <option value="2–5 years">{{ 'income.duration.2to5' | translate }}</option>
+            <option value="5+ years">{{ 'income.duration.5plus' | translate }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'income.grossIncomeLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="monthlyGrossIncome" placeholder="e.g. 18000" min="0" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'income.netIncomeLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="monthlyNetIncome" placeholder="e.g. 14000" min="0" />
+        </div>
+      </div>
+
+      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">⚠ {{ applicant2Error() }}</div>
     </div>
   </form>
+
+  <div class="form-actions mt-16">
+    <a routerLink="/portal/apply/connect-bank" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+    <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
+      {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+    </button>
+  </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.incomeEmployment' | translate"></app-application-aside>
 </div>

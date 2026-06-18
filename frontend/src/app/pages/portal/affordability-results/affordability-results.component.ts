@@ -39,9 +39,14 @@ export class AffordabilityResultsComponent implements OnInit {
         const credit    = JSON.parse(app.creditDeclarationsJson || '{}');
         const loan      = JSON.parse(app.loanRequirementsJson || '{}');
 
+        // For joint applications, combine both applicants' income and take the more conservative
+        // credit position (lower score, either applicant's adverse history) since liability is joint.
+        const a2Income = income.applicant2;
+        const a2Credit = credit.applicant2;
+
         const request = {
-          monthlyGrossIncome:      income.monthlyGrossIncome || 0,
-          monthlyNetIncome:        income.monthlyNetIncome || 0,
+          monthlyGrossIncome:      (income.monthlyGrossIncome || 0) + (a2Income?.monthlyGrossIncome || 0),
+          monthlyNetIncome:        (income.monthlyNetIncome || 0) + (a2Income?.monthlyNetIncome || 0),
           monthlyRent:             outgoings.monthlyRent || 0,
           monthlyMortgage:         outgoings.monthlyMortgage || 0,
           monthlyLoans:            outgoings.monthlyLoans || 0,
@@ -50,9 +55,9 @@ export class AffordabilityResultsComponent implements OnInit {
           monthlyLivingExpenses:   outgoings.monthlyLivingExpenses || 0,
           requestedLoanAmount:     loan.loanAmount || 50000,
           requestedTermMonths:     loan.loanTerm || 36,
-          creditScore:             credit.creditScore || 700,
-          hasDefaulted:            credit.hasDefaulted || false,
-          hasBankruptcy:           credit.hasBankruptcy || false,
+          creditScore:             a2Credit?.creditScore ? Math.min(credit.creditScore || 700, a2Credit.creditScore) : (credit.creditScore || 700),
+          hasDefaulted:            (credit.hasDefaulted || false) || (a2Credit?.hasDefaulted || false),
+          hasBankruptcy:           (credit.hasBankruptcy || false) || (a2Credit?.hasBankruptcy || false),
         };
 
         this.affordability.check(request).subscribe({

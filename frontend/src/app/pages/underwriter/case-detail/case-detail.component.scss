@@ -138,3 +138,15 @@
   padding: 40px;
   justify-content: center;
 }
+
+.checklist { display: flex; flex-direction: column; gap: 4px; }
+.checklist-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 6px; background: var(--off-white, #F7F9FC);
+
+  &.received { background: var(--success-light, #E8F5E9); }
+}
+.checklist-icon { font-size: 1.1rem; }
+.checklist-label { flex: 1; font-size: 0.88rem; color: var(--dark-text, #1A2B3C); }
+.checklist-status { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
+.checklist-item.received .checklist-status { color: var(--success, #2E7D32); }
