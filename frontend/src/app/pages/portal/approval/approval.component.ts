@@ -18,6 +18,7 @@ export class ApprovalComponent implements OnInit {
   generating = signal(false);
   generated = signal(false);
   docId = signal<number | null>(null);
+  documentsUploaded = signal(false);
   today = new Date();
 
   constructor(
@@ -32,13 +33,35 @@ export class ApprovalComponent implements OnInit {
     if (!userId || !email) return;
 
     this.appSvc.getCurrent(userId).subscribe({
-      next: app => this.application.set(app)
+      next: app => {
+        this.application.set(app);
+
+        this.docSvc.getByApplication(app.applicationRef).subscribe({
+          next: docs => {
+            const letter = docs.find(d => d.documentType === 'APPROVAL_LETTER');
+            if (letter) {
+              this.docId.set(letter.id);
+              this.generated.set(true);
+            }
+          },
+          error: () => {}
+        });
+
+        this.docSvc.getUploaded(app.applicationRef).subscribe({
+          next: uploaded => this.documentsUploaded.set(uploaded.length > 0),
+          error: () => {}
+        });
+      }
     });
   }
 
   get loan() { return JSON.parse(this.application()?.loanRequirementsJson || '{}'); }
   get personal() { return JSON.parse(this.application()?.personalDetailsJson || '{}'); }
   get product() { return JSON.parse(this.application()?.selectedProductJson || '{}'); }
+
+  isFinal(): boolean {
+    return this.application()?.status === 'APPROVED';
+  }
 
   generateLetter(): void {
     const app = this.application();

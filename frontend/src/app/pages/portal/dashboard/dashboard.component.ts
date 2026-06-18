@@ -51,13 +51,15 @@ export class DashboardComponent implements OnInit {
     const map: Record<string, string> = {
       DRAFT: 'db-badge--draft', IN_PROGRESS: 'db-badge--in-progress',
       SUBMITTED: 'db-badge--in-progress', UNDER_REVIEW: 'db-badge--review',
+      CONDITIONALLY_APPROVED: 'db-badge--review',
       APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined',
     };
     return map[status] || 'db-badge--draft';
   }
 
   get activeCount(): number {
-    return this.applications().filter(a => a.status === 'DRAFT' || a.status === 'IN_PROGRESS' || a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW').length;
+    const activeStatuses = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED'];
+    return this.applications().filter(a => activeStatuses.includes(a.status)).length;
   }
 
   get approvedCount(): number {

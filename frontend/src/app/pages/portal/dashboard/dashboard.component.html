@@ -99,7 +99,7 @@
             <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--outline db-btn--sm"
                *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">Resume</a>
             <a routerLink="/portal/approval" class="db-btn db-btn--ghost db-btn--sm"
-               *ngIf="app.status === 'APPROVED'">View Approval</a>
+               *ngIf="app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED'">View Approval</a>
             <a [routerLink]="['/portal/view-application', app.applicationRef]" class="db-btn db-btn--outline db-btn--sm"
                *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">View</a>
           </td>

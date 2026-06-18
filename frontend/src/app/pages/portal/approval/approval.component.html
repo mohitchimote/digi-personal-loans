@@ -2,9 +2,13 @@
   <!-- Approval banner -->
   <div class="approval-banner">
     <div class="banner-icon">✓</div>
-    <div class="banner-content">
+    <div class="banner-content" *ngIf="isFinal()">
+      <h2>Final Approval Granted</h2>
+      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has been fully reviewed and approved by our underwriting team.</p>
+    </div>
+    <div class="banner-content" *ngIf="!isFinal()">
       <h2>Conditional Approval Granted</h2>
-      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has received a conditional approval. Please review the details below and generate your approval letter.</p>
+      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has received a conditional approval pending final underwriter verification. Please review the details below and generate your approval letter.</p>
     </div>
   </div>
 
@@ -43,7 +47,8 @@
         </div>
         <div class="detail-row">
           <span>Status</span>
-          <span class="db-badge db-badge--approved">Conditionally Approved</span>
+          <span class="db-badge db-badge--approved" *ngIf="isFinal()">Approved</span>
+          <span class="db-badge db-badge--review" *ngIf="!isFinal()">Conditionally Approved</span>
         </div>
       </div>
     </div>
@@ -65,17 +70,17 @@
             <div class="step-num">✓</div>
             <div><strong>Product Selected</strong><p>Your chosen loan product has been applied to your application.</p></div>
           </li>
-          <li class="step-item step-active">
-            <div class="step-num">4</div>
+          <li class="step-item" [class.step-done]="generated()" [class.step-active]="!generated()">
+            <div class="step-num"><ng-container *ngIf="generated()">✓</ng-container><ng-container *ngIf="!generated()">4</ng-container></div>
             <div><strong>Generate Documents</strong><p>Download your approval letter and loan agreement below.</p></div>
           </li>
-          <li class="step-item">
-            <div class="step-num">5</div>
+          <li class="step-item" [class.step-done]="documentsUploaded()" [class.step-active]="generated() && !documentsUploaded()">
+            <div class="step-num"><ng-container *ngIf="documentsUploaded()">✓</ng-container><ng-container *ngIf="!documentsUploaded()">5</ng-container></div>
             <div><strong>Upload Supporting Documents</strong><p>Submit payslips, bank statements and ID in the Documents section.</p></div>
           </li>
-          <li class="step-item">
-            <div class="step-num">6</div>
-            <div><strong>Final Verification & Drawdown</strong><p>Your advisor will confirm final verification and arrange funds transfer.</p></div>
+          <li class="step-item" [class.step-done]="isFinal()" [class.step-active]="documentsUploaded() && !isFinal()">
+            <div class="step-num"><ng-container *ngIf="isFinal()">✓</ng-container><ng-container *ngIf="!isFinal()">6</ng-container></div>
+            <div><strong>Final Verification & Drawdown</strong><p>Your underwriter will perform final verification and arrange funds transfer.</p></div>
           </li>
         </ol>
       </div>

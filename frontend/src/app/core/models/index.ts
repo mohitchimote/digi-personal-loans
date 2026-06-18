@@ -42,7 +42,7 @@ export interface LoanApplication {
 
 export type ApplicationStatus =
   | 'DRAFT' | 'IN_PROGRESS' | 'SUBMITTED'
-  | 'UNDER_REVIEW' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
+  | 'UNDER_REVIEW' | 'CONDITIONALLY_APPROVED' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
 
 export interface UnderwritingNote {
   id: number;

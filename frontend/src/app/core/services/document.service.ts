@@ -17,6 +17,10 @@ export class DocumentService {
     return this.http.get<GeneratedDocument[]>(`${API}/customer/${customerId}`);
   }
 
+  getByApplication(appRef: string): Observable<GeneratedDocument[]> {
+    return this.http.get<GeneratedDocument[]>(`${API}/application/${appRef}`);
+  }
+
   getUploaded(appRef: string): Observable<any[]> {
     return this.http.get<any[]>(`${API}/uploaded/${appRef}`);
   }

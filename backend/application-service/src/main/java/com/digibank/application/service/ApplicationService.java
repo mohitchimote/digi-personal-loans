@@ -25,7 +25,7 @@ public class ApplicationService {
     private final ObjectMapper objectMapper;
     private final NotificationClient notificationClient;
 
-    private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW");
+    private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED");
 
     public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
                                ObjectMapper objectMapper, NotificationClient notificationClient) {
@@ -108,7 +108,7 @@ public class ApplicationService {
     @Transactional
     public LoanApplication approveApplication(String appRef) {
         LoanApplication app = getByRef(appRef);
-        app.setStatus("APPROVED");
+        app.setStatus("CONDITIONALLY_APPROVED");
         return repository.save(app);
     }
 
@@ -179,7 +179,9 @@ public class ApplicationService {
 
     @Transactional
     public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy) {
-        LoanApplication app = approveApplication(appRef);
+        LoanApplication app = getByRef(appRef);
+        app.setStatus("APPROVED");
+        repository.save(app);
         addNote(appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
 
         notificationClient.send(app.getCustomerId(), "Your Loan Application Has Been Approved!",
