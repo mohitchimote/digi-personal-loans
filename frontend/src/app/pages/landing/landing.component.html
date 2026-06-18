@@ -23,30 +23,32 @@
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-content">
-    <div class="hero-badge">🇮🇱 {{ 'landing.heroBadge' | translate }}</div>
-    <h1>{{ 'landing.heroTitle1' | translate }}<br><span class="hero-highlight">{{ 'landing.heroTitle2' | translate }}</span></h1>
-    <p class="hero-sub">{{ 'landing.heroSub' | translate }}</p>
-    <div class="hero-actions">
-      <a routerLink="/intro" class="db-btn db-btn--accent db-btn--lg">{{ 'landing.startApplication' | translate }}</a>
-      <a routerLink="/login" class="db-btn db-btn--outline db-btn--lg" style="color:#fff;border-color:rgba(255,255,255,0.6)">{{ 'landing.resumeApplication' | translate }}</a>
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-badge">🇮🇱 {{ 'landing.heroBadge' | translate }}</div>
+      <h1>{{ 'landing.heroTitle1' | translate }}<br><span class="hero-highlight">{{ 'landing.heroTitle2' | translate }}</span></h1>
+      <p class="hero-sub">{{ 'landing.heroSub' | translate }}</p>
+      <div class="hero-actions">
+        <a routerLink="/intro" class="db-btn db-btn--accent db-btn--lg">{{ 'landing.startApplication' | translate }}</a>
+        <a routerLink="/login" class="db-btn db-btn--outline db-btn--lg" style="color:#fff;border-color:rgba(255,255,255,0.6)">{{ 'landing.resumeApplication' | translate }}</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num">4.8%</span><span class="stat-label">{{ 'landing.aprFrom' | translate }}</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">₪300K</span><span class="stat-label">{{ 'landing.maxLoan' | translate }}</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">2 {{ 'landing.minutes' | translate }}</span><span class="stat-label">{{ 'landing.decisionTime' | translate }}</span></div>
+      </div>
     </div>
-    <div class="hero-stats">
-      <div class="stat"><span class="stat-num">4.8%</span><span class="stat-label">{{ 'landing.aprFrom' | translate }}</span></div>
-      <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">₪300K</span><span class="stat-label">{{ 'landing.maxLoan' | translate }}</span></div>
-      <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">2 {{ 'landing.minutes' | translate }}</span><span class="stat-label">{{ 'landing.decisionTime' | translate }}</span></div>
-    </div>
-  </div>
-  <div class="hero-visual">
-    <div class="hero-card">
-      <div class="hero-card-label">{{ 'landing.loanSummary' | translate }}</div>
-      <div class="hero-card-amount">₪75,000</div>
-      <div class="hero-card-meta">60 {{ 'reviewSubmit.months' | translate }} • 5.2% APR</div>
-      <div class="hero-card-row"><span>{{ 'products.monthlyRepayment' | translate }}</span><span class="hero-card-value">₪1,428</span></div>
-      <div class="hero-card-row"><span>{{ 'products.totalRepayable' | translate }}</span><span>₪85,680</span></div>
-      <div class="hero-card-status">✓ {{ 'status.CONDITIONALLY_APPROVED' | translate }}</div>
+    <div class="hero-visual">
+      <div class="hero-card">
+        <div class="hero-card-label">{{ 'landing.loanSummary' | translate }}</div>
+        <div class="hero-card-amount">₪75,000</div>
+        <div class="hero-card-meta">60 {{ 'reviewSubmit.months' | translate }} • 5.2% APR</div>
+        <div class="hero-card-row"><span>{{ 'products.monthlyRepayment' | translate }}</span><span class="hero-card-value">₪1,428</span></div>
+        <div class="hero-card-row"><span>{{ 'products.totalRepayable' | translate }}</span><span>₪85,680</span></div>
+        <div class="hero-card-status">✓ {{ 'status.CONDITIONALLY_APPROVED' | translate }}</div>
+      </div>
     </div>
   </div>
 </section>
