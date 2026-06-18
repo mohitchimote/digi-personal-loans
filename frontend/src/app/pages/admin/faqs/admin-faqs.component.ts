@@ -2,11 +2,13 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FaqService, Faq } from '../../../core/services/faq.service';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-admin-faqs',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './admin-faqs.component.html',
   styleUrl: './admin-faqs.component.scss'
 })
@@ -19,7 +21,7 @@ export class AdminFaqsComponent implements OnInit {
   form: Partial<Faq> = { category: '', question: '', answer: '', videoId: '', displayOrder: 1 };
   showNewForm = signal(false);
 
-  constructor(private faqSvc: FaqService) {}
+  constructor(private faqSvc: FaqService, private i18n: I18nService) {}
 
   ngOnInit(): void {
     this.load();
@@ -51,21 +53,21 @@ export class AdminFaqsComponent implements OnInit {
 
   save(): void {
     if (!this.form.category?.trim() || !this.form.question?.trim() || !this.form.answer?.trim()) {
-      this.error.set('Category, question, and answer are required.');
+      this.error.set(this.i18n.t('admin.faqValidation'));
       return;
     }
     const id = this.editingId();
     const op = id ? this.faqSvc.updateFaq(id, this.form) : this.faqSvc.createFaq(this.form);
     op.subscribe({
       next: () => { this.showNewForm.set(false); this.editingId.set(null); this.error.set(''); this.load(); },
-      error: () => this.error.set('Could not save FAQ.')
+      error: () => this.error.set(this.i18n.t('admin.errSaveFaq'))
     });
   }
 
   remove(faq: Faq): void {
     this.faqSvc.deleteFaq(faq.id).subscribe({
       next: () => this.faqs.update(list => list.filter(f => f.id !== faq.id)),
-      error: () => this.error.set('Could not delete FAQ.')
+      error: () => this.error.set(this.i18n.t('admin.errDeleteFaq'))
     });
   }
 }

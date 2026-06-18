@@ -1,50 +1,50 @@
 <div class="page-header mb-24">
-  <h2>FAQs</h2>
-  <p class="page-sub">Manage the FAQ content shown to customers.</p>
+  <h2>{{ 'admin.faqs' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.faqsSubtitle' | translate }}</p>
 </div>
 
 <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
 
 <div class="form-actions mb-16">
-  <button class="db-btn db-btn--primary db-btn--sm" (click)="startNew()">+ Add FAQ</button>
+  <button class="db-btn db-btn--primary db-btn--sm" (click)="startNew()">+ {{ 'admin.addFaq' | translate }}</button>
 </div>
 
 <div class="db-card mb-24" *ngIf="showNewForm()">
-  <div class="card-header"><h3>{{ editingId() ? 'Edit FAQ' : 'New FAQ' }}</h3></div>
+  <div class="card-header"><h3>{{ editingId() ? ('admin.editFaq' | translate) : ('admin.newFaq' | translate) }}</h3></div>
   <div class="db-form-group">
-    <label>Category</label>
-    <input class="db-input" [(ngModel)]="form.category" placeholder="e.g. Loan Eligibility" />
+    <label>{{ 'admin.category' | translate }}</label>
+    <input class="db-input" [(ngModel)]="form.category" [placeholder]="'admin.categoryPlaceholder' | translate" />
   </div>
   <div class="db-form-group">
-    <label>Question</label>
+    <label>{{ 'admin.question' | translate }}</label>
     <input class="db-input" [(ngModel)]="form.question" />
   </div>
   <div class="db-form-group">
-    <label>Answer</label>
+    <label>{{ 'admin.answer' | translate }}</label>
     <textarea class="db-input" rows="3" [(ngModel)]="form.answer"></textarea>
   </div>
   <div class="db-form-group">
-    <label>Display Order</label>
+    <label>{{ 'admin.displayOrder' | translate }}</label>
     <input class="db-input" type="number" [(ngModel)]="form.displayOrder" />
   </div>
   <div class="form-actions">
-    <button class="db-btn db-btn--ghost" (click)="cancel()">Cancel</button>
-    <button class="db-btn db-btn--primary" (click)="save()">Save</button>
+    <button class="db-btn db-btn--ghost" (click)="cancel()">{{ 'common.cancel' | translate }}</button>
+    <button class="db-btn db-btn--primary" (click)="save()">{{ 'common.save' | translate }}</button>
   </div>
 </div>
 
 <div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>Loading FAQs…</span>
+  <div class="spinner"></div><span>{{ 'faq.loading' | translate }}</span>
 </div>
 
 <div class="db-card" *ngIf="!loading()">
   <table class="db-table">
     <thead>
       <tr>
-        <th>Category</th>
-        <th>Question</th>
-        <th>Order</th>
-        <th>Actions</th>
+        <th>{{ 'admin.category' | translate }}</th>
+        <th>{{ 'admin.question' | translate }}</th>
+        <th>{{ 'admin.order' | translate }}</th>
+        <th>{{ 'admin.actions' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -53,8 +53,8 @@
         <td>{{ f.question }}</td>
         <td>{{ f.displayOrder }}</td>
         <td>
-          <button class="db-btn db-btn--outline db-btn--sm" (click)="startEdit(f)">Edit</button>
-          <button class="db-btn db-btn--ghost db-btn--sm" (click)="remove(f)" style="color:#c62828;">Delete</button>
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="startEdit(f)">{{ 'common.edit' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="remove(f)" style="color:#c62828;">{{ 'common.delete' | translate }}</button>
         </td>
       </tr>
     </tbody>

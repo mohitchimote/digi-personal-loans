@@ -75,6 +75,26 @@ h4 { font-size: 1.1rem; }
   background: var(--off-white);
 }
 
+// === RTL SUPPORT (Hebrew) ===
+html[dir="rtl"] {
+  .main-content {
+    margin-left: 0;
+    margin-right: var(--sidebar-width);
+    &.sidebar-collapsed { margin-right: 60px; margin-left: 0; }
+  }
+
+  .db-alert {
+    border-left: none;
+    border-right: 4px solid;
+  }
+  .db-alert--info    { border-right-color: var(--tcs-blue); }
+  .db-alert--success { border-right-color: var(--success); }
+  .db-alert--warning { border-right-color: var(--warning); }
+  .db-alert--error    { border-right-color: var(--error); }
+
+  .required { margin-left: 0; margin-right: 2px; }
+}
+
 // === CARDS ===
 .db-card {
   background: var(--white);

@@ -47,6 +47,9 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String selectedProductJson;
 
+    @Column(columnDefinition = "TEXT")
+    private String affordabilityResultJson;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
@@ -110,6 +113,9 @@ public class LoanApplication {
 
     public String getSelectedProductJson() { return selectedProductJson; }
     public void setSelectedProductJson(String selectedProductJson) { this.selectedProductJson = selectedProductJson; }
+
+    public String getAffordabilityResultJson() { return affordabilityResultJson; }
+    public void setAffordabilityResultJson(String affordabilityResultJson) { this.affordabilityResultJson = affordabilityResultJson; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

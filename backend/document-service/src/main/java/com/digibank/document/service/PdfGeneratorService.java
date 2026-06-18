@@ -28,6 +28,14 @@ public class PdfGeneratorService {
     private static final DeviceRgb LIGHT_GREY = new DeviceRgb(245, 245, 245);
 
     public byte[] generateApprovalLetter(DocumentGenerationRequest req) {
+        return generateLetter(req, false);
+    }
+
+    public byte[] generateFinalApprovalLetter(DocumentGenerationRequest req) {
+        return generateLetter(req, true);
+    }
+
+    private byte[] generateLetter(DocumentGenerationRequest req, boolean isFinal) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf  = new PdfDocument(writer);
@@ -58,17 +66,20 @@ public class PdfGeneratorService {
             doc.add(new Paragraph("\n"));
 
             // Title
-            doc.add(new Paragraph("CONDITIONAL APPROVAL LETTER").setFont(bold).setFontSize(16)
+            doc.add(new Paragraph(isFinal ? "FINAL APPROVAL LETTER" : "CONDITIONAL APPROVAL LETTER").setFont(bold).setFontSize(16)
                     .setFontColor(TCS_BLUE).setTextAlignment(TextAlignment.CENTER).setMarginBottom(4));
             doc.add(new Paragraph("Personal Loan").setFont(regular).setFontSize(11)
                     .setTextAlignment(TextAlignment.CENTER).setMarginBottom(20));
 
             // Addressee
             doc.add(new Paragraph("Dear " + req.getCustomerName() + ",").setFont(regular).setFontSize(11).setMarginBottom(10));
-            doc.add(new Paragraph(
-                    "We are pleased to confirm that your application for a personal loan with DigiBank has been " +
-                    "conditionally approved, subject to satisfactory verification of the information and documents " +
-                    "provided. Please review the details of your conditional offer below.")
+            doc.add(new Paragraph(isFinal
+                    ? "We are pleased to confirm that your application for a personal loan with DigiBank has been " +
+                      "fully reviewed and approved by our underwriting team. All verification checks have been " +
+                      "satisfactorily completed. Please review the final details of your offer below."
+                    : "We are pleased to confirm that your application for a personal loan with DigiBank has been " +
+                      "conditionally approved, subject to satisfactory verification of the information and documents " +
+                      "provided. Please review the details of your conditional offer below.")
                     .setFont(regular).setFontSize(10).setMarginBottom(20));
 
             // Loan details table
@@ -85,14 +96,22 @@ public class PdfGeneratorService {
             doc.add(details);
 
             // Conditions
-            doc.add(new Paragraph("Conditions of Approval").setFont(bold).setFontSize(12).setFontColor(TCS_BLUE).setMarginBottom(8));
-            String[] conditions = {
-                "Satisfactory verification of identity (Teudat Zehut).",
-                "Receipt and verification of income documentation (payslips or Shuma).",
-                "Receipt of three months' bank statements confirming income and outgoings.",
-                "No material change in financial circumstances since the date of application.",
-                "Execution of the formal Loan Agreement in the form provided by DigiBank."
-            };
+            doc.add(new Paragraph(isFinal ? "Verification Completed" : "Conditions of Approval").setFont(bold).setFontSize(12).setFontColor(TCS_BLUE).setMarginBottom(8));
+            String[] conditions = isFinal
+                ? new String[] {
+                    "Identity verification (Teudat Zehut) completed.",
+                    "Income documentation reviewed and confirmed.",
+                    "Bank statements reviewed and confirmed.",
+                    "No material change in financial circumstances identified.",
+                    "Application approved for execution of the formal Loan Agreement."
+                }
+                : new String[] {
+                    "Satisfactory verification of identity (Teudat Zehut).",
+                    "Receipt and verification of income documentation (payslips or Shuma).",
+                    "Receipt of three months' bank statements confirming income and outgoings.",
+                    "No material change in financial circumstances since the date of application.",
+                    "Execution of the formal Loan Agreement in the form provided by DigiBank."
+                };
             for (int i = 0; i < conditions.length; i++) {
                 doc.add(new Paragraph((i + 1) + ".  " + conditions[i]).setFont(regular).setFontSize(9).setMarginBottom(4));
             }
@@ -100,10 +119,12 @@ public class PdfGeneratorService {
 
             // Next steps
             doc.add(new Paragraph("Next Steps").setFont(bold).setFontSize(12).setFontColor(TCS_BLUE).setMarginBottom(8));
-            doc.add(new Paragraph(
-                    "Please log in to your DigiBank portal and upload the required supporting documents in the Documents section. " +
-                    "Once all documents have been received and verified, your assigned advisor will contact you to arrange " +
-                    "execution of the Loan Agreement and drawdown of funds.")
+            doc.add(new Paragraph(isFinal
+                    ? "Your DigiBank advisor will be in touch shortly to arrange execution of the Loan Agreement and " +
+                      "drawdown of funds to your nominated account."
+                    : "Please log in to your DigiBank portal and upload the required supporting documents in the Documents section. " +
+                      "Once all documents have been received and verified, your assigned advisor will contact you to arrange " +
+                      "execution of the Loan Agreement and drawdown of funds.")
                     .setFont(regular).setFontSize(10).setMarginBottom(20));
 
             // Footer disclaimer

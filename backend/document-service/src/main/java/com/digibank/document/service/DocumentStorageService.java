@@ -37,6 +37,7 @@ public class DocumentStorageService {
     public GeneratedDocument generateAndStore(DocumentGenerationRequest req) throws IOException {
         byte[] pdfBytes = switch (req.getDocumentType()) {
             case "APPROVAL_LETTER" -> pdfGenerator.generateApprovalLetter(req);
+            case "FINAL_APPROVAL_LETTER" -> pdfGenerator.generateFinalApprovalLetter(req);
             default -> throw new IllegalArgumentException("Unknown document type: " + req.getDocumentType());
         };
 
@@ -100,7 +101,8 @@ public class DocumentStorageService {
 
     private String friendlyName(String type) {
         return switch (type) {
-            case "APPROVAL_LETTER"    -> "Conditional Approval Letter";
+            case "APPROVAL_LETTER"       -> "Conditional Approval Letter";
+            case "FINAL_APPROVAL_LETTER" -> "Final Approval Letter";
             case "LOAN_AGREEMENT"     -> "Loan Agreement";
             case "REPAYMENT_SCHEDULE" -> "Repayment Schedule";
             default -> type;

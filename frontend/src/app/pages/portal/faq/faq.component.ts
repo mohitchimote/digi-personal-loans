@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FaqService, Faq } from '../../../core/services/faq.service';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 interface FaqItem { q: string; a: string; videoId?: string; open: boolean; }
 interface FaqCategory { title: string; icon: string; items: FaqItem[]; }
@@ -16,7 +17,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-faq',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './faq.component.html',
   styleUrl: './faq.component.scss'
 })

@@ -4,12 +4,13 @@ import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../core/services/application.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { LoanApplication } from '../../../core/models';
+import { LoanApplication, GeneratedDocument } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-approval',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './approval.component.html',
   styleUrl: './approval.component.scss'
 })
@@ -18,6 +19,7 @@ export class ApprovalComponent implements OnInit {
   generating = signal(false);
   generated = signal(false);
   docId = signal<number | null>(null);
+  finalLetter = signal<GeneratedDocument | null>(null);
   documentsUploaded = signal(false);
   today = new Date();
 
@@ -43,6 +45,8 @@ export class ApprovalComponent implements OnInit {
               this.docId.set(letter.id);
               this.generated.set(true);
             }
+            const final = docs.find(d => d.documentType === 'FINAL_APPROVAL_LETTER');
+            if (final) this.finalLetter.set(final);
           },
           error: () => {}
         });
@@ -91,5 +95,10 @@ export class ApprovalComponent implements OnInit {
   downloadDoc(): void {
     const id = this.docId();
     if (id) this.docSvc.download(id);
+  }
+
+  downloadFinalLetter(): void {
+    const doc = this.finalLetter();
+    if (doc) this.docSvc.download(doc.id);
   }
 }

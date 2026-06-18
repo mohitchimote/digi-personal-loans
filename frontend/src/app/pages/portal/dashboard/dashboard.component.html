@@ -2,11 +2,11 @@
   <!-- Welcome banner -->
   <div class="welcome-banner">
     <div class="welcome-text">
-      <h2>Welcome back, {{ auth.userFullName?.split(' ')?.[0] }} 👋</h2>
-      <p>Here's an overview of your loan application.</p>
+      <h2>{{ 'dashboard.welcomeBack' | translate:{ name: auth.userFullName?.split(' ')?.[0] || '' } }} 👋</h2>
+      <p>{{ 'dashboard.overview' | translate }}</p>
     </div>
     <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--accent">
-      + Start / Resume Application
+      {{ 'dashboard.startResume' | translate }}
     </a>
   </div>
 
@@ -16,28 +16,28 @@
       <span class="material-icons mi-xl stat-icon">article</span>
       <div class="stat-body">
         <div class="stat-value">{{ applications().length }}</div>
-        <div class="stat-label">Total Applications</div>
+        <div class="stat-label">{{ 'dashboard.totalApplications' | translate }}</div>
       </div>
     </div>
     <div class="stat-card">
       <span class="material-icons mi-xl stat-icon">pending_actions</span>
       <div class="stat-body">
         <div class="stat-value">{{ activeCount }}</div>
-        <div class="stat-label">In Progress</div>
+        <div class="stat-label">{{ 'dashboard.inProgress' | translate }}</div>
       </div>
     </div>
     <div class="stat-card">
       <span class="material-icons mi-xl stat-icon">check_circle</span>
       <div class="stat-body">
         <div class="stat-value">{{ approvedCount }}</div>
-        <div class="stat-label">Approved</div>
+        <div class="stat-label">{{ 'dashboard.approved' | translate }}</div>
       </div>
     </div>
     <div class="stat-card stat-card--accent">
       <span class="material-icons mi-xl stat-icon">phone_in_talk</span>
       <div class="stat-body">
         <div class="stat-value">+972-3-123</div>
-        <div class="stat-label">Advisor Line</div>
+        <div class="stat-label">{{ 'dashboard.advisorLine' | translate }}</div>
       </div>
     </div>
   </div>
@@ -47,13 +47,12 @@
     <div class="feedback-banner mt-24" *ngIf="feedbackFor(app).length > 0">
       <span class="material-icons mi-lg feedback-icon">priority_high</span>
       <div class="feedback-body">
-        <strong>{{ app.applicationRef }} needs your attention</strong>
-        <p>Your underwriter has {{ feedbackFor(app).length === 1 ? 'a request' : feedbackFor(app).length + ' requests' }}
-          on this application. Full details are in your Notifications.</p>
+        <strong>{{ 'dashboard.needsAttention' | translate:{ ref: app.applicationRef } }}</strong>
+        <p>{{ (feedbackFor(app).length === 1 ? 'dashboard.requestSingular' : 'dashboard.requestPlural') | translate:{ count: feedbackFor(app).length } }}</p>
       </div>
       <div class="feedback-actions">
-        <a routerLink="/portal/notifications" class="db-btn db-btn--outline db-btn--sm">View Notifications</a>
-        <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--accent db-btn--sm">Resume & Address Feedback</a>
+        <a routerLink="/portal/notifications" class="db-btn db-btn--outline db-btn--sm">{{ 'dashboard.viewNotifications' | translate }}</a>
+        <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--accent db-btn--sm">{{ 'dashboard.resumeAddressFeedback' | translate }}</a>
       </div>
     </div>
   </ng-container>
@@ -61,31 +60,31 @@
   <!-- Applications table -->
   <div class="db-card mt-24">
     <div class="card-header">
-      <h3>My Applications</h3>
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--outline db-btn--sm">New Application</a>
+      <h3>{{ 'dashboard.myApplications' | translate }}</h3>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--outline db-btn--sm">{{ 'dashboard.newApplication' | translate }}</a>
     </div>
 
     <div *ngIf="applications().length === 0" class="empty-state">
       <span class="material-icons mi-xl empty-icon">inbox</span>
-      <h4>No applications yet</h4>
-      <p>Start your first personal loan application today.</p>
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--primary mt-16">Begin Application</a>
+      <h4>{{ 'dashboard.noApplicationsYet' | translate }}</h4>
+      <p>{{ 'dashboard.startFirstApplication' | translate }}</p>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--primary mt-16">{{ 'dashboard.beginApplication' | translate }}</a>
     </div>
 
     <table class="db-table" *ngIf="applications().length > 0">
       <thead>
         <tr>
-          <th>Reference</th>
-          <th>Status</th>
-          <th>Progress</th>
-          <th>Last Updated</th>
-          <th>Action</th>
+          <th>{{ 'dashboard.reference' | translate }}</th>
+          <th>{{ 'dashboard.status' | translate }}</th>
+          <th>{{ 'dashboard.progress' | translate }}</th>
+          <th>{{ 'dashboard.lastUpdated' | translate }}</th>
+          <th>{{ 'dashboard.action' | translate }}</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let app of applications()">
           <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
-          <td><span class="db-badge" [class]="getStatusClass(app.status)">{{ app.status | titlecase }}</span></td>
+          <td><span class="db-badge" [class]="getStatusClass(app.status)">{{ statusLabel(app.status) }}</span></td>
           <td>
             <div class="table-progress">
               <div class="progress-bar-container" style="width:120px">
@@ -97,11 +96,11 @@
           <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy' }}</td>
           <td>
             <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--outline db-btn--sm"
-               *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">Resume</a>
+               *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">{{ 'dashboard.resume' | translate }}</a>
             <a routerLink="/portal/approval" class="db-btn db-btn--ghost db-btn--sm"
-               *ngIf="app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED'">View Approval</a>
+               *ngIf="app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED'">{{ 'dashboard.viewApproval' | translate }}</a>
             <a [routerLink]="['/portal/view-application', app.applicationRef]" class="db-btn db-btn--outline db-btn--sm"
-               *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">View</a>
+               *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">{{ 'dashboard.view' | translate }}</a>
           </td>
         </tr>
       </tbody>
@@ -113,22 +112,22 @@
     <div class="info-tile" routerLink="/portal/documents">
       <span class="material-icons mi-lg">upload_file</span>
       <div>
-        <strong>Upload Documents</strong>
-        <p>Submit your payslips and bank statements</p>
+        <strong>{{ 'dashboard.uploadDocuments' | translate }}</strong>
+        <p>{{ 'dashboard.uploadDocumentsSub' | translate }}</p>
       </div>
     </div>
     <div class="info-tile" routerLink="/portal/faq">
       <span class="material-icons mi-lg">help_outline</span>
       <div>
-        <strong>FAQs & Guides</strong>
-        <p>Everything you need to know about your loan</p>
+        <strong>{{ 'dashboard.faqsGuides' | translate }}</strong>
+        <p>{{ 'dashboard.faqsGuidesSub' | translate }}</p>
       </div>
     </div>
     <div class="info-tile" routerLink="/portal/notifications">
       <span class="material-icons mi-lg">notifications</span>
       <div>
-        <strong>Notifications</strong>
-        <p>Check messages and updates from DigiBank</p>
+        <strong>{{ 'sidebar.notifications' | translate }}</strong>
+        <p>{{ 'dashboard.notificationsSub' | translate }}</p>
       </div>
     </div>
   </div>

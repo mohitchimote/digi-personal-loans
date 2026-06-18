@@ -2,60 +2,60 @@
 <div class="form-page">
   <!-- Section header -->
   <div class="form-section-header">
-    <div class="section-badge">Step 1 of 6</div>
-    <h2 class="section-title">Loan Requirements</h2>
-    <p class="section-subtitle">Tell us how much you'd like to borrow and what it's for. This information helps us find the best product for your needs.</p>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 1, total: 6 } }}</div>
+    <h2 class="section-title">{{ 'loanReq.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'loanReq.subtitle' | translate }}</p>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card">
       <div class="form-row">
         <div class="db-form-group">
-          <label>Loan Amount (₪) <span class="required">*</span></label>
+          <label>{{ 'loanReq.amountLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="loanAmount"
                  placeholder="e.g. 75000" min="5000" max="300000" />
-          <div class="db-hint">Minimum ₪5,000 · Maximum ₪300,000</div>
+          <div class="db-hint">{{ 'loanReq.amountHint' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('loanAmount')?.invalid && f('loanAmount')?.touched">
-            Please enter a valid amount between ₪5,000 and ₪300,000.
+            {{ 'loanReq.amountError' | translate }}
           </div>
         </div>
 
         <div class="db-form-group">
-          <label>Loan Purpose <span class="required">*</span></label>
+          <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
-            <option value="">Select purpose…</option>
+            <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
             <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('loanPurpose')?.invalid && f('loanPurpose')?.touched">
-            Please select a loan purpose.
+            {{ 'loanReq.purposeError' | translate }}
           </div>
         </div>
       </div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>Loan Term (months) <span class="required">*</span></label>
+          <label>{{ 'loanReq.termLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="loanTerm"
                  placeholder="e.g. 36" min="6" max="84" />
-          <div class="db-hint">Between 6 and 84 months (7 years)</div>
+          <div class="db-hint">{{ 'loanReq.termHint' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('loanTerm')?.invalid && f('loanTerm')?.touched">
-            Please enter a term between 6 and 84 months.
+            {{ 'loanReq.termError' | translate }}
           </div>
         </div>
 
         <div class="db-form-group">
-          <label>Preferred Repayment Day <span class="required">*</span></label>
+          <label>{{ 'loanReq.repaymentDayLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="preferredRepaymentDay">
-            <option *ngFor="let d of repaymentDays" [value]="d">{{ d }}{{ d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th' }} of each month</option>
+            <option *ngFor="let d of repaymentDays" [value]="d">{{ 'loanReq.ofEachMonth' | translate:{ day: d } }}</option>
           </select>
         </div>
       </div>
 
       <!-- Indicative repayment preview -->
       <div class="repayment-preview" *ngIf="form.value.loanAmount && form.value.loanTerm">
-        <div class="preview-label">Indicative Monthly Repayment</div>
+        <div class="preview-label">{{ 'loanReq.previewLabel' | translate }}</div>
         <div class="preview-amount">₪{{ monthlyPayment | number:'1.0-0' }}</div>
-        <div class="preview-note">Based on 5.5% APR (representative). Your actual rate may differ.</div>
+        <div class="preview-note">{{ 'loanReq.previewNote' | translate }}</div>
       </div>
     </div>
 
@@ -63,10 +63,10 @@
     <div class="form-actions">
       <div></div>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : 'Save & Continue →' }}
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
   </form>
 </div>
-<app-application-aside [appRef]="appRef()" tip="The loan amount you choose affects your eligible products later — you can always come back and adjust before submitting."></app-application-aside>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.loanRequirements' | translate"></app-application-aside>
 </div>

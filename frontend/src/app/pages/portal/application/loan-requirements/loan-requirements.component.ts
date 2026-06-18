@@ -6,11 +6,12 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { AuthService } from '../../../../core/services/auth.service';
 import { LOAN_PURPOSES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-loan-requirements',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent],
+  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent, TranslatePipe],
   templateUrl: './loan-requirements.component.html',
   styleUrl: './loan-requirements.component.scss'
 })

@@ -3,21 +3,23 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApplicationService } from '../../core/services/application.service';
 import { UnderwritingNote } from '../../core/models';
+import { TranslatePipe } from '../pipes/translate.pipe';
+import { I18nService } from '../../core/i18n/i18n.service';
 
 const FEEDBACK_TYPES = ['SEND_BACK', 'CLARIFICATION_REQUEST', 'DOCUMENT_REQUEST', 'DECISION_DECLINED'];
 
 @Component({
   selector: 'app-application-aside',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './application-aside.component.html',
   styleUrl: './application-aside.component.scss'
 })
 export class ApplicationAsideComponent {
   notes = signal<UnderwritingNote[]>([]);
-  @Input() tip = "Need help? Our advisors are available Sunday–Thursday, 08:00–18:00 Israel time on +972-3-123.";
+  @Input() tip = '';
 
-  constructor(private appSvc: ApplicationService) {}
+  constructor(private appSvc: ApplicationService, private i18n: I18nService) {}
 
   @Input() set appRef(value: string) {
     if (!value) return;
@@ -27,13 +29,11 @@ export class ApplicationAsideComponent {
     });
   }
 
+  get defaultTip(): string {
+    return this.tip || this.i18n.t('aside.defaultTip');
+  }
+
   noteTypeLabel(type: string): string {
-    switch (type) {
-      case 'SEND_BACK': return 'Sent Back';
-      case 'CLARIFICATION_REQUEST': return 'Clarification Needed';
-      case 'DOCUMENT_REQUEST': return 'Document Required';
-      case 'DECISION_DECLINED': return 'Declined';
-      default: return type;
-    }
+    return this.i18n.t('aside.noteType.' + type);
   }
 }

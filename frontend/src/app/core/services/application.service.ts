@@ -71,4 +71,8 @@ export class ApplicationService {
   getNotes(appRef: string): Observable<UnderwritingNote[]> {
     return this.http.get<UnderwritingNote[]>(`${API}/${appRef}/notes`);
   }
+
+  saveAffordabilityResult(appRef: string, result: any): Observable<LoanApplication> {
+    return this.http.put<LoanApplication>(`${API}/${appRef}/affordability-result`, result);
+  }
 }

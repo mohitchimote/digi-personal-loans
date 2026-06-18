@@ -1,27 +1,27 @@
 <div class="page-header mb-24">
-  <h2>Case Pipeline</h2>
-  <p class="page-sub">Applications submitted by customers awaiting underwriting decision.</p>
+  <h2>{{ 'uw.casePipeline' | translate }}</h2>
+  <p class="page-sub">{{ 'uw.pipelineSubtitle' | translate }}</p>
 </div>
 
 <div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>Loading pipeline…</span>
+  <div class="spinner"></div><span>{{ 'uw.loadingPipeline' | translate }}</span>
 </div>
 
 <div class="empty-state" *ngIf="!loading() && applications().length === 0">
   <div class="empty-icon">📭</div>
-  <p>No applications waiting for review.</p>
+  <p>{{ 'uw.noApplications' | translate }}</p>
 </div>
 
 <div class="db-card" *ngIf="!loading() && applications().length > 0">
   <table class="db-table">
     <thead>
       <tr>
-        <th>Reference</th>
-        <th>Applicant</th>
-        <th>Loan Amount</th>
-        <th>Status</th>
-        <th>Submitted</th>
-        <th>Action</th>
+        <th>{{ 'dashboard.reference' | translate }}</th>
+        <th>{{ 'uw.applicant' | translate }}</th>
+        <th>{{ 'uw.loanAmount' | translate }}</th>
+        <th>{{ 'dashboard.status' | translate }}</th>
+        <th>{{ 'uw.submitted' | translate }}</th>
+        <th>{{ 'dashboard.action' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -29,10 +29,10 @@
         <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
         <td>{{ applicantName(app) }}</td>
         <td>₪{{ loanAmount(app) | number }}</td>
-        <td><span class="db-badge db-badge--in-progress">{{ app.status | titlecase }}</span></td>
+        <td><span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span></td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.submittedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>
-          <a [routerLink]="['/underwriter/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">Review</a>
+          <a [routerLink]="['/underwriter/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'uw.review' | translate }}</a>
         </td>
       </tr>
     </tbody>

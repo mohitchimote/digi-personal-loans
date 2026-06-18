@@ -3,52 +3,52 @@
   <div class="approval-banner">
     <div class="banner-icon">✓</div>
     <div class="banner-content" *ngIf="isFinal()">
-      <h2>Final Approval Granted</h2>
-      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has been fully reviewed and approved by our underwriting team.</p>
+      <h2>{{ 'approval.finalTitle' | translate }}</h2>
+      <p>{{ 'approval.congrats' | translate }}, <strong>{{ personal.firstName || ('approval.valuedCustomer' | translate) }}</strong>! {{ 'approval.finalBody' | translate }}</p>
     </div>
     <div class="banner-content" *ngIf="!isFinal()">
-      <h2>Conditional Approval Granted</h2>
-      <p>Congratulations, <strong>{{ personal.firstName || 'Valued Customer' }}</strong>! Your personal loan application has received a conditional approval pending final underwriter verification. Please review the details below and generate your approval letter.</p>
+      <h2>{{ 'approval.conditionalTitle' | translate }}</h2>
+      <p>{{ 'approval.congrats' | translate }}, <strong>{{ personal.firstName || ('approval.valuedCustomer' | translate) }}</strong>! {{ 'approval.conditionalBody' | translate }}</p>
     </div>
   </div>
 
   <div class="approval-grid">
     <!-- Approval details -->
     <div class="db-card">
-      <div class="card-header"><h3>Loan Details</h3></div>
+      <div class="card-header"><h3>{{ 'approval.loanDetails' | translate }}</h3></div>
       <div class="detail-list">
         <div class="detail-row">
-          <span>Application Reference</span>
+          <span>{{ 'approval.appRef' | translate }}</span>
           <strong>{{ application()?.applicationRef || '—' }}</strong>
         </div>
         <div class="detail-row">
-          <span>Product</span>
+          <span>{{ 'approval.product' | translate }}</span>
           <strong>{{ product.productName || '—' }}</strong>
         </div>
         <div class="detail-row">
-          <span>Loan Amount</span>
+          <span>{{ 'loanReq.amountLabel' | translate }}</span>
           <strong>₪{{ loan.loanAmount | number }}</strong>
         </div>
         <div class="detail-row">
-          <span>Interest Rate</span>
+          <span>{{ 'approval.interestRate' | translate }}</span>
           <strong>{{ product.interestRate }}% APR</strong>
         </div>
         <div class="detail-row">
-          <span>Loan Term</span>
-          <strong>{{ product.termMonths }} months</strong>
+          <span>{{ 'reviewSubmit.loanTerm' | translate }}</span>
+          <strong>{{ product.termMonths }} {{ 'reviewSubmit.months' | translate }}</strong>
         </div>
         <div class="detail-row">
-          <span>Monthly Repayment</span>
+          <span>{{ 'products.monthlyRepayment' | translate }}</span>
           <strong class="highlight-value">₪{{ product.monthlyRepayment | number:'1.0-0' }}</strong>
         </div>
         <div class="detail-row">
-          <span>Decision Date</span>
+          <span>{{ 'approval.decisionDate' | translate }}</span>
           <strong>{{ today | date:'dd MMMM yyyy' }}</strong>
         </div>
         <div class="detail-row">
-          <span>Status</span>
-          <span class="db-badge db-badge--approved" *ngIf="isFinal()">Approved</span>
-          <span class="db-badge db-badge--review" *ngIf="!isFinal()">Conditionally Approved</span>
+          <span>{{ 'dashboard.status' | translate }}</span>
+          <span class="db-badge db-badge--approved" *ngIf="isFinal()">{{ 'status.APPROVED' | translate }}</span>
+          <span class="db-badge db-badge--review" *ngIf="!isFinal()">{{ 'status.CONDITIONALLY_APPROVED' | translate }}</span>
         </div>
       </div>
     </div>
@@ -56,69 +56,83 @@
     <!-- Next steps -->
     <div class="steps-panel">
       <div class="db-card mb-16">
-        <div class="card-header"><h3>Next Steps</h3></div>
+        <div class="card-header"><h3>{{ 'approval.nextSteps' | translate }}</h3></div>
         <ol class="next-steps">
           <li class="step-item step-done">
             <div class="step-num">✓</div>
-            <div><strong>Application Submitted</strong><p>Your application has been received and assessed.</p></div>
+            <div><strong>{{ 'approval.step1Title' | translate }}</strong><p>{{ 'approval.step1Body' | translate }}</p></div>
           </li>
           <li class="step-item step-done">
             <div class="step-num">✓</div>
-            <div><strong>Affordability Checked</strong><p>Income and outgoings verified against our lending criteria.</p></div>
+            <div><strong>{{ 'approval.step2Title' | translate }}</strong><p>{{ 'approval.step2Body' | translate }}</p></div>
           </li>
           <li class="step-item step-done">
             <div class="step-num">✓</div>
-            <div><strong>Product Selected</strong><p>Your chosen loan product has been applied to your application.</p></div>
+            <div><strong>{{ 'approval.step3Title' | translate }}</strong><p>{{ 'approval.step3Body' | translate }}</p></div>
           </li>
           <li class="step-item" [class.step-done]="generated()" [class.step-active]="!generated()">
             <div class="step-num"><ng-container *ngIf="generated()">✓</ng-container><ng-container *ngIf="!generated()">4</ng-container></div>
-            <div><strong>Generate Documents</strong><p>Download your approval letter and loan agreement below.</p></div>
+            <div><strong>{{ 'approval.step4Title' | translate }}</strong><p>{{ 'approval.step4Body' | translate }}</p></div>
           </li>
           <li class="step-item" [class.step-done]="documentsUploaded()" [class.step-active]="generated() && !documentsUploaded()">
             <div class="step-num"><ng-container *ngIf="documentsUploaded()">✓</ng-container><ng-container *ngIf="!documentsUploaded()">5</ng-container></div>
-            <div><strong>Upload Supporting Documents</strong><p>Submit payslips, bank statements and ID in the Documents section.</p></div>
+            <div><strong>{{ 'approval.step5Title' | translate }}</strong><p>{{ 'approval.step5Body' | translate }}</p></div>
           </li>
           <li class="step-item" [class.step-done]="isFinal()" [class.step-active]="documentsUploaded() && !isFinal()">
             <div class="step-num"><ng-container *ngIf="isFinal()">✓</ng-container><ng-container *ngIf="!isFinal()">6</ng-container></div>
-            <div><strong>Final Verification & Drawdown</strong><p>Your underwriter will perform final verification and arrange funds transfer.</p></div>
+            <div><strong>{{ 'approval.step6Title' | translate }}</strong><p>{{ 'approval.step6Body' | translate }}</p></div>
           </li>
         </ol>
       </div>
 
       <!-- Document generation -->
       <div class="db-card">
-        <div class="card-header"><h3>Your Documents</h3></div>
-        <p class="doc-intro">Generate your conditional approval letter to confirm the terms of your offer.</p>
+        <div class="card-header"><h3>{{ 'approval.yourDocuments' | translate }}</h3></div>
+        <p class="doc-intro">{{ 'approval.generateIntro' | translate }}</p>
 
         <div class="doc-action" *ngIf="!generated()">
           <button class="db-btn db-btn--accent db-btn--lg" (click)="generateLetter()" [disabled]="generating()">
-            <span *ngIf="generating()">Generating PDF…</span>
-            <span *ngIf="!generating()">📄 Generate Approval Letter</span>
+            <span *ngIf="generating()">{{ 'approval.generatingPdf' | translate }}</span>
+            <span *ngIf="!generating()">📄 {{ 'approval.generateLetter' | translate }}</span>
           </button>
         </div>
 
         <div class="doc-ready" *ngIf="generated()">
           <div class="db-alert db-alert--success">
-            ✅ Your approval letter has been generated successfully.
+            ✅ {{ 'approval.letterReady' | translate }}
           </div>
           <div class="doc-item">
             <div class="doc-icon">📄</div>
             <div class="doc-info">
-              <div class="doc-name">Conditional Approval Letter</div>
-              <div class="doc-meta">Generated {{ today | date:'dd MMM yyyy' }} · PDF</div>
+              <div class="doc-name">{{ 'docs.conditionalLetter' | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ today | date:'dd MMM yyyy' }} · PDF</div>
             </div>
-            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadDoc()">Download</button>
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadDoc()">{{ 'common.download' | translate }}</button>
+          </div>
+        </div>
+
+        <div class="doc-ready mt-16" *ngIf="finalLetter()">
+          <div class="db-alert db-alert--success">
+            ✅ {{ 'approval.finalLetterReady' | translate }}
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon">📄</div>
+            <div class="doc-info">
+              <div class="doc-name">{{ 'docs.finalLetter' | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ finalLetter()!.generatedAt | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadFinalLetter()">{{ 'common.download' | translate }}</button>
           </div>
         </div>
 
         <a routerLink="/portal/documents" class="db-btn db-btn--ghost mt-8" style="display:block; text-align:center; margin-top:12px;">
-          View all documents →
+          {{ 'approval.viewAllDocs' | translate }}
         </a>
       </div>
     </div>
   </div>
 
   <div class="db-alert db-alert--info approval-footer">
-    ℹ This is a conditional approval only. Final approval is subject to satisfactory verification of supporting documentation and completion of all required checks. DigiBank reserves the right to withdraw or amend this offer pending final review.
+    ℹ {{ 'approval.footerDisclaimer' | translate }}
   </div>
 </div>

@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { LoanApplication } from '../../core/models';
+import { TranslatePipe } from '../pipes/translate.pipe';
 
 export interface NavSection {
   id: string;
@@ -14,7 +15,7 @@ export interface NavSection {
 }
 
 export interface NavItem {
-  label: string;
+  labelKey: string;
   route: string;
   sectionKey?: string;
 }
@@ -22,7 +23,7 @@ export interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, TranslatePipe],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -33,12 +34,12 @@ export class SidebarComponent implements OnInit {
   expandedSection = signal<string>('apply');
 
   applicationSteps: NavItem[] = [
-    { label: 'Loan Requirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
-    { label: 'Personal Details',     route: '/portal/apply/personal-details',    sectionKey: 'personalDetails' },
-    { label: 'Income & Employment',  route: '/portal/apply/income-employment',   sectionKey: 'incomeEmployment' },
-    { label: 'Outgoings',            route: '/portal/apply/outgoings',           sectionKey: 'outgoings' },
-    { label: 'Credit Declarations',  route: '/portal/apply/credit-declarations', sectionKey: 'creditDeclarations' },
-    { label: 'Review & Submit',      route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
+    { labelKey: 'steps.loanRequirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
+    { labelKey: 'steps.personalDetails',     route: '/portal/apply/personal-details',    sectionKey: 'personalDetails' },
+    { labelKey: 'steps.incomeEmployment',    route: '/portal/apply/income-employment',   sectionKey: 'incomeEmployment' },
+    { labelKey: 'steps.outgoings',           route: '/portal/apply/outgoings',           sectionKey: 'outgoings' },
+    { labelKey: 'steps.creditDeclarations',  route: '/portal/apply/credit-declarations', sectionKey: 'creditDeclarations' },
+    { labelKey: 'steps.reviewSubmit',        route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
   ];
 
   mainNav: NavSection[] = [

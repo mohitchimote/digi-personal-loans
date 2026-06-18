@@ -5,11 +5,12 @@ import { AffordabilityService } from '../../../core/services/affordability.servi
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { AffordabilityResult } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-affordability-results',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './affordability-results.component.html',
   styleUrl: './affordability-results.component.scss'
 })
@@ -55,7 +56,11 @@ export class AffordabilityResultsComponent implements OnInit {
         };
 
         this.affordability.check(request).subscribe({
-          next: res => { this.result.set(res); this.loading.set(false); },
+          next: res => {
+            this.result.set(res);
+            this.loading.set(false);
+            this.appSvc.saveAffordabilityResult(app.applicationRef, res).subscribe({ error: () => {} });
+          },
           error: () => this.loading.set(false)
         });
       }

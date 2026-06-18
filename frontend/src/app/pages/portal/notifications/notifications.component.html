@@ -1,20 +1,20 @@
 <div class="notifications-page">
   <div class="page-header mb-24">
     <div>
-      <h2>Notifications</h2>
-      <p class="page-sub" *ngIf="unreadCount > 0">You have <strong>{{ unreadCount }}</strong> unread notification{{ unreadCount !== 1 ? 's' : '' }}.</p>
-      <p class="page-sub" *ngIf="unreadCount === 0">You are all caught up.</p>
+      <h2>{{ 'sidebar.notifications' | translate }}</h2>
+      <p class="page-sub" *ngIf="unreadCount > 0">{{ 'notif.unreadCount' | translate:{ count: unreadCount } }}</p>
+      <p class="page-sub" *ngIf="unreadCount === 0">{{ 'notif.allCaughtUp' | translate }}</p>
     </div>
-    <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="unreadCount > 0" (click)="markAllRead()">Mark all as read</button>
+    <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="unreadCount > 0" (click)="markAllRead()">{{ 'notif.markAllRead' | translate }}</button>
   </div>
 
   <div class="loading-row" *ngIf="loading()">
-    <div class="spinner"></div><span>Loading notifications…</span>
+    <div class="spinner"></div><span>{{ 'notif.loading' | translate }}</span>
   </div>
 
   <div class="empty-state" *ngIf="!loading() && items().length === 0">
     <div class="empty-icon">🔔</div>
-    <p>No notifications yet. We'll let you know here when there are updates on your application.</p>
+    <p>{{ 'notif.empty' | translate }}</p>
   </div>
 
   <div class="notif-list" *ngIf="!loading() && items().length > 0">
@@ -27,7 +27,7 @@
         <div class="notif-message">{{ n.message }}</div>
         <div class="notif-time">{{ n.createdAt | date:'dd MMM yyyy · HH:mm' }}</div>
       </div>
-      <div class="notif-badge" *ngIf="!n.read" title="Unread"></div>
+      <div class="notif-badge" *ngIf="!n.read" [title]="'notif.unread' | translate"></div>
     </div>
   </div>
 </div>

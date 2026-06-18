@@ -2,12 +2,12 @@
   <!-- Loading state -->
   <div class="loading-state" *ngIf="loading()">
     <div class="loading-spinner">⚙️</div>
-    <h2>Running Affordability Assessment…</h2>
-    <p>Our system is analysing your application against our lending criteria. This takes just a moment.</p>
+    <h2>{{ 'afford.runningTitle' | translate }}</h2>
+    <p>{{ 'afford.runningSub' | translate }}</p>
     <div class="loading-steps">
-      <div class="loading-step">✓ Income verification</div>
-      <div class="loading-step">✓ Outgoings analysis</div>
-      <div class="loading-step loading">⟳ Affordability calculation</div>
+      <div class="loading-step">✓ {{ 'afford.stepIncome' | translate }}</div>
+      <div class="loading-step">✓ {{ 'afford.stepOutgoings' | translate }}</div>
+      <div class="loading-step loading">⟳ {{ 'afford.stepCalc' | translate }}</div>
     </div>
   </div>
 
@@ -17,8 +17,8 @@
     <div class="result-header result-header--pass" *ngIf="result()!.passed">
       <div class="result-icon">✓</div>
       <div>
-        <h2>Affordability Assessment Passed</h2>
-        <p>Congratulations! Based on the information provided, you meet our affordability criteria. Please proceed to view your eligible loan products.</p>
+        <h2>{{ 'afford.passTitle' | translate }}</h2>
+        <p>{{ 'afford.passBody' | translate }}</p>
       </div>
     </div>
 
@@ -26,19 +26,19 @@
     <div class="result-header result-header--fail" *ngIf="!result()!.passed">
       <div class="result-icon">✗</div>
       <div>
-        <h2>Affordability Assessment — Further Review Required</h2>
-        <p>Based on the information provided, we were unable to confirm affordability at this stage. Please see the details below.</p>
+        <h2>{{ 'afford.failTitle' | translate }}</h2>
+        <p>{{ 'afford.failBody' | translate }}</p>
       </div>
     </div>
 
     <!-- Key metrics -->
     <div class="metrics-row">
       <div class="metric-card">
-        <div class="metric-label">Debt-to-Income Ratio</div>
+        <div class="metric-label">{{ 'afford.dtiLabel' | translate }}</div>
         <div class="metric-value" [class.good]="result()!.dti <= 40" [class.bad]="result()!.dti > 40">
           {{ result()!.dti }}%
         </div>
-        <div class="metric-limit">Limit: 40%</div>
+        <div class="metric-limit">{{ 'afford.limit' | translate:{ pct: 40 } }}</div>
         <div class="mini-bar">
           <div class="mini-fill" [style.width.%]="Math.min(result()!.dti, 100)"
                [class.over]="result()!.dti > 40"></div>
@@ -46,11 +46,11 @@
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">Housing-to-Income Ratio</div>
+        <div class="metric-label">{{ 'afford.htiLabel' | translate }}</div>
         <div class="metric-value" [class.good]="result()!.hti <= 35" [class.bad]="result()!.hti > 35">
           {{ result()!.hti }}%
         </div>
-        <div class="metric-limit">Limit: 35%</div>
+        <div class="metric-limit">{{ 'afford.limit' | translate:{ pct: 35 } }}</div>
         <div class="mini-bar">
           <div class="mini-fill" [style.width.%]="Math.min(result()!.hti, 100)"
                [class.over]="result()!.hti > 35"></div>
@@ -58,44 +58,44 @@
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">Disposable Income</div>
+        <div class="metric-label">{{ 'afford.disposableLabel' | translate }}</div>
         <div class="metric-value good">₪{{ result()!.disposableIncome | number:'1.0-0' }}</div>
-        <div class="metric-limit">Monthly after commitments</div>
+        <div class="metric-limit">{{ 'afford.disposableSub' | translate }}</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-label">Repayment Capacity</div>
+        <div class="metric-label">{{ 'afford.capacityLabel' | translate }}</div>
         <div class="metric-value" [class.good]="result()!.monthlyRepaymentCapacity >= result()!.calculatedMonthlyRepayment">
           ₪{{ result()!.monthlyRepaymentCapacity | number:'1.0-0' }}
         </div>
-        <div class="metric-limit">Max monthly repayment</div>
+        <div class="metric-limit">{{ 'afford.capacitySub' | translate }}</div>
       </div>
     </div>
 
     <!-- Credit score -->
     <div class="db-card mb-16">
-      <div class="card-header"><h3>Credit Profile</h3></div>
+      <div class="card-header"><h3>{{ 'afford.creditProfile' | translate }}</h3></div>
       <div class="credit-row">
         <div class="credit-score-block">
           <div class="credit-score">{{ result()!.creditScoreCategory }}</div>
-          <div class="credit-sub">Credit Score Category</div>
+          <div class="credit-sub">{{ 'afford.creditCategoryLabel' | translate }}</div>
         </div>
         <div class="risk-block">
           <div class="risk-badge" [class]="'risk-' + result()!.riskCategory.toLowerCase()">
-            {{ result()!.riskCategory }} Risk
+            {{ result()!.riskCategory }} {{ 'afford.risk' | translate }}
           </div>
-          <div class="credit-sub">Risk Category</div>
+          <div class="credit-sub">{{ 'afford.riskCategoryLabel' | translate }}</div>
         </div>
         <div class="repayment-block">
           <div class="credit-score">₪{{ result()!.calculatedMonthlyRepayment | number:'1.0-0' }}</div>
-          <div class="credit-sub">Calculated Monthly Repayment</div>
+          <div class="credit-sub">{{ 'afford.calcRepaymentLabel' | translate }}</div>
         </div>
       </div>
     </div>
 
     <!-- Failure reasons -->
     <div class="db-card db-card--raised mb-16" *ngIf="!result()!.passed && result()!.failureReasons.length > 0">
-      <div class="card-header"><h3>Assessment Details</h3></div>
+      <div class="card-header"><h3>{{ 'afford.assessmentDetails' | translate }}</h3></div>
       <div class="failure-list">
         <div class="failure-item" *ngFor="let reason of result()!.failureReasons">
           <span class="failure-icon">⚠</span>
@@ -103,18 +103,18 @@
         </div>
       </div>
       <div class="db-alert db-alert--info mt-16">
-        💬 If you believe this assessment is incorrect or your circumstances have changed, please contact your advisor for a manual review.
+        💬 {{ 'afford.contactAdvisorNote' | translate }}
       </div>
     </div>
 
     <!-- Actions -->
     <div class="result-actions">
-      <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">← Back to Dashboard</a>
+      <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button *ngIf="result()!.passed" class="db-btn db-btn--accent db-btn--lg" (click)="proceed()">
-        View Eligible Products →
+        {{ 'afford.viewProducts' | translate }}
       </button>
       <a *ngIf="!result()!.passed" href="tel:+97231234567" class="db-btn db-btn--primary">
-        📞 Speak to an Advisor
+        📞 {{ 'afford.speakAdvisor' | translate }}
       </a>
     </div>
   </div>

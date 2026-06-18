@@ -6,11 +6,12 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { AuthService } from '../../../../core/services/auth.service';
 import { MARITAL_STATUSES, NATIONALITIES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-personal-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
   templateUrl: './personal-details.component.html',
   styleUrl: './personal-details.component.scss'
 })

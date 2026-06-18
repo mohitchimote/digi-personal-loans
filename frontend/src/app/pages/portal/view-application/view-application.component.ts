@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { LoanApplication, UnderwritingNote } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-view-application',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './view-application.component.html',
   styleUrl: './view-application.component.scss'
 })
@@ -21,8 +23,17 @@ export class ViewApplicationComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private appSvc: ApplicationService,
-    private router: Router
+    private router: Router,
+    private i18n: I18nService
   ) {}
+
+  statusLabel(status: string): string {
+    return this.i18n.t('status.' + status);
+  }
+
+  noteTypeLabel(type: string): string {
+    return this.i18n.t('aside.noteType.' + type) || type;
+  }
 
   ngOnInit(): void {
     const appRef = this.route.snapshot.paramMap.get('appRef');
@@ -60,7 +71,7 @@ export class ViewApplicationComponent implements OnInit {
     this.error.set('');
     this.appSvc.withdraw(app.applicationRef).subscribe({
       next: () => this.router.navigate(['/portal/apply/review-submit']),
-      error: () => { this.withdrawing.set(false); this.error.set('Could not pull back the application. Please try again.'); }
+      error: () => { this.withdrawing.set(false); this.error.set(this.i18n.t('viewApp.pullBackError')); }
     });
   }
 }

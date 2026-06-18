@@ -1,0 +1,5 @@
+<div class="lang-switcher">
+  <button type="button" [class.active]="i18n.lang() === 'en'" (click)="i18n.setLang('en')">EN</button>
+  <span class="lang-sep">|</span>
+  <button type="button" [class.active]="i18n.lang() === 'he'" (click)="i18n.setLang('he')">עברית</button>
+</div>

@@ -4,11 +4,13 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { LoanApplication, UnderwritingNote } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -16,7 +18,7 @@ export class DashboardComponent implements OnInit {
   applications = signal<LoanApplication[]>([]);
   feedbackByAppRef = signal<Record<string, UnderwritingNote[]>>({});
 
-  constructor(public auth: AuthService, private appSvc: ApplicationService) {}
+  constructor(public auth: AuthService, private appSvc: ApplicationService, public i18n: I18nService) {}
 
   ngOnInit(): void {
     const userId = this.auth.userId;
@@ -55,6 +57,10 @@ export class DashboardComponent implements OnInit {
       APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined',
     };
     return map[status] || 'db-badge--draft';
+  }
+
+  statusLabel(status: string): string {
+    return this.i18n.t('status.' + status);
   }
 
   get activeCount(): number {

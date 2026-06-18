@@ -2,11 +2,13 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService, UserSummary } from '../../../core/services/admin.service';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss'
 })
@@ -19,7 +21,7 @@ export class AdminUsersComponent implements OnInit {
 
   roles = ['CUSTOMER', 'UNDERWRITER', 'ADMIN'];
 
-  constructor(private adminSvc: AdminService) {}
+  constructor(private adminSvc: AdminService, private i18n: I18nService) {}
 
   ngOnInit(): void {
     this.load();
@@ -35,7 +37,7 @@ export class AdminUsersComponent implements OnInit {
   changeRole(user: UserSummary, role: string): void {
     this.adminSvc.updateRole(user.id, role).subscribe({
       next: () => { user.role = role; },
-      error: () => this.error.set('Could not update role.')
+      error: () => this.error.set(this.i18n.t('admin.errUpdateRole'))
     });
   }
 
@@ -43,7 +45,7 @@ export class AdminUsersComponent implements OnInit {
     const next = !user.enabled;
     this.adminSvc.setEnabled(user.id, next).subscribe({
       next: () => { user.enabled = next; },
-      error: () => this.error.set('Could not update user status.')
+      error: () => this.error.set(this.i18n.t('admin.errUpdateStatus'))
     });
   }
 
@@ -58,10 +60,10 @@ export class AdminUsersComponent implements OnInit {
 
   confirmReset(): void {
     const id = this.resetTargetId();
-    if (!id || this.newPassword.length < 6) { this.error.set('Password must be at least 6 characters.'); return; }
+    if (!id || this.newPassword.length < 6) { this.error.set(this.i18n.t('admin.errPasswordLength')); return; }
     this.adminSvc.resetPassword(id, this.newPassword).subscribe({
       next: () => { this.resetTargetId.set(null); this.error.set(''); },
-      error: () => this.error.set('Could not reset password.')
+      error: () => this.error.set(this.i18n.t('admin.errResetPassword'))
     });
   }
 }

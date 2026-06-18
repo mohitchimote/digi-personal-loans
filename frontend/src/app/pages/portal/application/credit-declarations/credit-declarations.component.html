@@ -1,78 +1,78 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">Step 5 of 6</div>
-    <h2 class="section-title">Credit Declarations</h2>
-    <p class="section-subtitle">Please answer the following honestly. These declarations are checked against credit reference agencies and inaccurate information may result in your application being declined.</p>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 5, total: 6 } }}</div>
+    <h2 class="section-title">{{ 'credit.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'credit.subtitle' | translate }}</p>
   </div>
 
   <div class="db-alert db-alert--info mb-24">
-    🔒 Your credit declarations are protected under Israeli banking confidentiality laws and will only be used to assess your application.
+    🔒 {{ 'credit.confidentialityNote' | translate }}
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
-      <div class="card-header"><h3>Credit History Declarations</h3></div>
+      <div class="card-header"><h3>{{ 'credit.historyHeader' | translate }}</h3></div>
 
       <div class="declaration-item">
         <div class="declaration-text">
-          <strong>Loan Default</strong>
-          <p>Have you ever defaulted on a loan, mortgage, or credit agreement in the last 6 years?</p>
+          <strong>{{ 'credit.defaultTitle' | translate }}</strong>
+          <p>{{ 'credit.defaultQuestion' | translate }}</p>
         </div>
         <div class="declaration-toggle">
           <label class="toggle-label">
-            <input type="radio" formControlName="hasDefaulted" [value]="false" /> No
+            <input type="radio" formControlName="hasDefaulted" [value]="false" /> {{ 'common.no' | translate }}
           </label>
           <label class="toggle-label">
-            <input type="radio" formControlName="hasDefaulted" [value]="true" /> Yes
+            <input type="radio" formControlName="hasDefaulted" [value]="true" /> {{ 'common.yes' | translate }}
           </label>
         </div>
       </div>
 
       <div class="declaration-item">
         <div class="declaration-text">
-          <strong>Bankruptcy or Insolvency</strong>
-          <p>Have you ever been declared bankrupt or entered into an insolvency arrangement?</p>
+          <strong>{{ 'credit.bankruptcyTitle' | translate }}</strong>
+          <p>{{ 'credit.bankruptcyQuestion' | translate }}</p>
         </div>
         <div class="declaration-toggle">
-          <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="false" /> No</label>
-          <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="true" /> Yes</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="true" /> {{ 'common.yes' | translate }}</label>
         </div>
       </div>
 
       <div class="declaration-item">
         <div class="declaration-text">
-          <strong>County Court Judgements (CCJ)</strong>
-          <p>Do you have any unsatisfied CCJs or court orders against you for debt?</p>
+          <strong>{{ 'credit.ccjTitle' | translate }}</strong>
+          <p>{{ 'credit.ccjQuestion' | translate }}</p>
         </div>
         <div class="declaration-toggle">
-          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> No</label>
-          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> Yes</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> {{ 'common.yes' | translate }}</label>
         </div>
       </div>
 
       <div class="declaration-item">
         <div class="declaration-text">
-          <strong>Debt Management Plan</strong>
-          <p>Are you currently subject to a debt management plan or informal payment arrangement?</p>
+          <strong>{{ 'credit.paymentPlanTitle' | translate }}</strong>
+          <p>{{ 'credit.paymentPlanQuestion' | translate }}</p>
         </div>
         <div class="declaration-toggle">
-          <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="false" /> No</label>
-          <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="true" /> Yes</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="true" /> {{ 'common.yes' | translate }}</label>
         </div>
       </div>
     </div>
 
     <div class="db-card">
-      <div class="card-header"><h3>Credit Score</h3></div>
-      <p class="text-muted mb-16">Please enter your approximate credit score. You can obtain this from Dun & Bradstreet Israel, BDI, or your bank.</p>
+      <div class="card-header"><h3>{{ 'credit.scoreHeader' | translate }}</h3></div>
+      <p class="text-muted mb-16">{{ 'credit.scoreIntro' | translate }}</p>
 
       <div class="score-section">
         <div class="db-form-group" style="max-width:280px">
-          <label>Credit Score <span class="required">*</span></label>
+          <label>{{ 'credit.scoreLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="creditScore" min="300" max="850" placeholder="300–850" />
-          <div class="db-hint">Range: 300 (Poor) to 850 (Excellent)</div>
-          <div class="db-error-msg" *ngIf="f('creditScore')?.invalid && f('creditScore')?.touched">Enter a value between 300 and 850.</div>
+          <div class="db-hint">{{ 'credit.scoreHint' | translate }}</div>
+          <div class="db-error-msg" *ngIf="f('creditScore')?.invalid && f('creditScore')?.touched">{{ 'credit.scoreError' | translate }}</div>
         </div>
 
         <div class="score-display" *ngIf="form.value.creditScore">
@@ -86,12 +86,12 @@
     </div>
 
     <div class="form-actions">
-      <a routerLink="/portal/apply/outgoings" class="db-btn db-btn--ghost">← Back</a>
+      <a routerLink="/portal/apply/outgoings" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : 'Save & Continue →' }}
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
   </form>
 </div>
-<app-application-aside [appRef]="appRef()" tip="Inaccurate credit declarations can lead to a decline later in the process — always declare honestly."></app-application-aside>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.creditDeclarations' | translate"></app-application-aside>
 </div>

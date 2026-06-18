@@ -6,11 +6,12 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { AuthService } from '../../../../core/services/auth.service';
 import { EMPLOYMENT_STATUSES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-income-employment',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
   templateUrl: './income-employment.component.html',
   styleUrl: './income-employment.component.scss'
 })

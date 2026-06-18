@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { LoanApplication } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-uw-pipeline',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslatePipe],
   templateUrl: './pipeline.component.html',
   styleUrl: './pipeline.component.scss'
 })
@@ -15,7 +17,11 @@ export class PipelineComponent implements OnInit {
   applications = signal<LoanApplication[]>([]);
   loading = signal(true);
 
-  constructor(private appSvc: ApplicationService) {}
+  constructor(private appSvc: ApplicationService, private i18n: I18nService) {}
+
+  statusLabel(status: string): string {
+    return this.i18n.t('status.' + status);
+  }
 
   ngOnInit(): void {
     this.appSvc.getPipeline().subscribe({

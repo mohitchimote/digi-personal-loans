@@ -1,11 +1,11 @@
 <div class="faq-page">
   <div class="faq-header mb-24">
-    <h2>Frequently Asked Questions</h2>
-    <p class="page-sub">Find answers to common questions about DigiBank personal loans. Can't find what you're looking for? Speak to your advisor.</p>
+    <h2>{{ 'faq.title' | translate }}</h2>
+    <p class="page-sub">{{ 'faq.subtitle' | translate }}</p>
   </div>
 
   <div class="loading-row" *ngIf="loading()">
-    <div class="spinner"></div><span>Loading FAQs…</span>
+    <div class="spinner"></div><span>{{ 'faq.loading' | translate }}</span>
   </div>
 
   <div class="categories" *ngIf="!loading()">
@@ -28,8 +28,8 @@
             <div class="video-placeholder" *ngIf="item.videoId && item.open">
               <div class="video-frame">
                 <div class="video-play">▶</div>
-                <div class="video-label">Watch: How-to Video Guide</div>
-                <div class="video-sub">Video content coming soon</div>
+                <div class="video-label">{{ 'faq.watchVideo' | translate }}</div>
+                <div class="video-sub">{{ 'faq.videoComingSoon' | translate }}</div>
               </div>
             </div>
           </div>
@@ -43,13 +43,13 @@
     <div class="cta-content">
       <div class="cta-icon">💬</div>
       <div>
-        <h3>Still have questions?</h3>
-        <p>Our advisors are available Sunday to Thursday, 08:00–18:00 Israel Standard Time.</p>
+        <h3>{{ 'faq.stillQuestions' | translate }}</h3>
+        <p>{{ 'faq.advisorHours' | translate }}</p>
       </div>
     </div>
     <div class="cta-actions">
-      <a href="tel:+97231234567" class="db-btn db-btn--primary">📞 Call Us</a>
-      <a href="mailto:loans@digibank.co.il" class="db-btn db-btn--outline">✉ Email Us</a>
+      <a href="tel:+97231234567" class="db-btn db-btn--primary">📞 {{ 'faq.callUs' | translate }}</a>
+      <a href="mailto:loans@digibank.co.il" class="db-btn db-btn--outline">✉ {{ 'faq.emailUs' | translate }}</a>
     </div>
   </div>
 </div>

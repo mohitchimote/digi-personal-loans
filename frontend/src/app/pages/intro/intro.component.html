@@ -4,72 +4,75 @@
     <a routerLink="/" class="brand-link">
       <span>🏦</span>
       <div>
-        <div class="brand-name">DigiBank</div>
-        <div class="brand-sub">Personal Loans</div>
+        <div class="brand-name">{{ 'common.brandName' | translate }}</div>
+        <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
       </div>
     </a>
-    <a routerLink="/login" class="db-btn db-btn--outline db-btn--sm" style="color:#fff;border-color:rgba(255,255,255,0.5)">Sign In</a>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <app-language-switcher />
+      <a routerLink="/login" class="db-btn db-btn--outline db-btn--sm" style="color:#fff;border-color:rgba(255,255,255,0.5)">{{ 'common.signIn' | translate }}</a>
+    </div>
   </header>
 
   <main class="intro-main">
     <!-- Hero -->
     <section class="intro-hero">
-      <div class="intro-badge">📋 About Your Application</div>
-      <h1>Your loan application, made simple</h1>
-      <p>Before you begin, here's what to expect. The whole process takes around <strong>10–15 minutes</strong> and your progress is saved automatically at every step.</p>
+      <div class="intro-badge">📋 {{ 'intro.badge' | translate }}</div>
+      <h1>{{ 'intro.heroTitle' | translate }}</h1>
+      <p>{{ 'intro.heroSub1' | translate }} <strong>{{ 'intro.heroSubBold' | translate }}</strong> {{ 'intro.heroSub2' | translate }}</p>
     </section>
 
     <!-- Application steps -->
     <section class="intro-section">
-      <h2>What You'll Complete</h2>
+      <h2>{{ 'intro.whatYoullComplete' | translate }}</h2>
       <div class="intro-steps">
         <div class="intro-step" *ngFor="let s of steps">
           <div class="step-header">
             <span class="step-num">{{ s.num }}</span>
             <span class="step-icon">{{ s.icon }}</span>
-            <h3>{{ s.title }}</h3>
+            <h3>{{ s.titleKey | translate }}</h3>
           </div>
-          <p>{{ s.desc }}</p>
+          <p>{{ s.descKey | translate }}</p>
         </div>
       </div>
     </section>
 
     <!-- Documents needed -->
     <section class="intro-section intro-section--accent">
-      <h2>Documents to Have Ready</h2>
-      <p class="intro-section-sub">You'll upload these after your application is submitted. Having them ready speeds things up.</p>
+      <h2>{{ 'intro.docsReady' | translate }}</h2>
+      <p class="intro-section-sub">{{ 'intro.docsReadySub' | translate }}</p>
       <div class="docs-grid">
         <div class="doc-card" *ngFor="let d of docs">
           <span class="doc-icon">{{ d.icon }}</span>
-          <strong>{{ d.title }}</strong>
-          <span>{{ d.desc }}</span>
+          <strong>{{ d.titleKey | translate }}</strong>
+          <span>{{ d.descKey | translate }}</span>
         </div>
       </div>
     </section>
 
     <!-- Key info -->
     <section class="intro-section">
-      <h2>Good to Know</h2>
+      <h2>{{ 'intro.goodToKnow' | translate }}</h2>
       <div class="info-grid">
         <div class="info-card">
           <div class="info-icon">💾</div>
-          <h4>Auto-Saved</h4>
-          <p>Your application saves automatically after each section. You can close and resume any time.</p>
+          <h4>{{ 'intro.info1Title' | translate }}</h4>
+          <p>{{ 'intro.info1Body' | translate }}</p>
         </div>
         <div class="info-card">
           <div class="info-icon">⚡</div>
-          <h4>Instant Decision</h4>
-          <p>Our automated system provides a conditional affordability decision in seconds after submission.</p>
+          <h4>{{ 'intro.info2Title' | translate }}</h4>
+          <p>{{ 'intro.info2Body' | translate }}</p>
         </div>
         <div class="info-card">
           <div class="info-icon">🔒</div>
-          <h4>Secure & Private</h4>
-          <p>All data is encrypted in transit and at rest. We never share your information with third parties without consent.</p>
+          <h4>{{ 'intro.info3Title' | translate }}</h4>
+          <p>{{ 'intro.info3Body' | translate }}</p>
         </div>
         <div class="info-card">
           <div class="info-icon">👨‍💼</div>
-          <h4>Advisor Support</h4>
-          <p>Our advisors are available Monday to Friday, 9am–6pm if you need help at any point.</p>
+          <h4>{{ 'intro.info4Title' | translate }}</h4>
+          <p>{{ 'intro.info4Body' | translate }}</p>
         </div>
       </div>
     </section>
@@ -77,9 +80,9 @@
     <!-- CTA -->
     <div class="intro-cta">
       <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--accent db-btn--lg">
-        Start My Application →
+        {{ 'intro.startCta' | translate }}
       </a>
-      <p class="intro-cta-note">By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+      <p class="intro-cta-note">{{ 'intro.ctaNotePrefix' | translate }} <a href="#">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="#">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</p>
     </div>
   </main>
 </div>

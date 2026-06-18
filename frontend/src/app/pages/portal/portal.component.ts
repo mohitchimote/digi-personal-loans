@@ -7,11 +7,13 @@ import { ChatbotComponent } from '../../shared/chatbot/chatbot.component';
 import { ApplicationService } from '../../core/services/application.service';
 import { AuthService } from '../../core/services/auth.service';
 import { LoanApplication } from '../../core/models';
+import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { LanguageSwitcherComponent } from '../../shared/language-switcher/language-switcher.component';
 
 @Component({
   selector: 'app-portal',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, ChatbotComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, ChatbotComponent, TranslatePipe, LanguageSwitcherComponent],
   templateUrl: './portal.component.html',
   styleUrl: './portal.component.scss'
 })

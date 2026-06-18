@@ -41,6 +41,12 @@ public class ApplicationController {
         return ResponseEntity.ok(applicationService.getApplication(appRef));
     }
 
+    @PutMapping("/{appRef}/affordability-result")
+    public ResponseEntity<LoanApplication> saveAffordabilityResult(
+            @PathVariable String appRef, @RequestBody Map<String, Object> result) {
+        return ResponseEntity.ok(applicationService.saveAffordabilityResult(appRef, result));
+    }
+
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<List<LoanApplication>> getCustomerApplications(@PathVariable Long customerId) {
         return ResponseEntity.ok(applicationService.getApplicationsByCustomer(customerId));

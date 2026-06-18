@@ -1,5 +1,6 @@
 package com.digibank.application.service;
 
+import com.digibank.application.client.DocumentClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
@@ -24,15 +25,17 @@ public class ApplicationService {
     private final UnderwritingNoteRepository noteRepository;
     private final ObjectMapper objectMapper;
     private final NotificationClient notificationClient;
+    private final DocumentClient documentClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED");
 
     public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
-                               ObjectMapper objectMapper, NotificationClient notificationClient) {
+                               ObjectMapper objectMapper, NotificationClient notificationClient, DocumentClient documentClient) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
+        this.documentClient = documentClient;
     }
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
@@ -89,6 +92,17 @@ public class ApplicationService {
         app.setStatus("SUBMITTED");
         app.setSubmittedAt(LocalDateTime.now());
         app.setCompletionPercentage(100);
+        return repository.save(app);
+    }
+
+    @Transactional
+    public LoanApplication saveAffordabilityResult(String appRef, Map<String, Object> result) {
+        LoanApplication app = getByRef(appRef);
+        try {
+            app.setAffordabilityResultJson(objectMapper.writeValueAsString(result));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize affordability result", e);
+        }
         return repository.save(app);
     }
 
@@ -190,7 +204,32 @@ public class ApplicationService {
                         + "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement "
                         + "documents in the Documents section.",
                 "APPROVAL", appRef);
+
+        generateFinalApprovalLetter(app);
         return app;
+    }
+
+    private void generateFinalApprovalLetter(LoanApplication app) {
+        try {
+            JsonNode product = app.getSelectedProductJson() != null ? objectMapper.readTree(app.getSelectedProductJson()) : null;
+            JsonNode loan = app.getLoanRequirementsJson() != null ? objectMapper.readTree(app.getLoanRequirementsJson()) : null;
+            JsonNode personal = app.getPersonalDetailsJson() != null ? objectMapper.readTree(app.getPersonalDetailsJson()) : null;
+            if (product == null || loan == null) return;
+
+            String customerName = personal != null
+                    ? (personal.path("firstName").asText("") + " " + personal.path("lastName").asText("")).trim()
+                    : app.getCustomerEmail();
+
+            documentClient.generateFinalApprovalLetter(
+                    app.getApplicationRef(), app.getCustomerId(), customerName,
+                    loan.path("loanAmount").asDouble(0),
+                    product.path("productName").asText(""),
+                    product.path("interestRate").asDouble(0),
+                    product.path("termMonths").asInt(0),
+                    product.path("monthlyRepayment").asDouble(0));
+        } catch (Exception ignored) {
+            // Document generation failure should never block an underwriting decision.
+        }
     }
 
     @Transactional

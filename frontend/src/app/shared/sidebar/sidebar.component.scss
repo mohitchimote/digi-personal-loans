@@ -14,6 +14,11 @@
   &.collapsed { width: 60px; }
 }
 
+:host-context(html[dir="rtl"]) .sidebar {
+  left: auto;
+  right: 0;
+}
+
 // Brand
 .sidebar-brand {
   padding: 20px 16px 16px;

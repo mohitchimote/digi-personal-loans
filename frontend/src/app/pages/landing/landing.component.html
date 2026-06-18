@@ -4,18 +4,19 @@
     <div class="header-brand">
       <span class="material-icons mi-lg brand-icon">account_balance</span>
       <div>
-        <div class="brand-name">DigiBank</div>
-        <div class="brand-sub">Personal Loans</div>
+        <div class="brand-name">{{ 'common.brandName' | translate }}</div>
+        <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
       </div>
     </div>
     <nav class="header-nav">
-      <a href="#features">Features</a>
-      <a href="#products">Products</a>
-      <a href="#faq">FAQ</a>
+      <a href="#features">{{ 'landing.navFeatures' | translate }}</a>
+      <a href="#products">{{ 'landing.navProducts' | translate }}</a>
+      <a href="#faq">{{ 'landing.navFaq' | translate }}</a>
     </nav>
     <div class="header-actions">
-      <a routerLink="/login" class="db-btn db-btn--outline db-btn--sm">Sign In</a>
-      <a routerLink="/register" class="db-btn db-btn--accent db-btn--sm">Apply Now</a>
+      <app-language-switcher />
+      <a routerLink="/login" class="db-btn db-btn--outline db-btn--sm">{{ 'common.signIn' | translate }}</a>
+      <a routerLink="/register" class="db-btn db-btn--accent db-btn--sm">{{ 'common.applyNow' | translate }}</a>
     </div>
   </div>
 </header>
@@ -23,29 +24,29 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-content">
-    <div class="hero-badge">🇮🇱 Regulated by the Bank of Israel</div>
-    <h1>Personal Loans<br><span class="hero-highlight">Designed Around You</span></h1>
-    <p class="hero-sub">Borrow from ₪5,000 to ₪300,000 with competitive rates, instant decisions, and a fully digital experience — powered by DigiBank.</p>
+    <div class="hero-badge">🇮🇱 {{ 'landing.heroBadge' | translate }}</div>
+    <h1>{{ 'landing.heroTitle1' | translate }}<br><span class="hero-highlight">{{ 'landing.heroTitle2' | translate }}</span></h1>
+    <p class="hero-sub">{{ 'landing.heroSub' | translate }}</p>
     <div class="hero-actions">
-      <a routerLink="/intro" class="db-btn db-btn--accent db-btn--lg">Start My Application</a>
-      <a routerLink="/login" class="db-btn db-btn--outline db-btn--lg" style="color:#fff;border-color:rgba(255,255,255,0.6)">Resume Application</a>
+      <a routerLink="/intro" class="db-btn db-btn--accent db-btn--lg">{{ 'landing.startApplication' | translate }}</a>
+      <a routerLink="/login" class="db-btn db-btn--outline db-btn--lg" style="color:#fff;border-color:rgba(255,255,255,0.6)">{{ 'landing.resumeApplication' | translate }}</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><span class="stat-num">4.8%</span><span class="stat-label">APR from</span></div>
+      <div class="stat"><span class="stat-num">4.8%</span><span class="stat-label">{{ 'landing.aprFrom' | translate }}</span></div>
       <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">₪300K</span><span class="stat-label">Maximum loan</span></div>
+      <div class="stat"><span class="stat-num">₪300K</span><span class="stat-label">{{ 'landing.maxLoan' | translate }}</span></div>
       <div class="stat-divider"></div>
-      <div class="stat"><span class="stat-num">2 min</span><span class="stat-label">Decision time</span></div>
+      <div class="stat"><span class="stat-num">2 {{ 'landing.minutes' | translate }}</span><span class="stat-label">{{ 'landing.decisionTime' | translate }}</span></div>
     </div>
   </div>
   <div class="hero-visual">
     <div class="hero-card">
-      <div class="hero-card-label">Loan Summary</div>
+      <div class="hero-card-label">{{ 'landing.loanSummary' | translate }}</div>
       <div class="hero-card-amount">₪75,000</div>
-      <div class="hero-card-meta">60 months • 5.2% APR</div>
-      <div class="hero-card-row"><span>Monthly Repayment</span><span class="hero-card-value">₪1,428</span></div>
-      <div class="hero-card-row"><span>Total Repayable</span><span>₪85,680</span></div>
-      <div class="hero-card-status">✓ Conditionally Approved</div>
+      <div class="hero-card-meta">60 {{ 'reviewSubmit.months' | translate }} • 5.2% APR</div>
+      <div class="hero-card-row"><span>{{ 'products.monthlyRepayment' | translate }}</span><span class="hero-card-value">₪1,428</span></div>
+      <div class="hero-card-row"><span>{{ 'products.totalRepayable' | translate }}</span><span>₪85,680</span></div>
+      <div class="hero-card-status">✓ {{ 'status.CONDITIONALLY_APPROVED' | translate }}</div>
     </div>
   </div>
 </section>
@@ -53,13 +54,13 @@
 <!-- FEATURES -->
 <section class="section" id="features">
   <div class="section-inner">
-    <h2 class="section-heading">Why Choose DigiBank?</h2>
-    <p class="section-desc">A modern lending experience built for today's customers.</p>
+    <h2 class="section-heading">{{ 'landing.whyChoose' | translate }}</h2>
+    <p class="section-desc">{{ 'landing.whyChooseSub' | translate }}</p>
     <div class="features-grid">
       <div class="feature-card" *ngFor="let f of features">
         <span class="material-icons mi-xl feature-icon">{{ f.icon }}</span>
-        <h3>{{ f.title }}</h3>
-        <p>{{ f.desc }}</p>
+        <h3>{{ f.titleKey | translate }}</h3>
+        <p>{{ f.descKey | translate }}</p>
       </div>
     </div>
   </div>
@@ -68,15 +69,15 @@
 <!-- PRODUCTS -->
 <section class="section section--grey" id="products">
   <div class="section-inner">
-    <h2 class="section-heading">Loan Products</h2>
-    <p class="section-desc">Competitive rates across a wide range of purposes.</p>
+    <h2 class="section-heading">{{ 'landing.loanProducts' | translate }}</h2>
+    <p class="section-desc">{{ 'landing.loanProductsSub' | translate }}</p>
     <div class="products-grid">
       <div class="product-tile" *ngFor="let p of loanTypes">
         <span class="material-icons mi-xl product-tile-icon">{{ p.icon }}</span>
-        <h3>{{ p.title }}</h3>
+        <h3>{{ p.titleKey | translate }}</h3>
         <div class="product-tile-amount">{{ p.amount }}</div>
-        <div class="product-tile-rate">{{ p.rate }}</div>
-        <a routerLink="/intro" class="db-btn db-btn--outline db-btn--sm">Apply</a>
+        <div class="product-tile-rate">{{ p.rateKey | translate }}</div>
+        <a routerLink="/intro" class="db-btn db-btn--outline db-btn--sm">{{ 'common.applyNow' | translate }}</a>
       </div>
     </div>
   </div>
@@ -85,30 +86,30 @@
 <!-- HOW IT WORKS -->
 <section class="section" id="how">
   <div class="section-inner">
-    <h2 class="section-heading">How It Works</h2>
+    <h2 class="section-heading">{{ 'landing.howItWorks' | translate }}</h2>
     <div class="steps-row">
       <div class="how-step">
         <div class="how-num">1</div>
-        <h4>Create Account</h4>
-        <p>Register with your email and set up your secure customer portal in under a minute.</p>
+        <h4>{{ 'landing.how1Title' | translate }}</h4>
+        <p>{{ 'landing.how1Body' | translate }}</p>
       </div>
       <div class="how-arrow">→</div>
       <div class="how-step">
         <div class="how-num">2</div>
-        <h4>Complete Application</h4>
-        <p>Fill in your details across 6 simple sections. Auto-saved at every step.</p>
+        <h4>{{ 'landing.how2Title' | translate }}</h4>
+        <p>{{ 'landing.how2Body' | translate }}</p>
       </div>
       <div class="how-arrow">→</div>
       <div class="how-step">
         <div class="how-num">3</div>
-        <h4>Instant Assessment</h4>
-        <p>Our system runs affordability checks and presents eligible products within seconds.</p>
+        <h4>{{ 'landing.how3Title' | translate }}</h4>
+        <p>{{ 'landing.how3Body' | translate }}</p>
       </div>
       <div class="how-arrow">→</div>
       <div class="how-step">
         <div class="how-num">4</div>
-        <h4>Receive Funds</h4>
-        <p>Choose your product, sign digitally, and receive funds in your account.</p>
+        <h4>{{ 'landing.how4Title' | translate }}</h4>
+        <p>{{ 'landing.how4Body' | translate }}</p>
       </div>
     </div>
   </div>
@@ -116,26 +117,25 @@
 
 <!-- CTA BANNER -->
 <section class="cta-banner">
-  <h2>Ready to Apply?</h2>
-  <p>It takes less than 10 minutes to complete your application.</p>
-  <a routerLink="/register" class="db-btn db-btn--accent db-btn--lg">Get Started — It's Free</a>
+  <h2>{{ 'landing.ctaTitle' | translate }}</h2>
+  <p>{{ 'landing.ctaBody' | translate }}</p>
+  <a routerLink="/register" class="db-btn db-btn--accent db-btn--lg">{{ 'landing.ctaButton' | translate }}</a>
 </section>
 
 <!-- FOOTER -->
 <footer class="landing-footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <span class="material-icons mi-sm">account_balance</span> <strong>DigiBank</strong> Personal Loans
+      <span class="material-icons mi-sm">account_balance</span> <strong>{{ 'common.brandName' | translate }}</strong> {{ 'common.brandSub' | translate }}
     </div>
     <div class="footer-links">
-      <a href="#">Privacy Policy</a>
-      <a href="#">Terms & Conditions</a>
-      <a href="#">Cookie Policy</a>
-      <a href="#">Accessibility</a>
+      <a href="#">{{ 'landing.privacyPolicy' | translate }}</a>
+      <a href="#">{{ 'landing.terms' | translate }}</a>
+      <a href="#">{{ 'landing.cookiePolicy' | translate }}</a>
+      <a href="#">{{ 'landing.accessibility' | translate }}</a>
     </div>
     <div class="footer-legal">
-      DigiBank Israel Ltd. is regulated by the Bank of Israel (Licence No. IL-PL-2024-001).
-      Personal loans are subject to status and affordability assessment. APR figures are representative.
+      {{ 'landing.legalNote' | translate }}
     </div>
   </div>
 </footer>

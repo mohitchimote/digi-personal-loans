@@ -8,12 +8,13 @@
         <span class="material-icons mi-sm">{{ sidebarCollapsed() ? 'menu' : 'close' }}</span>
       </button>
       <div class="portal-header-title">
-        <span class="portal-breadcrumb">Personal Loans Portal</span>
+        <span class="portal-breadcrumb">{{ 'portal.breadcrumb' | translate }}</span>
       </div>
       <div class="portal-header-right">
         <div class="app-ref" *ngIf="application()">
-          Ref: <strong>{{ application()!.applicationRef }}</strong>
+          {{ 'portal.ref' | translate }} <strong>{{ application()!.applicationRef }}</strong>
         </div>
+        <app-language-switcher />
         <div class="header-user">
           <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
           <span class="header-name">{{ auth.userFullName }}</span>

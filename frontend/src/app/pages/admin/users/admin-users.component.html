@@ -1,24 +1,24 @@
 <div class="page-header mb-24">
-  <h2>Users</h2>
-  <p class="page-sub">Manage customer, underwriter, and admin accounts.</p>
+  <h2>{{ 'admin.users' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.usersSubtitle' | translate }}</p>
 </div>
 
 <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
 
 <div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>Loading users…</span>
+  <div class="spinner"></div><span>{{ 'admin.loadingUsers' | translate }}</span>
 </div>
 
 <div class="db-card" *ngIf="!loading()">
   <table class="db-table">
     <thead>
       <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Status</th>
-        <th>Last Login</th>
-        <th>Actions</th>
+        <th>{{ 'admin.name' | translate }}</th>
+        <th>{{ 'admin.email' | translate }}</th>
+        <th>{{ 'admin.role' | translate }}</th>
+        <th>{{ 'dashboard.status' | translate }}</th>
+        <th>{{ 'admin.lastLogin' | translate }}</th>
+        <th>{{ 'admin.actions' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -32,13 +32,13 @@
         </td>
         <td>
           <span class="db-badge" [class.db-badge--approved]="u.enabled" [class.db-badge--declined]="!u.enabled">
-            {{ u.enabled ? 'Active' : 'Disabled' }}
+            {{ u.enabled ? ('admin.active' | translate) : ('admin.disabled' | translate) }}
           </span>
         </td>
         <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
         <td>
-          <button class="db-btn db-btn--outline db-btn--sm" (click)="openReset(u)">Reset Password</button>
-          <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u)">{{ u.enabled ? 'Disable' : 'Enable' }}</button>
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="openReset(u)">{{ 'admin.resetPassword' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u)">{{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}</button>
         </td>
       </tr>
     </tbody>
@@ -47,13 +47,13 @@
 
 <!-- Reset password inline panel -->
 <div class="db-card mt-24" *ngIf="resetTargetId() !== null">
-  <div class="card-header"><h3>Reset Password</h3></div>
+  <div class="card-header"><h3>{{ 'admin.resetPassword' | translate }}</h3></div>
   <div class="db-form-group">
-    <label>New Password</label>
-    <input class="db-input" type="password" [(ngModel)]="newPassword" placeholder="Minimum 6 characters" />
+    <label>{{ 'admin.newPassword' | translate }}</label>
+    <input class="db-input" type="password" [(ngModel)]="newPassword" [placeholder]="'admin.minChars' | translate" />
   </div>
   <div class="form-actions">
-    <button class="db-btn db-btn--ghost" (click)="cancelReset()">Cancel</button>
-    <button class="db-btn db-btn--primary" (click)="confirmReset()">Confirm Reset</button>
+    <button class="db-btn db-btn--ghost" (click)="cancelReset()">{{ 'common.cancel' | translate }}</button>
+    <button class="db-btn db-btn--primary" (click)="confirmReset()">{{ 'admin.confirmReset' | translate }}</button>
   </div>
 </div>

@@ -4,11 +4,13 @@ import { DocumentService } from '../../../core/services/document.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { GeneratedDocument } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 @Component({
   selector: 'app-documents',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './documents.component.html',
   styleUrl: './documents.component.scss'
 })
@@ -24,7 +26,8 @@ export class DocumentsComponent implements OnInit {
   constructor(
     private docSvc: DocumentService,
     private appSvc: ApplicationService,
-    private auth: AuthService
+    private auth: AuthService,
+    private i18n: I18nService
   ) {}
 
   ngOnInit(): void {
@@ -70,7 +73,7 @@ export class DocumentsComponent implements OnInit {
       },
       error: () => {
         this.uploading.set(false);
-        this.uploadError.set('Upload failed. Please try again.');
+        this.uploadError.set(this.i18n.t('docs.uploadFailed'));
       }
     });
   }
@@ -81,18 +84,20 @@ export class DocumentsComponent implements OnInit {
 
   docIcon(type: string): string {
     switch (type) {
-      case 'APPROVAL_LETTER':   return '📄';
-      case 'LOAN_AGREEMENT':    return '📋';
-      case 'REPAYMENT_SCHEDULE': return '📊';
+      case 'APPROVAL_LETTER':       return '📄';
+      case 'FINAL_APPROVAL_LETTER': return '📄';
+      case 'LOAN_AGREEMENT':        return '📋';
+      case 'REPAYMENT_SCHEDULE':    return '📊';
       default: return '📎';
     }
   }
 
   docLabel(type: string): string {
     switch (type) {
-      case 'APPROVAL_LETTER':    return 'Approval Letter';
-      case 'LOAN_AGREEMENT':     return 'Loan Agreement';
-      case 'REPAYMENT_SCHEDULE': return 'Repayment Schedule';
+      case 'APPROVAL_LETTER':       return this.i18n.t('docs.conditionalLetter');
+      case 'FINAL_APPROVAL_LETTER': return this.i18n.t('docs.finalLetter');
+      case 'LOAN_AGREEMENT':        return this.i18n.t('docs.loanAgreement');
+      case 'REPAYMENT_SCHEDULE':    return this.i18n.t('docs.repaymentSchedule');
       default: return type;
     }
   }

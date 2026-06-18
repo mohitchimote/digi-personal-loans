@@ -1,98 +1,98 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">Step 2 of 6</div>
-    <h2 class="section-title">Personal Details</h2>
-    <p class="section-subtitle">We need to verify your identity and confirm your current address. This information is kept strictly confidential.</p>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 6 } }}</div>
+    <h2 class="section-title">{{ 'personal.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'personal.subtitle' | translate }}</p>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
-      <div class="card-header"><h3>Identity Information</h3></div>
+      <div class="card-header"><h3>{{ 'personal.identityHeader' | translate }}</h3></div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>First Name <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="firstName" placeholder="First name" autocomplete="given-name" />
-          <div class="db-error-msg" *ngIf="f('firstName')?.invalid && f('firstName')?.touched">Required.</div>
+          <label>{{ 'personal.firstNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="firstName" [placeholder]="'personal.firstNameLabel' | translate" autocomplete="given-name" />
+          <div class="db-error-msg" *ngIf="f('firstName')?.invalid && f('firstName')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>Last Name <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="lastName" placeholder="Last name" autocomplete="family-name" />
-          <div class="db-error-msg" *ngIf="f('lastName')?.invalid && f('lastName')?.touched">Required.</div>
+          <label>{{ 'personal.lastNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="lastName" [placeholder]="'personal.lastNameLabel' | translate" autocomplete="family-name" />
+          <div class="db-error-msg" *ngIf="f('lastName')?.invalid && f('lastName')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>Date of Birth <span class="required">*</span></label>
+          <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="date" formControlName="dateOfBirth" autocomplete="bday" />
-          <div class="db-error-msg" *ngIf="f('dateOfBirth')?.invalid && f('dateOfBirth')?.touched">Required.</div>
+          <div class="db-error-msg" *ngIf="f('dateOfBirth')?.invalid && f('dateOfBirth')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>National ID / Teudat Zehut <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="nationalId" placeholder="9-digit ID number" />
-          <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">Required.</div>
+          <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="nationalId" [placeholder]="'personal.nationalIdPlaceholder' | translate" />
+          <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>Nationality <span class="required">*</span></label>
+          <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="nationality">
             <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
           </select>
         </div>
         <div class="db-form-group">
-          <label>Marital Status <span class="required">*</span></label>
+          <label>{{ 'personal.maritalStatusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="maritalStatus">
-            <option value="">Select…</option>
+            <option value="">{{ 'common.select' | translate }}</option>
             <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
           </select>
-          <div class="db-error-msg" *ngIf="f('maritalStatus')?.invalid && f('maritalStatus')?.touched">Required.</div>
+          <div class="db-error-msg" *ngIf="f('maritalStatus')?.invalid && f('maritalStatus')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
 
       <div class="db-form-group" style="max-width:200px">
-        <label>Number of Dependants <span class="required">*</span></label>
+        <label>{{ 'personal.dependentsLabel' | translate }} <span class="required">*</span></label>
         <input class="db-input" type="number" formControlName="dependents" min="0" max="20" />
       </div>
     </div>
 
     <div class="db-card">
-      <div class="card-header"><h3>Current Address</h3></div>
+      <div class="card-header"><h3>{{ 'personal.addressHeader' | translate }}</h3></div>
 
       <div class="db-form-group">
-        <label>Street Address <span class="required">*</span></label>
-        <input class="db-input" type="text" formControlName="street" placeholder="e.g. 12 Rothschild Boulevard" autocomplete="street-address" />
-        <div class="db-error-msg" *ngIf="f('street')?.invalid && f('street')?.touched">Required.</div>
+        <label>{{ 'personal.streetLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" formControlName="street" [placeholder]="'personal.streetPlaceholder' | translate" autocomplete="street-address" />
+        <div class="db-error-msg" *ngIf="f('street')?.invalid && f('street')?.touched">{{ 'common.required' | translate }}</div>
       </div>
 
       <div class="form-row form-row--3">
         <div class="db-form-group">
-          <label>City <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="city" placeholder="e.g. Tel Aviv" autocomplete="address-level2" />
-          <div class="db-error-msg" *ngIf="f('city')?.invalid && f('city')?.touched">Required.</div>
+          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="city" [placeholder]="'personal.cityPlaceholder' | translate" autocomplete="address-level2" />
+          <div class="db-error-msg" *ngIf="f('city')?.invalid && f('city')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>Post Code <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="postCode" placeholder="e.g. 6473417" autocomplete="postal-code" />
-          <div class="db-error-msg" *ngIf="f('postCode')?.invalid && f('postCode')?.touched">Required.</div>
+          <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="postCode" [placeholder]="'personal.postCodePlaceholder' | translate" autocomplete="postal-code" />
+          <div class="db-error-msg" *ngIf="f('postCode')?.invalid && f('postCode')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>Country <span class="required">*</span></label>
+          <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="text" formControlName="country" />
         </div>
       </div>
     </div>
 
     <div class="form-actions">
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">← Back</a>
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : 'Save & Continue →' }}
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
   </form>
 </div>
-<app-application-aside [appRef]="appRef()" tip="Make sure your name and ID match your official documents exactly — this avoids delays later when you upload supporting documents."></app-application-aside>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.personalDetails' | translate"></app-application-aside>
 </div>

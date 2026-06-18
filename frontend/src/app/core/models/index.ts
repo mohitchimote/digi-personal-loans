@@ -35,6 +35,7 @@ export interface LoanApplication {
   creditDeclarationsJson?: string;
   reviewSubmitJson?: string;
   selectedProductJson?: string;
+  affordabilityResultJson?: string;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;

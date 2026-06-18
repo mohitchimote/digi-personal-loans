@@ -1,84 +1,84 @@
 <div class="form-page" *ngIf="!loading() && application()">
   <div class="form-section-header">
     <div class="section-badge">{{ application()!.applicationRef }}</div>
-    <h2 class="section-title">Application Details</h2>
-    <p class="section-subtitle">Read-only view of your submitted application.</p>
+    <h2 class="section-title">{{ 'viewApp.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'viewApp.subtitle' | translate }}</p>
   </div>
 
   <div class="db-alert db-alert--info mb-16">
-    📋 Status: <strong>{{ application()!.status | titlecase }}</strong>
-    <span *ngIf="application()!.submittedAt"> · Submitted {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</span>
+    📋 {{ 'dashboard.status' | translate }}: <strong>{{ statusLabel(application()!.status) }}</strong>
+    <span *ngIf="application()!.submittedAt"> · {{ 'viewApp.submitted' | translate }} {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</span>
   </div>
 
   <div class="db-card mb-16" *ngIf="notes().length > 0">
-    <div class="card-header"><h3>Messages from your Underwriter</h3></div>
+    <div class="card-header"><h3>{{ 'viewApp.messagesHeader' | translate }}</h3></div>
     <div *ngFor="let n of notes()" style="padding:8px 0; border-bottom:1px solid #eee;">
-      <strong>{{ n.noteType | titlecase }}</strong>: {{ n.note }}
+      <strong>{{ noteTypeLabel(n.noteType) }}</strong>: {{ n.note }}
       <div class="text-muted" style="font-size:0.78rem;">{{ n.createdBy }} · {{ n.createdAt | date:'dd MMM yyyy HH:mm' }}</div>
     </div>
   </div>
 
   <div class="db-card mb-16">
-    <div class="card-header"><h3>Loan Requirements</h3></div>
+    <div class="card-header"><h3>{{ 'steps.loanRequirements' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>Loan Amount</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
-      <div class="review-item"><span>Purpose</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
-      <div class="review-item"><span>Loan Term</span><strong>{{ loanReqs.loanTerm }} months</strong></div>
-      <div class="review-item"><span>Repayment Day</span><strong>{{ loanReqs.preferredRepaymentDay }}{{ loanReqs.preferredRepaymentDay === 1 ? 'st' : 'th' }} of month</strong></div>
+      <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ loanReqs.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.repaymentDay' | translate }}</span><strong>{{ 'loanReq.ofEachMonth' | translate:{ day: loanReqs.preferredRepaymentDay } }}</strong></div>
     </div>
   </div>
 
   <div class="db-card mb-16">
-    <div class="card-header"><h3>Personal Details</h3></div>
+    <div class="card-header"><h3>{{ 'steps.personalDetails' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>Full Name</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
-      <div class="review-item"><span>Date of Birth</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
-      <div class="review-item"><span>National ID</span><strong>{{ personal.nationalId }}</strong></div>
-      <div class="review-item"><span>Address</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.fullName' | translate }}</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
+      <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+      <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.nationalId }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
     </div>
   </div>
 
   <div class="db-card mb-16">
-    <div class="card-header"><h3>Income & Employment</h3></div>
+    <div class="card-header"><h3>{{ 'steps.incomeEmployment' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>Employment Status</span><strong>{{ income.employmentStatus }}</strong></div>
-      <div class="review-item"><span>Employer</span><strong>{{ income.employer || '—' }}</strong></div>
-      <div class="review-item"><span>Monthly Gross Income</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
-      <div class="review-item"><span>Monthly Net Income</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+      <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus }}</strong></div>
+      <div class="review-item"><span>{{ 'income.employerLabel' | translate }}</span><strong>{{ income.employer || '—' }}</strong></div>
+      <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
+      <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
     </div>
   </div>
 
   <div class="db-card mb-16">
-    <div class="card-header"><h3>Outgoings</h3></div>
+    <div class="card-header"><h3>{{ 'steps.outgoings' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>Monthly Rent</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
-      <div class="review-item"><span>Existing Loans</span><strong>₪{{ outgoings.monthlyLoans | number }}</strong></div>
-      <div class="review-item"><span>Credit Cards</span><strong>₪{{ outgoings.creditCardPayments | number }}</strong></div>
-      <div class="review-item"><span>Living Expenses</span><strong>₪{{ outgoings.monthlyLivingExpenses | number }}</strong></div>
+      <div class="review-item"><span>{{ 'outgoings.rentLabel' | translate }}</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.existingLoans' | translate }}</span><strong>₪{{ outgoings.monthlyLoans | number }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.creditCards' | translate }}</span><strong>₪{{ outgoings.creditCardPayments | number }}</strong></div>
+      <div class="review-item"><span>{{ 'outgoings.livingLabel' | translate }}</span><strong>₪{{ outgoings.monthlyLivingExpenses | number }}</strong></div>
     </div>
   </div>
 
   <div class="db-card mb-16">
-    <div class="card-header"><h3>Credit Declarations</h3></div>
+    <div class="card-header"><h3>{{ 'steps.creditDeclarations' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>Previous Default</span><strong>{{ credit.hasDefaulted ? 'Yes' : 'No' }}</strong></div>
-      <div class="review-item"><span>Bankruptcy</span><strong>{{ credit.hasBankruptcy ? 'Yes' : 'No' }}</strong></div>
-      <div class="review-item"><span>CCJ</span><strong>{{ credit.hasCCJ ? 'Yes' : 'No' }}</strong></div>
-      <div class="review-item"><span>Credit Score</span><strong>{{ credit.creditScore }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.ccj' | translate }}</span><strong>{{ credit.hasCCJ ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ credit.creditScore }}</strong></div>
     </div>
   </div>
 
   <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
 
   <div class="form-actions mt-24">
-    <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">← Back to Dashboard</a>
+    <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'viewApp.backToDashboard' | translate }}</a>
     <button class="db-btn db-btn--accent db-btn--lg" *ngIf="canPullBack" (click)="pullBack()" [disabled]="withdrawing()">
-      <span *ngIf="withdrawing()">Pulling back…</span>
-      <span *ngIf="!withdrawing()">Pull Back & Edit</span>
+      <span *ngIf="withdrawing()">{{ 'viewApp.pullingBack' | translate }}</span>
+      <span *ngIf="!withdrawing()">{{ 'viewApp.pullBack' | translate }}</span>
     </button>
   </div>
 </div>
 
 <div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>Loading application…</span>
+  <div class="spinner"></div><span>{{ 'viewApp.loadingApp' | translate }}</span>
 </div>

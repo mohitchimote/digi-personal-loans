@@ -6,11 +6,12 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { AuthService } from '../../../../core/services/auth.service';
 import { LoanApplication } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 @Component({
   selector: 'app-review-submit',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ApplicationAsideComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
   templateUrl: './review-submit.component.html',
   styleUrl: './review-submit.component.scss'
 })

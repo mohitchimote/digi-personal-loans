@@ -1,85 +1,85 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">Step 3 of 6</div>
-    <h2 class="section-title">Income & Employment</h2>
-    <p class="section-subtitle">Please provide your employment details and monthly income figures. We use this to assess what you can comfortably afford to repay.</p>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 6 } }}</div>
+    <h2 class="section-title">{{ 'income.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'income.subtitle' | translate }}</p>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
-      <div class="card-header"><h3>Employment Details</h3></div>
+      <div class="card-header"><h3>{{ 'income.employmentHeader' | translate }}</h3></div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>Employment Status <span class="required">*</span></label>
+          <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="employmentStatus">
-            <option value="">Select…</option>
+            <option value="">{{ 'common.select' | translate }}</option>
             <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
           </select>
-          <div class="db-error-msg" *ngIf="f('employmentStatus')?.invalid && f('employmentStatus')?.touched">Required.</div>
+          <div class="db-error-msg" *ngIf="f('employmentStatus')?.invalid && f('employmentStatus')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group" *ngIf="isEmployed()">
-          <label>Employer Name</label>
-          <input class="db-input" type="text" formControlName="employer" placeholder="Company name" />
+          <label>{{ 'income.employerLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="employer" [placeholder]="'income.employerPlaceholder' | translate" />
         </div>
       </div>
 
       <div class="form-row" *ngIf="isEmployed()">
         <div class="db-form-group">
-          <label>Job Title</label>
-          <input class="db-input" type="text" formControlName="jobTitle" placeholder="e.g. Software Engineer" />
+          <label>{{ 'income.jobTitleLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="jobTitle" [placeholder]="'income.jobTitlePlaceholder' | translate" />
         </div>
         <div class="db-form-group">
-          <label>Length of Employment</label>
+          <label>{{ 'income.durationLabel' | translate }}</label>
           <select class="db-select" formControlName="employmentDuration">
-            <option value="">Select…</option>
-            <option value="Less than 6 months">Less than 6 months</option>
-            <option value="6–12 months">6–12 months</option>
-            <option value="1–2 years">1–2 years</option>
-            <option value="2–5 years">2–5 years</option>
-            <option value="5+ years">5+ years</option>
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option value="Less than 6 months">{{ 'income.duration.lt6' | translate }}</option>
+            <option value="6–12 months">{{ 'income.duration.6to12' | translate }}</option>
+            <option value="1–2 years">{{ 'income.duration.1to2' | translate }}</option>
+            <option value="2–5 years">{{ 'income.duration.2to5' | translate }}</option>
+            <option value="5+ years">{{ 'income.duration.5plus' | translate }}</option>
           </select>
         </div>
       </div>
     </div>
 
     <div class="db-card">
-      <div class="card-header"><h3>Monthly Income (₪)</h3></div>
+      <div class="card-header"><h3>{{ 'income.monthlyIncomeHeader' | translate }}</h3></div>
 
       <div class="db-alert db-alert--info">
-        💡 Please enter your monthly income figures, not annual. Gross = before tax, Net = after tax.
+        💡 {{ 'income.grossNetHint' | translate }}
       </div>
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>Monthly Gross Income (₪) <span class="required">*</span></label>
+          <label>{{ 'income.grossIncomeLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="monthlyGrossIncome" placeholder="e.g. 18000" min="0" />
-          <div class="db-hint">Before tax and deductions</div>
-          <div class="db-error-msg" *ngIf="f('monthlyGrossIncome')?.invalid && f('monthlyGrossIncome')?.touched">Required.</div>
+          <div class="db-hint">{{ 'income.grossIncomeHint' | translate }}</div>
+          <div class="db-error-msg" *ngIf="f('monthlyGrossIncome')?.invalid && f('monthlyGrossIncome')?.touched">{{ 'common.required' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>Monthly Net Income (₪) <span class="required">*</span></label>
+          <label>{{ 'income.netIncomeLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="monthlyNetIncome" placeholder="e.g. 14000" min="0" />
-          <div class="db-hint">Take-home pay after all deductions</div>
-          <div class="db-error-msg" *ngIf="f('monthlyNetIncome')?.invalid && f('monthlyNetIncome')?.touched">Required.</div>
+          <div class="db-hint">{{ 'income.netIncomeHint' | translate }}</div>
+          <div class="db-error-msg" *ngIf="f('monthlyNetIncome')?.invalid && f('monthlyNetIncome')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
 
       <div class="db-form-group" style="max-width:300px">
-        <label>Other Monthly Income (₪)</label>
+        <label>{{ 'income.otherIncomeLabel' | translate }}</label>
         <input class="db-input" type="number" formControlName="otherIncome" placeholder="0" min="0" />
-        <div class="db-hint">Rental income, freelance, benefits, etc.</div>
+        <div class="db-hint">{{ 'income.otherIncomeHint' | translate }}</div>
       </div>
     </div>
 
     <div class="form-actions">
-      <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">← Back</a>
+      <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : 'Save & Continue →' }}
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
   </form>
 </div>
-<app-application-aside [appRef]="appRef()" tip="Enter net (take-home) income, not gross, where asked — this is what's used to calculate your real repayment capacity."></app-application-aside>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.incomeEmployment' | translate"></app-application-aside>
 </div>
