@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EligibleProduct } from '../models';
+import { API_BASE } from './api-base';
 
-const API = 'http://localhost:8080/api/products';
+const API = `${API_BASE}/api/products`;
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {

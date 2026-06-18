@@ -2,8 +2,9 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { Notification } from '../models';
+import { API_BASE } from './api-base';
 
-const API = 'http://localhost:8080/api/notifications';
+const API = `${API_BASE}/api/notifications`;
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {

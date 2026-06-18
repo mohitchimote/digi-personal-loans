@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from './api-base';
 
 export interface UserSummary {
   id: number;
@@ -13,7 +14,7 @@ export interface UserSummary {
   lastLogin?: string;
 }
 
-const API = 'http://localhost:8080/api/auth/admin';
+const API = `${API_BASE}/api/auth/admin`;
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {

@@ -67,6 +67,10 @@ export class ApprovalComponent implements OnInit {
     return this.application()?.status === 'APPROVED';
   }
 
+  letterStepDone(): boolean {
+    return this.isFinal() || this.generated();
+  }
+
   generateLetter(): void {
     const app = this.application();
     if (!app || this.generated()) return;

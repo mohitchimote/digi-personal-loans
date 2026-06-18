@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from './api-base';
 
 export interface AffordabilityRules {
   maxDti: number;
@@ -13,7 +14,7 @@ export interface AffordabilityRules {
   autoApprovalThresholdJoint: number;
 }
 
-const API = 'http://localhost:8080/api/affordability';
+const API = `${API_BASE}/api/affordability`;
 
 @Injectable({ providedIn: 'root' })
 export class AffordabilityRulesService {

@@ -74,11 +74,11 @@
             <div class="step-num">✓</div>
             <div><strong>{{ 'approval.step3Title' | translate }}</strong><p>{{ 'approval.step3Body' | translate }}</p></div>
           </li>
-          <li class="step-item" [class.step-done]="generated()" [class.step-active]="!generated()">
-            <div class="step-num"><ng-container *ngIf="generated()">✓</ng-container><ng-container *ngIf="!generated()">4</ng-container></div>
+          <li class="step-item" [class.step-done]="letterStepDone()" [class.step-active]="!letterStepDone()">
+            <div class="step-num"><ng-container *ngIf="letterStepDone()">✓</ng-container><ng-container *ngIf="!letterStepDone()">4</ng-container></div>
             <div><strong>{{ 'approval.step4Title' | translate }}</strong><p>{{ 'approval.step4Body' | translate }}</p></div>
           </li>
-          <li class="step-item" [class.step-done]="documentsUploaded()" [class.step-active]="generated() && !documentsUploaded()">
+          <li class="step-item" [class.step-done]="documentsUploaded()" [class.step-active]="letterStepDone() && !documentsUploaded()">
             <div class="step-num"><ng-container *ngIf="documentsUploaded()">✓</ng-container><ng-container *ngIf="!documentsUploaded()">5</ng-container></div>
             <div><strong>{{ 'approval.step5Title' | translate }}</strong><p>{{ 'approval.step5Body' | translate }}</p></div>
           </li>
@@ -94,14 +94,14 @@
         <div class="card-header"><h3>{{ 'approval.yourDocuments' | translate }}</h3></div>
         <p class="doc-intro">{{ 'approval.generateIntro' | translate }}</p>
 
-        <div class="doc-action" *ngIf="!generated()">
+        <div class="doc-action" *ngIf="!isFinal() && !generated()">
           <button class="db-btn db-btn--accent db-btn--lg" (click)="generateLetter()" [disabled]="generating()">
             <span *ngIf="generating()">{{ 'approval.generatingPdf' | translate }}</span>
             <span *ngIf="!generating()">📄 {{ 'approval.generateLetter' | translate }}</span>
           </button>
         </div>
 
-        <div class="doc-ready" *ngIf="generated()">
+        <div class="doc-ready" *ngIf="!isFinal() && generated()">
           <div class="db-alert db-alert--success">
             ✅ {{ 'approval.letterReady' | translate }}
           </div>

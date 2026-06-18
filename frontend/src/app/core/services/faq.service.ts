@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE } from './api-base';
 
 export interface Faq {
   id: number;
@@ -11,7 +12,7 @@ export interface Faq {
   displayOrder: number;
 }
 
-const API = 'http://localhost:8080/api/auth';
+const API = `${API_BASE}/api/auth`;
 
 @Injectable({ providedIn: 'root' })
 export class FaqService {

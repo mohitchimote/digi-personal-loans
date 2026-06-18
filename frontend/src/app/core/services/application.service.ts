@@ -4,8 +4,9 @@ import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { LoanApplication, UnderwritingNote } from '../models';
+import { API_BASE } from './api-base';
 
-const API = 'http://localhost:8080/api/applications';
+const API = `${API_BASE}/api/applications`;
 const EDITABLE_STATUSES = ['DRAFT', 'IN_PROGRESS'];
 
 @Injectable({ providedIn: 'root' })

@@ -4,8 +4,9 @@ import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { AuthResponse, LoginRequest, RegisterRequest } from '../models';
+import { API_BASE } from './api-base';
 
-const API = 'http://localhost:8080/api/auth';
+const API = `${API_BASE}/api/auth`;
 const TOKEN_KEY = 'db_token';
 const USER_KEY  = 'db_user';
 
