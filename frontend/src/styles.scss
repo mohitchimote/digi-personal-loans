@@ -171,6 +171,45 @@ html[dir="rtl"] {
   }
 }
 
+.db-slider {
+  width: 100%;
+  margin-top: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--light-grey);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--tcs-blue);
+    border: 3px solid var(--white);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--tcs-blue);
+    border: 3px solid var(--white);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+
+  &::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--light-grey);
+  }
+}
+
 .db-input, .db-select, .db-textarea {
   width: 100%;
   padding: 10px 14px;

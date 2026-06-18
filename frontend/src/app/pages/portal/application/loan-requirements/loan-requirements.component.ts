@@ -20,7 +20,6 @@ export class LoanRequirementsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   purposes = LOAN_PURPOSES;
-  repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
 
   constructor(
     private fb: FormBuilder,
@@ -29,12 +28,19 @@ export class LoanRequirementsComponent implements OnInit {
     private router: Router
   ) {
     this.form = this.fb.group({
-      loanAmount:            [null, [Validators.required, Validators.min(5000), Validators.max(300000)]],
+      loanAmount:            [50000, [Validators.required, Validators.min(5000), Validators.max(300000)]],
       loanPurpose:           ['', Validators.required],
       loanTerm:              [36, [Validators.required, Validators.min(6), Validators.max(84)]],
-      preferredRepaymentDay: [1, Validators.required],
       numberOfApplicants:    [1, Validators.required],
     });
+  }
+
+  onAmountSlide(value: string): void {
+    this.form.patchValue({ loanAmount: Number(value) });
+  }
+
+  onTermSlide(value: string): void {
+    this.form.patchValue({ loanTerm: Number(value) });
   }
 
   ngOnInit(): void {
@@ -42,7 +48,7 @@ export class LoanRequirementsComponent implements OnInit {
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {

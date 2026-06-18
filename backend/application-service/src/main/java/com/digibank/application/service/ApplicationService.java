@@ -1,5 +1,6 @@
 package com.digibank.application.service;
 
+import com.digibank.application.client.AffordabilityClient;
 import com.digibank.application.client.DocumentClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.model.LoanApplication;
@@ -26,17 +27,20 @@ public class ApplicationService {
     private final ObjectMapper objectMapper;
     private final NotificationClient notificationClient;
     private final DocumentClient documentClient;
+    private final AffordabilityClient affordabilityClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of(
             "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
 
     public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
-                               ObjectMapper objectMapper, NotificationClient notificationClient, DocumentClient documentClient) {
+                               ObjectMapper objectMapper, NotificationClient notificationClient, DocumentClient documentClient,
+                               AffordabilityClient affordabilityClient) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
         this.documentClient = documentClient;
+        this.affordabilityClient = affordabilityClient;
     }
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
@@ -91,6 +95,32 @@ public class ApplicationService {
     }
 
     @Transactional
+    public LoanApplication saveSectionByUnderwriter(String appRef, String section, Map<String, Object> data, String editedBy) {
+        LoanApplication app = getByRef(appRef);
+
+        try {
+            String json = objectMapper.writeValueAsString(data);
+            switch (section) {
+                case "loanRequirements"   -> app.setLoanRequirementsJson(json);
+                case "personalDetails"    -> app.setPersonalDetailsJson(json);
+                case "connectBank"        -> app.setBankConnectionJson(json);
+                case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
+                case "outgoings"          -> app.setOutgoingsJson(json);
+                case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
+                case "verifyId"           -> app.setVerifyIdJson(json);
+                case "directDebit"        -> app.setDirectDebitJson(json);
+                default -> throw new IllegalArgumentException("Unknown section: " + section);
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize section data", e);
+        }
+
+        repository.save(app);
+        addNote(appRef, section, "Section edited by underwriter.", "EDIT", editedBy);
+        return app;
+    }
+
+    @Transactional
     public LoanApplication submitApplication(String appRef) {
         LoanApplication app = getByRef(appRef);
         app.setStatus("SUBMITTED");
@@ -120,7 +150,32 @@ public class ApplicationService {
             throw new RuntimeException("Failed to serialize product data", e);
         }
         app.setStatus("UNDER_REVIEW");
-        return repository.save(app);
+        repository.save(app);
+
+        maybeAutoApprove(app);
+        return app;
+    }
+
+    private void maybeAutoApprove(LoanApplication app) {
+        try {
+            if (app.getAffordabilityResultJson() == null) return;
+            JsonNode result = objectMapper.readTree(app.getAffordabilityResultJson());
+            if (!result.path("passed").asBoolean(false)) return;
+
+            JsonNode personal = app.getPersonalDetailsJson() != null ? objectMapper.readTree(app.getPersonalDetailsJson()) : null;
+            boolean jointApplication = personal != null && personal.has("applicant2") && !personal.get("applicant2").isNull();
+
+            java.math.BigDecimal threshold = affordabilityClient.getAutoApprovalThreshold(jointApplication);
+            if (threshold == null) return;
+
+            JsonNode loan = app.getLoanRequirementsJson() != null ? objectMapper.readTree(app.getLoanRequirementsJson()) : null;
+            java.math.BigDecimal loanAmount = java.math.BigDecimal.valueOf(loan != null ? loan.path("loanAmount").asDouble(0) : 0);
+            if (loanAmount.compareTo(threshold) > 0) return;
+
+            approveApplicationByUnderwriter(app.getApplicationRef(), "System (Auto-Approval)", loanAmount);
+        } catch (Exception ignored) {
+            // Auto-approval is a convenience; failures fall back to manual underwriter review.
+        }
     }
 
     @Transactional
@@ -209,9 +264,10 @@ public class ApplicationService {
     }
 
     @Transactional
-    public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy) {
+    public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy, java.math.BigDecimal approvedAmount) {
         LoanApplication app = getByRef(appRef);
         app.setStatus("APPROVED");
+        app.setApprovedAmount(approvedAmount);
         repository.save(app);
         addNote(appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
 
@@ -269,9 +325,12 @@ public class ApplicationService {
                     ? (personal.path("firstName").asText("") + " " + personal.path("lastName").asText("")).trim()
                     : app.getCustomerEmail();
 
+            double approvedAmount = app.getApprovedAmount() != null
+                    ? app.getApprovedAmount().doubleValue() : loan.path("loanAmount").asDouble(0);
+
             documentClient.generateFinalApprovalLetter(
                     app.getApplicationRef(), app.getCustomerId(), customerName,
-                    loan.path("loanAmount").asDouble(0),
+                    approvedAmount,
                     product.path("productName").asText(""),
                     product.path("interestRate").asDouble(0),
                     product.path("termMonths").asInt(0),

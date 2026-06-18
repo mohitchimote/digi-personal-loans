@@ -14,6 +14,8 @@
           <label>{{ 'loanReq.amountLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="loanAmount"
                  placeholder="e.g. 75000" min="5000" max="300000" />
+          <input type="range" class="db-slider" min="5000" max="300000" step="1000"
+                 [value]="form.value.loanAmount" (input)="onAmountSlide($any($event.target).value)" />
           <div class="db-hint">{{ 'loanReq.amountHint' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('loanAmount')?.invalid && f('loanAmount')?.touched">
             {{ 'loanReq.amountError' | translate }}
@@ -37,17 +39,12 @@
           <label>{{ 'loanReq.termLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="loanTerm"
                  placeholder="e.g. 36" min="6" max="84" />
+          <input type="range" class="db-slider" min="6" max="84" step="1"
+                 [value]="form.value.loanTerm" (input)="onTermSlide($any($event.target).value)" />
           <div class="db-hint">{{ 'loanReq.termHint' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('loanTerm')?.invalid && f('loanTerm')?.touched">
             {{ 'loanReq.termError' | translate }}
           </div>
-        </div>
-
-        <div class="db-form-group">
-          <label>{{ 'loanReq.repaymentDayLabel' | translate }} <span class="required">*</span></label>
-          <select class="db-select" formControlName="preferredRepaymentDay">
-            <option *ngFor="let d of repaymentDays" [value]="d">{{ 'loanReq.ofEachMonth' | translate:{ day: d } }}</option>
-          </select>
         </div>
       </div>
 

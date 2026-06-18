@@ -61,6 +61,11 @@ export class CaseDetailComponent implements OnInit {
   noteType: 'NOTE' | 'CLARIFICATION_REQUEST' | 'DOCUMENT_REQUEST' = 'NOTE';
 
   decisionReason = '';
+  approvedAmount: number | null = null;
+
+  editingSection = signal<string | null>(null);
+  editBuffer: any = {};
+  savingEdit = signal(false);
 
   constructor(
     private route: ActivatedRoute,
@@ -99,7 +104,12 @@ export class CaseDetailComponent implements OnInit {
 
   private load(): void {
     this.appSvc.getApplication(this.appRef).subscribe({
-      next: app => { this.application.set(app); this.loading.set(false); },
+      next: app => {
+        this.application.set(app);
+        this.loading.set(false);
+        const requested = this.parseSection(app.loanRequirementsJson)?.loanAmount;
+        this.approvedAmount = app.approvedAmount ?? requested ?? null;
+      },
       error: () => this.loading.set(false)
     });
     this.appSvc.getNotes(this.appRef).subscribe({
@@ -170,6 +180,33 @@ export class CaseDetailComponent implements OnInit {
     return this.notes().filter(n => n.section === sectionKey);
   }
 
+  isEditing(section: string): boolean {
+    return this.editingSection() === section;
+  }
+
+  startEdit(section: string, current: any): void {
+    this.editingSection.set(section);
+    this.editBuffer = JSON.parse(JSON.stringify(current || {}));
+  }
+
+  cancelEdit(): void {
+    this.editingSection.set(null);
+    this.editBuffer = {};
+  }
+
+  saveEdit(section: string): void {
+    this.savingEdit.set(true);
+    this.appSvc.saveSectionByUnderwriter(this.appRef, section, this.editBuffer, this.auth.userFullName || 'Underwriter').subscribe({
+      next: () => {
+        this.savingEdit.set(false);
+        this.editingSection.set(null);
+        this.editBuffer = {};
+        this.load();
+      },
+      error: () => { this.savingEdit.set(false); this.error.set(this.i18n.t('uw.errSaveSection')); }
+    });
+  }
+
   addNote(): void {
     if (!this.noteText.trim()) return;
     this.appSvc.addNote(this.appRef, this.noteSection, this.noteText.trim(), this.noteType, this.auth.userFullName || 'Underwriter').subscribe({
@@ -182,9 +219,10 @@ export class CaseDetailComponent implements OnInit {
   }
 
   approve(): void {
+    if (!this.approvedAmount || this.approvedAmount <= 0) { this.error.set(this.i18n.t('uw.errApprovedAmount')); return; }
     this.submittingAction.set(true);
     this.error.set('');
-    this.appSvc.approveByUnderwriter(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
+    this.appSvc.approveByUnderwriter(this.appRef, this.auth.userFullName || 'Underwriter', this.approvedAmount).subscribe({
       next: () => {
         this.submittingAction.set(false);
         this.actionMessage.set(this.i18n.t('uw.caseApproved'));

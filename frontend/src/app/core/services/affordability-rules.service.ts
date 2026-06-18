@@ -9,6 +9,8 @@ export interface AffordabilityRules {
   baseAnnualRate: number;
   repaymentCapacityFactor: number;
   minCreditScore: number;
+  autoApprovalThresholdSingle: number;
+  autoApprovalThresholdJoint: number;
 }
 
 const API = 'http://localhost:8080/api/affordability';

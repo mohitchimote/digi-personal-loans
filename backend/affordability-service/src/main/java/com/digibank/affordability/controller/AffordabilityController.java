@@ -39,6 +39,8 @@ public class AffordabilityController {
         rules.setBaseAnnualRate(update.getBaseAnnualRate());
         rules.setRepaymentCapacityFactor(update.getRepaymentCapacityFactor());
         rules.setMinCreditScore(update.getMinCreditScore());
+        rules.setAutoApprovalThresholdSingle(update.getAutoApprovalThresholdSingle());
+        rules.setAutoApprovalThresholdJoint(update.getAutoApprovalThresholdJoint());
         return ResponseEntity.ok(rules);
     }
 }

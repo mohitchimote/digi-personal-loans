@@ -53,6 +53,8 @@ public class LoanApplication {
 
     private String disbursementStatus;
 
+    private java.math.BigDecimal approvedAmount;
+
     private String selectedProductId;
 
     @Column(columnDefinition = "TEXT")
@@ -130,6 +132,9 @@ public class LoanApplication {
 
     public String getDisbursementStatus() { return disbursementStatus; }
     public void setDisbursementStatus(String disbursementStatus) { this.disbursementStatus = disbursementStatus; }
+
+    public java.math.BigDecimal getApprovedAmount() { return approvedAmount; }
+    public void setApprovedAmount(java.math.BigDecimal approvedAmount) { this.approvedAmount = approvedAmount; }
 
     public String getSelectedProductId() { return selectedProductId; }
     public void setSelectedProductId(String selectedProductId) { this.selectedProductId = selectedProductId; }

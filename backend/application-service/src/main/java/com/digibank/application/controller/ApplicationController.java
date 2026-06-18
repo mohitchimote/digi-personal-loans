@@ -36,6 +36,15 @@ public class ApplicationController {
                 applicationService.saveSection(appRef, request.getSection(), request.getData()));
     }
 
+    @PutMapping("/{appRef}/section-by-underwriter")
+    public ResponseEntity<LoanApplication> saveSectionByUnderwriter(
+            @PathVariable String appRef,
+            @Valid @RequestBody ApplicationSectionRequest request,
+            @RequestParam String editedBy) {
+        return ResponseEntity.ok(
+                applicationService.saveSectionByUnderwriter(appRef, request.getSection(), request.getData(), editedBy));
+    }
+
     @GetMapping("/{appRef}")
     public ResponseEntity<LoanApplication> getApplication(@PathVariable String appRef) {
         return ResponseEntity.ok(applicationService.getApplication(appRef));
@@ -84,7 +93,10 @@ public class ApplicationController {
 
     @PostMapping("/{appRef}/approve-by-underwriter")
     public ResponseEntity<LoanApplication> approveByUnderwriter(@PathVariable String appRef, @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(applicationService.approveApplicationByUnderwriter(appRef, body.get("reviewedBy")));
+        String approvedAmountStr = body.get("approvedAmount");
+        java.math.BigDecimal approvedAmount = (approvedAmountStr != null && !approvedAmountStr.isBlank())
+                ? new java.math.BigDecimal(approvedAmountStr) : null;
+        return ResponseEntity.ok(applicationService.approveApplicationByUnderwriter(appRef, body.get("reviewedBy"), approvedAmount));
     }
 
     @PostMapping("/{appRef}/notes")

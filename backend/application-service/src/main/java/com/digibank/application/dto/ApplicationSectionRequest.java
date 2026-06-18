@@ -12,7 +12,6 @@ public class ApplicationSectionRequest {
     @NotNull(message = "Section data is required")
     private Map<String, Object> data;
 
-    @NotNull(message = "Customer ID is required")
     private Long customerId;
 
     private String customerEmail;

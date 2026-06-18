@@ -26,7 +26,11 @@
           <strong>{{ product.productName || '—' }}</strong>
         </div>
         <div class="detail-row">
-          <span>{{ 'loanReq.amountLabel' | translate }}</span>
+          <span>{{ 'approval.approvedAmount' | translate }}</span>
+          <strong>₪{{ (application()?.approvedAmount || loan.loanAmount) | number }}</strong>
+        </div>
+        <div class="detail-row" *ngIf="application()?.approvedAmount && application()!.approvedAmount !== loan.loanAmount">
+          <span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span>
           <strong>₪{{ loan.loanAmount | number }}</strong>
         </div>
         <div class="detail-row">

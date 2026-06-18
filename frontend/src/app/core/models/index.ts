@@ -40,6 +40,7 @@ export interface LoanApplication {
   selectedProductJson?: string;
   affordabilityResultJson?: string;
   disbursementStatus?: DisbursementStatus;
+  approvedAmount?: number;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;

@@ -114,6 +114,34 @@
   margin: 0 8px 4px 32px;
 }
 
+.nav-app-context {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+}
+
+.nav-app-context-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: rgba(255,255,255,0.5);
+}
+
+.nav-app-context-ref {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.nav-app-context-status {
+  font-size: 0.7rem;
+  color: var(--tcs-yellow, #FBB034);
+}
+
 .section-step {
   display: flex;
   align-items: center;

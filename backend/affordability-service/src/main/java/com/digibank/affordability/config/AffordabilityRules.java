@@ -18,6 +18,8 @@ public class AffordabilityRules {
     private BigDecimal baseAnnualRate = new BigDecimal("0.06");
     private BigDecimal repaymentCapacityFactor = new BigDecimal("0.40");
     private int minCreditScore = 580;
+    private BigDecimal autoApprovalThresholdSingle = new BigDecimal("30000");
+    private BigDecimal autoApprovalThresholdJoint = new BigDecimal("50000");
 
     public BigDecimal getMaxDti() { return maxDti; }
     public void setMaxDti(BigDecimal maxDti) { this.maxDti = maxDti; }
@@ -36,4 +38,10 @@ public class AffordabilityRules {
 
     public int getMinCreditScore() { return minCreditScore; }
     public void setMinCreditScore(int minCreditScore) { this.minCreditScore = minCreditScore; }
+
+    public BigDecimal getAutoApprovalThresholdSingle() { return autoApprovalThresholdSingle; }
+    public void setAutoApprovalThresholdSingle(BigDecimal autoApprovalThresholdSingle) { this.autoApprovalThresholdSingle = autoApprovalThresholdSingle; }
+
+    public BigDecimal getAutoApprovalThresholdJoint() { return autoApprovalThresholdJoint; }
+    public void setAutoApprovalThresholdJoint(BigDecimal autoApprovalThresholdJoint) { this.autoApprovalThresholdJoint = autoApprovalThresholdJoint; }
 }

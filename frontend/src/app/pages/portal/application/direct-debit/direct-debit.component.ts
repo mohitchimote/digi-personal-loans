@@ -19,6 +19,7 @@ export class DirectDebitComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   addGuarantor = signal(false);
+  repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
 
   constructor(
     private fb: FormBuilder,
@@ -31,6 +32,7 @@ export class DirectDebitComponent implements OnInit {
       bankName:          ['', Validators.required],
       accountNumber:     ['', Validators.required],
       branchCode:        ['', Validators.required],
+      preferredRepaymentDay: [1, Validators.required],
       confirmAuthorisation: [false, Validators.requiredTrue],
       guarantorName:     [''],
       guarantorNationalId: [''],
@@ -43,7 +45,7 @@ export class DirectDebitComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.auth.userId; const email = this.auth.userEmail;
     if (!userId || !email) return;
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.directDebitJson) {

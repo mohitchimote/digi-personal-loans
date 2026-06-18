@@ -112,19 +112,45 @@
       <!-- Identity & KYC -->
       <div *ngIf="activeTab() === 'identity'">
         <div class="db-card mb-16">
-          <div class="card-header"><h3>{{ 'steps.personalDetails' | translate }}</h3></div>
-          <div class="review-grid">
-            <div class="review-item"><span>{{ 'reviewSubmit.fullName' | translate }}</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
-            <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
-            <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.nationalId }}</strong></div>
-            <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+          <div class="card-header">
+            <h3>{{ 'steps.personalDetails' | translate }}</h3>
+            <button *ngIf="!isEditing('personalDetails')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('personalDetails', personal)">✎ {{ 'common.edit' | translate }}</button>
           </div>
-          <div class="review-grid mt-16" *ngIf="personal.applicant2">
-            <div class="review-item"><span>{{ 'personal.applicant2Header' | translate }}</span><strong>{{ personal.applicant2.firstName }} {{ personal.applicant2.lastName }}</strong></div>
-            <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.applicant2.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
-            <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.applicant2.nationalId }}</strong></div>
-            <div class="review-item"><span>{{ 'personal.relationshipLabel' | translate }}</span><strong>{{ personal.applicant2.relationshipToApplicant1 || '—' }}</strong></div>
+
+          <ng-container *ngIf="!isEditing('personalDetails')">
+            <div class="review-grid">
+              <div class="review-item"><span>{{ 'reviewSubmit.fullName' | translate }}</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
+              <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+              <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.nationalId }}</strong></div>
+              <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+            </div>
+            <div class="review-grid mt-16" *ngIf="personal.applicant2">
+              <div class="review-item"><span>{{ 'personal.applicant2Header' | translate }}</span><strong>{{ personal.applicant2.firstName }} {{ personal.applicant2.lastName }}</strong></div>
+              <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.applicant2.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+              <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.applicant2.nationalId }}</strong></div>
+              <div class="review-item"><span>{{ 'personal.relationshipLabel' | translate }}</span><strong>{{ personal.applicant2.relationshipToApplicant1 || '—' }}</strong></div>
+            </div>
+          </ng-container>
+
+          <div *ngIf="isEditing('personalDetails')">
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'personal.firstNameLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.firstName" /></div>
+              <div class="db-form-group"><label>{{ 'personal.lastNameLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.lastName" /></div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'personal.nationalIdLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.nationalId" /></div>
+              <div class="db-form-group"><label>{{ 'personal.dobLabel' | translate }}</label><input class="db-input" type="date" [(ngModel)]="editBuffer.dateOfBirth" /></div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'personal.streetLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.street" /></div>
+              <div class="db-form-group"><label>{{ 'personal.cityLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.city" /></div>
+            </div>
+            <div class="uw-decision-actions">
+              <button class="db-btn db-btn--accent" (click)="saveEdit('personalDetails')" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost" (click)="cancelEdit()" [disabled]="savingEdit()">{{ 'common.cancel' | translate }}</button>
+            </div>
           </div>
+
           <div class="uw-notes" *ngIf="notesFor('personalDetails').length">
             <div class="uw-note" *ngFor="let n of notesFor('personalDetails')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
@@ -182,18 +208,40 @@
         </div>
 
         <div class="db-card mb-16">
-          <div class="card-header"><h3>{{ 'steps.incomeEmployment' | translate }}</h3></div>
-          <div class="review-grid">
-            <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus }}</strong></div>
-            <div class="review-item"><span>{{ 'income.employerLabel' | translate }}</span><strong>{{ income.employer || '—' }}</strong></div>
-            <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
-            <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+          <div class="card-header">
+            <h3>{{ 'steps.incomeEmployment' | translate }}</h3>
+            <button *ngIf="!isEditing('incomeEmployment')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('incomeEmployment', income)">✎ {{ 'common.edit' | translate }}</button>
           </div>
-          <div class="review-grid mt-16" *ngIf="income.applicant2">
-            <div class="review-item"><span>{{ 'income.applicant2Header' | translate }}</span><strong>{{ income.applicant2.employmentStatus }}</strong></div>
-            <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyGrossIncome | number }}</strong></div>
-            <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyNetIncome | number }}</strong></div>
+
+          <ng-container *ngIf="!isEditing('incomeEmployment')">
+            <div class="review-grid">
+              <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus }}</strong></div>
+              <div class="review-item"><span>{{ 'income.employerLabel' | translate }}</span><strong>{{ income.employer || '—' }}</strong></div>
+              <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
+              <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+            </div>
+            <div class="review-grid mt-16" *ngIf="income.applicant2">
+              <div class="review-item"><span>{{ 'income.applicant2Header' | translate }}</span><strong>{{ income.applicant2.employmentStatus }}</strong></div>
+              <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyGrossIncome | number }}</strong></div>
+              <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyNetIncome | number }}</strong></div>
+            </div>
+          </ng-container>
+
+          <div *ngIf="isEditing('incomeEmployment')">
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'income.statusLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.employmentStatus" /></div>
+              <div class="db-form-group"><label>{{ 'income.employerLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.employer" /></div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'income.grossIncomeLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.monthlyGrossIncome" /></div>
+              <div class="db-form-group"><label>{{ 'income.netIncomeLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.monthlyNetIncome" /></div>
+            </div>
+            <div class="uw-decision-actions">
+              <button class="db-btn db-btn--accent" (click)="saveEdit('incomeEmployment')" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost" (click)="cancelEdit()" [disabled]="savingEdit()">{{ 'common.cancel' | translate }}</button>
+            </div>
           </div>
+
           <div class="uw-notes" *ngIf="notesFor('incomeEmployment').length">
             <div class="uw-note" *ngFor="let n of notesFor('incomeEmployment')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
@@ -203,13 +251,33 @@
         </div>
 
         <div class="db-card mb-16">
-          <div class="card-header"><h3>{{ 'outgoings.title' | translate }}</h3></div>
-          <div class="review-grid">
+          <div class="card-header">
+            <h3>{{ 'outgoings.title' | translate }}</h3>
+            <button *ngIf="!isEditing('outgoings')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('outgoings', outgoings)">✎ {{ 'common.edit' | translate }}</button>
+          </div>
+
+          <div class="review-grid" *ngIf="!isEditing('outgoings')">
             <div class="review-item"><span>{{ 'outgoings.rentLabel' | translate }}</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
             <div class="review-item"><span>{{ 'reviewSubmit.existingLoans' | translate }}</span><strong>₪{{ outgoings.monthlyLoans | number }}</strong></div>
             <div class="review-item"><span>{{ 'reviewSubmit.creditCards' | translate }}</span><strong>₪{{ outgoings.creditCardPayments | number }}</strong></div>
             <div class="review-item"><span>{{ 'outgoings.livingLabel' | translate }}</span><strong>₪{{ outgoings.monthlyLivingExpenses | number }}</strong></div>
           </div>
+
+          <div *ngIf="isEditing('outgoings')">
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'outgoings.rentLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.monthlyRent" /></div>
+              <div class="db-form-group"><label>{{ 'reviewSubmit.existingLoans' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.monthlyLoans" /></div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'reviewSubmit.creditCards' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.creditCardPayments" /></div>
+              <div class="db-form-group"><label>{{ 'outgoings.livingLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.monthlyLivingExpenses" /></div>
+            </div>
+            <div class="uw-decision-actions">
+              <button class="db-btn db-btn--accent" (click)="saveEdit('outgoings')" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost" (click)="cancelEdit()" [disabled]="savingEdit()">{{ 'common.cancel' | translate }}</button>
+            </div>
+          </div>
+
           <div class="uw-notes" *ngIf="notesFor('outgoings').length">
             <div class="uw-note" *ngFor="let n of notesFor('outgoings')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
@@ -234,6 +302,7 @@
             <div class="review-item"><span>{{ 'directDebit.accountHolderLabel' | translate }}</span><strong>{{ directDebit.accountHolderName }}</strong></div>
             <div class="review-item"><span>{{ 'directDebit.bankNameLabel' | translate }}</span><strong>{{ directDebit.bankName }}</strong></div>
             <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
+            <div class="review-item"><span>{{ 'reviewSubmit.repaymentDay' | translate }}</span><strong>{{ 'loanReq.ofEachMonth' | translate:{ day: directDebit.preferredRepaymentDay } }}</strong></div>
           </div>
           <div class="review-grid mt-16" *ngIf="directDebit.guarantorName">
             <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ directDebit.guarantorName }}</strong></div>
@@ -252,18 +321,38 @@
       <!-- Credit Bureau & Risk -->
       <div *ngIf="activeTab() === 'creditRisk'">
         <div class="db-card mb-16">
-          <div class="card-header"><h3>{{ 'steps.creditDeclarations' | translate }}</h3></div>
-          <div class="review-grid">
-            <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
-            <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
-            <div class="review-item"><span>{{ 'reviewSubmit.ccj' | translate }}</span><strong>{{ credit.hasCCJ ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
-            <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ credit.creditScore }}</strong></div>
+          <div class="card-header">
+            <h3>{{ 'steps.creditDeclarations' | translate }}</h3>
+            <button *ngIf="!isEditing('creditDeclarations')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('creditDeclarations', credit)">✎ {{ 'common.edit' | translate }}</button>
           </div>
-          <div class="review-grid mt-16" *ngIf="credit.applicant2">
-            <div class="review-item"><span>{{ 'credit.applicant2Header' | translate }}</span><strong>{{ credit.applicant2.creditScore }}</strong></div>
-            <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.applicant2.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
-            <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.applicant2.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+
+          <ng-container *ngIf="!isEditing('creditDeclarations')">
+            <div class="review-grid">
+              <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+              <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+              <div class="review-item"><span>{{ 'reviewSubmit.ccj' | translate }}</span><strong>{{ credit.hasCCJ ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+              <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ credit.creditScore }}</strong></div>
+            </div>
+            <div class="review-grid mt-16" *ngIf="credit.applicant2">
+              <div class="review-item"><span>{{ 'credit.applicant2Header' | translate }}</span><strong>{{ credit.applicant2.creditScore }}</strong></div>
+              <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.applicant2.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+              <div class="review-item"><span>{{ 'credit.bankruptcyTitle' | translate }}</span><strong>{{ credit.applicant2.hasBankruptcy ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+            </div>
+          </ng-container>
+
+          <div *ngIf="isEditing('creditDeclarations')">
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'credit.scoreLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.creditScore" /></div>
+            </div>
+            <label class="db-checkbox mb-8"><input type="checkbox" [(ngModel)]="editBuffer.hasDefaulted" /><span>{{ 'reviewSubmit.previousDefault' | translate }}</span></label>
+            <label class="db-checkbox mb-8"><input type="checkbox" [(ngModel)]="editBuffer.hasBankruptcy" /><span>{{ 'credit.bankruptcyTitle' | translate }}</span></label>
+            <label class="db-checkbox mb-16"><input type="checkbox" [(ngModel)]="editBuffer.hasCCJ" /><span>{{ 'reviewSubmit.ccj' | translate }}</span></label>
+            <div class="uw-decision-actions">
+              <button class="db-btn db-btn--accent" (click)="saveEdit('creditDeclarations')" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost" (click)="cancelEdit()" [disabled]="savingEdit()">{{ 'common.cancel' | translate }}</button>
+            </div>
           </div>
+
           <div class="uw-notes" *ngIf="notesFor('creditDeclarations').length">
             <div class="uw-note" *ngFor="let n of notesFor('creditDeclarations')">
               <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
@@ -285,6 +374,14 @@
       <div *ngIf="activeTab() === 'decision'">
         <div class="db-card mb-16">
           <div class="card-header"><h3>{{ 'uw.decision' | translate }}</h3></div>
+          <div class="review-grid mb-16">
+            <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'uw.approvedAmountLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="number" min="1" [(ngModel)]="approvedAmount" [disabled]="isApproved" />
+            <div class="db-hint">{{ 'uw.approvedAmountHint' | translate }}</div>
+          </div>
           <div class="db-form-group">
             <label>{{ 'uw.reasonComments' | translate }}</label>
             <textarea class="db-input" rows="3" [(ngModel)]="decisionReason" [placeholder]="'uw.reasonPlaceholder' | translate"></textarea>

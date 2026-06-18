@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { LoanApplication } from '../../core/models';
 import { TranslatePipe } from '../pipes/translate.pipe';
+import { I18nService } from '../../core/i18n/i18n.service';
 
 export interface NavSection {
   id: string;
@@ -56,12 +57,17 @@ export class SidebarComponent implements OnInit {
   constructor(
     public auth: AuthService,
     public notifications: NotificationService,
-    private router: Router
+    private router: Router,
+    private i18n: I18nService
   ) {}
 
   ngOnInit(): void {
     const userId = this.auth.userId;
     if (userId) this.notifications.refreshCount(userId);
+  }
+
+  statusLabel(status: string): string {
+    return this.i18n.t('status.' + status);
   }
 
   toggleSection(id: string): void {

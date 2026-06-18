@@ -48,6 +48,11 @@
       </div>
 
       <div class="nav-children" *ngIf="isSectionExpanded('apply') && !collapsed">
+        <div class="nav-app-context" *ngIf="application">
+          <span class="nav-app-context-label">{{ 'sidebar.viewingApplication' | translate }}</span>
+          <span class="nav-app-context-ref">{{ application.applicationRef }}</span>
+          <span class="nav-app-context-status">{{ statusLabel(application.status) }}</span>
+        </div>
         <a *ngFor="let step of applicationSteps; let i = index"
            class="section-step"
            [class.completed]="isStepCompleted(step.sectionKey!)"

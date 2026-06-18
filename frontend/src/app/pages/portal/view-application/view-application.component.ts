@@ -55,9 +55,12 @@ export class ViewApplicationComponent implements OnInit {
 
   get loanReqs() { return this.parseSection(this.application()?.loanRequirementsJson); }
   get personal() { return this.parseSection(this.application()?.personalDetailsJson); }
+  get bankConnection() { return this.parseSection(this.application()?.bankConnectionJson); }
   get income()   { return this.parseSection(this.application()?.incomeEmploymentJson); }
   get outgoings() { return this.parseSection(this.application()?.outgoingsJson); }
   get credit()   { return this.parseSection(this.application()?.creditDeclarationsJson); }
+  get verifyId() { return this.parseSection(this.application()?.verifyIdJson); }
+  get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
 
   get canPullBack(): boolean {
     const status = this.application()?.status;

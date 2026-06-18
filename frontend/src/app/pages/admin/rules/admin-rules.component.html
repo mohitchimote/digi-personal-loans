@@ -45,6 +45,18 @@
     <div class="db-hint">{{ 'admin.capacityFactorHint' | translate }}</div>
   </div>
 
+  <div class="db-form-group">
+    <label>{{ 'admin.autoApprovalSingle' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.autoApprovalThresholdSingle" />
+    <div class="db-hint">{{ 'admin.autoApprovalSingleHint' | translate }}</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'admin.autoApprovalJoint' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.autoApprovalThresholdJoint" />
+    <div class="db-hint">{{ 'admin.autoApprovalJointHint' | translate }}</div>
+  </div>
+
   <div class="form-actions">
     <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
       {{ saving() ? ('admin.savingRules' | translate) : ('admin.saveRules' | translate) }}

@@ -56,7 +56,7 @@ export class PersonalDetailsComponent implements OnInit {
     const userId = this.auth.userId;
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {

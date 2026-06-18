@@ -25,6 +25,8 @@ app:
     url: http://localhost:8086
   document-service:
     url: http://localhost:8085
+  affordability-service:
+    url: http://localhost:8083
 
 logging:
   level:

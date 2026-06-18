@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { LoanApplication, UnderwritingNote } from '../../../core/models';
@@ -17,8 +17,19 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 export class DashboardComponent implements OnInit {
   applications = signal<LoanApplication[]>([]);
   feedbackByAppRef = signal<Record<string, UnderwritingNote[]>>({});
+  startingApplication = signal(false);
 
-  constructor(public auth: AuthService, private appSvc: ApplicationService, public i18n: I18nService) {}
+  constructor(public auth: AuthService, private appSvc: ApplicationService, public i18n: I18nService, private router: Router) {}
+
+  startOrResumeApplication(): void {
+    const userId = this.auth.userId; const email = this.auth.userEmail;
+    if (!userId || !email) return;
+    this.startingApplication.set(true);
+    this.appSvc.startOrResume(userId, email).subscribe({
+      next: app => { this.startingApplication.set(false); this.router.navigate([this.getResumeRoute(app)]); },
+      error: () => this.startingApplication.set(false)
+    });
+  }
 
   ngOnInit(): void {
     const userId = this.auth.userId;

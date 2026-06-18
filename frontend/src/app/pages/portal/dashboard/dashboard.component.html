@@ -5,9 +5,9 @@
       <h2>{{ 'dashboard.welcomeBack' | translate:{ name: auth.userFullName?.split(' ')?.[0] || '' } }} 👋</h2>
       <p>{{ 'dashboard.overview' | translate }}</p>
     </div>
-    <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--accent">
+    <button class="db-btn db-btn--accent" (click)="startOrResumeApplication()" [disabled]="startingApplication()">
       {{ 'dashboard.startResume' | translate }}
-    </a>
+    </button>
   </div>
 
   <!-- Quick stats -->
@@ -61,14 +61,14 @@
   <div class="db-card mt-24">
     <div class="card-header">
       <h3>{{ 'dashboard.myApplications' | translate }}</h3>
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--outline db-btn--sm">{{ 'dashboard.newApplication' | translate }}</a>
+      <button class="db-btn db-btn--outline db-btn--sm" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.newApplication' | translate }}</button>
     </div>
 
     <div *ngIf="applications().length === 0" class="empty-state">
       <span class="material-icons mi-xl empty-icon">inbox</span>
       <h4>{{ 'dashboard.noApplicationsYet' | translate }}</h4>
       <p>{{ 'dashboard.startFirstApplication' | translate }}</p>
-      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--primary mt-16">{{ 'dashboard.beginApplication' | translate }}</a>
+      <button class="db-btn db-btn--primary mt-16" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.beginApplication' | translate }}</button>
     </div>
 
     <table class="db-table" *ngIf="applications().length > 0">

@@ -18,7 +18,6 @@ export class AffordabilityResultsComponent implements OnInit {
   result  = signal<AffordabilityResult | null>(null);
   loading = signal(true);
   appRef  = signal('');
-  Math    = Math;
 
   constructor(
     private affordability: AffordabilityService,
@@ -65,6 +64,9 @@ export class AffordabilityResultsComponent implements OnInit {
             this.result.set(res);
             this.loading.set(false);
             this.appSvc.saveAffordabilityResult(app.applicationRef, res).subscribe({ error: () => {} });
+            if (res.passed) {
+              this.router.navigate(['/portal/products']);
+            }
           },
           error: () => this.loading.set(false)
         });
