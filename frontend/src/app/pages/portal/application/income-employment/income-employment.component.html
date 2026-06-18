@@ -1,7 +1,7 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 6 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 4, total: 9 } }}</div>
     <h2 class="section-title">{{ 'income.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'income.subtitle' | translate }}</p>
   </div>
@@ -74,7 +74,7 @@
     </div>
 
     <div class="form-actions">
-      <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+      <a routerLink="/portal/apply/connect-bank" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>

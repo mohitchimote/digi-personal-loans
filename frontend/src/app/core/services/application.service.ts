@@ -75,4 +75,16 @@ export class ApplicationService {
   saveAffordabilityResult(appRef: string, result: any): Observable<LoanApplication> {
     return this.http.put<LoanApplication>(`${API}/${appRef}/affordability-result`, result);
   }
+
+  referToSenior(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/${appRef}/refer-to-senior`, { reason, reviewedBy });
+  }
+
+  authoriseFundRelease(appRef: string, reviewedBy: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/authorise`, { reviewedBy });
+  }
+
+  submitForSecondCheck(appRef: string, reviewedBy: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/second-check`, { reviewedBy });
+  }
 }

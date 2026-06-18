@@ -55,7 +55,7 @@ export class PersonalDetailsComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     this.appSvc.saveSection(this.appRef(), 'personalDetails', this.form.value, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/income-employment']); },
+      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/connect-bank']); },
       error: () => this.saving.set(false)
     });
   }

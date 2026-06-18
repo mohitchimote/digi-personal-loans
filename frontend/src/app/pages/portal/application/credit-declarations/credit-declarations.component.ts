@@ -61,7 +61,7 @@ export class CreditDeclarationsComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     this.appSvc.saveSection(this.appRef(), 'creditDeclarations', this.form.value, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/review-submit']); },
+      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/verify-id']); },
       error: () => this.saving.set(false)
     });
   }

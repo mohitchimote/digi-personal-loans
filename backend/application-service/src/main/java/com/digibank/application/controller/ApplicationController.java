@@ -109,4 +109,19 @@ public class ApplicationController {
     public ResponseEntity<LoanApplication> approveApplication(@PathVariable String appRef) {
         return ResponseEntity.ok(applicationService.approveApplication(appRef));
     }
+
+    @PostMapping("/{appRef}/refer-to-senior")
+    public ResponseEntity<LoanApplication> referToSenior(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.referToSeniorUnderwriter(appRef, body.get("reason"), body.get("reviewedBy")));
+    }
+
+    @PostMapping("/{appRef}/disbursement/authorise")
+    public ResponseEntity<LoanApplication> authoriseFundRelease(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.authoriseFundRelease(appRef, body.get("reviewedBy")));
+    }
+
+    @PostMapping("/{appRef}/disbursement/second-check")
+    public ResponseEntity<LoanApplication> submitForSecondCheck(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.submitForSecondCheck(appRef, body.get("reviewedBy")));
+    }
 }

@@ -1,0 +1,11 @@
+.application-layout { display: flex; gap: 32px; align-items: flex-start; }
+.form-page { max-width: 800px; flex: 1 1 800px; }
+app-application-aside { flex: 0 0 300px; max-width: 300px; }
+@media (max-width: 1200px) { app-application-aside { display: none; } }
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+}

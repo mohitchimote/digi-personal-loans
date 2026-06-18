@@ -36,9 +36,12 @@ export class SidebarComponent implements OnInit {
   applicationSteps: NavItem[] = [
     { labelKey: 'steps.loanRequirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
     { labelKey: 'steps.personalDetails',     route: '/portal/apply/personal-details',    sectionKey: 'personalDetails' },
+    { labelKey: 'steps.connectBank',         route: '/portal/apply/connect-bank',        sectionKey: 'connectBank' },
     { labelKey: 'steps.incomeEmployment',    route: '/portal/apply/income-employment',   sectionKey: 'incomeEmployment' },
     { labelKey: 'steps.outgoings',           route: '/portal/apply/outgoings',           sectionKey: 'outgoings' },
     { labelKey: 'steps.creditDeclarations',  route: '/portal/apply/credit-declarations', sectionKey: 'creditDeclarations' },
+    { labelKey: 'steps.verifyId',            route: '/portal/apply/verify-id',           sectionKey: 'verifyId' },
+    { labelKey: 'steps.directDebit',         route: '/portal/apply/direct-debit',        sectionKey: 'directDebit' },
     { labelKey: 'steps.reviewSubmit',        route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
   ];
 
@@ -74,9 +77,12 @@ export class SidebarComponent implements OnInit {
     const map: Record<string, string | undefined> = {
       loanRequirements:   this.application.loanRequirementsJson,
       personalDetails:    this.application.personalDetailsJson,
+      connectBank:        this.application.bankConnectionJson,
       incomeEmployment:   this.application.incomeEmploymentJson,
       outgoings:          this.application.outgoingsJson,
       creditDeclarations: this.application.creditDeclarationsJson,
+      verifyId:           this.application.verifyIdJson,
+      directDebit:        this.application.directDebitJson,
       reviewSubmit:       this.application.reviewSubmitJson,
     };
     return !!map[sectionKey];

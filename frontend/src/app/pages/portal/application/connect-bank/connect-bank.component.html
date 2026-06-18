@@ -1,0 +1,56 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'connectBank.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'connectBank.subtitle' | translate }}</p>
+  </div>
+
+  <div class="db-card">
+    <div class="db-alert db-alert--info mb-16">
+      🔒 {{ 'connectBank.securityNote' | translate }}
+    </div>
+
+    <!-- Bank selection -->
+    <div *ngIf="!connected() && !connecting()">
+      <h3 style="margin-bottom:12px;">{{ 'connectBank.chooseBank' | translate }}</h3>
+      <div class="bank-grid">
+        <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
+          <span class="bank-icon">{{ b.icon }}</span>
+          <span>{{ b.name }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Connecting -->
+    <div class="connecting-state" *ngIf="connecting()">
+      <div class="spinner"></div>
+      <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank?.name }}…</p>
+    </div>
+
+    <!-- Connected -->
+    <div class="connected-state" *ngIf="connected() && connectionSummary">
+      <div class="db-alert db-alert--success mb-16">
+        ✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank?.name || '' } }}
+      </div>
+      <div class="review-grid">
+        <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary.accountMasked }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary.avgBalance | number }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary.transactions }}</strong></div>
+      </div>
+      <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+    <div style="display:flex; gap:12px;">
+      <button class="db-btn db-btn--outline" (click)="continue()" [disabled]="saving() || connecting()" *ngIf="!connected()">{{ 'connectBank.skipForNow' | translate }}</button>
+      <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="saving() || connecting()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </div>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.connectBank' | translate"></app-application-aside>
+</div>

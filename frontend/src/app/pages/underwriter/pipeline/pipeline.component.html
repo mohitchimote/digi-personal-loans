@@ -3,16 +3,52 @@
   <p class="page-sub">{{ 'uw.pipelineSubtitle' | translate }}</p>
 </div>
 
+<!-- Status tiles -->
+<div class="uw-tiles mb-24">
+  <button class="uw-tile" [class.active]="activeFilter() === 'ALL'" (click)="setFilter('ALL')">
+    <div class="uw-tile-count">{{ countFor('ALL') }}</div>
+    <div class="uw-tile-label">{{ 'uw.tileAll' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'SUBMITTED'" (click)="setFilter('SUBMITTED')">
+    <div class="uw-tile-count">{{ countFor('SUBMITTED') }}</div>
+    <div class="uw-tile-label">{{ 'status.SUBMITTED' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'UNDER_REVIEW'" (click)="setFilter('UNDER_REVIEW')">
+    <div class="uw-tile-count">{{ countFor('UNDER_REVIEW') }}</div>
+    <div class="uw-tile-label">{{ 'status.UNDER_REVIEW' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'CONDITIONALLY_APPROVED'" (click)="setFilter('CONDITIONALLY_APPROVED')">
+    <div class="uw-tile-count">{{ countFor('CONDITIONALLY_APPROVED') }}</div>
+    <div class="uw-tile-label">{{ 'status.CONDITIONALLY_APPROVED' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'REFERRED_TO_SENIOR'" (click)="setFilter('REFERRED_TO_SENIOR')">
+    <div class="uw-tile-count">{{ countFor('REFERRED_TO_SENIOR') }}</div>
+    <div class="uw-tile-label">{{ 'status.REFERRED_TO_SENIOR' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'APPROVED'" (click)="setFilter('APPROVED')">
+    <div class="uw-tile-count">{{ countFor('APPROVED') }}</div>
+    <div class="uw-tile-label">{{ 'status.APPROVED' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'PENDING_DISBURSEMENT'" (click)="setFilter('PENDING_DISBURSEMENT')">
+    <div class="uw-tile-count">{{ countFor('PENDING_DISBURSEMENT') }}</div>
+    <div class="uw-tile-label">{{ 'uw.pendingDisbursement' | translate }}</div>
+  </button>
+  <button class="uw-tile" [class.active]="activeFilter() === 'DISBURSED'" (click)="setFilter('DISBURSED')">
+    <div class="uw-tile-count">{{ countFor('DISBURSED') }}</div>
+    <div class="uw-tile-label">{{ 'uw.disbursed' | translate }}</div>
+  </button>
+</div>
+
 <div class="loading-row" *ngIf="loading()">
   <div class="spinner"></div><span>{{ 'uw.loadingPipeline' | translate }}</span>
 </div>
 
-<div class="empty-state" *ngIf="!loading() && applications().length === 0">
+<div class="empty-state" *ngIf="!loading() && filteredApplications().length === 0">
   <div class="empty-icon">📭</div>
   <p>{{ 'uw.noApplications' | translate }}</p>
 </div>
 
-<div class="db-card" *ngIf="!loading() && applications().length > 0">
+<div class="db-card" *ngIf="!loading() && filteredApplications().length > 0">
   <table class="db-table">
     <thead>
       <tr>
@@ -25,11 +61,11 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let app of applications()">
+      <tr *ngFor="let app of filteredApplications()">
         <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
         <td>{{ applicantName(app) }}</td>
         <td>₪{{ loanAmount(app) | number }}</td>
-        <td><span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span></td>
+        <td><span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span></td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.submittedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>
           <a [routerLink]="['/underwriter/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'uw.review' | translate }}</a>

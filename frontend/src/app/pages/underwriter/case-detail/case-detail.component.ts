@@ -9,6 +9,8 @@ import { LoanApplication, UnderwritingNote, GeneratedDocument } from '../../../c
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
+type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'decision' | 'disbursement';
+
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
@@ -24,14 +26,29 @@ export class CaseDetailComponent implements OnInit {
   loading = signal(true);
   submittingAction = signal(false);
   error = signal('');
+  actionMessage = signal('');
   appRef = '';
+
+  activeTab = signal<TabKey>('overview');
+
+  navTabs: { key: TabKey; labelKey: string; icon: string }[] = [
+    { key: 'overview',      labelKey: 'uw.tabOverview',      icon: 'description' },
+    { key: 'identity',      labelKey: 'uw.tabIdentity',      icon: 'badge' },
+    { key: 'affordability', labelKey: 'uw.tabAffordability', icon: 'account_balance' },
+    { key: 'creditRisk',    labelKey: 'uw.tabCreditRisk',    icon: 'shield' },
+    { key: 'decision',      labelKey: 'uw.tabDecision',      icon: 'gavel' },
+  ];
 
   sections = [
     { key: 'loanRequirements',   labelKey: 'steps.loanRequirements' },
     { key: 'personalDetails',    labelKey: 'steps.personalDetails' },
+    { key: 'connectBank',        labelKey: 'steps.connectBank' },
     { key: 'incomeEmployment',   labelKey: 'steps.incomeEmployment' },
     { key: 'outgoings',          labelKey: 'outgoings.title' },
     { key: 'creditDeclarations', labelKey: 'steps.creditDeclarations' },
+    { key: 'verifyId',           labelKey: 'steps.verifyId' },
+    { key: 'directDebit',        labelKey: 'steps.directDebit' },
+    { key: 'general',            labelKey: 'uw.generalSection' },
   ];
 
   noteSection = 'loanRequirements';
@@ -55,6 +72,18 @@ export class CaseDetailComponent implements OnInit {
 
   noteTypeLabel(type: string): string {
     return this.i18n.t('aside.noteType.' + type) || type;
+  }
+
+  get isApproved(): boolean {
+    return this.application()?.status === 'APPROVED';
+  }
+
+  get disbursementStatus(): string | undefined {
+    return this.application()?.disbursementStatus;
+  }
+
+  setTab(tab: TabKey): void {
+    this.activeTab.set(tab);
   }
 
   ngOnInit(): void {
@@ -88,9 +117,12 @@ export class CaseDetailComponent implements OnInit {
 
   get loanReqs() { return this.parseSection(this.application()?.loanRequirementsJson); }
   get personal() { return this.parseSection(this.application()?.personalDetailsJson); }
+  get bankConnection() { return this.parseSection(this.application()?.bankConnectionJson); }
   get income()   { return this.parseSection(this.application()?.incomeEmploymentJson); }
   get outgoings() { return this.parseSection(this.application()?.outgoingsJson); }
   get credit()   { return this.parseSection(this.application()?.creditDeclarationsJson); }
+  get verifyId() { return this.parseSection(this.application()?.verifyIdJson); }
+  get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
   get affordability() { return this.parseSection(this.application()?.affordabilityResultJson); }
   get product()  { return this.parseSection(this.application()?.selectedProductJson); }
 
@@ -133,8 +165,13 @@ export class CaseDetailComponent implements OnInit {
 
   approve(): void {
     this.submittingAction.set(true);
+    this.error.set('');
     this.appSvc.approveByUnderwriter(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
-      next: () => this.router.navigate(['/underwriter/pipeline']),
+      next: () => {
+        this.submittingAction.set(false);
+        this.actionMessage.set(this.i18n.t('uw.caseApproved'));
+        this.load();
+      },
       error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errApprove')); }
     });
   }
@@ -148,12 +185,39 @@ export class CaseDetailComponent implements OnInit {
     });
   }
 
+  referToSenior(): void {
+    if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errReferReason')); return; }
+    this.submittingAction.set(true);
+    this.appSvc.referToSenior(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter').subscribe({
+      next: () => this.router.navigate(['/underwriter/pipeline']),
+      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errRefer')); }
+    });
+  }
+
   sendBack(): void {
     if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errSendBackReason')); return; }
     this.submittingAction.set(true);
     this.appSvc.sendBack(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter').subscribe({
       next: () => this.router.navigate(['/underwriter/pipeline']),
       error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errSendBack')); }
+    });
+  }
+
+  authoriseFundRelease(): void {
+    this.submittingAction.set(true);
+    this.error.set('');
+    this.appSvc.authoriseFundRelease(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
+      next: () => { this.submittingAction.set(false); this.actionMessage.set(this.i18n.t('uw.fundsReleased')); this.load(); },
+      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errDisbursement')); }
+    });
+  }
+
+  submitForSecondCheck(): void {
+    this.submittingAction.set(true);
+    this.error.set('');
+    this.appSvc.submitForSecondCheck(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
+      next: () => { this.submittingAction.set(false); this.actionMessage.set(this.i18n.t('uw.secondCheckSubmitted')); this.load(); },
+      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errDisbursement')); }
     });
   }
 }

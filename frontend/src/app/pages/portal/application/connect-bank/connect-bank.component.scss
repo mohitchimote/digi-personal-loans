@@ -1,0 +1,42 @@
+.application-layout { display: flex; gap: 32px; align-items: flex-start; }
+.form-page { max-width: 800px; flex: 1 1 800px; }
+app-application-aside { flex: 0 0 300px; max-width: 300px; }
+@media (max-width: 1200px) { app-application-aside { display: none; } }
+
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.bank-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--light-grey, #e0e0e0);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: var(--tcs-blue, #003F79); box-shadow: var(--shadow-sm); }
+}
+
+.bank-icon { font-size: 1.5rem; }
+
+.connecting-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+}

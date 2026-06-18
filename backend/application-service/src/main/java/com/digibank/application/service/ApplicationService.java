@@ -27,7 +27,8 @@ public class ApplicationService {
     private final NotificationClient notificationClient;
     private final DocumentClient documentClient;
 
-    private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED");
+    private static final List<String> PIPELINE_STATUSES = List.of(
+            "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
 
     public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
                                ObjectMapper objectMapper, NotificationClient notificationClient, DocumentClient documentClient) {
@@ -40,8 +41,8 @@ public class ApplicationService {
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
     private static final List<String> ALL_SECTIONS = List.of(
-            "loanRequirements", "personalDetails", "incomeEmployment",
-            "outgoings", "creditDeclarations", "reviewSubmit"
+            "loanRequirements", "personalDetails", "connectBank", "incomeEmployment",
+            "outgoings", "creditDeclarations", "verifyId", "directDebit", "reviewSubmit"
     );
 
     @Transactional
@@ -69,9 +70,12 @@ public class ApplicationService {
             switch (section) {
                 case "loanRequirements"   -> app.setLoanRequirementsJson(json);
                 case "personalDetails"    -> app.setPersonalDetailsJson(json);
+                case "connectBank"        -> app.setBankConnectionJson(json);
                 case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
                 case "outgoings"          -> app.setOutgoingsJson(json);
                 case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
+                case "verifyId"           -> app.setVerifyIdJson(json);
+                case "directDebit"        -> app.setDirectDebitJson(json);
                 case "reviewSubmit"       -> app.setReviewSubmitJson(json);
                 default -> throw new IllegalArgumentException("Unknown section: " + section);
             }
@@ -209,6 +213,38 @@ public class ApplicationService {
         return app;
     }
 
+    @Transactional
+    public LoanApplication referToSeniorUnderwriter(String appRef, String reason, String reviewedBy) {
+        LoanApplication app = getByRef(appRef);
+        app.setStatus("REFERRED_TO_SENIOR");
+        repository.save(app);
+        addNote(appRef, "general", reason, "REFERRED_TO_SENIOR", reviewedBy);
+        return app;
+    }
+
+    @Transactional
+    public LoanApplication authoriseFundRelease(String appRef, String reviewedBy) {
+        LoanApplication app = getByRef(appRef);
+        app.setDisbursementStatus("FUNDS_RELEASED");
+        repository.save(app);
+        addNote(appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", reviewedBy);
+
+        notificationClient.send(app.getCustomerId(), "Your Loan Funds Have Been Released",
+                greeting(app) + " Great news — your loan funds for " + loanPurpose(app)
+                        + " have been authorised for release and will be transferred to your nominated account shortly.",
+                "APPROVAL", appRef);
+        return app;
+    }
+
+    @Transactional
+    public LoanApplication submitForSecondCheck(String appRef, String reviewedBy) {
+        LoanApplication app = getByRef(appRef);
+        app.setDisbursementStatus("SECOND_CHECK_PENDING");
+        repository.save(app);
+        addNote(appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", reviewedBy);
+        return app;
+    }
+
     private void generateFinalApprovalLetter(LoanApplication app) {
         try {
             JsonNode product = app.getSelectedProductJson() != null ? objectMapper.readTree(app.getSelectedProductJson()) : null;
@@ -290,9 +326,12 @@ public class ApplicationService {
         return switch (section) {
             case "loanRequirements"   -> "Loan Requirements";
             case "personalDetails"    -> "Personal Details";
+            case "connectBank"        -> "Bank Connection";
             case "incomeEmployment"   -> "Income & Employment";
             case "outgoings"          -> "Outgoings & Expenditure";
             case "creditDeclarations" -> "Credit Declarations";
+            case "verifyId"           -> "ID Verification";
+            case "directDebit"        -> "Direct Debit Details";
             default -> "application";
         };
     }
@@ -310,9 +349,12 @@ public class ApplicationService {
         long filled = ALL_SECTIONS.stream().filter(section -> switch (section) {
             case "loanRequirements"   -> app.getLoanRequirementsJson() != null;
             case "personalDetails"    -> app.getPersonalDetailsJson() != null;
+            case "connectBank"        -> app.getBankConnectionJson() != null;
             case "incomeEmployment"   -> app.getIncomeEmploymentJson() != null;
             case "outgoings"          -> app.getOutgoingsJson() != null;
             case "creditDeclarations" -> app.getCreditDeclarationsJson() != null;
+            case "verifyId"           -> app.getVerifyIdJson() != null;
+            case "directDebit"        -> app.getDirectDebitJson() != null;
             case "reviewSubmit"       -> app.getReviewSubmitJson() != null;
             default -> false;
         }).count();

@@ -30,12 +30,16 @@ export interface LoanApplication {
   completionPercentage: number;
   loanRequirementsJson?: string;
   personalDetailsJson?: string;
+  bankConnectionJson?: string;
   incomeEmploymentJson?: string;
   outgoingsJson?: string;
   creditDeclarationsJson?: string;
+  verifyIdJson?: string;
+  directDebitJson?: string;
   reviewSubmitJson?: string;
   selectedProductJson?: string;
   affordabilityResultJson?: string;
+  disbursementStatus?: DisbursementStatus;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
@@ -43,7 +47,10 @@ export interface LoanApplication {
 
 export type ApplicationStatus =
   | 'DRAFT' | 'IN_PROGRESS' | 'SUBMITTED'
-  | 'UNDER_REVIEW' | 'CONDITIONALLY_APPROVED' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
+  | 'UNDER_REVIEW' | 'CONDITIONALLY_APPROVED' | 'REFERRED_TO_SENIOR'
+  | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
+
+export type DisbursementStatus = 'SECOND_CHECK_PENDING' | 'FUNDS_RELEASED';
 
 export interface UnderwritingNote {
   id: number;

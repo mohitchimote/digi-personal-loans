@@ -31,6 +31,9 @@ public class LoanApplication {
     private String personalDetailsJson;
 
     @Column(columnDefinition = "TEXT")
+    private String bankConnectionJson;
+
+    @Column(columnDefinition = "TEXT")
     private String incomeEmploymentJson;
 
     @Column(columnDefinition = "TEXT")
@@ -40,7 +43,15 @@ public class LoanApplication {
     private String creditDeclarationsJson;
 
     @Column(columnDefinition = "TEXT")
+    private String verifyIdJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String directDebitJson;
+
+    @Column(columnDefinition = "TEXT")
     private String reviewSubmitJson;
+
+    private String disbursementStatus;
 
     private String selectedProductId;
 
@@ -96,6 +107,9 @@ public class LoanApplication {
     public String getPersonalDetailsJson() { return personalDetailsJson; }
     public void setPersonalDetailsJson(String personalDetailsJson) { this.personalDetailsJson = personalDetailsJson; }
 
+    public String getBankConnectionJson() { return bankConnectionJson; }
+    public void setBankConnectionJson(String bankConnectionJson) { this.bankConnectionJson = bankConnectionJson; }
+
     public String getIncomeEmploymentJson() { return incomeEmploymentJson; }
     public void setIncomeEmploymentJson(String incomeEmploymentJson) { this.incomeEmploymentJson = incomeEmploymentJson; }
 
@@ -105,8 +119,17 @@ public class LoanApplication {
     public String getCreditDeclarationsJson() { return creditDeclarationsJson; }
     public void setCreditDeclarationsJson(String creditDeclarationsJson) { this.creditDeclarationsJson = creditDeclarationsJson; }
 
+    public String getVerifyIdJson() { return verifyIdJson; }
+    public void setVerifyIdJson(String verifyIdJson) { this.verifyIdJson = verifyIdJson; }
+
+    public String getDirectDebitJson() { return directDebitJson; }
+    public void setDirectDebitJson(String directDebitJson) { this.directDebitJson = directDebitJson; }
+
     public String getReviewSubmitJson() { return reviewSubmitJson; }
     public void setReviewSubmitJson(String reviewSubmitJson) { this.reviewSubmitJson = reviewSubmitJson; }
+
+    public String getDisbursementStatus() { return disbursementStatus; }
+    public void setDisbursementStatus(String disbursementStatus) { this.disbursementStatus = disbursementStatus; }
 
     public String getSelectedProductId() { return selectedProductId; }
     public void setSelectedProductId(String selectedProductId) { this.selectedProductId = selectedProductId; }

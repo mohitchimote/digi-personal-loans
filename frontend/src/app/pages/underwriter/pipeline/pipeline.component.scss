@@ -5,3 +5,40 @@
   padding: 40px;
   justify-content: center;
 }
+
+.uw-tiles {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 10px;
+}
+
+.uw-tile {
+  background: var(--white, #fff);
+  border: 1px solid var(--light-grey, #e0e0e0);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: var(--tcs-blue, #003F79); }
+  &.active { border-color: var(--tcs-blue, #003F79); background: var(--info-light, #e8f0fe); }
+}
+
+.uw-tile-count {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--tcs-blue, #003F79);
+}
+
+.uw-tile-label {
+  font-size: 0.68rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+@media (max-width: 1100px) {
+  .uw-tiles { grid-template-columns: repeat(4, 1fr); }
+}
