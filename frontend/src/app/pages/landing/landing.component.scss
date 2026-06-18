@@ -4,9 +4,10 @@
   background: rgba(0,51,102,0.97);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 0 32px;
 
   .header-inner {
-    max-width: 1200px; margin: 0 auto; padding: 0 32px;
+    max-width: 1200px; margin: 0 auto;
     display: flex; align-items: center; gap: 32px; height: 64px;
   }
 
@@ -20,7 +21,18 @@
     a { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.875rem; &:hover { color: #fff; } }
   }
 
-  .header-actions { display: flex; gap: 10px; }
+  .header-actions {
+    display: flex; gap: 10px; align-items: center;
+    .db-btn--outline {
+      color: #fff;
+      border-color: rgba(255,255,255,0.6);
+      &:hover { background: rgba(255,255,255,0.12); }
+    }
+    ::ng-deep .lang-switcher {
+      color: rgba(255,255,255,0.85);
+      button.active { color: #fff; }
+    }
+  }
 }
 
 // Hero

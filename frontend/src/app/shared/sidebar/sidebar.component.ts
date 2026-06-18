@@ -6,6 +6,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { LoanApplication } from '../../core/models';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { BrandLogoComponent } from '../brand-logo/brand-logo.component';
 
 export interface NavSection {
   id: string;
@@ -24,7 +25,7 @@ export interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, TranslatePipe],
+  imports: [CommonModule, RouterLink, RouterLinkActive, TranslatePipe, BrandLogoComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })

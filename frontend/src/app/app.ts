@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { BrandingService } from './core/services/branding.service';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +8,10 @@ import { RouterOutlet } from '@angular/router';
   template: '<router-outlet />',
   styleUrl: './app.scss'
 })
-export class App {}
+export class App implements OnInit {
+  constructor(private branding: BrandingService) {}
+
+  ngOnInit(): void {
+    this.branding.loadAndApply();
+  }
+}

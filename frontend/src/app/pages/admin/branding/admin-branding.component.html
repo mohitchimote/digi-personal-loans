@@ -1,0 +1,57 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.branding' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.brandingSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.brandingUpdated' | translate }}</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'admin.loadingBranding' | translate }}</span>
+</div>
+
+<div class="db-card mb-16" *ngIf="!loading() && settings()">
+  <div class="card-header"><h3>{{ 'admin.logoHeader' | translate }}</h3></div>
+
+  <div class="logo-row">
+    <div class="logo-preview">
+      <img *ngIf="logoPreviewUrl()" [src]="logoPreviewUrl()" alt="" />
+      <span *ngIf="!logoPreviewUrl()" class="material-icons logo-placeholder">account_balance</span>
+    </div>
+    <div>
+      <label class="db-btn db-btn--outline db-btn--sm logo-upload-btn">
+        {{ uploading() ? ('admin.uploading' | translate) : ('admin.uploadLogo' | translate) }}
+        <input type="file" accept="image/png,image/jpeg,image/svg+xml" (change)="onLogoSelected($event)" [disabled]="uploading()" hidden />
+      </label>
+      <div class="db-hint">{{ 'admin.logoHint' | translate }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="db-card" *ngIf="!loading() && settings()">
+  <div class="card-header"><h3>{{ 'admin.colorsHeader' | translate }}</h3></div>
+
+  <div class="db-form-group">
+    <label>{{ 'admin.primaryColor' | translate }}</label>
+    <div class="color-row">
+      <input type="color" [(ngModel)]="settings()!.primaryColor" />
+      <input class="db-input" type="text" [(ngModel)]="settings()!.primaryColor" />
+    </div>
+    <div class="db-hint">{{ 'admin.primaryColorHint' | translate }}</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'admin.accentColor' | translate }}</label>
+    <div class="color-row">
+      <input type="color" [(ngModel)]="settings()!.accentColor" />
+      <input class="db-input" type="text" [(ngModel)]="settings()!.accentColor" />
+    </div>
+    <div class="db-hint">{{ 'admin.accentColorHint' | translate }}</div>
+  </div>
+
+  <div class="form-actions">
+    <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
+      {{ saving() ? ('admin.savingBranding' | translate) : ('admin.saveBranding' | translate) }}
+    </button>
+  </div>
+</div>

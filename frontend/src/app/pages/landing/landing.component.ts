@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { ChatbotComponent } from '../../shared/chatbot/chatbot.component';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher/language-switcher.component';
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink, ChatbotComponent, TranslatePipe, LanguageSwitcherComponent],
+  imports: [CommonModule, RouterLink, ChatbotComponent, TranslatePipe, LanguageSwitcherComponent, BrandLogoComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })

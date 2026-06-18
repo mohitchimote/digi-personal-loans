@@ -17,11 +17,17 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 app:
   jwt:
     secret: DiGiBaNkIsRaElDeMoSuPeRsEcReTkEy2024XxYyZzAaBbCcDdEeFf1234567890AbCd
     expiration: 86400000
+  branding:
+    storage-path: ./branding-store
 
 logging:
   level:

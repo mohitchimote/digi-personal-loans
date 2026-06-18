@@ -44,5 +44,9 @@ logs/
 backend/document-service/document-store/
 document-store/
 
+# Branding store (runtime uploaded logos)
+backend/auth-service/branding-store/
+branding-store/
+
 # MySQL data
 *.sql.bak

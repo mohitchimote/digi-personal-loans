@@ -31,6 +31,11 @@ spring:
           predicates:
             - Path=/api/auth/**
 
+        - id: branding
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/branding/**
+
         - id: application-service
           uri: http://localhost:8082
           predicates:
