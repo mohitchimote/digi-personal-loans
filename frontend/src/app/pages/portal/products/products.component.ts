@@ -93,7 +93,11 @@ export class ProductsComponent implements OnInit {
       termMonths: this.selectedTerm[product.productId] || product.minTermMonths,
       monthlyRepayment: this.monthlyRepayment(product, product.productId)
     }).subscribe({
-      next: () => {
+      next: app => {
+        if (app.status === 'APPROVED') {
+          this.router.navigate(['/portal/approval']);
+          return;
+        }
         this.appSvc.approve(ref).subscribe({
           next: () => this.router.navigate(['/portal/approval']),
           error: () => { this.selecting.set(false); this.router.navigate(['/portal/approval']); }

@@ -181,8 +181,11 @@ public class ApplicationService {
     @Transactional
     public LoanApplication approveApplication(String appRef) {
         LoanApplication app = getByRef(appRef);
-        app.setStatus("CONDITIONALLY_APPROVED");
-        return repository.save(app);
+        if (!"APPROVED".equals(app.getStatus())) {
+            app.setStatus("CONDITIONALLY_APPROVED");
+            repository.save(app);
+        }
+        return app;
     }
 
     public LoanApplication getApplication(String appRef) {

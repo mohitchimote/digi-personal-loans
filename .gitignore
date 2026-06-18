@@ -42,6 +42,7 @@ logs/
 
 # Document store (runtime generated files)
 backend/document-service/document-store/
+document-store/
 
 # MySQL data
 *.sql.bak
