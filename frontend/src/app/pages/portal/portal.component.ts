@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { filter } from 'rxjs/operators';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
 import { ChatbotComponent } from '../../shared/chatbot/chatbot.component';
 import { ApplicationService } from '../../core/services/application.service';
@@ -18,17 +19,20 @@ export class PortalComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
   sidebarCollapsed = signal(false);
 
-  constructor(private appSvc: ApplicationService, public auth: AuthService) {}
+  constructor(private appSvc: ApplicationService, public auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
+    this.refreshApplication();
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.refreshApplication());
+  }
+
+  private refreshApplication(): void {
     const userId = this.auth.userId;
-    const email  = this.auth.userEmail;
-    if (userId && email) {
-      this.appSvc.getCurrent(userId).subscribe({
-        next: app => this.application.set(app),
-        error: () => {}
-      });
-    }
+    if (!userId) return;
+    this.appSvc.getCurrent(userId).subscribe({
+      next: app => this.application.set(app),
+      error: () => {}
+    });
   }
 
   toggleSidebar(): void {

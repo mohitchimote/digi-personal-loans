@@ -20,6 +20,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
 
+app:
+  notification-service:
+    url: http://localhost:8086
+
 logging:
   level:
     com.digibank: INFO

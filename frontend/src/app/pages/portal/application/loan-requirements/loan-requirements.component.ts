@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { LOAN_PURPOSES } from '../../../../core/models';
+import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 
 @Component({
   selector: 'app-loan-requirements',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent],
   templateUrl: './loan-requirements.component.html',
   styleUrl: './loan-requirements.component.scss'
 })

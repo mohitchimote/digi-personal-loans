@@ -4,11 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 
 @Component({
   selector: 'app-credit-declarations',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent],
   templateUrl: './credit-declarations.component.html',
   styleUrl: './credit-declarations.component.scss'
 })

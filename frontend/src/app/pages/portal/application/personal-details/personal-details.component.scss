@@ -1,4 +1,7 @@
-.form-page { max-width: 800px; }
+.application-layout { display: flex; gap: 32px; align-items: flex-start; }
+.form-page { max-width: 800px; flex: 1 1 800px; }
+app-application-aside { flex: 0 0 300px; max-width: 300px; }
+@media (max-width: 1200px) { app-application-aside { display: none; } }
 .form-section-header { margin-bottom: 24px;
   .section-badge { display: inline-block; background: var(--info-light); color: var(--tcs-blue); font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 }

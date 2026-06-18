@@ -1,16 +1,9 @@
+<div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">Step 6 of 6</div>
     <h2 class="section-title">Review & Submit</h2>
     <p class="section-subtitle">Please review your application details carefully. Once satisfied, sign digitally and submit for assessment.</p>
-  </div>
-
-  <div class="db-alert db-alert--error mb-16" *ngIf="feedbackNotes().length > 0">
-    <strong>⚠ Your underwriter has sent this application back for changes:</strong>
-    <div *ngFor="let n of feedbackNotes()" style="margin-top:6px;">
-      <em>{{ n.section | titlecase }}</em> — {{ n.note }}
-      <div class="text-muted" style="font-size:0.78rem;">{{ n.createdBy }} · {{ n.createdAt | date:'dd MMM yyyy HH:mm' }}</div>
-    </div>
   </div>
 
   <div class="db-alert db-alert--info mb-16">
@@ -119,4 +112,6 @@
       <span *ngIf="!submitting()">✓ Submit Application</span>
     </button>
   </div>
+</div>
+<app-application-aside [appRef]="application()?.applicationRef || ''" tip="Once submitted, your application moves to our underwriting team for review — you'll be notified here of any decision or request."></app-application-aside>
 </div>

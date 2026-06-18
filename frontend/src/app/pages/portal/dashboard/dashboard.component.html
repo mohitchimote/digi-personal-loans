@@ -44,13 +44,16 @@
 
   <!-- Underwriter feedback banners -->
   <ng-container *ngFor="let app of applications()">
-    <div class="db-card mt-24" *ngIf="feedbackFor(app).length > 0">
-      <div class="db-alert db-alert--error">
-        <strong>⚠ {{ app.applicationRef }} was sent back by your underwriter:</strong>
-        <div *ngFor="let n of feedbackFor(app)" style="margin-top:6px;">
-          <em>{{ n.section | titlecase }}</em> — {{ n.note }}
-        </div>
-        <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--accent db-btn--sm mt-16">Resume & Address Feedback</a>
+    <div class="feedback-banner mt-24" *ngIf="feedbackFor(app).length > 0">
+      <span class="material-icons mi-lg feedback-icon">priority_high</span>
+      <div class="feedback-body">
+        <strong>{{ app.applicationRef }} needs your attention</strong>
+        <p>Your underwriter has {{ feedbackFor(app).length === 1 ? 'a request' : feedbackFor(app).length + ' requests' }}
+          on this application. Full details are in your Notifications.</p>
+      </div>
+      <div class="feedback-actions">
+        <a routerLink="/portal/notifications" class="db-btn db-btn--outline db-btn--sm">View Notifications</a>
+        <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--accent db-btn--sm">Resume & Address Feedback</a>
       </div>
     </div>
   </ng-container>

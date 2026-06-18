@@ -1,5 +1,21 @@
 .dashboard { max-width: 1100px; }
 
+.feedback-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #FFF4E5;
+  border: 1px solid #F5A200;
+  border-radius: 10px;
+  padding: 16px 20px;
+
+  .feedback-icon { color: #F5A200; }
+  .feedback-body { flex: 1; }
+  .feedback-body strong { color: var(--tcs-blue); }
+  .feedback-body p { margin: 2px 0 0; font-size: 0.85rem; color: var(--mid-grey); }
+  .feedback-actions { display: flex; gap: 8px; flex-shrink: 0; }
+}
+
 .welcome-banner {
   background: linear-gradient(135deg, var(--tcs-blue), var(--tcs-blue-light));
   border-radius: 12px;

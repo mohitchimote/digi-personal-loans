@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { MARITAL_STATUSES, NATIONALITIES } from '../../../../core/models';
+import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 
 @Component({
   selector: 'app-personal-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent],
   templateUrl: './personal-details.component.html',
   styleUrl: './personal-details.component.scss'
 })

@@ -1,10 +1,12 @@
 package com.digibank.application.service;
 
+import com.digibank.application.client.NotificationClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.repository.LoanApplicationRepository;
 import com.digibank.application.repository.UnderwritingNoteRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +23,16 @@ public class ApplicationService {
     private final LoanApplicationRepository repository;
     private final UnderwritingNoteRepository noteRepository;
     private final ObjectMapper objectMapper;
+    private final NotificationClient notificationClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW");
 
-    public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository, ObjectMapper objectMapper) {
+    public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
+                               ObjectMapper objectMapper, NotificationClient notificationClient) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.objectMapper = objectMapper;
+        this.notificationClient = notificationClient;
     }
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
@@ -116,7 +121,7 @@ public class ApplicationService {
     }
 
     public LoanApplication getCurrentApplication(Long customerId) {
-        return repository.findFirstByCustomerIdOrderByCreatedAtDesc(customerId)
+        return repository.findFirstByCustomerIdOrderByUpdatedAtDesc(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("No application found for customer: " + customerId));
     }
 
@@ -141,6 +146,14 @@ public class ApplicationService {
         app.setStatus("DECLINED");
         repository.save(app);
         addNote(appRef, "general", reason, "DECISION_DECLINED", reviewedBy);
+
+        notificationClient.send(app.getCustomerId(), "Update on Your Loan Application",
+                greeting(app) + " Thank you for applying for a personal loan for " + loanPurpose(app) + " with DigiBank. "
+                        + "After careful review, we are unable to approve your application at this time.\n\n"
+                        + "Reason: " + reason + "\n\n"
+                        + "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future "
+                        + "if your circumstances change.",
+                "APPLICATION_UPDATE", appRef);
         return app;
     }
 
@@ -151,6 +164,16 @@ public class ApplicationService {
         app.setCurrentSection("reviewSubmit");
         repository.save(app);
         addNote(appRef, "general", reason, "SEND_BACK", reviewedBy);
+
+        notificationClient.send(app.getCustomerId(), "Action Needed on Your Loan Application",
+                greeting(app) + " Thank you for applying for a personal loan for " + loanPurpose(app) + " with DigiBank. "
+                        + "Our underwriting team has reviewed your application and sent it back for a few additional details "
+                        + "before we can proceed.\n\n"
+                        + "Underwriter's note: " + reason + "\n\n"
+                        + "Next steps: Please log in to your DigiBank portal, review the feedback on your application, "
+                        + "update the relevant section(s), upload any supporting documents if requested, and resubmit "
+                        + "for review.",
+                "APPLICATION_UPDATE", appRef);
         return app;
     }
 
@@ -158,19 +181,79 @@ public class ApplicationService {
     public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy) {
         LoanApplication app = approveApplication(appRef);
         addNote(appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
+
+        notificationClient.send(app.getCustomerId(), "Your Loan Application Has Been Approved!",
+                greeting(app) + " Congratulations! Your personal loan application for " + loanPurpose(app)
+                        + " has been reviewed and approved by our underwriting team.\n\n"
+                        + "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement "
+                        + "documents in the Documents section.",
+                "APPROVAL", appRef);
         return app;
     }
 
     @Transactional
     public UnderwritingNote addNote(String appRef, String section, String note, String noteType, String createdBy) {
-        getByRef(appRef);
+        LoanApplication app = getByRef(appRef);
         UnderwritingNote entity = new UnderwritingNote();
         entity.setApplicationRef(appRef);
         entity.setSection(section);
         entity.setNote(note);
         entity.setNoteType(noteType);
         entity.setCreatedBy(createdBy);
-        return noteRepository.save(entity);
+        UnderwritingNote saved = noteRepository.save(entity);
+
+        if ("CLARIFICATION_REQUEST".equals(noteType) || "DOCUMENT_REQUEST".equals(noteType)) {
+            boolean isDocRequest = "DOCUMENT_REQUEST".equals(noteType);
+            notificationClient.send(app.getCustomerId(),
+                    isDocRequest ? "Document Required for Your Loan Application" : "Clarification Needed on Your Loan Application",
+                    greeting(app) + " Thank you for applying for a personal loan for " + loanPurpose(app) + " with DigiBank. "
+                            + "Our underwriting team is reviewing your " + sectionLabel(section) + " details and needs "
+                            + (isDocRequest ? "an additional document" : "some clarification") + " before we can proceed.\n\n"
+                            + "Underwriter's note: " + note + "\n\n"
+                            + "Next steps: " + (isDocRequest
+                                ? "Please log in to your DigiBank portal and upload the requested document from the Documents section."
+                                : "Please log in to your DigiBank portal, review your application, and update the relevant section.")
+                            + " Once done, your application will be back in the underwriting queue.",
+                    "APPLICATION_UPDATE", appRef);
+        }
+
+        return saved;
+    }
+
+    private String greeting(LoanApplication app) {
+        String firstName = "Customer";
+        try {
+            if (app.getPersonalDetailsJson() != null) {
+                JsonNode node = objectMapper.readTree(app.getPersonalDetailsJson());
+                if (node.has("firstName") && !node.get("firstName").asText().isBlank()) {
+                    firstName = node.get("firstName").asText();
+                }
+            }
+        } catch (Exception ignored) { }
+        return "Dear " + firstName + ",";
+    }
+
+    private String loanPurpose(LoanApplication app) {
+        try {
+            if (app.getLoanRequirementsJson() != null) {
+                JsonNode node = objectMapper.readTree(app.getLoanRequirementsJson());
+                if (node.has("loanPurpose") && !node.get("loanPurpose").asText().isBlank()) {
+                    return node.get("loanPurpose").asText();
+                }
+            }
+        } catch (Exception ignored) { }
+        return "your requested purpose";
+    }
+
+    private String sectionLabel(String section) {
+        return switch (section) {
+            case "loanRequirements"   -> "Loan Requirements";
+            case "personalDetails"    -> "Personal Details";
+            case "incomeEmployment"   -> "Income & Employment";
+            case "outgoings"          -> "Outgoings & Expenditure";
+            case "creditDeclarations" -> "Credit Declarations";
+            default -> "application";
+        };
     }
 
     public List<UnderwritingNote> getNotes(String appRef) {

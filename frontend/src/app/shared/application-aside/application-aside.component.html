@@ -1,0 +1,22 @@
+<aside class="app-aside">
+  <div class="db-card" *ngIf="notes().length > 0">
+    <div class="card-header"><h3>⚠ Underwriter Feedback</h3></div>
+    <div class="aside-note" *ngFor="let n of notes()">
+      <span class="aside-note-type">{{ noteTypeLabel(n.noteType) }}</span>
+      <p>{{ n.note }}</p>
+      <div class="aside-note-meta">{{ n.createdBy }} · {{ n.createdAt | date:'dd MMM HH:mm' }}</div>
+    </div>
+    <a routerLink="/portal/notifications" class="db-btn db-btn--outline db-btn--sm mt-16">View in Notifications</a>
+  </div>
+
+  <div class="db-card mt-16" *ngIf="notes().length === 0">
+    <div class="card-header"><h3>💡 Tip</h3></div>
+    <p class="aside-tip">{{ tip }}</p>
+  </div>
+
+  <div class="db-card mt-16">
+    <div class="card-header"><h3>📞 Need Help?</h3></div>
+    <p class="aside-tip">Speak to a DigiBank advisor or browse our FAQs for guidance on completing your application.</p>
+    <a routerLink="/portal/faq" class="db-btn db-btn--ghost db-btn--sm">Visit FAQs</a>
+  </div>
+</aside>
