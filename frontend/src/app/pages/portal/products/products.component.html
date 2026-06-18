@@ -21,7 +21,7 @@
   <!-- Product cards -->
   <div class="products-grid" *ngIf="!loading() && products().length > 0">
     <div class="product-card-wrap" *ngFor="let p of products()">
-      <div class="recommended-ribbon" *ngIf="p.recommended">⭐ {{ 'products.recommended' | translate }}</div>
+      <div class="recommended-ribbon" *ngIf="p.recommended"><span class="material-icons mi-sm">star</span> {{ 'products.recommended' | translate }}</div>
       <div class="db-card product-card" [class.product-card--recommended]="p.recommended">
 
         <div class="product-header">

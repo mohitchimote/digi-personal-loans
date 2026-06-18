@@ -110,11 +110,11 @@ export class DocumentsComponent implements OnInit {
 
   docIcon(type: string): string {
     switch (type) {
-      case 'APPROVAL_LETTER':       return '📄';
-      case 'FINAL_APPROVAL_LETTER': return '📄';
-      case 'LOAN_AGREEMENT':        return '📋';
-      case 'REPAYMENT_SCHEDULE':    return '📊';
-      default: return '📎';
+      case 'APPROVAL_LETTER':       return 'description';
+      case 'FINAL_APPROVAL_LETTER': return 'description';
+      case 'LOAN_AGREEMENT':        return 'assignment';
+      case 'REPAYMENT_SCHEDULE':    return 'fact_check';
+      default: return 'attach_file';
     }
   }
 

@@ -24,10 +24,10 @@ export class ConnectBankComponent implements OnInit {
   selectedBank: BankOption | null = null;
 
   banks: BankOption[] = [
-    { id: 'hapoalim', name: 'Bank Hapoalim', icon: '🏦' },
-    { id: 'leumi',    name: 'Bank Leumi',    icon: '🏛️' },
-    { id: 'discount',  name: 'Discount Bank', icon: '🏦' },
-    { id: 'mizrahi',  name: 'Mizrahi-Tefahot', icon: '🏛️' },
+    { id: 'hapoalim', name: 'Bank Hapoalim', icon: 'account_balance' },
+    { id: 'leumi',    name: 'Bank Leumi',    icon: 'account_balance' },
+    { id: 'discount',  name: 'Discount Bank', icon: 'account_balance' },
+    { id: 'mizrahi',  name: 'Mizrahi-Tefahot', icon: 'account_balance' },
   ];
 
   connectionSummary: { accountMasked: string; avgBalance: number; transactions: number } | null = null;

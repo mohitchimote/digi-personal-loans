@@ -11,7 +11,7 @@
   <div class="categories" *ngIf="!loading()">
     <div class="category-section" *ngFor="let cat of categories()">
       <div class="category-header">
-        <span class="cat-icon">{{ cat.icon }}</span>
+        <span class="cat-icon material-icons">{{ cat.icon }}</span>
         <h3>{{ cat.title }}</h3>
       </div>
 
@@ -41,15 +41,15 @@
   <!-- Contact section -->
   <div class="contact-cta db-card mt-32">
     <div class="cta-content">
-      <div class="cta-icon">💬</div>
+      <div class="cta-icon material-icons">chat_bubble</div>
       <div>
         <h3>{{ 'faq.stillQuestions' | translate }}</h3>
         <p>{{ 'faq.advisorHours' | translate }}</p>
       </div>
     </div>
     <div class="cta-actions">
-      <a href="tel:+97231234567" class="db-btn db-btn--primary">📞 {{ 'faq.callUs' | translate }}</a>
-      <a href="mailto:loans@digibank.co.il" class="db-btn db-btn--outline">✉ {{ 'faq.emailUs' | translate }}</a>
+      <a href="tel:+97231234567" class="db-btn db-btn--primary"><span class="material-icons mi-sm">call</span> {{ 'faq.callUs' | translate }}</a>
+      <a href="mailto:loans@digibank.co.il" class="db-btn db-btn--outline"><span class="material-icons mi-sm">mail</span> {{ 'faq.emailUs' | translate }}</a>
     </div>
   </div>
 </div>

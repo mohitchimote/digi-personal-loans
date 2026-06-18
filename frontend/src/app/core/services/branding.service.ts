@@ -25,6 +25,14 @@ function shade(hex: string, percent: number): string {
   return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`;
 }
 
+function toRgbChannels(hex: string): string {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BrandingService {
   constructor(private http: HttpClient) {}
@@ -55,8 +63,10 @@ export class BrandingService {
     root.setProperty('--tcs-blue', settings.primaryColor);
     root.setProperty('--tcs-blue-dark', shade(settings.primaryColor, -0.25));
     root.setProperty('--tcs-blue-light', shade(settings.primaryColor, 0.25));
+    root.setProperty('--tcs-blue-rgb', toRgbChannels(settings.primaryColor));
     root.setProperty('--tcs-yellow', settings.accentColor);
     root.setProperty('--tcs-yellow-dark', shade(settings.accentColor, -0.18));
+    root.setProperty('--tcs-yellow-rgb', toRgbChannels(settings.accentColor));
   }
 
   loadAndApply(): void {

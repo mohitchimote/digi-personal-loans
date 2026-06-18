@@ -1,7 +1,7 @@
 <div class="auth-shell">
   <div class="auth-brand">
     <a routerLink="/" class="brand-link">
-      <span class="brand-icon">🏦</span>
+      <app-brand-logo iconClass="brand-icon" />
       <div>
         <div class="brand-name">{{ 'common.brandName' | translate }}</div>
         <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
@@ -14,7 +14,7 @@
     <h2>{{ 'register.createAccount' | translate }}</h2>
     <p class="auth-subtitle">{{ 'register.subtitle' | translate }}</p>
 
-    <div class="db-alert db-alert--error" *ngIf="error()">⚠ {{ error() }}</div>
+    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="db-form-group">
@@ -43,7 +43,7 @@
           <div class="input-with-action">
             <input class="db-input" [type]="showPw() ? 'text' : 'password'"
                    formControlName="password" [placeholder]="'register.passwordPlaceholder' | translate" />
-            <button type="button" class="toggle-pw" (click)="showPw.set(!showPw())">{{ showPw() ? '🙈' : '👁' }}</button>
+            <button type="button" class="toggle-pw" (click)="showPw.set(!showPw())"><span class="material-icons mi-sm">{{ showPw() ? 'visibility_off' : 'visibility' }}</span></button>
           </div>
           <div class="db-error-msg" *ngIf="f('password')?.invalid && f('password')?.touched">{{ 'register.passwordError' | translate }}</div>
         </div>

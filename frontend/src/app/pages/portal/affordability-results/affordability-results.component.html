@@ -1,7 +1,7 @@
 <div class="results-page">
   <!-- Loading / running state (also shown briefly while we auto-redirect on pass) -->
   <div class="loading-state" *ngIf="loading() || (result() && result()!.passed)">
-    <div class="loading-spinner">⚙️</div>
+    <div class="loading-spinner material-icons">autorenew</div>
     <h2>{{ 'afford.runningTitle' | translate }}</h2>
     <p>{{ 'afford.runningSub' | translate }}</p>
     <div class="loading-steps">
@@ -14,7 +14,7 @@
   <!-- Failure: generic message only, no internal scoring details exposed to customers -->
   <div *ngIf="!loading() && result() && !result()!.passed">
     <div class="result-header result-header--fail">
-      <div class="result-icon">✗</div>
+      <div class="result-icon material-icons">cancel</div>
       <div>
         <h2>{{ 'afford.failTitle' | translate }}</h2>
         <p>{{ 'afford.failBody' | translate }}</p>
@@ -23,14 +23,14 @@
 
     <div class="db-card db-card--raised mb-16">
       <div class="db-alert db-alert--info">
-        💬 {{ 'afford.contactAdvisorNote' | translate }}
+        <span class="material-icons mi-sm">chat_bubble</span> {{ 'afford.contactAdvisorNote' | translate }}
       </div>
     </div>
 
     <div class="result-actions">
       <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <a href="tel:+97231234567" class="db-btn db-btn--primary">
-        📞 {{ 'afford.speakAdvisor' | translate }}
+        <span class="material-icons mi-sm">call</span> {{ 'afford.speakAdvisor' | translate }}
       </a>
     </div>
   </div>

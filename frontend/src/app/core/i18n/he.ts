@@ -688,8 +688,8 @@ export const HE: Record<string, string> = {
   'login.signIn': 'התחברות',
   'login.noAccount': 'אין לך חשבון?',
   'login.applyFree': 'הגש בקשה עכשיו — בחינם',
-  'login.trustEncrypted': '🔒 הצפנה 256-bit',
-  'login.trustRegulated': '🏦 מפוקח על ידי בנק ישראל',
+  'login.trustEncrypted': 'הצפנה 256-bit',
+  'login.trustRegulated': 'מפוקח על ידי בנק ישראל',
   'login.trustGdpr': '✓ תואם GDPR',
 
   // Register

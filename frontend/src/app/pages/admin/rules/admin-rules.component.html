@@ -3,7 +3,7 @@
   <p class="page-sub">{{ 'admin.rulesSubtitle' | translate }}</p>
 </div>
 
-<div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 <div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.rulesUpdated' | translate }}</div>
 
 <div class="loading-row" *ngIf="loading()">

@@ -48,7 +48,7 @@
       <div class="card-header"><h3>{{ 'income.monthlyIncomeHeader' | translate }}</h3></div>
 
       <div class="db-alert db-alert--info">
-        💡 {{ 'income.grossNetHint' | translate }}
+        <span class="material-icons mi-sm">lightbulb</span> {{ 'income.grossNetHint' | translate }}
       </div>
 
       <div class="form-row">
@@ -123,7 +123,7 @@
         </div>
       </div>
 
-      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">⚠ {{ applicant2Error() }}</div>
+      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()"><span class="material-icons mi-sm">warning</span> {{ applicant2Error() }}</div>
     </div>
   </form>
 

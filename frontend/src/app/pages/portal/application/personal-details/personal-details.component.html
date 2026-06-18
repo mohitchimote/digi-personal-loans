@@ -137,7 +137,7 @@
         <input class="db-input" type="text" formControlName="relationshipToApplicant1" [placeholder]="'personal.relationshipPlaceholder' | translate" />
       </div>
 
-      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">⚠ {{ applicant2Error() }}</div>
+      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()"><span class="material-icons mi-sm">warning</span> {{ applicant2Error() }}</div>
     </div>
   </form>
 

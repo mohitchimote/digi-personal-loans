@@ -11,7 +11,7 @@
 
     <div class="drop-zone" [class.drop-zone--active]="dragOver()"
          (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
-      <div class="drop-icon">🪪</div>
+      <div class="drop-icon material-icons">badge</div>
       <div class="drop-text">{{ 'docs.dropText' | translate }}</div>
       <label class="db-btn db-btn--outline">
         {{ 'docs.browseFiles' | translate }}
@@ -29,7 +29,7 @@
     <div class="uploaded-list" *ngIf="uploadedFiles().length > 0">
       <div class="upload-header">{{ 'docs.uploadedFiles' | translate:{ count: uploadedFiles().length } }}</div>
       <div class="doc-row" *ngFor="let f of uploadedFiles()">
-        <div class="doc-icon">🪪</div>
+        <div class="doc-icon material-icons">badge</div>
         <div class="doc-info"><div class="doc-name">{{ f }}</div></div>
       </div>
     </div>

@@ -6,7 +6,7 @@
   </div>
 
   <div class="db-alert db-alert--info mb-16">
-    📋 {{ 'dashboard.status' | translate }}: <strong>{{ statusLabel(application()!.status) }}</strong>
+    <span class="material-icons mi-sm">assignment</span> {{ 'dashboard.status' | translate }}: <strong>{{ statusLabel(application()!.status) }}</strong>
     <span *ngIf="application()!.submittedAt"> · {{ 'viewApp.submitted' | translate }} {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</span>
   </div>
 
@@ -101,7 +101,7 @@
     </div>
   </div>
 
-  <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+  <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
   <div class="form-actions mt-24">
     <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'viewApp.backToDashboard' | translate }}</a>

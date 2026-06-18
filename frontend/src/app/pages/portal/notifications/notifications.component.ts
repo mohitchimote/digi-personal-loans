@@ -56,12 +56,12 @@ export class NotificationsComponent implements OnInit {
 
   typeIcon(type: string): string {
     switch (type) {
-      case 'WELCOME':            return '👋';
-      case 'APPLICATION_UPDATE': return '📋';
+      case 'WELCOME':            return 'celebration';
+      case 'APPLICATION_UPDATE': return 'assignment';
       case 'APPROVAL':           return '✅';
-      case 'DOCUMENT_READY':     return '📄';
-      case 'REMINDER':           return '🔔';
-      default: return '💬';
+      case 'DOCUMENT_READY':     return 'description';
+      case 'REMINDER':           return 'notifications';
+      default: return 'chat_bubble';
     }
   }
 }

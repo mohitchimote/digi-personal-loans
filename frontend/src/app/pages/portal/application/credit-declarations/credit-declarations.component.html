@@ -7,7 +7,7 @@
   </div>
 
   <div class="db-alert db-alert--info mb-24">
-    🔒 {{ 'credit.confidentialityNote' | translate }}
+    <span class="material-icons mi-sm">lock</span> {{ 'credit.confidentialityNote' | translate }}
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
@@ -140,7 +140,7 @@
         <input class="db-input" type="number" formControlName="creditScore" min="300" max="850" placeholder="300–850" />
       </div>
 
-      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">⚠ {{ applicant2Error() }}</div>
+      <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()"><span class="material-icons mi-sm">warning</span> {{ applicant2Error() }}</div>
     </div>
   </form>
 

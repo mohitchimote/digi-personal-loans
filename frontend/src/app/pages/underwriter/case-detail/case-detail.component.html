@@ -33,7 +33,7 @@
   </div>
 
   <div class="db-alert db-alert--success mb-16" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
-  <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+  <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
   <div class="uw-case-layout">
     <!-- Left: section navigation -->
@@ -87,7 +87,7 @@
               <div>{{ docLabel(d.documentType) }}</div>
               <div class="uw-note-meta">{{ 'docs.generated' | translate }} {{ d.generatedAt | date:'dd MMM yyyy HH:mm' }}</div>
             </div>
-            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewDoc(d)">👁 {{ 'docs.view' | translate }}</button>
+            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewDoc(d)"><span class="material-icons mi-sm">visibility</span> {{ 'docs.view' | translate }}</button>
             <button class="db-btn db-btn--outline db-btn--sm" (click)="downloadDoc(d)">{{ 'common.download' | translate }}</button>
           </div>
           <div class="uw-doc-row" *ngFor="let d of uploadedDocs()">
@@ -96,7 +96,7 @@
               <div>{{ d.originalFilename }}</div>
               <div class="uw-note-meta">{{ uploadedTypeLabel(d.documentType) }} · {{ 'uw.uploaded' | translate }} {{ d.uploadedAt | date:'dd MMM yyyy HH:mm' }}</div>
             </div>
-            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewUploaded(d)">👁 {{ 'docs.view' | translate }}</button>
+            <button class="db-btn db-btn--outline db-btn--sm" (click)="viewUploaded(d)"><span class="material-icons mi-sm">visibility</span> {{ 'docs.view' | translate }}</button>
           </div>
         </div>
 
@@ -114,7 +114,7 @@
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'steps.personalDetails' | translate }}</h3>
-            <button *ngIf="!isEditing('personalDetails')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('personalDetails', personal)">✎ {{ 'common.edit' | translate }}</button>
+            <button *ngIf="!isEditing('personalDetails')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('personalDetails', personal)"><span class="material-icons mi-sm">edit</span> {{ 'common.edit' | translate }}</button>
           </div>
 
           <ng-container *ngIf="!isEditing('personalDetails')">
@@ -210,7 +210,7 @@
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'steps.incomeEmployment' | translate }}</h3>
-            <button *ngIf="!isEditing('incomeEmployment')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('incomeEmployment', income)">✎ {{ 'common.edit' | translate }}</button>
+            <button *ngIf="!isEditing('incomeEmployment')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('incomeEmployment', income)"><span class="material-icons mi-sm">edit</span> {{ 'common.edit' | translate }}</button>
           </div>
 
           <ng-container *ngIf="!isEditing('incomeEmployment')">
@@ -253,7 +253,7 @@
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'outgoings.title' | translate }}</h3>
-            <button *ngIf="!isEditing('outgoings')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('outgoings', outgoings)">✎ {{ 'common.edit' | translate }}</button>
+            <button *ngIf="!isEditing('outgoings')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('outgoings', outgoings)"><span class="material-icons mi-sm">edit</span> {{ 'common.edit' | translate }}</button>
           </div>
 
           <div class="review-grid" *ngIf="!isEditing('outgoings')">
@@ -323,7 +323,7 @@
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'steps.creditDeclarations' | translate }}</h3>
-            <button *ngIf="!isEditing('creditDeclarations')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('creditDeclarations', credit)">✎ {{ 'common.edit' | translate }}</button>
+            <button *ngIf="!isEditing('creditDeclarations')" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit('creditDeclarations', credit)"><span class="material-icons mi-sm">edit</span> {{ 'common.edit' | translate }}</button>
           </div>
 
           <ng-container *ngIf="!isEditing('creditDeclarations')">
@@ -388,9 +388,9 @@
           </div>
           <div class="uw-decision-actions">
             <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved">✓ {{ 'uw.approve' | translate }}</button>
-            <button class="db-btn db-btn--outline" (click)="referToSenior()" [disabled]="submittingAction()">↑ {{ 'uw.referToSenior' | translate }}</button>
-            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()">↩ {{ 'uw.sendBack' | translate }}</button>
-            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;">✕ {{ 'uw.decline' | translate }}</button>
+            <button class="db-btn db-btn--outline" (click)="referToSenior()" [disabled]="submittingAction()"><span class="material-icons mi-sm">arrow_upward</span> {{ 'uw.referToSenior' | translate }}</button>
+            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
+            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
           </div>
         </div>
 
@@ -419,10 +419,10 @@
           </div>
           <div class="uw-decision-actions">
             <button class="db-btn db-btn--accent" (click)="authoriseFundRelease()" [disabled]="submittingAction() || disbursementStatus === 'FUNDS_RELEASED'">
-              💰 {{ 'uw.authoriseFundRelease' | translate }}
+              <span class="material-icons mi-sm">payments</span> {{ 'uw.authoriseFundRelease' | translate }}
             </button>
             <button class="db-btn db-btn--outline" (click)="submitForSecondCheck()" [disabled]="submittingAction() || disbursementStatus === 'FUNDS_RELEASED'">
-              🔁 {{ 'uw.submitSecondCheck' | translate }}
+              <span class="material-icons mi-sm">autorenew</span> {{ 'uw.submitSecondCheck' | translate }}
             </button>
           </div>
         </div>

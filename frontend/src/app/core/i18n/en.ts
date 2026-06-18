@@ -688,8 +688,8 @@ export const EN: Record<string, string> = {
   'login.signIn': 'Sign In',
   'login.noAccount': "Don't have an account?",
   'login.applyFree': "Apply now — it's free",
-  'login.trustEncrypted': '🔒 256-bit Encrypted',
-  'login.trustRegulated': '🏦 Bank of Israel Regulated',
+  'login.trustEncrypted': '256-bit Encrypted',
+  'login.trustRegulated': 'Bank of Israel Regulated',
   'login.trustGdpr': '✓ GDPR Compliant',
 
   // Register

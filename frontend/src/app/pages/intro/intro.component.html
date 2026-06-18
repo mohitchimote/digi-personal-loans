@@ -2,7 +2,7 @@
   <!-- Header -->
   <header class="intro-header">
     <a routerLink="/" class="brand-link">
-      <span>🏦</span>
+      <app-brand-logo iconClass="mi-lg" />
       <div>
         <div class="brand-name">{{ 'common.brandName' | translate }}</div>
         <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
@@ -17,7 +17,7 @@
   <main class="intro-main">
     <!-- Hero -->
     <section class="intro-hero">
-      <div class="intro-badge">📋 {{ 'intro.badge' | translate }}</div>
+      <div class="intro-badge"><span class="material-icons mi-sm">assignment</span> {{ 'intro.badge' | translate }}</div>
       <h1>{{ 'intro.heroTitle' | translate }}</h1>
       <p>{{ 'intro.heroSub1' | translate }} <strong>{{ 'intro.heroSubBold' | translate }}</strong> {{ 'intro.heroSub2' | translate }}</p>
     </section>
@@ -29,7 +29,7 @@
         <div class="intro-step" *ngFor="let s of steps">
           <div class="step-header">
             <span class="step-num">{{ s.num }}</span>
-            <span class="step-icon">{{ s.icon }}</span>
+            <span class="step-icon material-icons">{{ s.icon }}</span>
             <h3>{{ s.titleKey | translate }}</h3>
           </div>
           <p>{{ s.descKey | translate }}</p>
@@ -43,7 +43,7 @@
       <p class="intro-section-sub">{{ 'intro.docsReadySub' | translate }}</p>
       <div class="docs-grid">
         <div class="doc-card" *ngFor="let d of docs">
-          <span class="doc-icon">{{ d.icon }}</span>
+          <span class="doc-icon material-icons">{{ d.icon }}</span>
           <strong>{{ d.titleKey | translate }}</strong>
           <span>{{ d.descKey | translate }}</span>
         </div>
@@ -55,22 +55,22 @@
       <h2>{{ 'intro.goodToKnow' | translate }}</h2>
       <div class="info-grid">
         <div class="info-card">
-          <div class="info-icon">💾</div>
+          <div class="info-icon"><span class="material-icons mi-sm">save</span></div>
           <h4>{{ 'intro.info1Title' | translate }}</h4>
           <p>{{ 'intro.info1Body' | translate }}</p>
         </div>
         <div class="info-card">
-          <div class="info-icon">⚡</div>
+          <div class="info-icon"><span class="material-icons mi-sm">bolt</span></div>
           <h4>{{ 'intro.info2Title' | translate }}</h4>
           <p>{{ 'intro.info2Body' | translate }}</p>
         </div>
         <div class="info-card">
-          <div class="info-icon">🔒</div>
+          <div class="info-icon"><span class="material-icons mi-sm">lock</span></div>
           <h4>{{ 'intro.info3Title' | translate }}</h4>
           <p>{{ 'intro.info3Body' | translate }}</p>
         </div>
         <div class="info-card">
-          <div class="info-icon">👨‍💼</div>
+          <div class="info-icon"><span class="material-icons mi-sm">support_agent</span></div>
           <h4>{{ 'intro.info4Title' | translate }}</h4>
           <p>{{ 'intro.info4Body' | translate }}</p>
         </div>

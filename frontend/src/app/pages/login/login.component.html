@@ -1,7 +1,7 @@
 <div class="auth-shell">
   <div class="auth-brand">
     <a routerLink="/" class="brand-link">
-      <span class="brand-icon">🏦</span>
+      <app-brand-logo iconClass="brand-icon" />
       <div>
         <div class="brand-name">{{ 'common.brandName' | translate }}</div>
         <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
@@ -14,7 +14,7 @@
     <h2>{{ 'login.welcomeBack' | translate }}</h2>
     <p class="auth-subtitle">{{ 'login.subtitle' | translate }}</p>
 
-    <div class="db-alert db-alert--error" *ngIf="error()">⚠ {{ error() }}</div>
+    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="db-form-group">
@@ -31,7 +31,7 @@
           <input class="db-input" [type]="showPassword() ? 'text' : 'password'"
                  formControlName="password" [placeholder]="'login.passwordPlaceholder' | translate" autocomplete="current-password" />
           <button type="button" class="toggle-pw" (click)="showPassword.set(!showPassword())">
-            {{ showPassword() ? '🙈' : '👁' }}
+            <span class="material-icons mi-sm">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
           </button>
         </div>
         <div class="db-error-msg" *ngIf="f('password')?.invalid && f('password')?.touched">
@@ -59,8 +59,8 @@
   </div>
 
   <div class="auth-trust">
-    <span>{{ 'login.trustEncrypted' | translate }}</span>
-    <span>{{ 'login.trustRegulated' | translate }}</span>
+    <span><span class="material-icons mi-sm">lock</span> {{ 'login.trustEncrypted' | translate }}</span>
+    <span><span class="material-icons mi-sm">account_balance</span> {{ 'login.trustRegulated' | translate }}</span>
     <span>{{ 'login.trustGdpr' | translate }}</span>
   </div>
 </div>

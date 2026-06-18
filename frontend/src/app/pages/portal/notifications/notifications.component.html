@@ -13,7 +13,7 @@
   </div>
 
   <div class="empty-state" *ngIf="!loading() && items().length === 0">
-    <div class="empty-icon">🔔</div>
+    <div class="empty-icon material-icons">notifications</div>
     <p>{{ 'notif.empty' | translate }}</p>
   </div>
 
@@ -21,7 +21,7 @@
     <div class="notif-item" *ngFor="let n of items()"
          [class.notif-item--unread]="!n.read"
          (click)="markRead(n)">
-      <div class="notif-icon">{{ typeIcon(n.type) }}</div>
+      <div class="notif-icon material-icons">{{ typeIcon(n.type) }}</div>
       <div class="notif-body">
         <div class="notif-title">{{ n.title }}</div>
         <div class="notif-message">{{ n.message }}</div>

@@ -1,6 +1,6 @@
 <aside class="app-aside">
   <div class="db-card" *ngIf="notes().length > 0">
-    <div class="card-header"><h3>⚠ {{ 'aside.feedbackTitle' | translate }}</h3></div>
+    <div class="card-header"><h3><span class="material-icons mi-sm">warning</span> {{ 'aside.feedbackTitle' | translate }}</h3></div>
     <div class="aside-note" *ngFor="let n of notes()">
       <span class="aside-note-type">{{ noteTypeLabel(n.noteType) }}</span>
       <p>{{ n.note }}</p>
@@ -10,12 +10,12 @@
   </div>
 
   <div class="db-card mt-16" *ngIf="notes().length === 0">
-    <div class="card-header"><h3>💡 {{ 'aside.tipTitle' | translate }}</h3></div>
+    <div class="card-header"><h3><span class="material-icons mi-sm">lightbulb</span> {{ 'aside.tipTitle' | translate }}</h3></div>
     <p class="aside-tip">{{ defaultTip }}</p>
   </div>
 
   <div class="db-card mt-16">
-    <div class="card-header"><h3>📞 {{ 'aside.needHelpTitle' | translate }}</h3></div>
+    <div class="card-header"><h3><span class="material-icons mi-sm">call</span> {{ 'aside.needHelpTitle' | translate }}</h3></div>
     <p class="aside-tip">{{ 'aside.needHelpBody' | translate }}</p>
     <a routerLink="/portal/faq" class="db-btn db-btn--ghost db-btn--sm">{{ 'aside.visitFaqs' | translate }}</a>
   </div>

@@ -97,7 +97,7 @@
         <div class="doc-action" *ngIf="!isFinal() && !generated()">
           <button class="db-btn db-btn--accent db-btn--lg" (click)="generateLetter()" [disabled]="generating()">
             <span *ngIf="generating()">{{ 'approval.generatingPdf' | translate }}</span>
-            <span *ngIf="!generating()">📄 {{ 'approval.generateLetter' | translate }}</span>
+            <span *ngIf="!generating()"><span class="material-icons mi-sm">description</span> {{ 'approval.generateLetter' | translate }}</span>
           </button>
         </div>
 
@@ -106,7 +106,7 @@
             ✅ {{ 'approval.letterReady' | translate }}
           </div>
           <div class="doc-item">
-            <div class="doc-icon">📄</div>
+            <div class="doc-icon material-icons">description</div>
             <div class="doc-info">
               <div class="doc-name">{{ 'docs.conditionalLetter' | translate }}</div>
               <div class="doc-meta">{{ 'docs.generated' | translate }} {{ today | date:'dd MMM yyyy' }} · PDF</div>
@@ -120,7 +120,7 @@
             ✅ {{ 'approval.finalLetterReady' | translate }}
           </div>
           <div class="doc-item">
-            <div class="doc-icon">📄</div>
+            <div class="doc-icon material-icons">description</div>
             <div class="doc-info">
               <div class="doc-name">{{ 'docs.finalLetter' | translate }}</div>
               <div class="doc-meta">{{ 'docs.generated' | translate }} {{ finalLetter()!.generatedAt | date:'dd MMM yyyy' }} · PDF</div>

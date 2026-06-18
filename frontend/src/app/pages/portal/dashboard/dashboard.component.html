@@ -2,7 +2,7 @@
   <!-- Welcome banner -->
   <div class="welcome-banner">
     <div class="welcome-text">
-      <h2>{{ 'dashboard.welcomeBack' | translate:{ name: auth.userFullName?.split(' ')?.[0] || '' } }} 👋</h2>
+      <h2>{{ 'dashboard.welcomeBack' | translate:{ name: auth.userFullName?.split(' ')?.[0] || '' } }}</h2>
       <p>{{ 'dashboard.overview' | translate }}</p>
     </div>
     <button class="db-btn db-btn--accent" (click)="startOrResumeApplication()" [disabled]="startingApplication()">

@@ -7,7 +7,7 @@
   </div>
 
   <div class="db-alert db-alert--info mb-16">
-    📋 {{ 'reviewSubmit.autoAssessNote' | translate }}
+    <span class="material-icons mi-sm">assignment</span> {{ 'reviewSubmit.autoAssessNote' | translate }}
   </div>
 
   <!-- Summary sections -->
@@ -149,7 +149,7 @@
       <div class="db-hint">{{ 'reviewSubmit.signatureHint' | translate }}</div>
     </div>
 
-    <div class="db-alert db-alert--error" *ngIf="error()">⚠ {{ error() }}</div>
+    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
   </div>
 
   <div class="form-actions mt-24">

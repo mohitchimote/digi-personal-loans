@@ -8,7 +8,7 @@
 
   <div class="db-card">
     <div class="db-alert db-alert--info mb-16">
-      🔒 {{ 'connectBank.securityNote' | translate }}
+      <span class="material-icons mi-sm">lock</span> {{ 'connectBank.securityNote' | translate }}
     </div>
 
     <!-- Bank selection -->
@@ -16,7 +16,7 @@
       <h3 style="margin-bottom:12px;">{{ 'connectBank.chooseBank' | translate }}</h3>
       <div class="bank-grid">
         <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
-          <span class="bank-icon">{{ b.icon }}</span>
+          <span class="bank-icon material-icons">{{ b.icon }}</span>
           <span>{{ b.name }}</span>
         </button>
       </div>
