@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { underwriterGuard } from './core/guards/underwriter.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
@@ -23,8 +25,30 @@ export const routes: Routes = [
       { path: 'products',                  loadComponent: () => import('./pages/portal/products/products.component').then(m => m.ProductsComponent) },
       { path: 'approval',                  loadComponent: () => import('./pages/portal/approval/approval.component').then(m => m.ApprovalComponent) },
       { path: 'documents',                 loadComponent: () => import('./pages/portal/documents/documents.component').then(m => m.DocumentsComponent) },
+      { path: 'view-application/:appRef',  loadComponent: () => import('./pages/portal/view-application/view-application.component').then(m => m.ViewApplicationComponent) },
       { path: 'notifications',             loadComponent: () => import('./pages/portal/notifications/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'faq',                       loadComponent: () => import('./pages/portal/faq/faq.component').then(m => m.FaqComponent) },
+    ]
+  },
+  {
+    path: 'underwriter',
+    loadComponent: () => import('./pages/underwriter/shell/uw-shell.component').then(m => m.UwShellComponent),
+    canActivate: [underwriterGuard],
+    children: [
+      { path: '', redirectTo: 'pipeline', pathMatch: 'full' },
+      { path: 'pipeline',      loadComponent: () => import('./pages/underwriter/pipeline/pipeline.component').then(m => m.PipelineComponent) },
+      { path: 'case/:appRef',  loadComponent: () => import('./pages/underwriter/case-detail/case-detail.component').then(m => m.CaseDetailComponent) },
+    ]
+  },
+  {
+    path: 'admin',
+    loadComponent: () => import('./pages/admin/shell/admin-shell.component').then(m => m.AdminShellComponent),
+    canActivate: [adminGuard],
+    children: [
+      { path: '', redirectTo: 'users', pathMatch: 'full' },
+      { path: 'users', loadComponent: () => import('./pages/admin/users/admin-users.component').then(m => m.AdminUsersComponent) },
+      { path: 'faqs',  loadComponent: () => import('./pages/admin/faqs/admin-faqs.component').then(m => m.AdminFaqsComponent) },
+      { path: 'rules', loadComponent: () => import('./pages/admin/rules/admin-rules.component').then(m => m.AdminRulesComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

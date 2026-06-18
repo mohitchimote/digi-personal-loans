@@ -4,8 +4,12 @@
     <p class="page-sub">Find answers to common questions about DigiBank personal loans. Can't find what you're looking for? Speak to your advisor.</p>
   </div>
 
-  <div class="categories">
-    <div class="category-section" *ngFor="let cat of categories">
+  <div class="loading-row" *ngIf="loading()">
+    <div class="spinner"></div><span>Loading FAQs…</span>
+  </div>
+
+  <div class="categories" *ngIf="!loading()">
+    <div class="category-section" *ngFor="let cat of categories()">
       <div class="category-header">
         <span class="cat-icon">{{ cat.icon }}</span>
         <h3>{{ cat.title }}</h3>

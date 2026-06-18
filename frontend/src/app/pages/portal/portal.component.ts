@@ -24,7 +24,7 @@ export class PortalComponent implements OnInit {
     const userId = this.auth.userId;
     const email  = this.auth.userEmail;
     if (userId && email) {
-      this.appSvc.startOrResume(userId, email).subscribe({
+      this.appSvc.getCurrent(userId).subscribe({
         next: app => this.application.set(app),
         error: () => {}
       });

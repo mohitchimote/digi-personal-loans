@@ -1,0 +1,49 @@
+.uw-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.uw-notes {
+  margin-top: 12px;
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.uw-note {
+  font-size: 0.85rem;
+  padding: 6px 0;
+}
+
+.uw-note-type {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--info-light, #e8f0fe);
+  color: var(--tcs-blue, #003F79);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+}
+
+.uw-note-meta {
+  display: block;
+  color: #888;
+  font-size: 0.75rem;
+}
+
+.uw-decision-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  justify-content: center;
+}

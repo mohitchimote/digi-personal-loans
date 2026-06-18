@@ -1,0 +1,53 @@
+<div class="page-header mb-24">
+  <h2>Affordability Rules</h2>
+  <p class="page-sub">Adjust the hardcoded affordability thresholds used during automated assessment.</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ Rules updated. Changes apply to all assessments immediately.</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>Loading rules…</span>
+</div>
+
+<div class="db-card" *ngIf="!loading() && rules()">
+  <div class="db-form-group">
+    <label>Max Debt-to-Income (DTI) %</label>
+    <input class="db-input" type="number" step="0.1" [(ngModel)]="rules()!.maxDti" />
+    <div class="db-hint">Maximum allowed ratio of total monthly debt to gross monthly income.</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>Max Housing-to-Income (HTI) %</label>
+    <input class="db-input" type="number" step="0.1" [(ngModel)]="rules()!.maxHti" />
+    <div class="db-hint">Maximum allowed ratio of rent/mortgage to gross monthly income.</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>Minimum Monthly Net Income (₪)</label>
+    <input class="db-input" type="number" step="100" [(ngModel)]="rules()!.minMonthlyIncome" />
+  </div>
+
+  <div class="db-form-group">
+    <label>Minimum Credit Score</label>
+    <input class="db-input" type="number" step="10" [(ngModel)]="rules()!.minCreditScore" />
+  </div>
+
+  <div class="db-form-group">
+    <label>Base Annual Interest Rate</label>
+    <input class="db-input" type="number" step="0.001" [(ngModel)]="rules()!.baseAnnualRate" />
+    <div class="db-hint">Used to estimate the affordability repayment, e.g. 0.06 = 6%.</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>Repayment Capacity Factor</label>
+    <input class="db-input" type="number" step="0.01" [(ngModel)]="rules()!.repaymentCapacityFactor" />
+    <div class="db-hint">Proportion of disposable income considered available for loan repayment, e.g. 0.40 = 40%.</div>
+  </div>
+
+  <div class="form-actions">
+    <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
+      {{ saving() ? 'Saving…' : 'Save Rules' }}
+    </button>
+  </div>
+</div>

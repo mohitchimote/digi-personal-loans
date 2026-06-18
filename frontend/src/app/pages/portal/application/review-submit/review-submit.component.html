@@ -5,6 +5,14 @@
     <p class="section-subtitle">Please review your application details carefully. Once satisfied, sign digitally and submit for assessment.</p>
   </div>
 
+  <div class="db-alert db-alert--error mb-16" *ngIf="feedbackNotes().length > 0">
+    <strong>⚠ Your underwriter has sent this application back for changes:</strong>
+    <div *ngFor="let n of feedbackNotes()" style="margin-top:6px;">
+      <em>{{ n.section | titlecase }}</em> — {{ n.note }}
+      <div class="text-muted" style="font-size:0.78rem;">{{ n.createdBy }} · {{ n.createdAt | date:'dd MMM yyyy HH:mm' }}</div>
+    </div>
+  </div>
+
   <div class="db-alert db-alert--info mb-16">
     📋 Your application will be assessed automatically. A conditional decision is usually available within minutes.
   </div>

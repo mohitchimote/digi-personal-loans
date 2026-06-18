@@ -19,6 +19,7 @@ export class DocumentsComponent implements OnInit {
   uploading = signal(false);
   appRef    = signal('');
   dragOver  = signal(false);
+  uploadError = signal('');
 
   constructor(
     private docSvc: DocumentService,
@@ -31,7 +32,7 @@ export class DocumentsComponent implements OnInit {
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.getCurrent(userId).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         this.docSvc.getGenerated(userId).subscribe({
@@ -61,12 +62,16 @@ export class DocumentsComponent implements OnInit {
 
   private upload(file: File): void {
     this.uploading.set(true);
-    this.docSvc.upload(this.appRef(), file).subscribe({
+    this.uploadError.set('');
+    this.docSvc.upload(this.appRef(), this.auth.userId!, file).subscribe({
       next: doc => {
         this.uploaded.update(u => [doc, ...u]);
         this.uploading.set(false);
       },
-      error: () => this.uploading.set(false)
+      error: () => {
+        this.uploading.set(false);
+        this.uploadError.set('Upload failed. Please try again.');
+      }
     });
   }
 

@@ -44,6 +44,16 @@ export type ApplicationStatus =
   | 'DRAFT' | 'IN_PROGRESS' | 'SUBMITTED'
   | 'UNDER_REVIEW' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
 
+export interface UnderwritingNote {
+  id: number;
+  applicationRef: string;
+  section: string;
+  note: string;
+  noteType: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface LoanRequirements {
   loanAmount: number;
   loanPurpose: string;

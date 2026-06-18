@@ -30,7 +30,7 @@ export class AffordabilityResultsComponent implements OnInit {
     const userId = this.auth.userId; const email = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.getCurrent(userId).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         const income    = JSON.parse(app.incomeEmploymentJson || '{}');

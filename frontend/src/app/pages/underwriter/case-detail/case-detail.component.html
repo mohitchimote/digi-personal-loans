@@ -1,0 +1,138 @@
+<div *ngIf="!loading() && application()">
+  <div class="page-header mb-24">
+    <h2>{{ application()!.applicationRef }}</h2>
+    <p class="page-sub">{{ application()!.status | titlecase }} · Submitted {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</p>
+  </div>
+
+  <div class="uw-layout">
+    <!-- Left: application sections -->
+    <div class="uw-main">
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Loan Requirements</h3></div>
+        <div class="review-grid">
+          <div class="review-item"><span>Loan Amount</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
+          <div class="review-item"><span>Purpose</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+          <div class="review-item"><span>Loan Term</span><strong>{{ loanReqs.loanTerm }} months</strong></div>
+        </div>
+        <div class="uw-notes" *ngIf="notesFor('loanRequirements').length">
+          <div class="uw-note" *ngFor="let n of notesFor('loanRequirements')">
+            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Personal Details</h3></div>
+        <div class="review-grid">
+          <div class="review-item"><span>Full Name</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
+          <div class="review-item"><span>Date of Birth</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
+          <div class="review-item"><span>National ID</span><strong>{{ personal.nationalId }}</strong></div>
+          <div class="review-item"><span>Address</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+        </div>
+        <div class="uw-notes" *ngIf="notesFor('personalDetails').length">
+          <div class="uw-note" *ngFor="let n of notesFor('personalDetails')">
+            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Income & Employment</h3></div>
+        <div class="review-grid">
+          <div class="review-item"><span>Employment Status</span><strong>{{ income.employmentStatus }}</strong></div>
+          <div class="review-item"><span>Employer</span><strong>{{ income.employer || '—' }}</strong></div>
+          <div class="review-item"><span>Monthly Gross Income</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
+          <div class="review-item"><span>Monthly Net Income</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
+        </div>
+        <div class="uw-notes" *ngIf="notesFor('incomeEmployment').length">
+          <div class="uw-note" *ngFor="let n of notesFor('incomeEmployment')">
+            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Outgoings & Expenditure</h3></div>
+        <div class="review-grid">
+          <div class="review-item"><span>Monthly Rent</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
+          <div class="review-item"><span>Existing Loans</span><strong>₪{{ outgoings.monthlyLoans | number }}</strong></div>
+          <div class="review-item"><span>Credit Cards</span><strong>₪{{ outgoings.creditCardPayments | number }}</strong></div>
+          <div class="review-item"><span>Living Expenses</span><strong>₪{{ outgoings.monthlyLivingExpenses | number }}</strong></div>
+        </div>
+        <div class="uw-notes" *ngIf="notesFor('outgoings').length">
+          <div class="uw-note" *ngFor="let n of notesFor('outgoings')">
+            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Credit Declarations</h3></div>
+        <div class="review-grid">
+          <div class="review-item"><span>Previous Default</span><strong>{{ credit.hasDefaulted ? 'Yes' : 'No' }}</strong></div>
+          <div class="review-item"><span>Bankruptcy</span><strong>{{ credit.hasBankruptcy ? 'Yes' : 'No' }}</strong></div>
+          <div class="review-item"><span>CCJ</span><strong>{{ credit.hasCCJ ? 'Yes' : 'No' }}</strong></div>
+          <div class="review-item"><span>Credit Score</span><strong>{{ credit.creditScore }}</strong></div>
+        </div>
+        <div class="uw-notes" *ngIf="notesFor('creditDeclarations').length">
+          <div class="uw-note" *ngFor="let n of notesFor('creditDeclarations')">
+            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: notes + decision panel -->
+    <div class="uw-side">
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>Add Note / Request</h3></div>
+        <div class="db-form-group">
+          <label>Section</label>
+          <select class="db-input" [(ngModel)]="noteSection">
+            <option *ngFor="let s of sections" [value]="s.key">{{ s.label }}</option>
+          </select>
+        </div>
+        <div class="db-form-group">
+          <label>Type</label>
+          <select class="db-input" [(ngModel)]="noteType">
+            <option value="NOTE">Internal Note</option>
+            <option value="CLARIFICATION_REQUEST">Request Clarification</option>
+            <option value="DOCUMENT_REQUEST">Request Document</option>
+          </select>
+        </div>
+        <div class="db-form-group">
+          <label>Message</label>
+          <textarea class="db-input" rows="3" [(ngModel)]="noteText" placeholder="Add your note or request…"></textarea>
+        </div>
+        <button class="db-btn db-btn--outline db-btn--sm" (click)="addNote()">Add</button>
+      </div>
+
+      <div class="db-card">
+        <div class="card-header"><h3>Decision</h3></div>
+        <div class="db-form-group">
+          <label>Reason / Comments</label>
+          <textarea class="db-input" rows="3" [(ngModel)]="decisionReason" placeholder="Required for Decline or Send Back"></textarea>
+        </div>
+        <div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+        <div class="uw-decision-actions">
+          <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction()">✓ Approve</button>
+          <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()">↩ Send Back to Customer</button>
+          <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;">✕ Decline</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions mt-24">
+    <a routerLink="/underwriter/pipeline" class="db-btn db-btn--ghost">← Back to Pipeline</a>
+  </div>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>Loading case…</span>
+</div>

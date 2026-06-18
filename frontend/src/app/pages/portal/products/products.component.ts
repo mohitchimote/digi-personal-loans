@@ -35,7 +35,7 @@ export class ProductsComponent implements OnInit {
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.getCurrent(userId).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         const loan = JSON.parse(app.loanRequirementsJson || '{}');

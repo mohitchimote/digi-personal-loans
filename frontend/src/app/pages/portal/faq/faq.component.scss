@@ -1,5 +1,7 @@
 .faq-page { max-width: 800px; }
 
+.loading-row { display: flex; align-items: center; gap: 12px; padding: 40px; justify-content: center; }
+
 .faq-header { h2 { margin-bottom: 6px; } .page-sub { color: var(--mid-grey); font-size: 0.9rem; } }
 .mb-24 { margin-bottom: 24px; }
 .mt-32 { margin-top: 32px; }

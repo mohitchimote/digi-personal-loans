@@ -21,10 +21,11 @@ export class DocumentService {
     return this.http.get<any[]>(`${API}/uploaded/${appRef}`);
   }
 
-  upload(appRef: string, file: File, docType = 'SUPPORTING'): Observable<any> {
+  upload(appRef: string, customerId: number, file: File, docType = 'SUPPORTING'): Observable<any> {
     const form = new FormData();
     form.append('file', file);
     form.append('applicationRef', appRef);
+    form.append('customerId', String(customerId));
     form.append('documentType', docType);
     return this.http.post<any>(`${API}/upload`, form);
   }

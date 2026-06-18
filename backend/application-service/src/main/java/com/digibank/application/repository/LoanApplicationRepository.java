@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface LoanApplicationRepository extends JpaRepository<LoanApplication, Long> {
     Optional<LoanApplication> findByApplicationRef(String applicationRef);
     List<LoanApplication> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
-    Optional<LoanApplication> findFirstByCustomerIdAndStatusInOrderByCreatedAtDesc(
+    Optional<LoanApplication> findFirstByCustomerIdAndStatusInOrderByUpdatedAtDesc(
             Long customerId, List<String> statuses);
+    Optional<LoanApplication> findFirstByCustomerIdOrderByCreatedAtDesc(Long customerId);
+    List<LoanApplication> findByStatusInOrderBySubmittedAtAsc(List<String> statuses);
 }

@@ -1,0 +1,62 @@
+<div class="page-header mb-24">
+  <h2>FAQs</h2>
+  <p class="page-sub">Manage the FAQ content shown to customers.</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+
+<div class="form-actions mb-16">
+  <button class="db-btn db-btn--primary db-btn--sm" (click)="startNew()">+ Add FAQ</button>
+</div>
+
+<div class="db-card mb-24" *ngIf="showNewForm()">
+  <div class="card-header"><h3>{{ editingId() ? 'Edit FAQ' : 'New FAQ' }}</h3></div>
+  <div class="db-form-group">
+    <label>Category</label>
+    <input class="db-input" [(ngModel)]="form.category" placeholder="e.g. Loan Eligibility" />
+  </div>
+  <div class="db-form-group">
+    <label>Question</label>
+    <input class="db-input" [(ngModel)]="form.question" />
+  </div>
+  <div class="db-form-group">
+    <label>Answer</label>
+    <textarea class="db-input" rows="3" [(ngModel)]="form.answer"></textarea>
+  </div>
+  <div class="db-form-group">
+    <label>Display Order</label>
+    <input class="db-input" type="number" [(ngModel)]="form.displayOrder" />
+  </div>
+  <div class="form-actions">
+    <button class="db-btn db-btn--ghost" (click)="cancel()">Cancel</button>
+    <button class="db-btn db-btn--primary" (click)="save()">Save</button>
+  </div>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>Loading FAQs…</span>
+</div>
+
+<div class="db-card" *ngIf="!loading()">
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Question</th>
+        <th>Order</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let f of faqs()">
+        <td>{{ f.category }}</td>
+        <td>{{ f.question }}</td>
+        <td>{{ f.displayOrder }}</td>
+        <td>
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="startEdit(f)">Edit</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="remove(f)" style="color:#c62828;">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

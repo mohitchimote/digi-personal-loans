@@ -1,0 +1,37 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface UserSummary {
+  id: number;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  role: string;
+  enabled: boolean;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+const API = 'http://localhost:8080/api/auth/admin';
+
+@Injectable({ providedIn: 'root' })
+export class AdminService {
+  constructor(private http: HttpClient) {}
+
+  getUsers(): Observable<UserSummary[]> {
+    return this.http.get<UserSummary[]>(`${API}/users`);
+  }
+
+  updateRole(id: number, role: string): Observable<any> {
+    return this.http.put<any>(`${API}/users/${id}/role`, { role });
+  }
+
+  setEnabled(id: number, enabled: boolean): Observable<any> {
+    return this.http.put<any>(`${API}/users/${id}/enabled`, { enabled });
+  }
+
+  resetPassword(id: number, newPassword: string): Observable<any> {
+    return this.http.post<any>(`${API}/users/${id}/reset-password`, { newPassword });
+  }
+}

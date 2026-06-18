@@ -1,5 +1,6 @@
 package com.digibank.affordability.service;
 
+import com.digibank.affordability.config.AffordabilityRules;
 import com.digibank.affordability.dto.AffordabilityRequest;
 import com.digibank.affordability.dto.AffordabilityResult;
 import org.springframework.stereotype.Service;
@@ -11,21 +12,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Hardcoded affordability rules — to be replaced by external rules engine post-selection.
- * Rules are based on Bank of Israel personal lending guidelines for demo purposes.
+ * Affordability rules are admin-editable at runtime via AffordabilityRules —
+ * to be replaced by an external rules engine post-selection.
  */
 @Service
 public class AffordabilityService {
 
-    private static final BigDecimal MAX_DTI = new BigDecimal("40");
-    private static final BigDecimal MAX_HTI = new BigDecimal("35");
-    private static final BigDecimal MIN_MONTHLY_INCOME = new BigDecimal("8000");
-    private static final BigDecimal BASE_ANNUAL_RATE = new BigDecimal("0.06");
-    private static final BigDecimal REPAYMENT_CAPACITY_FACTOR = new BigDecimal("0.40");
-    private static final int MIN_CREDIT_SCORE = 580;
     private static final MathContext MC = new MathContext(10, RoundingMode.HALF_UP);
 
+    private final AffordabilityRules rules;
+
+    public AffordabilityService(AffordabilityRules rules) {
+        this.rules = rules;
+    }
+
     public AffordabilityResult assess(AffordabilityRequest req) {
+        BigDecimal MAX_DTI = rules.getMaxDti();
+        BigDecimal MAX_HTI = rules.getMaxHti();
+        BigDecimal MIN_MONTHLY_INCOME = rules.getMinMonthlyIncome();
+        BigDecimal BASE_ANNUAL_RATE = rules.getBaseAnnualRate();
+        BigDecimal REPAYMENT_CAPACITY_FACTOR = rules.getRepaymentCapacityFactor();
+        int MIN_CREDIT_SCORE = rules.getMinCreditScore();
+
         List<String> failures = new ArrayList<>();
 
         // Hard stops
@@ -41,7 +49,7 @@ public class AffordabilityService {
 
         if (netIncome.compareTo(MIN_MONTHLY_INCOME) < 0) {
             failures.add("Monthly net income of ₪" + netIncome.setScale(0, RoundingMode.HALF_UP)
-                    + " is below the minimum required ₪8,000.");
+                    + " is below the minimum required ₪" + MIN_MONTHLY_INCOME.setScale(0, RoundingMode.HALF_UP) + ".");
         }
 
         // Debt-to-Income
@@ -51,7 +59,7 @@ public class AffordabilityService {
                 : new BigDecimal("100");
 
         if (dti.compareTo(MAX_DTI) > 0) {
-            failures.add("Debt-to-income ratio of " + dti + "% exceeds the maximum permitted 40%.");
+            failures.add("Debt-to-income ratio of " + dti + "% exceeds the maximum permitted " + MAX_DTI + "%.");
         }
 
         // Housing-to-Income
@@ -61,13 +69,13 @@ public class AffordabilityService {
                 : new BigDecimal("100");
 
         if (hti.compareTo(MAX_HTI) > 0) {
-            failures.add("Housing cost ratio of " + hti + "% exceeds the maximum permitted 35%.");
+            failures.add("Housing cost ratio of " + hti + "% exceeds the maximum permitted " + MAX_HTI + "%.");
         }
 
         // Credit score
         int creditScore = req.getCreditScore() != null ? req.getCreditScore() : 0;
         if (creditScore < MIN_CREDIT_SCORE) {
-            failures.add("Credit score of " + creditScore + " is below the minimum required score of 580.");
+            failures.add("Credit score of " + creditScore + " is below the minimum required score of " + MIN_CREDIT_SCORE + ".");
         }
 
         // Monthly repayment capacity

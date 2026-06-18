@@ -1,0 +1,22 @@
+<div class="uw-shell">
+  <header class="uw-header">
+    <div class="uw-brand">
+      <span class="material-icons mi-lg">verified_user</span>
+      <span>DigiBank Underwriting</span>
+    </div>
+    <nav class="uw-nav">
+      <a routerLink="/underwriter/pipeline" routerLinkActive="active">Case Pipeline</a>
+    </nav>
+    <div class="uw-header-right">
+      <div class="header-user">
+        <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
+        <span class="header-name">{{ auth.userFullName }}</span>
+      </div>
+      <button class="db-btn db-btn--ghost db-btn--sm" (click)="auth.logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="uw-content">
+    <router-outlet />
+  </div>
+</div>

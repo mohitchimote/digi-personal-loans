@@ -58,6 +58,8 @@
       <div class="spinner"></div><span>Uploading…</span>
     </div>
 
+    <div class="upload-error" *ngIf="uploadError()" style="color:#c62828;margin-top:8px;">{{ uploadError() }}</div>
+
     <!-- Uploaded list -->
     <div class="uploaded-list" *ngIf="uploaded().length > 0">
       <div class="upload-header">Uploaded Files ({{ uploaded().length }})</div>

@@ -1,0 +1,59 @@
+<div class="page-header mb-24">
+  <h2>Users</h2>
+  <p class="page-sub">Manage customer, underwriter, and admin accounts.</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()">⚠ {{ error() }}</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>Loading users…</span>
+</div>
+
+<div class="db-card" *ngIf="!loading()">
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Last Login</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let u of users()">
+        <td>{{ u.fullName }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <select class="db-input" style="width:auto" [ngModel]="u.role" (ngModelChange)="changeRole(u, $event)">
+            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+          </select>
+        </td>
+        <td>
+          <span class="db-badge" [class.db-badge--approved]="u.enabled" [class.db-badge--declined]="!u.enabled">
+            {{ u.enabled ? 'Active' : 'Disabled' }}
+          </span>
+        </td>
+        <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
+        <td>
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="openReset(u)">Reset Password</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u)">{{ u.enabled ? 'Disable' : 'Enable' }}</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Reset password inline panel -->
+<div class="db-card mt-24" *ngIf="resetTargetId() !== null">
+  <div class="card-header"><h3>Reset Password</h3></div>
+  <div class="db-form-group">
+    <label>New Password</label>
+    <input class="db-input" type="password" [(ngModel)]="newPassword" placeholder="Minimum 6 characters" />
+  </div>
+  <div class="form-actions">
+    <button class="db-btn db-btn--ghost" (click)="cancelReset()">Cancel</button>
+    <button class="db-btn db-btn--primary" (click)="confirmReset()">Confirm Reset</button>
+  </div>
+</div>

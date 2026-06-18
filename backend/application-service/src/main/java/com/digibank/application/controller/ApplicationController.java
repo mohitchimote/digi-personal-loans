@@ -3,6 +3,7 @@ package com.digibank.application.controller;
 import com.digibank.application.dto.ApplicationSectionRequest;
 import com.digibank.application.dto.StartApplicationRequest;
 import com.digibank.application.model.LoanApplication;
+import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.service.ApplicationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +44,47 @@ public class ApplicationController {
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<List<LoanApplication>> getCustomerApplications(@PathVariable Long customerId) {
         return ResponseEntity.ok(applicationService.getApplicationsByCustomer(customerId));
+    }
+
+    @GetMapping("/customer/{customerId}/current")
+    public ResponseEntity<LoanApplication> getCurrentApplication(@PathVariable Long customerId) {
+        return ResponseEntity.ok(applicationService.getCurrentApplication(customerId));
+    }
+
+    @PostMapping("/{appRef}/withdraw")
+    public ResponseEntity<LoanApplication> withdrawApplication(@PathVariable String appRef) {
+        return ResponseEntity.ok(applicationService.withdrawApplication(appRef));
+    }
+
+    @GetMapping("/pipeline")
+    public ResponseEntity<List<LoanApplication>> getPipeline() {
+        return ResponseEntity.ok(applicationService.getPipeline());
+    }
+
+    @PostMapping("/{appRef}/decline")
+    public ResponseEntity<LoanApplication> declineApplication(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.declineApplication(appRef, body.get("reason"), body.get("reviewedBy")));
+    }
+
+    @PostMapping("/{appRef}/send-back")
+    public ResponseEntity<LoanApplication> sendBackApplication(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.sendBackApplication(appRef, body.get("reason"), body.get("reviewedBy")));
+    }
+
+    @PostMapping("/{appRef}/approve-by-underwriter")
+    public ResponseEntity<LoanApplication> approveByUnderwriter(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.approveApplicationByUnderwriter(appRef, body.get("reviewedBy")));
+    }
+
+    @PostMapping("/{appRef}/notes")
+    public ResponseEntity<UnderwritingNote> addNote(@PathVariable String appRef, @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(applicationService.addNote(
+                appRef, body.get("section"), body.get("note"), body.getOrDefault("noteType", "NOTE"), body.get("createdBy")));
+    }
+
+    @GetMapping("/{appRef}/notes")
+    public ResponseEntity<List<UnderwritingNote>> getNotes(@PathVariable String appRef) {
+        return ResponseEntity.ok(applicationService.getNotes(appRef));
     }
 
     @PostMapping("/{appRef}/submit")

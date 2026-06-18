@@ -1,7 +1,9 @@
 package com.digibank.application.service;
 
 import com.digibank.application.model.LoanApplication;
+import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.repository.LoanApplicationRepository;
+import com.digibank.application.repository.UnderwritingNoteRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -17,10 +19,14 @@ import java.util.Random;
 public class ApplicationService {
 
     private final LoanApplicationRepository repository;
+    private final UnderwritingNoteRepository noteRepository;
     private final ObjectMapper objectMapper;
 
-    public ApplicationService(LoanApplicationRepository repository, ObjectMapper objectMapper) {
+    private static final List<String> PIPELINE_STATUSES = List.of("SUBMITTED", "UNDER_REVIEW");
+
+    public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.noteRepository = noteRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -32,7 +38,7 @@ public class ApplicationService {
 
     @Transactional
     public LoanApplication createOrResumeApplication(Long customerId, String email) {
-        return repository.findFirstByCustomerIdAndStatusInOrderByCreatedAtDesc(customerId, ACTIVE_STATUSES)
+        return repository.findFirstByCustomerIdAndStatusInOrderByUpdatedAtDesc(customerId, ACTIVE_STATUSES)
                 .orElseGet(() -> {
                     LoanApplication app = LoanApplication.builder()
                             .applicationRef(generateApplicationRef())
@@ -107,6 +113,68 @@ public class ApplicationService {
 
     public List<LoanApplication> getApplicationsByCustomer(Long customerId) {
         return repository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+    }
+
+    public LoanApplication getCurrentApplication(Long customerId) {
+        return repository.findFirstByCustomerIdOrderByCreatedAtDesc(customerId)
+                .orElseThrow(() -> new IllegalArgumentException("No application found for customer: " + customerId));
+    }
+
+    @Transactional
+    public LoanApplication withdrawApplication(String appRef) {
+        LoanApplication app = getByRef(appRef);
+        if (!"SUBMITTED".equals(app.getStatus()) && !"UNDER_REVIEW".equals(app.getStatus())) {
+            throw new IllegalStateException("Only submitted applications can be pulled back: " + appRef);
+        }
+        app.setStatus("IN_PROGRESS");
+        app.setCurrentSection("reviewSubmit");
+        return repository.save(app);
+    }
+
+    public List<LoanApplication> getPipeline() {
+        return repository.findByStatusInOrderBySubmittedAtAsc(PIPELINE_STATUSES);
+    }
+
+    @Transactional
+    public LoanApplication declineApplication(String appRef, String reason, String reviewedBy) {
+        LoanApplication app = getByRef(appRef);
+        app.setStatus("DECLINED");
+        repository.save(app);
+        addNote(appRef, "general", reason, "DECISION_DECLINED", reviewedBy);
+        return app;
+    }
+
+    @Transactional
+    public LoanApplication sendBackApplication(String appRef, String reason, String reviewedBy) {
+        LoanApplication app = getByRef(appRef);
+        app.setStatus("IN_PROGRESS");
+        app.setCurrentSection("reviewSubmit");
+        repository.save(app);
+        addNote(appRef, "general", reason, "SEND_BACK", reviewedBy);
+        return app;
+    }
+
+    @Transactional
+    public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy) {
+        LoanApplication app = approveApplication(appRef);
+        addNote(appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
+        return app;
+    }
+
+    @Transactional
+    public UnderwritingNote addNote(String appRef, String section, String note, String noteType, String createdBy) {
+        getByRef(appRef);
+        UnderwritingNote entity = new UnderwritingNote();
+        entity.setApplicationRef(appRef);
+        entity.setSection(section);
+        entity.setNote(note);
+        entity.setNoteType(noteType);
+        entity.setCreatedBy(createdBy);
+        return noteRepository.save(entity);
+    }
+
+    public List<UnderwritingNote> getNotes(String appRef) {
+        return noteRepository.findByApplicationRefOrderByCreatedAtDesc(appRef);
     }
 
     private LoanApplication getByRef(String appRef) {

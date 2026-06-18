@@ -42,6 +42,19 @@
     </div>
   </div>
 
+  <!-- Underwriter feedback banners -->
+  <ng-container *ngFor="let app of applications()">
+    <div class="db-card mt-24" *ngIf="feedbackFor(app).length > 0">
+      <div class="db-alert db-alert--error">
+        <strong>⚠ {{ app.applicationRef }} was sent back by your underwriter:</strong>
+        <div *ngFor="let n of feedbackFor(app)" style="margin-top:6px;">
+          <em>{{ n.section | titlecase }}</em> — {{ n.note }}
+        </div>
+        <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--accent db-btn--sm mt-16">Resume & Address Feedback</a>
+      </div>
+    </div>
+  </ng-container>
+
   <!-- Applications table -->
   <div class="db-card mt-24">
     <div class="card-header">
@@ -84,7 +97,8 @@
                *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">Resume</a>
             <a routerLink="/portal/approval" class="db-btn db-btn--ghost db-btn--sm"
                *ngIf="app.status === 'APPROVED'">View Approval</a>
-            <span class="text-muted" *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">Under Review</span>
+            <a [routerLink]="['/portal/view-application', app.applicationRef]" class="db-btn db-btn--outline db-btn--sm"
+               *ngIf="app.status === 'SUBMITTED' || app.status === 'UNDER_REVIEW'">View</a>
           </td>
         </tr>
       </tbody>

@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { LoanApplication } from '../../../../core/models';
+import { LoanApplication, UnderwritingNote } from '../../../../core/models';
 
 @Component({
   selector: 'app-review-submit',
@@ -15,6 +15,7 @@ import { LoanApplication } from '../../../../core/models';
 })
 export class ReviewSubmitComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
+  feedbackNotes = signal<UnderwritingNote[]>([]);
   agreedToTerms   = false;
   agreedToPrivacy = false;
   agreedToCredit  = false;
@@ -28,7 +29,14 @@ export class ReviewSubmitComponent implements OnInit {
     const userId = this.auth.userId; const email = this.auth.userEmail;
     if (!userId || !email) return;
     this.appSvc.startOrResume(userId, email).subscribe({
-      next: app => this.application.set(app)
+      next: app => {
+        this.application.set(app);
+        this.appSvc.getNotes(app.applicationRef).subscribe({
+          next: notes => this.feedbackNotes.set(notes.filter(n =>
+            n.noteType === 'SEND_BACK' || n.noteType === 'CLARIFICATION_REQUEST' || n.noteType === 'DOCUMENT_REQUEST')),
+          error: () => {}
+        });
+      }
     });
   }
 

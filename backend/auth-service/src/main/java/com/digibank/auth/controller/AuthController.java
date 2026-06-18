@@ -4,6 +4,8 @@ import com.digibank.auth.dto.ApiResponse;
 import com.digibank.auth.dto.AuthResponse;
 import com.digibank.auth.dto.LoginRequest;
 import com.digibank.auth.dto.RegisterRequest;
+import com.digibank.auth.model.Faq;
+import com.digibank.auth.repository.FaqRepository;
 import com.digibank.auth.security.JwtTokenProvider;
 import com.digibank.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -13,16 +15,25 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final FaqRepository faqRepository;
 
-    public AuthController(AuthService authService, JwtTokenProvider jwtTokenProvider) {
+    public AuthController(AuthService authService, JwtTokenProvider jwtTokenProvider, FaqRepository faqRepository) {
         this.authService = authService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.faqRepository = faqRepository;
+    }
+
+    @GetMapping("/faqs")
+    public ResponseEntity<List<Faq>> getFaqs() {
+        return ResponseEntity.ok(faqRepository.findAllByOrderByCategoryAscDisplayOrderAsc());
     }
 
     @PostMapping("/register")

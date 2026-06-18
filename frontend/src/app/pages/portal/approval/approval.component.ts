@@ -31,7 +31,7 @@ export class ApprovalComponent implements OnInit {
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.startOrResume(userId, email).subscribe({
+    this.appSvc.getCurrent(userId).subscribe({
       next: app => this.application.set(app)
     });
   }

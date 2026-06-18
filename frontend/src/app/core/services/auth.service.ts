@@ -54,6 +54,18 @@ export class AuthService {
     return this.currentUser()?.fullName ?? null;
   }
 
+  get role(): string | null {
+    return this.currentUser()?.role ?? null;
+  }
+
+  get isUnderwriter(): boolean {
+    return this.role === 'UNDERWRITER';
+  }
+
+  get isAdmin(): boolean {
+    return this.role === 'ADMIN';
+  }
+
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));

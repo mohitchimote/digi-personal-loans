@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplicationService } from '../../../core/services/application.service';
-import { LoanApplication } from '../../../core/models';
+import { LoanApplication, UnderwritingNote } from '../../../core/models';
 
 @Component({
   selector: 'app-dashboard',
@@ -14,6 +14,7 @@ import { LoanApplication } from '../../../core/models';
 })
 export class DashboardComponent implements OnInit {
   applications = signal<LoanApplication[]>([]);
+  feedbackByAppRef = signal<Record<string, UnderwritingNote[]>>({});
 
   constructor(public auth: AuthService, private appSvc: ApplicationService) {}
 
@@ -21,10 +22,29 @@ export class DashboardComponent implements OnInit {
     const userId = this.auth.userId;
     if (userId) {
       this.appSvc.getMyApplications(userId).subscribe({
-        next: apps => this.applications.set(apps),
+        next: apps => {
+          this.applications.set(apps);
+          apps.filter(a => a.status === 'IN_PROGRESS').forEach(a => this.loadFeedback(a.applicationRef));
+        },
         error: () => {}
       });
     }
+  }
+
+  private loadFeedback(appRef: string): void {
+    this.appSvc.getNotes(appRef).subscribe({
+      next: notes => {
+        const relevant = notes.filter(n => n.noteType === 'SEND_BACK' || n.noteType === 'CLARIFICATION_REQUEST' || n.noteType === 'DOCUMENT_REQUEST');
+        if (relevant.length > 0) {
+          this.feedbackByAppRef.update(map => ({ ...map, [appRef]: relevant }));
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  feedbackFor(app: LoanApplication): UnderwritingNote[] {
+    return this.feedbackByAppRef()[app.applicationRef] || [];
   }
 
   getStatusClass(status: string): string {
