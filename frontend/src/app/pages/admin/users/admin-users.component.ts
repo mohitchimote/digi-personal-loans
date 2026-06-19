@@ -16,8 +16,6 @@ export class AdminUsersComponent implements OnInit {
   users = signal<UserSummary[]>([]);
   loading = signal(true);
   error = signal('');
-  resetTargetId = signal<number | null>(null);
-  newPassword = '';
 
   roles = ['CUSTOMER', 'UNDERWRITER', 'ADMIN'];
 
@@ -49,21 +47,4 @@ export class AdminUsersComponent implements OnInit {
     });
   }
 
-  openReset(user: UserSummary): void {
-    this.resetTargetId.set(user.id);
-    this.newPassword = '';
-  }
-
-  cancelReset(): void {
-    this.resetTargetId.set(null);
-  }
-
-  confirmReset(): void {
-    const id = this.resetTargetId();
-    if (!id || this.newPassword.length < 6) { this.error.set(this.i18n.t('admin.errPasswordLength')); return; }
-    this.adminSvc.resetPassword(id, this.newPassword).subscribe({
-      next: () => { this.resetTargetId.set(null); this.error.set(''); },
-      error: () => this.error.set(this.i18n.t('admin.errResetPassword'))
-    });
-  }
 }

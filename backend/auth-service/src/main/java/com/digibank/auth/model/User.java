@@ -1,7 +1,9 @@
 package com.digibank.auth.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -12,10 +14,15 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false)
+    private String uuid;
+
+    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private String password;
+    @Column(unique = true, nullable = false)
+    private String nationalId;
+
+    private LocalDate idIssueDate;
 
     private String fullName;
     private String phoneNumber;
@@ -31,13 +38,19 @@ public class User {
     public User() {}
 
     @PrePersist
-    protected void onCreate() { createdAt = LocalDateTime.now(); }
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (uuid == null) uuid = UUID.randomUUID().toString();
+    }
 
     public Long getId() { return id; }
+    public String getUuid() { return uuid; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getNationalId() { return nationalId; }
+    public void setNationalId(String nationalId) { this.nationalId = nationalId; }
+    public LocalDate getIdIssueDate() { return idIssueDate; }
+    public void setIdIssueDate(LocalDate idIssueDate) { this.idIssueDate = idIssueDate; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getPhoneNumber() { return phoneNumber; }
@@ -63,7 +76,8 @@ public class User {
     public static class Builder {
         private final User u = new User();
         public Builder email(String v) { u.email = v; return this; }
-        public Builder password(String v) { u.password = v; return this; }
+        public Builder nationalId(String v) { u.nationalId = v; return this; }
+        public Builder idIssueDate(LocalDate v) { u.idIssueDate = v; return this; }
         public Builder fullName(String v) { u.fullName = v; return this; }
         public Builder phoneNumber(String v) { u.phoneNumber = v; return this; }
         public Builder role(String v) { u.role = v; return this; }

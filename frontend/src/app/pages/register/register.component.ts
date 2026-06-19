@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -18,7 +18,6 @@ export class RegisterComponent {
   form: FormGroup;
   loading = signal(false);
   error = signal('');
-  showPw = signal(false);
 
   constructor(
     private fb: FormBuilder,
@@ -29,16 +28,10 @@ export class RegisterComponent {
       fullName:    ['', [Validators.required, Validators.minLength(2)]],
       email:       ['', [Validators.required, Validators.email]],
       phoneNumber: [''],
-      password:    ['', [Validators.required, Validators.minLength(8)]],
-      confirmPw:   ['', Validators.required],
+      nationalId:  ['', [Validators.required, Validators.pattern(/^\d{9}$/)]],
+      idIssueDate: ['', Validators.required],
       agreeTerms:  [false, Validators.requiredTrue],
-    }, { validators: this.pwMatch });
-  }
-
-  pwMatch(g: AbstractControl) {
-    const pw = g.get('password')?.value;
-    const cp = g.get('confirmPw')?.value;
-    return pw === cp ? null : { mismatch: true };
+    });
   }
 
   submit(): void {
@@ -46,7 +39,7 @@ export class RegisterComponent {
     this.loading.set(true);
     this.error.set('');
 
-    const { confirmPw, agreeTerms, ...req } = this.form.value;
+    const { agreeTerms, ...req } = this.form.value;
 
     this.auth.register(req).subscribe({
       next: res => {

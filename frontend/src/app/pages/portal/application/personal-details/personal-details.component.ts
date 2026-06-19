@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { MARITAL_STATUSES, NATIONALITIES } from '../../../../core/models';
+import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -24,15 +24,24 @@ export class PersonalDetailsComponent implements OnInit {
   numberOfApplicants = signal(1);
   maritalStatuses = MARITAL_STATUSES;
   nationalities = NATIONALITIES;
+  branches = DIGIBANK_BRANCHES;
   applicant2Error = signal('');
   addressHistoryError = signal('');
 
   readonly ADDRESS_HISTORY_TARGET_MONTHS = 36;
+  readonly CONSENT_VALIDITY_DAYS = 90;
 
   nationalIdVerifying = signal(false);
   nationalIdVerified = signal(false);
   nationalIdVerifying2 = signal(false);
   nationalIdVerified2 = signal(false);
+
+  consentForm: FormGroup;
+  consentValid = signal(false);
+  consentValidUntil = signal<string | null>(null);
+  showConsentModal = signal(false);
+  consentError = signal('');
+  private storedConsent: any = null;
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               private auth: AuthService, private router: Router, private i18n: I18nService) {
@@ -41,6 +50,7 @@ export class PersonalDetailsComponent implements OnInit {
       lastName:     ['', Validators.required],
       dateOfBirth:  ['', Validators.required],
       nationalId:   ['', Validators.required],
+      idIssueDate:  ['', Validators.required],
       nationality:  ['Israeli', Validators.required],
       maritalStatus:['', Validators.required],
       dependents:   [0, [Validators.required, Validators.min(0)]],
@@ -52,35 +62,83 @@ export class PersonalDetailsComponent implements OnInit {
       country:      ['Israel', Validators.required],
       monthsAtCurrentAddress: [null, [Validators.required, Validators.min(0)]],
       previousAddresses: this.fb.array([]),
+      assistedByStaff: [false],
+      preferredBranch: [''],
     });
     this.applicant2Form = this.fb.group({
       firstName:    [''],
       lastName:     [''],
       dateOfBirth:  [''],
       nationalId:   [''],
+      idIssueDate:  [''],
       nationality:  ['Israeli'],
       maritalStatus:[''],
       relationshipToApplicant1: [''],
       phoneNumber:  [''],
       email:        ['', Validators.email],
     });
+    this.consentForm = this.fb.group({
+      creditBureauConsent:       [false, Validators.requiredTrue],
+      pepScreeningConsent:       [false, Validators.requiredTrue],
+      sanctionsScreeningConsent: [false, Validators.requiredTrue],
+      dataProcessingConsent:     [false, Validators.requiredTrue],
+    });
 
-    this.watchNationalId(this.form.get('nationalId')!, this.nationalIdVerifying, this.nationalIdVerified);
-    this.watchNationalId(this.applicant2Form.get('nationalId')!, this.nationalIdVerifying2, this.nationalIdVerified2);
+    this.watchIdVerification(this.form, this.nationalIdVerifying, this.nationalIdVerified, true);
+    this.watchIdVerification(this.applicant2Form, this.nationalIdVerifying2, this.nationalIdVerified2, false);
   }
 
-  private watchNationalId(control: any, verifying: WritableSignal<boolean>, verified: WritableSignal<boolean>): void {
-    control.valueChanges.subscribe((value: string) => {
+  /** Simulated national-ID-database lookup: only "succeeds" once both the ID number and its
+   * issue date are well-formed — mirrors a real lookup needing both fields to match a record. */
+  private watchIdVerification(group: FormGroup, verifying: WritableSignal<boolean>, verified: WritableSignal<boolean>, isPrimary: boolean): void {
+    const check = () => {
+      const id = group.get('nationalId')?.value;
+      const issueDate = group.get('idIssueDate')?.value;
+      const idValid = !!id && /^\d{9}$/.test(id);
+      const dateValid = !!issueDate && new Date(issueDate) <= new Date();
       verified.set(false);
-      if (value && /^\d{9}$/.test(value)) {
+      if (idValid && dateValid) {
         verifying.set(true);
         setTimeout(() => {
           verifying.set(false);
           verified.set(true);
+          if (isPrimary) this.checkConsentValidity();
         }, 700);
       } else {
         verifying.set(false);
       }
+    };
+    group.get('nationalId')!.valueChanges.subscribe(check);
+    group.get('idIssueDate')!.valueChanges.subscribe(check);
+  }
+
+  /** Consent is recorded in the bank's CMS and is valid for CONSENT_VALIDITY_DAYS — we can only
+   * check this once the customer's identity (ID + issue date) is confirmed. If there's no valid
+   * consent on file, prompt for it now instead of as a separate wizard step. */
+  private checkConsentValidity(): void {
+    if (this.consentValid()) return;
+    const timestamp = this.storedConsent?.consentTimestamp;
+    const validUntil = timestamp ? new Date(new Date(timestamp).getTime() + this.CONSENT_VALIDITY_DAYS * 86400000) : null;
+    if (validUntil && validUntil > new Date()) {
+      this.consentValid.set(true);
+      this.consentValidUntil.set(validUntil.toISOString());
+    } else {
+      this.showConsentModal.set(true);
+    }
+  }
+
+  confirmConsent(): void {
+    if (this.consentForm.invalid) { this.consentForm.markAllAsTouched(); return; }
+    this.consentError.set('');
+    const payload = { ...this.consentForm.value, consentTimestamp: new Date().toISOString() };
+    this.appSvc.saveSection(this.appRef(), 'consentManagement', payload, this.auth.userId!).subscribe({
+      next: () => {
+        this.storedConsent = payload;
+        this.consentValid.set(true);
+        this.consentValidUntil.set(new Date(Date.now() + this.CONSENT_VALIDITY_DAYS * 86400000).toISOString());
+        this.showConsentModal.set(false);
+      },
+      error: () => this.consentError.set(this.i18n.t('consent.requiredError'))
     });
   }
 
@@ -128,13 +186,19 @@ export class PersonalDetailsComponent implements OnInit {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
           this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);
         }
+        this.storedConsent = app.consentManagementJson ? JSON.parse(app.consentManagementJson) : null;
         if (app.personalDetailsJson) {
           const data = JSON.parse(app.personalDetailsJson);
           (data.previousAddresses || []).forEach((pa: any) => this.previousAddresses.push(this.buildPreviousAddress(pa)));
           this.form.patchValue(data);
           if (data.applicant2) this.applicant2Form.patchValue(data.applicant2);
         } else {
-          this.form.patchValue({ phoneNumber: this.auth.userPhone, email: this.auth.userEmail });
+          this.form.patchValue({
+            phoneNumber: this.auth.userPhone,
+            email: this.auth.userEmail,
+            nationalId: this.auth.userNationalId,
+            idIssueDate: this.auth.userIdIssueDate,
+          });
         }
       }
     });
@@ -146,6 +210,7 @@ export class PersonalDetailsComponent implements OnInit {
 
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.showConsentModal()) { return; }
     this.applicant2Error.set('');
     this.addressHistoryError.set('');
     if (this.needsMoreAddressHistory) {
@@ -170,4 +235,5 @@ export class PersonalDetailsComponent implements OnInit {
 
   f(name: string) { return this.form.get(name); }
   f2(name: string) { return this.applicant2Form.get(name); }
+  fc(name: string) { return this.consentForm.get(name); }
 }

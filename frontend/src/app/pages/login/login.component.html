@@ -18,38 +18,17 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="db-form-group">
-        <label>{{ 'login.emailLabel' | translate }} <span class="required">*</span></label>
-        <input class="db-input" type="email" formControlName="email" placeholder="you@example.com" autocomplete="email" />
-        <div class="db-error-msg" *ngIf="f('email')?.invalid && f('email')?.touched">
-          {{ 'login.emailError' | translate }}
+        <label>{{ 'login.nationalIdLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" inputmode="numeric" maxlength="9" formControlName="nationalId"
+               [placeholder]="'login.nationalIdPlaceholder' | translate" autocomplete="off" />
+        <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">
+          {{ 'login.nationalIdError' | translate }}
         </div>
-      </div>
-
-      <div class="db-form-group">
-        <label>{{ 'login.passwordLabel' | translate }} <span class="required">*</span></label>
-        <div class="input-with-action">
-          <input class="db-input" [type]="showPassword() ? 'text' : 'password'"
-                 formControlName="password" [placeholder]="'login.passwordPlaceholder' | translate" autocomplete="current-password" />
-          <button type="button" class="toggle-pw" (click)="showPassword.set(!showPassword())">
-            <span class="material-icons mi-sm">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
-          </button>
-        </div>
-        <div class="db-error-msg" *ngIf="f('password')?.invalid && f('password')?.touched">
-          {{ 'login.passwordError' | translate }}
-        </div>
-      </div>
-
-      <div class="form-footer-row">
-        <label class="db-checkbox">
-          <input type="checkbox" />
-          <span>{{ 'login.rememberMe' | translate }}</span>
-        </label>
-        <a href="#" class="forgot-link">{{ 'login.forgotPassword' | translate }}</a>
       </div>
 
       <button type="submit" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()">
-        <span *ngIf="loading()">{{ 'login.signingIn' | translate }}</span>
-        <span *ngIf="!loading()">{{ 'login.signIn' | translate }}</span>
+        <span *ngIf="loading()">{{ 'login.sendingCode' | translate }}</span>
+        <span *ngIf="!loading()">{{ 'login.sendCode' | translate }}</span>
       </button>
     </form>
 

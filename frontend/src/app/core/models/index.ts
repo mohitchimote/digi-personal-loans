@@ -3,6 +3,8 @@ export interface AuthResponse {
   tokenType: string;
   userId: number;
   email: string;
+  nationalId: string;
+  idIssueDate: string;
   fullName: string;
   phoneNumber?: string;
   role: string;
@@ -11,7 +13,8 @@ export interface AuthResponse {
 
 export interface RegisterRequest {
   email: string;
-  password: string;
+  nationalId: string;
+  idIssueDate: string;
   fullName: string;
   phoneNumber?: string;
 }
@@ -28,9 +31,20 @@ export interface OtpVerifyRequest {
   otp: string;
 }
 
-export interface LoginRequest {
-  email: string;
-  password: string;
+export interface LoginOtpRequest {
+  nationalId: string;
+}
+
+export interface LoginVerifyRequest {
+  nationalId: string;
+  otp: string;
+}
+
+export interface LoginOtpInitiatedResponse {
+  nationalId: string;
+  // Demo-only: in production this would be sent via SMS, not returned in the API response.
+  demoOtp: string;
+  otpExpiresInSeconds: number;
 }
 
 export interface LoanApplication {
@@ -89,6 +103,9 @@ export interface ConsentManagement {
   pepScreeningConsent: boolean;
   sanctionsScreeningConsent: boolean;
   dataProcessingConsent: boolean;
+  // Set when consent is recorded; consent is treated as valid in the bank's CMS for 90 days
+  // from this timestamp (see PersonalDetailsComponent.checkConsentValidity).
+  consentTimestamp?: string;
 }
 
 export interface PersonalDetails {
@@ -96,6 +113,7 @@ export interface PersonalDetails {
   lastName: string;
   dateOfBirth: string;
   nationalId: string;
+  idIssueDate?: string;
   nationality: string;
   maritalStatus: string;
   dependents: number;
@@ -107,6 +125,8 @@ export interface PersonalDetails {
   country: string;
   monthsAtCurrentAddress?: number;
   previousAddresses?: AddressHistoryEntry[];
+  assistedByStaff?: boolean;
+  preferredBranch?: string;
 }
 
 export interface AddressHistoryEntry {
@@ -235,4 +255,60 @@ export const MARITAL_STATUSES = [
 export const NATIONALITIES = [
   'Israeli', 'American', 'British', 'French', 'German',
   'Russian', 'Ethiopian', 'Indian', 'Other'
+];
+
+// DigiBank's own customer-facing branches (for in-person assistance), distinct from the
+// customer's external bank used for direct debit (see ISRAELI_BANKS below).
+export const DIGIBANK_BRANCHES = [
+  'Tel Aviv - Rothschild Blvd',
+  'Jerusalem - Jaffa Road',
+  'Haifa - Hadar',
+  'Beer Sheva - Old City',
+  'Netanya - City Center',
+  'Eilat - Tourist Center',
+];
+
+export interface IsraeliBankBranch { code: string; name: string; }
+export interface IsraeliBank { code: string; name: string; branches: IsraeliBankBranch[]; }
+
+// Bank codes are the standard Israeli bank-number registry (stable, publicly documented values
+// used in account/IBAN details). Branch codes/names below are illustrative demo data only — not
+// sourced from a verified live branch directory, so they should never be treated as authoritative.
+export const ISRAELI_BANKS: IsraeliBank[] = [
+  { code: '10', name: 'Bank Leumi', branches: [
+    { code: '800', name: 'Tel Aviv Main' }, { code: '901', name: 'Jerusalem Center' }, { code: '614', name: 'Haifa' },
+  ]},
+  { code: '12', name: 'Bank Hapoalim', branches: [
+    { code: '532', name: 'Tel Aviv Main' }, { code: '744', name: 'Jerusalem Center' }, { code: '627', name: 'Haifa' },
+  ]},
+  { code: '11', name: 'Discount Bank', branches: [
+    { code: '027', name: 'Tel Aviv Main' }, { code: '105', name: 'Jerusalem Center' }, { code: '049', name: 'Netanya' },
+  ]},
+  { code: '20', name: 'Mizrahi-Tefahot Bank', branches: [
+    { code: '457', name: 'Tel Aviv Main' }, { code: '368', name: 'Jerusalem Center' }, { code: '512', name: 'Beer Sheva' },
+  ]},
+  { code: '13', name: 'Union Bank of Israel (Igud)', branches: [
+    { code: '003', name: 'Tel Aviv Main' }, { code: '012', name: 'Ramat Gan' },
+  ]},
+  { code: '14', name: 'Bank Otsar Ha-Hayal', branches: [
+    { code: '101', name: 'Tel Aviv Main' }, { code: '110', name: 'Jerusalem' },
+  ]},
+  { code: '17', name: 'Mercantile Discount Bank', branches: [
+    { code: '007', name: 'Tel Aviv Main' }, { code: '021', name: 'Haifa' },
+  ]},
+  { code: '31', name: 'First International Bank of Israel', branches: [
+    { code: '017', name: 'Tel Aviv Main' }, { code: '033', name: 'Jerusalem Center' },
+  ]},
+  { code: '34', name: 'Bank Massad', branches: [
+    { code: '001', name: 'Jerusalem Main' }, { code: '004', name: 'Tel Aviv' },
+  ]},
+  { code: '54', name: 'Bank of Jerusalem', branches: [
+    { code: '001', name: 'Jerusalem Main' }, { code: '015', name: 'Tel Aviv' },
+  ]},
+  { code: '4', name: 'Bank Yahav', branches: [
+    { code: '001', name: 'Jerusalem Main' }, { code: '008', name: 'Tel Aviv' },
+  ]},
+  { code: '18', name: 'One Zero Digital Bank', branches: [
+    { code: '001', name: 'Digital (No Physical Branch)' },
+  ]},
 ];

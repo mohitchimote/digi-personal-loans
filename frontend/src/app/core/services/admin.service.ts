@@ -6,6 +6,7 @@ import { API_BASE } from './api-base';
 export interface UserSummary {
   id: number;
   email: string;
+  nationalId: string;
   fullName: string;
   phoneNumber?: string;
   role: string;
@@ -30,9 +31,5 @@ export class AdminService {
 
   setEnabled(id: number, enabled: boolean): Observable<any> {
     return this.http.put<any>(`${API}/users/${id}/enabled`, { enabled });
-  }
-
-  resetPassword(id: number, newPassword: string): Observable<any> {
-    return this.http.post<any>(`${API}/users/${id}/reset-password`, { newPassword });
   }
 }

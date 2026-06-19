@@ -1,7 +1,7 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 10 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 9 } }}</div>
     <h2 class="section-title">{{ 'personal.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'personal.subtitle' | translate }}</p>
   </div>
@@ -39,6 +39,18 @@
           <div class="db-hint" *ngIf="nationalIdVerified()">{{ 'personal.nationalIdVerified' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">{{ 'common.required' | translate }}</div>
         </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.idIssueDateLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="date" formControlName="idIssueDate" />
+          <div class="db-error-msg" *ngIf="f('idIssueDate')?.invalid && f('idIssueDate')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+      </div>
+
+      <div class="db-alert db-alert--success mb-16" *ngIf="consentValid()">
+        <span class="material-icons mi-sm">check_circle</span> {{ 'personal.consentOnFile' | translate:{ date: $any(consentValidUntil() | date:'dd MMM yyyy') } }}
       </div>
 
       <div class="form-row">
@@ -152,6 +164,26 @@
       <div class="db-alert db-alert--error mt-16" *ngIf="addressHistoryError()"><span class="material-icons mi-sm">warning</span> {{ addressHistoryError() }}</div>
     </div>
 
+    <div class="db-card mt-16">
+      <div class="card-header"><h3>{{ 'personal.staffAssistHeader' | translate }}</h3></div>
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <p>{{ 'personal.assistedByStaffQuestion' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="true" /> {{ 'common.yes' | translate }}</label>
+        </div>
+      </div>
+      <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
+        <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
+        <select class="db-select" formControlName="preferredBranch">
+          <option value="">{{ 'common.select' | translate }}</option>
+          <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+        </select>
+      </div>
+    </div>
+
   </form>
 
   <!-- Applicant 2 (joint application) -->
@@ -183,6 +215,13 @@
             <span class="spinner" *ngIf="nationalIdVerifying2()"></span>
             <span class="material-icons mi-sm" style="color: var(--success)" *ngIf="nationalIdVerified2()">check_circle</span>
           </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.idIssueDateLabel' | translate }}</label>
+          <input class="db-input" type="date" formControlName="idIssueDate" />
         </div>
       </div>
 
@@ -223,11 +262,62 @@
   </form>
 
   <div class="form-actions mt-16">
-    <a routerLink="/portal/apply/consent-management" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+    <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
     <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
       {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
     </button>
   </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.personalDetails' | translate"></app-application-aside>
+</div>
+
+<!-- Consent modal: shown when no valid consent (within 90 days) is on file in the bank's CMS -->
+<div class="consent-modal-overlay" *ngIf="showConsentModal()">
+  <div class="consent-modal" [formGroup]="consentForm">
+    <h2>{{ 'consent.title' | translate }}</h2>
+    <p class="text-muted mb-16">{{ 'consent.subtitle' | translate }}</p>
+
+    <div class="db-alert db-alert--info mb-16">
+      <span class="material-icons mi-sm">info</span> {{ 'consent.intro' | translate }}
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.creditBureauText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="creditBureauConsent" />
+        <span>{{ 'consent.creditBureauLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.pepText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="pepScreeningConsent" />
+        <span>{{ 'consent.pepLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.sanctionsText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="sanctionsScreeningConsent" />
+        <span>{{ 'consent.sanctionsLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.dataProcessingText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="dataProcessingConsent" />
+        <span>{{ 'consent.dataProcessingLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="db-alert db-alert--error mt-16" *ngIf="consentError()"><span class="material-icons mi-sm">warning</span> {{ consentError() }}</div>
+
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="button" class="db-btn db-btn--primary" (click)="confirmConsent()">{{ 'consent.confirm' | translate }}</button>
+    </div>
+  </div>
 </div>

@@ -118,7 +118,6 @@ export class ApplicationService {
 
   private readonly sectionRoutes: Record<string, string> = {
     loanRequirements:   '/portal/apply/loan-requirements',
-    consentManagement:  '/portal/apply/consent-management',
     personalDetails:    '/portal/apply/personal-details',
     connectBank:        '/portal/apply/connect-bank',
     incomeEmployment:   '/portal/apply/income-employment',

@@ -6,6 +6,7 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { AuthService } from '../../../../core/services/auth.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
+import { ISRAELI_BANKS, IsraeliBank, IsraeliBankBranch } from '../../../../core/models';
 
 @Component({
   selector: 'app-direct-debit',
@@ -22,6 +23,7 @@ export class DirectDebitComponent implements OnInit {
   prefilledFromBank = signal(false);
   isJoint = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
+  banks: IsraeliBank[] = ISRAELI_BANKS;
 
   accountCandidates: { source: 'applicant1' | 'applicant2'; name: string; bankName: string }[] = [];
 
@@ -34,9 +36,9 @@ export class DirectDebitComponent implements OnInit {
     this.form = this.fb.group({
       accountSource:     ['applicant1'],
       accountHolderName: ['', Validators.required],
-      bankName:          ['', Validators.required],
-      accountNumber:     ['', Validators.required],
+      bankCode:          ['', Validators.required],
       branchCode:        ['', Validators.required],
+      accountNumber:     ['', Validators.required],
       preferredRepaymentDay: [1, Validators.required],
       confirmAuthorisation: [false, Validators.requiredTrue],
       guarantorName:     [''],
@@ -45,6 +47,24 @@ export class DirectDebitComponent implements OnInit {
       guarantorPhone:    [''],
       guarantorEmail:    [''],
     });
+
+    this.form.get('bankCode')!.valueChanges.subscribe(() => this.form.patchValue({ branchCode: '' }, { emitEvent: false }));
+  }
+
+  get selectedBank(): IsraeliBank | undefined {
+    return this.banks.find(b => b.code === this.form.value.bankCode);
+  }
+
+  get selectedBankBranches(): IsraeliBankBranch[] {
+    return this.selectedBank?.branches || [];
+  }
+
+  private bankDisplayName(code: string): string {
+    return this.banks.find(b => b.code === code)?.name || '';
+  }
+
+  get selectedBranchName(): string {
+    return this.selectedBankBranches.find(b => b.code === this.form.value.branchCode)?.name || '';
   }
 
   ngOnInit(): void {
@@ -60,6 +80,11 @@ export class DirectDebitComponent implements OnInit {
 
         if (app.directDebitJson) {
           const data = JSON.parse(app.directDebitJson);
+          if (!data.bankCode && data.bankName) {
+            // Backward compatibility with data saved before bank/branch became dropdowns.
+            const match = this.banks.find(b => data.bankName.includes(b.name) || b.name.includes(data.bankName));
+            if (match) data.bankCode = match.code;
+          }
           this.form.patchValue(data);
           if (data.guarantorName) this.addGuarantor.set(true);
           return;
@@ -98,11 +123,12 @@ export class DirectDebitComponent implements OnInit {
       this.prefilledFromBank.set(false);
       return;
     }
+    const match = this.banks.find(b => candidate.bankName.includes(b.name) || b.name.includes(candidate.bankName));
     this.form.patchValue({
       accountHolderName: candidate.name,
-      bankName: candidate.bankName,
+      bankCode: match?.code || '',
+      branchCode: match?.branches[0]?.code || '',
       accountNumber: String(Math.floor(10000000 + Math.random() * 89999999)),
-      branchCode: String(Math.floor(100 + Math.random() * 899)),
     });
     this.prefilledFromBank.set(true);
   }
@@ -116,7 +142,11 @@ export class DirectDebitComponent implements OnInit {
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
-    const value = { ...this.form.value };
+    const value = {
+      ...this.form.value,
+      bankName: this.bankDisplayName(this.form.value.bankCode),
+      branchName: this.selectedBranchName,
+    };
     if (!this.addGuarantor()) {
       value.guarantorName = '';
       value.guarantorNationalId = '';

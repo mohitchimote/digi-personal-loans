@@ -15,6 +15,7 @@
       <tr>
         <th>{{ 'admin.name' | translate }}</th>
         <th>{{ 'admin.email' | translate }}</th>
+        <th>{{ 'admin.nationalId' | translate }}</th>
         <th>{{ 'admin.role' | translate }}</th>
         <th>{{ 'dashboard.status' | translate }}</th>
         <th>{{ 'admin.lastLogin' | translate }}</th>
@@ -25,6 +26,7 @@
       <tr *ngFor="let u of users()">
         <td>{{ u.fullName }}</td>
         <td>{{ u.email }}</td>
+        <td>{{ u.nationalId }}</td>
         <td>
           <select class="db-input" style="width:auto" [ngModel]="u.role" (ngModelChange)="changeRole(u, $event)">
             <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
@@ -37,23 +39,9 @@
         </td>
         <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
         <td>
-          <button class="db-btn db-btn--outline db-btn--sm" (click)="openReset(u)">{{ 'admin.resetPassword' | translate }}</button>
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u)">{{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}</button>
         </td>
       </tr>
     </tbody>
   </table>
-</div>
-
-<!-- Reset password inline panel -->
-<div class="db-card mt-24" *ngIf="resetTargetId() !== null">
-  <div class="card-header"><h3>{{ 'admin.resetPassword' | translate }}</h3></div>
-  <div class="db-form-group">
-    <label>{{ 'admin.newPassword' | translate }}</label>
-    <input class="db-input" type="password" [(ngModel)]="newPassword" [placeholder]="'admin.minChars' | translate" />
-  </div>
-  <div class="form-actions">
-    <button class="db-btn db-btn--ghost" (click)="cancelReset()">{{ 'common.cancel' | translate }}</button>
-    <button class="db-btn db-btn--primary" (click)="confirmReset()">{{ 'admin.confirmReset' | translate }}</button>
-  </div>
 </div>

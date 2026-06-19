@@ -17,7 +17,7 @@ public class AffordabilityRules {
     private BigDecimal minMonthlyIncome = new BigDecimal("8000");
     private BigDecimal baseAnnualRate = new BigDecimal("0.06");
     private BigDecimal repaymentCapacityFactor = new BigDecimal("0.40");
-    private int minCreditScore = 580;
+    private int minCreditScore = 5;
     private BigDecimal autoApprovalThresholdSingle = new BigDecimal("30000");
     private BigDecimal autoApprovalThresholdJoint = new BigDecimal("50000");
 

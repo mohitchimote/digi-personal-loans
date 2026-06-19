@@ -6,6 +6,7 @@ import { adminGuard } from './core/guards/admin.guard';
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
   { path: 'login',    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
+  { path: 'login/verify-otp', loadComponent: () => import('./pages/login/verify-otp/login-verify-otp.component').then(m => m.LoginVerifyOtpComponent) },
   { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
   { path: 'register/verify-otp', loadComponent: () => import('./pages/register/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent) },
   { path: 'intro',    loadComponent: () => import('./pages/intro/intro.component').then(m => m.IntroComponent) },

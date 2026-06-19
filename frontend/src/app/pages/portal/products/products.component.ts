@@ -52,7 +52,7 @@ export class ProductsComponent implements OnInit {
         this.productSvc.getEligible({
           requestedAmount: amount,
           requestedTermMonths: term,
-          creditScore: a2Credit ? Math.min(credit.creditScore || 700, a2Credit) : (credit.creditScore || 700),
+          creditScore: a2Credit ? Math.min(credit.creditScore || 7, a2Credit) : (credit.creditScore || 7),
           monthlyIncome: (income.monthlyGrossIncome || 0) + a2Income
         }).subscribe({
           next: list => {

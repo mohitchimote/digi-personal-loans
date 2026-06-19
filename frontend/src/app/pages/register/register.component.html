@@ -39,19 +39,15 @@
 
       <div class="form-row">
         <div class="db-form-group">
-          <label>{{ 'register.passwordLabel' | translate }} <span class="required">*</span></label>
-          <div class="input-with-action">
-            <input class="db-input" [type]="showPw() ? 'text' : 'password'"
-                   formControlName="password" [placeholder]="'register.passwordPlaceholder' | translate" />
-            <button type="button" class="toggle-pw" (click)="showPw.set(!showPw())"><span class="material-icons mi-sm">{{ showPw() ? 'visibility_off' : 'visibility' }}</span></button>
-          </div>
-          <div class="db-error-msg" *ngIf="f('password')?.invalid && f('password')?.touched">{{ 'register.passwordError' | translate }}</div>
+          <label>{{ 'register.nationalIdLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" inputmode="numeric" maxlength="9" formControlName="nationalId"
+                 [placeholder]="'register.nationalIdPlaceholder' | translate" />
+          <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">{{ 'register.nationalIdError' | translate }}</div>
         </div>
         <div class="db-form-group">
-          <label>{{ 'register.confirmPasswordLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" [type]="showPw() ? 'text' : 'password'"
-                 formControlName="confirmPw" [placeholder]="'register.confirmPasswordPlaceholder' | translate" />
-          <div class="db-error-msg" *ngIf="form.hasError('mismatch') && f('confirmPw')?.touched">{{ 'register.passwordMismatch' | translate }}</div>
+          <label>{{ 'register.idIssueDateLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="date" formControlName="idIssueDate" />
+          <div class="db-error-msg" *ngIf="f('idIssueDate')?.invalid && f('idIssueDate')?.touched">{{ 'register.idIssueDateError' | translate }}</div>
         </div>
       </div>
 

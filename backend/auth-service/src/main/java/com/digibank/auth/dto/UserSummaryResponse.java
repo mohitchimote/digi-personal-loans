@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public class UserSummaryResponse {
     private Long id;
     private String email;
+    private String nationalId;
     private String fullName;
     private String phoneNumber;
     private String role;
@@ -17,6 +18,7 @@ public class UserSummaryResponse {
         UserSummaryResponse r = new UserSummaryResponse();
         r.id = u.getId();
         r.email = u.getEmail();
+        r.nationalId = u.getNationalId();
         r.fullName = u.getFullName();
         r.phoneNumber = u.getPhoneNumber();
         r.role = u.getRole();
@@ -28,6 +30,7 @@ public class UserSummaryResponse {
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
+    public String getNationalId() { return nationalId; }
     public String getFullName() { return fullName; }
     public String getPhoneNumber() { return phoneNumber; }
     public String getRole() { return role; }

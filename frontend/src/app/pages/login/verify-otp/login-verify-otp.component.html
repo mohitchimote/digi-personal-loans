@@ -1,0 +1,39 @@
+<div class="auth-shell">
+  <div class="auth-brand">
+    <a routerLink="/" class="brand-link">
+      <app-brand-logo iconClass="brand-icon" />
+      <div>
+        <div class="brand-name">{{ 'common.brandName' | translate }}</div>
+        <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
+      </div>
+    </a>
+    <app-language-switcher />
+  </div>
+
+  <div class="auth-card">
+    <h2>{{ 'login.otpTitle' | translate }}</h2>
+    <p class="auth-subtitle">{{ 'login.otpSubtitle' | translate:{ nationalId } }}</p>
+
+    <div class="db-alert db-alert--info mb-16">
+      <span class="material-icons mi-sm">info</span>
+      {{ 'otp.demoNotice' | translate }} <strong>{{ demoOtp() }}</strong>
+    </div>
+
+    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+
+    <div class="db-form-group">
+      <label>{{ 'otp.codeLabel' | translate }} <span class="required">*</span></label>
+      <input class="db-input" type="text" inputmode="numeric" maxlength="6" [(ngModel)]="otp"
+             placeholder="123456" autocomplete="one-time-code" />
+    </div>
+
+    <button type="button" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()" (click)="verify()">
+      {{ loading() ? ('otp.verifying' | translate) : ('otp.verify' | translate) }}
+    </button>
+
+    <div class="auth-switch">
+      {{ 'otp.didntGetCode' | translate }}
+      <button type="button" class="link-btn" [disabled]="resending()" (click)="resend()">{{ resending() ? ('otp.resending' | translate) : ('otp.resend' | translate) }}</button>
+    </div>
+  </div>
+</div>

@@ -96,6 +96,7 @@
     <div class="review-grid">
       <div class="review-item"><span>{{ 'directDebit.accountHolderLabel' | translate }}</span><strong>{{ directDebit.accountHolderName }}</strong></div>
       <div class="review-item"><span>{{ 'directDebit.bankNameLabel' | translate }}</span><strong>{{ directDebit.bankName }}</strong></div>
+      <div class="review-item" *ngIf="directDebit.branchName"><span>{{ 'directDebit.branchCodeLabel' | translate }}</span><strong>{{ directDebit.branchName }} ({{ directDebit.branchCode }})</strong></div>
       <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.repaymentDay' | translate }}</span><strong>{{ 'loanReq.ofEachMonth' | translate:{ day: directDebit.preferredRepaymentDay } }}</strong></div>
       <div class="review-item" *ngIf="directDebit.guarantorName"><span>{{ 'directDebit.guarantorHeader' | translate }}</span><strong>{{ directDebit.guarantorName }}</strong></div>

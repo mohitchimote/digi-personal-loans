@@ -18,12 +18,10 @@ export class LoginComponent {
   form: FormGroup;
   loading = signal(false);
   error = signal('');
-  showPassword = signal(false);
 
   constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
     this.form = this.fb.group({
-      email:    ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
+      nationalId: ['', [Validators.required, Validators.pattern(/^\d{9}$/)]],
     });
   }
 
@@ -32,18 +30,20 @@ export class LoginComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.auth.login(this.form.value).subscribe({
+    this.auth.requestLoginOtp(this.form.value).subscribe({
       next: res => {
         this.loading.set(false);
         if (res.success) {
-          const dest = this.auth.isAdmin ? '/admin/users' : this.auth.isUnderwriter ? '/underwriter/pipeline' : '/portal/dashboard';
-          this.router.navigate([dest]);
+          this.router.navigate(['/login/verify-otp'], {
+            state: { nationalId: res.data.nationalId, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
+          });
+        } else {
+          this.error.set(res.message || 'Login failed.');
         }
-        else this.error.set(res.message || 'Login failed.');
       },
-      error: () => {
+      error: err => {
         this.loading.set(false);
-        this.error.set('Invalid email or password. Please try again.');
+        this.error.set(err.error?.message || 'No account found for this National ID.');
       }
     });
   }

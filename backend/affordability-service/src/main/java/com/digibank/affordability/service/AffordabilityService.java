@@ -123,15 +123,15 @@ public class AffordabilityService {
     }
 
     private String deriveRisk(int score, BigDecimal dti) {
-        if (score >= 750 && dti.compareTo(new BigDecimal("25")) <= 0) return "LOW";
-        if (score >= 650) return "MEDIUM";
+        if (score >= 8 && dti.compareTo(new BigDecimal("25")) <= 0) return "LOW";
+        if (score >= 6) return "MEDIUM";
         return "HIGH";
     }
 
     private String deriveCreditCategory(int score) {
-        if (score >= 750) return "EXCELLENT";
-        if (score >= 700) return "GOOD";
-        if (score >= 650) return "FAIR";
+        if (score >= 8) return "EXCELLENT";
+        if (score >= 7) return "GOOD";
+        if (score >= 6) return "FAIR";
         return "POOR";
     }
 }

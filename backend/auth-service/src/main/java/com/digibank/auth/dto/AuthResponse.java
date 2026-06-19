@@ -1,10 +1,14 @@
 package com.digibank.auth.dto;
 
+import java.time.LocalDate;
+
 public class AuthResponse {
     private String token;
     private String tokenType = "Bearer";
     private Long userId;
     private String email;
+    private String nationalId;
+    private LocalDate idIssueDate;
     private String fullName;
     private String phoneNumber;
     private String role;
@@ -19,6 +23,10 @@ public class AuthResponse {
     public void setUserId(Long userId) { this.userId = userId; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getNationalId() { return nationalId; }
+    public void setNationalId(String nationalId) { this.nationalId = nationalId; }
+    public LocalDate getIdIssueDate() { return idIssueDate; }
+    public void setIdIssueDate(LocalDate idIssueDate) { this.idIssueDate = idIssueDate; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getPhoneNumber() { return phoneNumber; }
@@ -36,6 +44,8 @@ public class AuthResponse {
         public Builder tokenType(String v) { r.tokenType = v; return this; }
         public Builder userId(Long v) { r.userId = v; return this; }
         public Builder email(String v) { r.email = v; return this; }
+        public Builder nationalId(String v) { r.nationalId = v; return this; }
+        public Builder idIssueDate(LocalDate v) { r.idIssueDate = v; return this; }
         public Builder fullName(String v) { r.fullName = v; return this; }
         public Builder phoneNumber(String v) { r.phoneNumber = v; return this; }
         public Builder role(String v) { r.role = v; return this; }

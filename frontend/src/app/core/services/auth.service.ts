@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
-import { AuthResponse, LoginRequest, OtpVerifyRequest, RegisterInitiatedResponse, RegisterRequest } from '../models';
+import { AuthResponse, LoginOtpInitiatedResponse, LoginOtpRequest, LoginVerifyRequest, OtpVerifyRequest, RegisterInitiatedResponse, RegisterRequest } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/auth`;
@@ -30,8 +30,12 @@ export class AuthService {
     return this.http.post<any>(`${API}/register/resend-otp`, { email });
   }
 
-  login(req: LoginRequest): Observable<any> {
-    return this.http.post<any>(`${API}/login`, req).pipe(
+  requestLoginOtp(req: LoginOtpRequest): Observable<{ success: boolean; message: string; data: LoginOtpInitiatedResponse }> {
+    return this.http.post<any>(`${API}/login/request-otp`, req);
+  }
+
+  verifyLoginOtp(req: LoginVerifyRequest): Observable<any> {
+    return this.http.post<any>(`${API}/login/verify-otp`, req).pipe(
       tap(res => { if (res.success) this.storeSession(res.data); })
     );
   }
@@ -65,6 +69,14 @@ export class AuthService {
 
   get userPhone(): string | null {
     return this.currentUser()?.phoneNumber ?? null;
+  }
+
+  get userNationalId(): string | null {
+    return this.currentUser()?.nationalId ?? null;
+  }
+
+  get userIdIssueDate(): string | null {
+    return this.currentUser()?.idIssueDate ?? null;
   }
 
   get role(): string | null {

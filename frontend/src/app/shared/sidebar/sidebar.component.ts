@@ -40,7 +40,6 @@ export class SidebarComponent implements OnInit {
 
   applicationSteps: NavItem[] = [
     { labelKey: 'steps.loanRequirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
-    { labelKey: 'steps.consentManagement',   route: '/portal/apply/consent-management',  sectionKey: 'consentManagement' },
     { labelKey: 'steps.personalDetails',     route: '/portal/apply/personal-details',    sectionKey: 'personalDetails' },
     { labelKey: 'steps.connectBank',         route: '/portal/apply/connect-bank',        sectionKey: 'connectBank' },
     { labelKey: 'steps.incomeEmployment',    route: '/portal/apply/income-employment',   sectionKey: 'incomeEmployment' },

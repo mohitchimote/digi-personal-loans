@@ -33,13 +33,9 @@ public class OtpService {
         return OTP_VALIDITY_MINUTES * 60L;
     }
 
-    public User verify(String email, String otp) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("No registration found for this email."));
-
-        if (user.isEmailVerified()) {
-            throw new IllegalArgumentException("This account is already verified.");
-        }
+    /** Validates the OTP against the given user and clears it on success. Caller decides what
+     * happens next (e.g. marking the account verified for registration, or just logging in). */
+    public User verifyOtp(User user, String otp) {
         if (user.getOtpCode() == null || user.getOtpExpiresAt() == null) {
             throw new IllegalArgumentException("No active OTP. Please request a new code.");
         }
@@ -55,8 +51,6 @@ public class OtpService {
             throw new IllegalArgumentException("Incorrect OTP code.");
         }
 
-        user.setEmailVerified(true);
-        user.setEnabled(true);
         user.setOtpCode(null);
         user.setOtpExpiresAt(null);
         user.setOtpAttempts(0);

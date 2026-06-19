@@ -30,7 +30,7 @@ export class CreditDeclarationsComponent implements OnInit {
       hasBankruptcy:  [false, Validators.required],
       hasCCJ:         [false, Validators.required],
       hasPaymentPlan: [false, Validators.required],
-      creditScore:    [700, [Validators.required, Validators.min(300), Validators.max(850)]],
+      creditScore:    [7, [Validators.required, Validators.min(1), Validators.max(9)]],
     });
     this.applicant2Form = this.fb.group({
       hasDefaulted:   [false],
@@ -66,17 +66,17 @@ export class CreditDeclarationsComponent implements OnInit {
 
   scoreCategory(score: number): string {
     const s = score || 0;
-    if (s >= 750) return 'Excellent';
-    if (s >= 700) return 'Good';
-    if (s >= 650) return 'Fair';
-    if (s >= 580) return 'Poor';
+    if (s >= 8) return 'Excellent';
+    if (s >= 7) return 'Good';
+    if (s >= 6) return 'Fair';
+    if (s >= 5) return 'Poor';
     return 'Very Poor';
   }
 
   scoreColor(score: number): string {
     const s = score || 0;
-    if (s >= 700) return 'var(--success)';
-    if (s >= 580) return 'var(--warning)';
+    if (s >= 7) return 'var(--success)';
+    if (s >= 5) return 'var(--warning)';
     return 'var(--error)';
   }
 

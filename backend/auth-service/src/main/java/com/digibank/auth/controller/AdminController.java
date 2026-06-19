@@ -8,7 +8,6 @@ import com.digibank.auth.repository.FaqRepository;
 import com.digibank.auth.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,12 +19,10 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final FaqRepository faqRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public AdminController(UserRepository userRepository, FaqRepository faqRepository, PasswordEncoder passwordEncoder) {
+    public AdminController(UserRepository userRepository, FaqRepository faqRepository) {
         this.userRepository = userRepository;
         this.faqRepository = faqRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/users")
@@ -47,18 +44,6 @@ public class AdminController {
         user.setEnabled(Boolean.TRUE.equals(body.get("enabled")));
         userRepository.save(user);
         return ResponseEntity.ok(ApiResponse.success("User updated.", UserSummaryResponse.from(user)));
-    }
-
-    @PostMapping("/users/{id}/reset-password")
-    public ResponseEntity<ApiResponse<String>> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
-        String newPassword = body.get("newPassword");
-        if (newPassword == null || newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Password must be at least 6 characters."));
-        }
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-        return ResponseEntity.ok(ApiResponse.success("Password reset.", null));
     }
 
     @GetMapping("/faqs")

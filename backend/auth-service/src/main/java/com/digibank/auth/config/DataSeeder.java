@@ -5,34 +5,34 @@ import com.digibank.auth.model.User;
 import com.digibank.auth.repository.FaqRepository;
 import com.digibank.auth.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final FaqRepository faqRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public DataSeeder(UserRepository userRepository, FaqRepository faqRepository, PasswordEncoder passwordEncoder) {
+    public DataSeeder(UserRepository userRepository, FaqRepository faqRepository) {
         this.userRepository = userRepository;
         this.faqRepository = faqRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
-        seedUser("underwriter@digibank.com", "Underwriter@123", "DigiBank Underwriter", "UNDERWRITER");
-        seedUser("admin@digibank.com", "Admin@123", "DigiBank Admin", "ADMIN");
+        seedUser("underwriter@digibank.com", "000000018", "DigiBank Underwriter", "UNDERWRITER");
+        seedUser("admin@digibank.com", "000000026", "DigiBank Admin", "ADMIN");
         seedFaqs();
     }
 
-    private void seedUser(String email, String password, String fullName, String role) {
+    private void seedUser(String email, String nationalId, String fullName, String role) {
         if (userRepository.existsByEmail(email)) return;
         User user = User.builder()
                 .email(email)
-                .password(passwordEncoder.encode(password))
+                .nationalId(nationalId)
+                .idIssueDate(LocalDate.of(2015, 1, 1))
                 .fullName(fullName)
                 .role(role)
                 .enabled(true)

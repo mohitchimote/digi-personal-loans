@@ -1,21 +1,16 @@
 package com.digibank.auth.service;
 
 import com.digibank.auth.dto.AuthResponse;
-import com.digibank.auth.dto.LoginRequest;
+import com.digibank.auth.dto.LoginOtpInitiatedResponse;
 import com.digibank.auth.dto.RegisterInitiatedResponse;
 import com.digibank.auth.dto.RegisterRequest;
 import com.digibank.auth.model.User;
 import com.digibank.auth.repository.UserRepository;
 import com.digibank.auth.security.JwtTokenProvider;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,18 +21,12 @@ import java.util.List;
 public class AuthService implements UserDetailsService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final AuthenticationManager authenticationManager;
     private final OtpService otpService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JwtTokenProvider jwtTokenProvider, @Lazy AuthenticationManager authenticationManager,
-                       OtpService otpService) {
+    public AuthService(UserRepository userRepository, JwtTokenProvider jwtTokenProvider, OtpService otpService) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.authenticationManager = authenticationManager;
         this.otpService = otpService;
     }
 
@@ -46,10 +35,14 @@ public class AuthService implements UserDetailsService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("An account with this email address already exists.");
         }
+        if (userRepository.existsByNationalId(request.getNationalId())) {
+            throw new IllegalArgumentException("An account with this National ID already exists.");
+        }
 
         User user = User.builder()
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .nationalId(request.getNationalId())
+                .idIssueDate(request.getIdIssueDate())
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
                 .role("CUSTOMER")
@@ -68,21 +61,20 @@ public class AuthService implements UserDetailsService {
     }
 
     @Transactional
-    public AuthResponse verifyOtp(String email, String otp) {
-        User user = otpService.verify(email, otp);
-        UserDetails userDetails = buildUserDetails(user);
-        String token = jwtTokenProvider.generateToken(userDetails);
+    public AuthResponse verifyRegistrationOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("No registration found for this email."));
+        if (user.isEmailVerified()) {
+            throw new IllegalArgumentException("This account is already verified.");
+        }
 
-        return AuthResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .userId(user.getId())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .phoneNumber(user.getPhoneNumber())
-                .role(user.getRole())
-                .expiresIn(jwtTokenProvider.getExpirationTime())
-                .build();
+        user = otpService.verifyOtp(user, otp);
+        user.setEmailVerified(true);
+        user.setEnabled(true);
+        user.setLastLogin(LocalDateTime.now());
+        user = userRepository.save(user);
+
+        return buildAuthResponse(user);
     }
 
     @Transactional
@@ -101,21 +93,43 @@ public class AuthService implements UserDetailsService {
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
-        try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-            );
-        } catch (Exception e) {
-            throw new BadCredentialsException("Invalid email or password.");
+    public LoginOtpInitiatedResponse requestLoginOtp(String nationalId) {
+        User user = userRepository.findByNationalId(nationalId)
+                .orElseThrow(() -> new IllegalArgumentException("No account found for this National ID."));
+        if (!user.isEnabled()) {
+            throw new IllegalArgumentException("This account is disabled. Please contact DigiBank support.");
+        }
+        String otp = otpService.generateAndAssign(user);
+        return LoginOtpInitiatedResponse.builder()
+                .nationalId(user.getNationalId())
+                .demoOtp(otp)
+                .otpExpiresInSeconds(otpService.validitySeconds())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse verifyLoginOtp(String nationalId, String otp) {
+        User user = userRepository.findByNationalId(nationalId)
+                .orElseThrow(() -> new IllegalArgumentException("No account found for this National ID."));
+        if (!user.isEnabled()) {
+            throw new IllegalArgumentException("This account is disabled. Please contact DigiBank support.");
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
+        user = otpService.verifyOtp(user, otp);
         user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
+        user = userRepository.save(user);
 
+        return buildAuthResponse(user);
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String uuid) throws UsernameNotFoundException {
+        User user = userRepository.findByUuid(uuid)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + uuid));
+        return buildUserDetails(user);
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
         UserDetails userDetails = buildUserDetails(user);
         String token = jwtTokenProvider.generateToken(userDetails);
 
@@ -124,6 +138,8 @@ public class AuthService implements UserDetailsService {
                 .tokenType("Bearer")
                 .userId(user.getId())
                 .email(user.getEmail())
+                .nationalId(user.getNationalId())
+                .idIssueDate(user.getIdIssueDate())
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
@@ -131,17 +147,10 @@ public class AuthService implements UserDetailsService {
                 .build();
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
-        return buildUserDetails(user);
-    }
-
     private UserDetails buildUserDetails(User user) {
         return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail())
-                .password(user.getPassword())
+                .username(user.getUuid())
+                .password("N/A")
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())))
                 .accountExpired(false)
                 .accountLocked(!user.isEnabled())

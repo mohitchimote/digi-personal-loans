@@ -2,7 +2,9 @@ package com.digibank.auth.controller;
 
 import com.digibank.auth.dto.ApiResponse;
 import com.digibank.auth.dto.AuthResponse;
-import com.digibank.auth.dto.LoginRequest;
+import com.digibank.auth.dto.LoginOtpInitiatedResponse;
+import com.digibank.auth.dto.LoginOtpRequest;
+import com.digibank.auth.dto.LoginVerifyRequest;
 import com.digibank.auth.dto.OtpResendRequest;
 import com.digibank.auth.dto.OtpVerifyRequest;
 import com.digibank.auth.dto.RegisterInitiatedResponse;
@@ -54,7 +56,7 @@ public class AuthController {
     @PostMapping("/register/verify-otp")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
         try {
-            AuthResponse response = authService.verifyOtp(request.getEmail(), request.getOtp());
+            AuthResponse response = authService.verifyRegistrationOtp(request.getEmail(), request.getOtp());
             return ResponseEntity.ok(ApiResponse.success("Registration successful. Welcome to DigiBank.", response));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -73,14 +75,25 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+    @PostMapping("/login/request-otp")
+    public ResponseEntity<ApiResponse<LoginOtpInitiatedResponse>> requestLoginOtp(@Valid @RequestBody LoginOtpRequest request) {
         try {
-            AuthResponse response = authService.login(request);
+            LoginOtpInitiatedResponse response = authService.requestLoginOtp(request.getNationalId());
+            return ResponseEntity.ok(ApiResponse.success("A login code has been generated.", response));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/login/verify-otp")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyLoginOtp(@Valid @RequestBody LoginVerifyRequest request) {
+        try {
+            AuthResponse response = authService.verifyLoginOtp(request.getNationalId(), request.getOtp());
             return ResponseEntity.ok(ApiResponse.success("Login successful.", response));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Invalid email or password."));
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 

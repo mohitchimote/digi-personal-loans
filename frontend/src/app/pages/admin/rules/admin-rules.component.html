@@ -30,7 +30,7 @@
 
   <div class="db-form-group">
     <label>{{ 'admin.minCreditScore' | translate }}</label>
-    <input class="db-input" type="number" step="10" [(ngModel)]="rules()!.minCreditScore" />
+    <input class="db-input" type="number" step="1" min="1" max="9" [(ngModel)]="rules()!.minCreditScore" />
   </div>
 
   <div class="db-form-group">
