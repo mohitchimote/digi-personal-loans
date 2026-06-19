@@ -89,20 +89,25 @@ public class ProductService {
     }
 
     /** Demo data only: represents what a real core-banking system would already know about an
-     * existing customer and have pre-approved them for, ahead of any application being started. */
+     * existing customer and have pre-approved them for, ahead of any application being started.
+     * Each entry is keyed by nationalId and skipped if already seeded, so adding a new persona
+     * here doesn't reset/duplicate offers for ones already seeded on a prior startup. */
     private void seedPreApprovedOffers() {
-        if (preApprovedOfferRepository.count() > 0) return;
-        String nationalId = "000000050";
-        BigDecimal amount = new BigDecimal("120000");
-        int term = 60;
-        BigDecimal rate = new BigDecimal("4.80");
+        seedOfferIfAbsent("000000050", "PL001", "Premium Personal Loan", new BigDecimal("4.80"), new BigDecimal("120000"), 60);
+        seedOfferIfAbsent("000000051", "SL001", "Standard Personal Loan", new BigDecimal("5.50"), new BigDecimal("65000"), 48);
+        seedOfferIfAbsent("000000052", "EL001", "Express Loan", new BigDecimal("6.20"), new BigDecimal("25000"), 24);
+    }
+
+    private void seedOfferIfAbsent(String nationalId, String productCode, String productName,
+                                    BigDecimal rate, BigDecimal amount, int term) {
+        if (preApprovedOfferRepository.existsByNationalId(nationalId)) return;
         BigDecimal monthlyRepayment = calculateRepayment(rate, amount, term);
         BigDecimal totalRepayable = monthlyRepayment.multiply(new BigDecimal(term)).setScale(2, RoundingMode.HALF_UP);
 
         preApprovedOfferRepository.save(PreApprovedOffer.builder()
                 .nationalId(nationalId)
-                .productCode("PL001")
-                .productName("Premium Personal Loan")
+                .productCode(productCode)
+                .productName(productName)
                 .annualInterestRate(rate)
                 .amount(amount)
                 .termMonths(term)

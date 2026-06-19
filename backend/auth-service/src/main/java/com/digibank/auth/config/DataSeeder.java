@@ -25,6 +25,8 @@ public class DataSeeder implements CommandLineRunner {
         seedUser("underwriter@digibank.com", "000000018", "DigiBank Underwriter", "UNDERWRITER");
         seedUser("admin@digibank.com", "000000026", "DigiBank Admin", "ADMIN");
         seedUser("noa.levi@digibank.il", "000000050", "Noa Levi", "CUSTOMER");
+        seedUser("avi.mizrahi@digibank.il", "000000051", "Avi Mizrahi", "CUSTOMER");
+        seedUser("tamar.bendavid@digibank.il", "000000052", "Tamar Ben-David", "CUSTOMER");
         seedFaqs();
     }
 

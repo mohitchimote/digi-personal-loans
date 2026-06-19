@@ -8,4 +8,5 @@ import java.util.Optional;
 @Repository
 public interface PreApprovedOfferRepository extends JpaRepository<PreApprovedOffer, Long> {
     Optional<PreApprovedOffer> findByNationalIdAndConsumedFalse(String nationalId);
+    boolean existsByNationalId(String nationalId);
 }
