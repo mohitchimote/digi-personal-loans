@@ -23,6 +23,10 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
     private boolean enabled = true;
+    private boolean emailVerified = false;
+    private String otpCode;
+    private LocalDateTime otpExpiresAt;
+    private int otpAttempts = 0;
 
     public User() {}
 
@@ -45,6 +49,14 @@ public class User {
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+    public String getOtpCode() { return otpCode; }
+    public void setOtpCode(String otpCode) { this.otpCode = otpCode; }
+    public LocalDateTime getOtpExpiresAt() { return otpExpiresAt; }
+    public void setOtpExpiresAt(LocalDateTime otpExpiresAt) { this.otpExpiresAt = otpExpiresAt; }
+    public int getOtpAttempts() { return otpAttempts; }
+    public void setOtpAttempts(int otpAttempts) { this.otpAttempts = otpAttempts; }
 
     public static Builder builder() { return new Builder(); }
 
@@ -56,6 +68,7 @@ public class User {
         public Builder phoneNumber(String v) { u.phoneNumber = v; return this; }
         public Builder role(String v) { u.role = v; return this; }
         public Builder enabled(boolean v) { u.enabled = v; return this; }
+        public Builder emailVerified(boolean v) { u.emailVerified = v; return this; }
         public User build() { return u; }
     }
 }

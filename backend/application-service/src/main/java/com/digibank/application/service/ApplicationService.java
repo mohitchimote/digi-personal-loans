@@ -45,7 +45,7 @@ public class ApplicationService {
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
     private static final List<String> ALL_SECTIONS = List.of(
-            "loanRequirements", "personalDetails", "connectBank", "incomeEmployment",
+            "loanRequirements", "consentManagement", "personalDetails", "connectBank", "incomeEmployment",
             "outgoings", "creditDeclarations", "verifyId", "directDebit", "reviewSubmit"
     );
 
@@ -73,6 +73,7 @@ public class ApplicationService {
             String json = objectMapper.writeValueAsString(data);
             switch (section) {
                 case "loanRequirements"   -> app.setLoanRequirementsJson(json);
+                case "consentManagement"  -> app.setConsentManagementJson(json);
                 case "personalDetails"    -> app.setPersonalDetailsJson(json);
                 case "connectBank"        -> app.setBankConnectionJson(json);
                 case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
@@ -102,6 +103,7 @@ public class ApplicationService {
             String json = objectMapper.writeValueAsString(data);
             switch (section) {
                 case "loanRequirements"   -> app.setLoanRequirementsJson(json);
+                case "consentManagement"  -> app.setConsentManagementJson(json);
                 case "personalDetails"    -> app.setPersonalDetailsJson(json);
                 case "connectBank"        -> app.setBankConnectionJson(json);
                 case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
@@ -400,6 +402,7 @@ public class ApplicationService {
     private String sectionLabel(String section) {
         return switch (section) {
             case "loanRequirements"   -> "Loan Requirements";
+            case "consentManagement"  -> "Consent Management";
             case "personalDetails"    -> "Personal Details";
             case "connectBank"        -> "Bank Connection";
             case "incomeEmployment"   -> "Income & Employment";
@@ -423,6 +426,7 @@ public class ApplicationService {
     private int calculateCompletion(LoanApplication app) {
         long filled = ALL_SECTIONS.stream().filter(section -> switch (section) {
             case "loanRequirements"   -> app.getLoanRequirementsJson() != null;
+            case "consentManagement"  -> app.getConsentManagementJson() != null;
             case "personalDetails"    -> app.getPersonalDetailsJson() != null;
             case "connectBank"        -> app.getBankConnectionJson() != null;
             case "incomeEmployment"   -> app.getIncomeEmploymentJson() != null;

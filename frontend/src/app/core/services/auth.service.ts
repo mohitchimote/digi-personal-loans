@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
-import { AuthResponse, LoginRequest, RegisterRequest } from '../models';
+import { AuthResponse, LoginRequest, OtpVerifyRequest, RegisterInitiatedResponse, RegisterRequest } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/auth`;
@@ -16,10 +16,18 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  register(req: RegisterRequest): Observable<any> {
-    return this.http.post<any>(`${API}/register`, req).pipe(
+  register(req: RegisterRequest): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
+    return this.http.post<any>(`${API}/register`, req);
+  }
+
+  verifyOtp(req: OtpVerifyRequest): Observable<any> {
+    return this.http.post<any>(`${API}/register/verify-otp`, req).pipe(
       tap(res => { if (res.success) this.storeSession(res.data); })
     );
+  }
+
+  resendOtp(email: string): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
+    return this.http.post<any>(`${API}/register/resend-otp`, { email });
   }
 
   login(req: LoginRequest): Observable<any> {
@@ -53,6 +61,10 @@ export class AuthService {
 
   get userFullName(): string | null {
     return this.currentUser()?.fullName ?? null;
+  }
+
+  get userPhone(): string | null {
+    return this.currentUser()?.phoneNumber ?? null;
   }
 
   get role(): string | null {

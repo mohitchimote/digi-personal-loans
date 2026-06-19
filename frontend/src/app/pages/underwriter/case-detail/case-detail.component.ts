@@ -46,6 +46,7 @@ export class CaseDetailComponent implements OnInit {
 
   sections = [
     { key: 'loanRequirements',   labelKey: 'steps.loanRequirements' },
+    { key: 'consentManagement',  labelKey: 'steps.consentManagement' },
     { key: 'personalDetails',    labelKey: 'steps.personalDetails' },
     { key: 'connectBank',        labelKey: 'steps.connectBank' },
     { key: 'incomeEmployment',   labelKey: 'steps.incomeEmployment' },
@@ -131,6 +132,7 @@ export class CaseDetailComponent implements OnInit {
   }
 
   get loanReqs() { return this.parseSection(this.application()?.loanRequirementsJson); }
+  get consent() { return this.parseSection(this.application()?.consentManagementJson); }
   get personal() { return this.parseSection(this.application()?.personalDetailsJson); }
   get bankConnection() { return this.parseSection(this.application()?.bankConnectionJson); }
   get income()   { return this.parseSection(this.application()?.incomeEmploymentJson); }

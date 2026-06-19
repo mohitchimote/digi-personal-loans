@@ -1,19 +1,21 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 9 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 4, total: 10 } }}</div>
     <h2 class="section-title">{{ 'connectBank.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'connectBank.subtitle' | translate }}</p>
   </div>
 
-  <div class="db-card">
+  <div class="db-card mb-16">
     <div class="db-alert db-alert--info mb-16">
       <span class="material-icons mi-sm">lock</span> {{ 'connectBank.securityNote' | translate }}
     </div>
 
+    <h3 class="mb-16" *ngIf="isJoint">{{ 'connectBank.applicant1Header' | translate }}</h3>
+
     <!-- Bank selection -->
     <div *ngIf="!connected() && !connecting()">
-      <h3 style="margin-bottom:12px;">{{ 'connectBank.chooseBank' | translate }}</h3>
+      <h3 style="margin-bottom:12px;" *ngIf="!isJoint">{{ 'connectBank.chooseBank' | translate }}</h3>
       <div class="bank-grid">
         <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
           <span class="bank-icon material-icons">{{ b.icon }}</span>
@@ -42,11 +44,44 @@
     </div>
   </div>
 
+  <div class="db-card mb-16" *ngIf="isJoint">
+    <h3 class="mb-16">{{ 'connectBank.applicant2Header' | translate }}</h3>
+
+    <!-- Bank selection -->
+    <div *ngIf="!connected2() && !connecting2()">
+      <div class="bank-grid">
+        <button class="bank-tile" *ngFor="let b of banks" (click)="connect2(b)">
+          <span class="bank-icon material-icons">{{ b.icon }}</span>
+          <span>{{ b.name }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Connecting -->
+    <div class="connecting-state" *ngIf="connecting2()">
+      <div class="spinner"></div>
+      <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank2?.name }}…</p>
+    </div>
+
+    <!-- Connected -->
+    <div class="connected-state" *ngIf="connected2() && connectionSummary2">
+      <div class="db-alert db-alert--success mb-16">
+        ✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank2?.name || '' } }}
+      </div>
+      <div class="review-grid">
+        <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary2.accountMasked }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary2.avgBalance | number }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary2.transactions }}</strong></div>
+      </div>
+      <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect2()">{{ 'connectBank.disconnect' | translate }}</button>
+    </div>
+  </div>
+
   <div class="form-actions">
     <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
     <div style="display:flex; gap:12px;">
-      <button class="db-btn db-btn--outline" (click)="continue()" [disabled]="saving() || connecting()" *ngIf="!connected()">{{ 'connectBank.skipForNow' | translate }}</button>
-      <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="saving() || connecting()">
+      <button class="db-btn db-btn--outline" (click)="continue()" [disabled]="saving() || connecting() || connecting2()" *ngIf="!connected() && !connected2()">{{ 'connectBank.skipForNow' | translate }}</button>
+      <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="saving() || connecting() || connecting2()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>

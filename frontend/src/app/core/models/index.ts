@@ -4,6 +4,7 @@ export interface AuthResponse {
   userId: number;
   email: string;
   fullName: string;
+  phoneNumber?: string;
   role: string;
   expiresIn: number;
 }
@@ -13,6 +14,18 @@ export interface RegisterRequest {
   password: string;
   fullName: string;
   phoneNumber?: string;
+}
+
+export interface RegisterInitiatedResponse {
+  email: string;
+  // Demo-only: in production this would be sent via SMS/email, not returned in the API response.
+  demoOtp: string;
+  otpExpiresInSeconds: number;
+}
+
+export interface OtpVerifyRequest {
+  email: string;
+  otp: string;
 }
 
 export interface LoginRequest {
@@ -29,6 +42,7 @@ export interface LoanApplication {
   currentSection: string;
   completionPercentage: number;
   loanRequirementsJson?: string;
+  consentManagementJson?: string;
   personalDetailsJson?: string;
   bankConnectionJson?: string;
   incomeEmploymentJson?: string;
@@ -70,6 +84,13 @@ export interface LoanRequirements {
   preferredRepaymentDay: number;
 }
 
+export interface ConsentManagement {
+  creditBureauConsent: boolean;
+  pepScreeningConsent: boolean;
+  sanctionsScreeningConsent: boolean;
+  dataProcessingConsent: boolean;
+}
+
 export interface PersonalDetails {
   firstName: string;
   lastName: string;
@@ -78,10 +99,22 @@ export interface PersonalDetails {
   nationality: string;
   maritalStatus: string;
   dependents: number;
+  phoneNumber?: string;
+  email?: string;
   street: string;
   city: string;
   postCode: string;
   country: string;
+  monthsAtCurrentAddress?: number;
+  previousAddresses?: AddressHistoryEntry[];
+}
+
+export interface AddressHistoryEntry {
+  street: string;
+  city: string;
+  postCode: string;
+  country: string;
+  monthsAtAddress: number;
 }
 
 export interface IncomeEmployment {
@@ -92,6 +125,7 @@ export interface IncomeEmployment {
   monthlyGrossIncome: number;
   monthlyNetIncome: number;
   otherIncome: number;
+  employments?: IncomeEmployment[];
 }
 
 export interface Outgoings {

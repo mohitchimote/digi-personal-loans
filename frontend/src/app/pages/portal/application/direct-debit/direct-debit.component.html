@@ -1,12 +1,28 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 8, total: 9 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 9, total: 10 } }}</div>
     <h2 class="section-title">{{ 'directDebit.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'directDebit.subtitle' | translate }}</p>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card mb-16" *ngIf="isJoint() && accountCandidates.length">
+      <div class="card-header"><h3>{{ 'directDebit.accountSourceHeader' | translate }}</h3></div>
+      <label class="db-checkbox mb-16" *ngFor="let c of accountCandidates">
+        <input type="radio" formControlName="accountSource" [value]="c.source" (change)="applyAccountSource(c.source)" />
+        <span>{{ 'directDebit.accountSourceOption' | translate:{ name: c.name, bank: c.bankName } }}</span>
+      </label>
+      <label class="db-checkbox">
+        <input type="radio" formControlName="accountSource" value="manual" (change)="applyAccountSource('manual')" />
+        <span>{{ 'directDebit.accountSourceManual' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="db-alert db-alert--info mb-16" *ngIf="prefilledFromBank()">
+      <span class="material-icons mi-sm">bolt</span> {{ 'directDebit.prefilledFromBank' | translate }}
+    </div>
+
     <div class="db-card mb-16">
       <div class="card-header"><h3>{{ 'directDebit.accountHeader' | translate }}</h3></div>
 

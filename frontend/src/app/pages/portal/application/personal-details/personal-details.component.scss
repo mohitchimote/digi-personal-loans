@@ -8,3 +8,32 @@ app-application-aside { flex: 0 0 300px; max-width: 300px; }
 .form-row--3 { grid-template-columns: 1fr 1fr 1fr; }
 .mb-16 { margin-bottom: 16px; }
 .form-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+
+.input-with-action {
+  position: relative;
+  .db-input { padding-right: 40px; }
+  .id-status-icon {
+    position: absolute; right: 12px; top: 38px;
+    display: flex; align-items: center;
+    .spinner {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid var(--light-grey); border-top-color: var(--tcs-blue);
+      animation: spin 0.8s linear infinite;
+    }
+  }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.previous-address-card {
+  border: 1px solid var(--light-grey);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  position: relative;
+}
+
+.address-history-progress {
+  font-size: 0.8rem;
+  color: var(--mid-grey);
+  margin-top: 8px;
+}

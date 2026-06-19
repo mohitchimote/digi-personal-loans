@@ -3,7 +3,6 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractContro
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
-import { NotificationService } from '../../core/services/notification.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher/language-switcher.component';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
@@ -24,7 +23,6 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder,
     private auth: AuthService,
-    private notifications: NotificationService,
     private router: Router
   ) {
     this.form = this.fb.group({
@@ -54,9 +52,9 @@ export class RegisterComponent {
       next: res => {
         this.loading.set(false);
         if (res.success) {
-          const userId = res.data?.userId;
-          if (userId) this.notifications.seedWelcome(userId).subscribe();
-          this.router.navigate(['/intro']);
+          this.router.navigate(['/register/verify-otp'], {
+            state: { email: res.data.email, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
+          });
         } else {
           this.error.set(res.message || 'Registration failed.');
         }

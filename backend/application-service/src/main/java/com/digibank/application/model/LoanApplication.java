@@ -28,6 +28,9 @@ public class LoanApplication {
     private String loanRequirementsJson;
 
     @Column(columnDefinition = "TEXT")
+    private String consentManagementJson;
+
+    @Column(columnDefinition = "TEXT")
     private String personalDetailsJson;
 
     @Column(columnDefinition = "TEXT")
@@ -105,6 +108,9 @@ public class LoanApplication {
 
     public String getLoanRequirementsJson() { return loanRequirementsJson; }
     public void setLoanRequirementsJson(String loanRequirementsJson) { this.loanRequirementsJson = loanRequirementsJson; }
+
+    public String getConsentManagementJson() { return consentManagementJson; }
+    public void setConsentManagementJson(String consentManagementJson) { this.consentManagementJson = consentManagementJson; }
 
     public String getPersonalDetailsJson() { return personalDetailsJson; }
     public void setPersonalDetailsJson(String personalDetailsJson) { this.personalDetailsJson = personalDetailsJson; }

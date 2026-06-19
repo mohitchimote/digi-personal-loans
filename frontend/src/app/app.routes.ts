@@ -7,6 +7,7 @@ export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
   { path: 'login',    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
+  { path: 'register/verify-otp', loadComponent: () => import('./pages/register/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent) },
   { path: 'intro',    loadComponent: () => import('./pages/intro/intro.component').then(m => m.IntroComponent) },
   {
     path: 'portal',
@@ -16,6 +17,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./pages/portal/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'apply/loan-requirements',   loadComponent: () => import('./pages/portal/application/loan-requirements/loan-requirements.component').then(m => m.LoanRequirementsComponent) },
+      { path: 'apply/consent-management',  loadComponent: () => import('./pages/portal/application/consent-management/consent-management.component').then(m => m.ConsentManagementComponent) },
       { path: 'apply/personal-details',    loadComponent: () => import('./pages/portal/application/personal-details/personal-details.component').then(m => m.PersonalDetailsComponent) },
       { path: 'apply/connect-bank',        loadComponent: () => import('./pages/portal/application/connect-bank/connect-bank.component').then(m => m.ConnectBankComponent) },
       { path: 'apply/income-employment',   loadComponent: () => import('./pages/portal/application/income-employment/income-employment.component').then(m => m.IncomeEmploymentComponent) },

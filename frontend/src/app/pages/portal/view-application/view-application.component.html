@@ -46,6 +46,7 @@
     <div class="review-grid">
       <div class="review-item" *ngIf="bankConnection.connected"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ bankConnection.bankName }} · {{ bankConnection.summary?.accountMasked }}</strong></div>
       <div class="review-item" *ngIf="!bankConnection.connected"><span>{{ 'steps.connectBank' | translate }}</span><strong>{{ 'connectBank.skipForNow' | translate }}</strong></div>
+      <div class="review-item" *ngIf="bankConnection.applicant2?.connected"><span>{{ 'connectBank.applicant2Header' | translate }}</span><strong>{{ bankConnection.applicant2.bankName }} · {{ bankConnection.applicant2.summary?.accountMasked }}</strong></div>
     </div>
   </div>
 

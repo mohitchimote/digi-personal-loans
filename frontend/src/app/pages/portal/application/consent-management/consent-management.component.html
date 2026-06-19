@@ -1,0 +1,70 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 10 } }}</div>
+    <h2 class="section-title">{{ 'consent.title' | translate }}</h2>
+    <p class="section-subtitle">{{ 'consent.subtitle' | translate }}</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card">
+      <div class="db-alert db-alert--info mb-16">
+        <span class="material-icons mi-sm">info</span>
+        {{ 'consent.intro' | translate }}
+      </div>
+
+      <div class="consent-item">
+        <p class="consent-text">{{ 'consent.creditBureauText' | translate }}</p>
+        <label class="db-checkbox">
+          <input type="checkbox" formControlName="creditBureauConsent" />
+          <span>{{ 'consent.creditBureauLabel' | translate }}</span>
+        </label>
+        <div class="db-error-msg" *ngIf="f('creditBureauConsent')?.invalid && f('creditBureauConsent')?.touched">
+          {{ 'consent.requiredError' | translate }}
+        </div>
+      </div>
+
+      <div class="consent-item">
+        <p class="consent-text">{{ 'consent.pepText' | translate }}</p>
+        <label class="db-checkbox">
+          <input type="checkbox" formControlName="pepScreeningConsent" />
+          <span>{{ 'consent.pepLabel' | translate }}</span>
+        </label>
+        <div class="db-error-msg" *ngIf="f('pepScreeningConsent')?.invalid && f('pepScreeningConsent')?.touched">
+          {{ 'consent.requiredError' | translate }}
+        </div>
+      </div>
+
+      <div class="consent-item">
+        <p class="consent-text">{{ 'consent.sanctionsText' | translate }}</p>
+        <label class="db-checkbox">
+          <input type="checkbox" formControlName="sanctionsScreeningConsent" />
+          <span>{{ 'consent.sanctionsLabel' | translate }}</span>
+        </label>
+        <div class="db-error-msg" *ngIf="f('sanctionsScreeningConsent')?.invalid && f('sanctionsScreeningConsent')?.touched">
+          {{ 'consent.requiredError' | translate }}
+        </div>
+      </div>
+
+      <div class="consent-item">
+        <p class="consent-text">{{ 'consent.dataProcessingText' | translate }}</p>
+        <label class="db-checkbox">
+          <input type="checkbox" formControlName="dataProcessingConsent" />
+          <span>{{ 'consent.dataProcessingLabel' | translate }}</span>
+        </label>
+        <div class="db-error-msg" *ngIf="f('dataProcessingConsent')?.invalid && f('dataProcessingConsent')?.touched">
+          {{ 'consent.requiredError' | translate }}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </form>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.consentManagement' | translate"></app-application-aside>
+</div>

@@ -7,3 +7,17 @@ app-application-aside { flex: 0 0 300px; max-width: 300px; }
 }
 .mb-16 { margin-bottom: 16px; }
 .form-actions { display: flex; justify-content: space-between; margin-top: 24px; }
+
+.additional-employment-card {
+  border: 1px dashed var(--tcs-blue-light);
+}
+
+.total-income-summary {
+  background: var(--info-light);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  font-size: 0.875rem;
+  color: var(--tcs-blue);
+  font-weight: 600;
+}

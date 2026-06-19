@@ -1,7 +1,7 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 9 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 10 } }}</div>
     <h2 class="section-title">{{ 'personal.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'personal.subtitle' | translate }}</p>
   </div>
@@ -29,9 +29,14 @@
           <input class="db-input" type="date" formControlName="dateOfBirth" autocomplete="bday" />
           <div class="db-error-msg" *ngIf="f('dateOfBirth')?.invalid && f('dateOfBirth')?.touched">{{ 'common.required' | translate }}</div>
         </div>
-        <div class="db-form-group">
+        <div class="db-form-group input-with-action">
           <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="text" formControlName="nationalId" [placeholder]="'personal.nationalIdPlaceholder' | translate" />
+          <div class="id-status-icon" *ngIf="nationalIdVerifying() || nationalIdVerified()">
+            <span class="spinner" *ngIf="nationalIdVerifying()"></span>
+            <span class="material-icons mi-sm" style="color: var(--success)" *ngIf="nationalIdVerified()">check_circle</span>
+          </div>
+          <div class="db-hint" *ngIf="nationalIdVerified()">{{ 'personal.nationalIdVerified' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('nationalId')?.invalid && f('nationalId')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
@@ -53,13 +58,27 @@
         </div>
       </div>
 
-      <div class="db-form-group" style="max-width:200px">
-        <label>{{ 'personal.dependentsLabel' | translate }} <span class="required">*</span></label>
-        <input class="db-input" type="number" formControlName="dependents" min="0" max="20" />
+      <div class="form-row">
+        <div class="db-form-group" style="max-width:200px">
+          <label>{{ 'personal.dependentsLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="dependents" min="0" max="20" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.phoneLabel' | translate }}</label>
+          <input class="db-input" type="tel" formControlName="phoneNumber" autocomplete="tel" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.emailLabel' | translate }}</label>
+          <input class="db-input" type="email" formControlName="email" autocomplete="email" />
+          <div class="db-error-msg" *ngIf="f('email')?.invalid && f('email')?.touched">{{ 'register.emailError' | translate }}</div>
+        </div>
       </div>
     </div>
 
-    <div class="db-card">
+    <div class="db-card mb-16">
       <div class="card-header"><h3>{{ 'personal.addressHeader' | translate }}</h3></div>
 
       <div class="db-form-group">
@@ -84,6 +103,53 @@
           <input class="db-input" type="text" formControlName="country" />
         </div>
       </div>
+
+      <div class="db-form-group" style="max-width:260px">
+        <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="number" formControlName="monthsAtCurrentAddress" min="0" placeholder="e.g. 24" />
+        <div class="db-error-msg" *ngIf="f('monthsAtCurrentAddress')?.invalid && f('monthsAtCurrentAddress')?.touched">{{ 'common.required' | translate }}</div>
+      </div>
+
+      <div class="address-history-progress">
+        {{ 'personal.addressHistoryProgress' | translate:{ months: totalAddressMonths, target: ADDRESS_HISTORY_TARGET_MONTHS } }}
+      </div>
+
+      <div formArrayName="previousAddresses">
+        <div class="previous-address-card" *ngFor="let pa of previousAddresses.controls; let i = index" [formGroupName]="i">
+          <div class="card-header">
+            <h3>{{ 'personal.previousAddressHeader' | translate:{ n: i + 1 } }}</h3>
+            <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="removePreviousAddress(i)">{{ 'common.delete' | translate }}</button>
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'personal.streetLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" formControlName="street" />
+          </div>
+          <div class="form-row form-row--3">
+            <div class="db-form-group">
+              <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+              <input class="db-input" type="text" formControlName="city" />
+            </div>
+            <div class="db-form-group">
+              <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
+              <input class="db-input" type="text" formControlName="postCode" />
+            </div>
+            <div class="db-form-group">
+              <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
+              <input class="db-input" type="text" formControlName="country" />
+            </div>
+          </div>
+          <div class="db-form-group" style="max-width:260px">
+            <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="number" formControlName="monthsAtAddress" min="0" />
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-16" *ngIf="needsMoreAddressHistory" (click)="addPreviousAddress()">
+        {{ 'personal.addPreviousAddress' | translate }}
+      </button>
+
+      <div class="db-alert db-alert--error mt-16" *ngIf="addressHistoryError()"><span class="material-icons mi-sm">warning</span> {{ addressHistoryError() }}</div>
     </div>
 
   </form>
@@ -110,9 +176,24 @@
           <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="date" formControlName="dateOfBirth" />
         </div>
-        <div class="db-form-group">
+        <div class="db-form-group input-with-action">
           <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="text" formControlName="nationalId" [placeholder]="'personal.nationalIdPlaceholder' | translate" />
+          <div class="id-status-icon" *ngIf="nationalIdVerifying2() || nationalIdVerified2()">
+            <span class="spinner" *ngIf="nationalIdVerifying2()"></span>
+            <span class="material-icons mi-sm" style="color: var(--success)" *ngIf="nationalIdVerified2()">check_circle</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.phoneLabel' | translate }}</label>
+          <input class="db-input" type="tel" formControlName="phoneNumber" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.emailLabel' | translate }}</label>
+          <input class="db-input" type="email" formControlName="email" />
         </div>
       </div>
 
@@ -142,7 +223,7 @@
   </form>
 
   <div class="form-actions mt-16">
-    <a routerLink="/portal/apply/loan-requirements" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+    <a routerLink="/portal/apply/consent-management" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
     <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
       {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
     </button>

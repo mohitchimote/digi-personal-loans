@@ -2,6 +2,7 @@ package com.digibank.auth.service;
 
 import com.digibank.auth.dto.AuthResponse;
 import com.digibank.auth.dto.LoginRequest;
+import com.digibank.auth.dto.RegisterInitiatedResponse;
 import com.digibank.auth.dto.RegisterRequest;
 import com.digibank.auth.model.User;
 import com.digibank.auth.repository.UserRepository;
@@ -28,17 +29,20 @@ public class AuthService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final OtpService otpService;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JwtTokenProvider jwtTokenProvider, @Lazy AuthenticationManager authenticationManager) {
+                       JwtTokenProvider jwtTokenProvider, @Lazy AuthenticationManager authenticationManager,
+                       OtpService otpService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
+        this.otpService = otpService;
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public RegisterInitiatedResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("An account with this email address already exists.");
         }
@@ -49,21 +53,50 @@ public class AuthService implements UserDetailsService {
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
                 .role("CUSTOMER")
-                .enabled(true)
+                .enabled(false)
+                .emailVerified(false)
                 .build();
 
         User saved = userRepository.save(user);
-        UserDetails userDetails = buildUserDetails(saved);
+        String otp = otpService.generateAndAssign(saved);
+
+        return RegisterInitiatedResponse.builder()
+                .email(saved.getEmail())
+                .demoOtp(otp)
+                .otpExpiresInSeconds(otpService.validitySeconds())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse verifyOtp(String email, String otp) {
+        User user = otpService.verify(email, otp);
+        UserDetails userDetails = buildUserDetails(user);
         String token = jwtTokenProvider.generateToken(userDetails);
 
         return AuthResponse.builder()
                 .token(token)
                 .tokenType("Bearer")
-                .userId(saved.getId())
-                .email(saved.getEmail())
-                .fullName(saved.getFullName())
-                .role(saved.getRole())
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
                 .expiresIn(jwtTokenProvider.getExpirationTime())
+                .build();
+    }
+
+    @Transactional
+    public RegisterInitiatedResponse resendOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("No registration found for this email."));
+        if (user.isEmailVerified()) {
+            throw new IllegalArgumentException("This account is already verified.");
+        }
+        String otp = otpService.generateAndAssign(user);
+        return RegisterInitiatedResponse.builder()
+                .email(user.getEmail())
+                .demoOtp(otp)
+                .otpExpiresInSeconds(otpService.validitySeconds())
                 .build();
     }
 
@@ -92,6 +125,7 @@ public class AuthService implements UserDetailsService {
                 .userId(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .expiresIn(jwtTokenProvider.getExpirationTime())
                 .build();

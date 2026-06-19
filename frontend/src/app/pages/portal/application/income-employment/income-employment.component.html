@@ -1,14 +1,19 @@
 <div class="application-layout">
 <div class="form-page">
   <div class="form-section-header">
-    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 4, total: 9 } }}</div>
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 5, total: 10 } }}</div>
     <h2 class="section-title">{{ 'income.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'income.subtitle' | translate }}</p>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
-      <div class="card-header"><h3>{{ 'income.employmentHeader' | translate }}</h3></div>
+      <div class="card-header">
+        <h3>{{ 'income.employmentHeader' | translate:{ n: 1 } }}</h3>
+        <button type="button" class="db-btn db-btn--outline db-btn--sm" (click)="addEmployment()">
+          {{ 'income.addEmployment' | translate }}
+        </button>
+      </div>
 
       <div class="form-row">
         <div class="db-form-group">
@@ -44,6 +49,40 @@
       </div>
     </div>
 
+    <div formArrayName="additionalEmployments">
+      <div class="db-card mb-16 additional-employment-card" *ngFor="let emp of additionalEmployments.controls; let i = index" [formGroupName]="i">
+        <div class="card-header">
+          <h3>{{ 'income.employmentHeader' | translate:{ n: i + 2 } }}</h3>
+          <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="removeEmployment(i)">{{ 'common.delete' | translate }}</button>
+        </div>
+
+        <div class="form-row">
+          <div class="db-form-group">
+            <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
+            <select class="db-select" formControlName="employmentStatus">
+              <option value="">{{ 'common.select' | translate }}</option>
+              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+          <div class="db-form-group" *ngIf="isEmployedAt(emp)">
+            <label>{{ 'income.employerLabel' | translate }}</label>
+            <input class="db-input" type="text" formControlName="employer" [placeholder]="'income.employerPlaceholder' | translate" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="db-form-group">
+            <label>{{ 'income.grossIncomeLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="number" formControlName="monthlyGrossIncome" placeholder="e.g. 18000" min="0" />
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'income.netIncomeLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="number" formControlName="monthlyNetIncome" placeholder="e.g. 14000" min="0" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="db-card">
       <div class="card-header"><h3>{{ 'income.monthlyIncomeHeader' | translate }}</h3></div>
 
@@ -70,6 +109,10 @@
         <label>{{ 'income.otherIncomeLabel' | translate }}</label>
         <input class="db-input" type="number" formControlName="otherIncome" placeholder="0" min="0" />
         <div class="db-hint">{{ 'income.otherIncomeHint' | translate }}</div>
+      </div>
+
+      <div class="total-income-summary" *ngIf="additionalEmployments.length > 0">
+        {{ 'income.totalIncomeSummary' | translate:{ gross: totalGrossIncome, net: totalNetIncome } }}
       </div>
     </div>
 

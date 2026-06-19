@@ -6,6 +6,7 @@ public class AuthResponse {
     private Long userId;
     private String email;
     private String fullName;
+    private String phoneNumber;
     private String role;
     private long expiresIn;
 
@@ -20,6 +21,8 @@ public class AuthResponse {
     public void setEmail(String email) { this.email = email; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
     public long getExpiresIn() { return expiresIn; }
@@ -34,6 +37,7 @@ public class AuthResponse {
         public Builder userId(Long v) { r.userId = v; return this; }
         public Builder email(String v) { r.email = v; return this; }
         public Builder fullName(String v) { r.fullName = v; return this; }
+        public Builder phoneNumber(String v) { r.phoneNumber = v; return this; }
         public Builder role(String v) { r.role = v; return this; }
         public Builder expiresIn(long v) { r.expiresIn = v; return this; }
         public AuthResponse build() { return r; }

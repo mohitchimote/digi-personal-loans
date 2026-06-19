@@ -7,6 +7,7 @@ import { ApplicationAsideComponent } from '../../../../shared/application-aside/
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 interface BankOption { id: string; name: string; icon: string; }
+type BankConnectionSummary = { accountMasked: string; avgBalance: number; transactions: number };
 
 @Component({
   selector: 'app-connect-bank',
@@ -18,10 +19,21 @@ interface BankOption { id: string; name: string; icon: string; }
 export class ConnectBankComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
+  numberOfApplicants = signal(1);
+
+  // Applicant 1
   connecting = signal(false);
   connected = signal(false);
   skipped = signal(false);
   selectedBank: BankOption | null = null;
+  connectionSummary: BankConnectionSummary | null = null;
+
+  // Applicant 2 (joint applications only)
+  connecting2 = signal(false);
+  connected2 = signal(false);
+  skipped2 = signal(false);
+  selectedBank2: BankOption | null = null;
+  connectionSummary2: BankConnectionSummary | null = null;
 
   banks: BankOption[] = [
     { id: 'hapoalim', name: 'Bank Hapoalim', icon: 'account_balance' },
@@ -29,8 +41,6 @@ export class ConnectBankComponent implements OnInit {
     { id: 'discount',  name: 'Discount Bank', icon: 'account_balance' },
     { id: 'mizrahi',  name: 'Mizrahi-Tefahot', icon: 'account_balance' },
   ];
-
-  connectionSummary: { accountMasked: string; avgBalance: number; transactions: number } | null = null;
 
   constructor(
     private appSvc: ApplicationService,
@@ -44,6 +54,10 @@ export class ConnectBankComponent implements OnInit {
     this.appSvc.resolveEditable(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        if (app.loanRequirementsJson) {
+          const loanReqs = JSON.parse(app.loanRequirementsJson);
+          this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);
+        }
         if (app.bankConnectionJson) {
           const data = JSON.parse(app.bankConnectionJson);
           if (data.connected) {
@@ -53,9 +67,28 @@ export class ConnectBankComponent implements OnInit {
           } else if (data.skipped) {
             this.skipped.set(true);
           }
+          if (data.applicant2?.connected) {
+            this.connected2.set(true);
+            this.selectedBank2 = this.banks.find(b => b.id === data.applicant2.bankId) || null;
+            this.connectionSummary2 = data.applicant2.summary;
+          } else if (data.applicant2?.skipped) {
+            this.skipped2.set(true);
+          }
         }
       }
     });
+  }
+
+  get isJoint(): boolean {
+    return this.numberOfApplicants() === 2;
+  }
+
+  private fakeSummary(): BankConnectionSummary {
+    return {
+      accountMasked: '**** **** **** ' + Math.floor(1000 + Math.random() * 9000),
+      avgBalance: Math.floor(8000 + Math.random() * 12000),
+      transactions: Math.floor(40 + Math.random() * 60)
+    };
   }
 
   connect(bank: BankOption): void {
@@ -65,11 +98,7 @@ export class ConnectBankComponent implements OnInit {
     setTimeout(() => {
       this.connecting.set(false);
       this.connected.set(true);
-      this.connectionSummary = {
-        accountMasked: '**** **** **** ' + Math.floor(1000 + Math.random() * 9000),
-        avgBalance: Math.floor(8000 + Math.random() * 12000),
-        transactions: Math.floor(40 + Math.random() * 60)
-      };
+      this.connectionSummary = this.fakeSummary();
     }, 1600);
   }
 
@@ -77,6 +106,23 @@ export class ConnectBankComponent implements OnInit {
     this.connected.set(false);
     this.connectionSummary = null;
     this.selectedBank = null;
+  }
+
+  connect2(bank: BankOption): void {
+    this.selectedBank2 = bank;
+    this.connecting2.set(true);
+    this.skipped2.set(false);
+    setTimeout(() => {
+      this.connecting2.set(false);
+      this.connected2.set(true);
+      this.connectionSummary2 = this.fakeSummary();
+    }, 1600);
+  }
+
+  disconnect2(): void {
+    this.connected2.set(false);
+    this.connectionSummary2 = null;
+    this.selectedBank2 = null;
   }
 
   private save(payload: any, next: string): void {
@@ -88,10 +134,14 @@ export class ConnectBankComponent implements OnInit {
   }
 
   continue(): void {
-    if (this.connected()) {
-      this.save({ connected: true, bankId: this.selectedBank?.id, bankName: this.selectedBank?.name, summary: this.connectionSummary }, '/portal/apply/income-employment');
-    } else {
-      this.save({ connected: false, skipped: true }, '/portal/apply/income-employment');
-    }
+    const applicant1 = this.connected()
+      ? { connected: true, bankId: this.selectedBank?.id, bankName: this.selectedBank?.name, summary: this.connectionSummary }
+      : { connected: false, skipped: true };
+    const applicant2 = this.isJoint
+      ? (this.connected2()
+          ? { connected: true, bankId: this.selectedBank2?.id, bankName: this.selectedBank2?.name, summary: this.connectionSummary2 }
+          : { connected: false, skipped: true })
+      : null;
+    this.save({ ...applicant1, applicant2 }, '/portal/apply/income-employment');
   }
 }

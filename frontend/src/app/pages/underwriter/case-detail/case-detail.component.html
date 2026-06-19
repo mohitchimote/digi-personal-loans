@@ -294,6 +294,9 @@
             <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ bankConnection.summary?.transactions }}</strong></div>
           </div>
           <div class="text-muted" style="font-size:0.88rem;" *ngIf="!bankConnection.connected">{{ 'connectBank.skipForNow' | translate }}</div>
+          <div class="review-grid mt-16" *ngIf="bankConnection.applicant2?.connected">
+            <div class="review-item"><span>{{ 'connectBank.applicant2Header' | translate }}</span><strong>{{ bankConnection.applicant2.bankName }} · {{ bankConnection.applicant2.summary?.accountMasked }}</strong></div>
+          </div>
         </div>
 
         <div class="db-card mb-16">

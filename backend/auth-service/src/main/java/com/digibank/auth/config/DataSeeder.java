@@ -36,6 +36,7 @@ public class DataSeeder implements CommandLineRunner {
                 .fullName(fullName)
                 .role(role)
                 .enabled(true)
+                .emailVerified(true)
                 .build();
         userRepository.save(user);
     }

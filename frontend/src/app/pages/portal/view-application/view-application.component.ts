@@ -54,6 +54,7 @@ export class ViewApplicationComponent implements OnInit {
   }
 
   get loanReqs() { return this.parseSection(this.application()?.loanRequirementsJson); }
+  get consent() { return this.parseSection(this.application()?.consentManagementJson); }
   get personal() { return this.parseSection(this.application()?.personalDetailsJson); }
   get bankConnection() { return this.parseSection(this.application()?.bankConnectionJson); }
   get income()   { return this.parseSection(this.application()?.incomeEmploymentJson); }

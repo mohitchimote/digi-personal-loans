@@ -73,7 +73,7 @@ export class LoanRequirementsComponent implements OnInit {
     this.appSvc.saveSection(this.appRef(), 'loanRequirements', this.form.value, this.auth.userId!).subscribe({
       next: () => {
         this.saving.set(false);
-        this.router.navigate(['/portal/apply/personal-details']);
+        this.router.navigate(['/portal/apply/consent-management']);
       },
       error: () => this.saving.set(false)
     });

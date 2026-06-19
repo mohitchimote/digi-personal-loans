@@ -19,7 +19,11 @@ export class DirectDebitComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   addGuarantor = signal(false);
+  prefilledFromBank = signal(false);
+  isJoint = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
+
+  accountCandidates: { source: 'applicant1' | 'applicant2'; name: string; bankName: string }[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -28,6 +32,7 @@ export class DirectDebitComponent implements OnInit {
     private router: Router
   ) {
     this.form = this.fb.group({
+      accountSource:     ['applicant1'],
       accountHolderName: ['', Validators.required],
       bankName:          ['', Validators.required],
       accountNumber:     ['', Validators.required],
@@ -48,13 +53,58 @@ export class DirectDebitComponent implements OnInit {
     this.appSvc.resolveEditable(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        if (app.loanRequirementsJson) {
+          const loanReqs = JSON.parse(app.loanRequirementsJson);
+          this.isJoint.set((Number(loanReqs.numberOfApplicants) || 1) === 2);
+        }
+
         if (app.directDebitJson) {
           const data = JSON.parse(app.directDebitJson);
           this.form.patchValue(data);
           if (data.guarantorName) this.addGuarantor.set(true);
+          return;
+        }
+
+        if (!app.bankConnectionJson) return;
+        const bankConnection = JSON.parse(app.bankConnectionJson);
+        const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : {};
+
+        if (bankConnection.connected) {
+          this.accountCandidates.push({
+            source: 'applicant1',
+            name: [personal.firstName, personal.lastName].filter(Boolean).join(' ') || this.auth.userFullName || '',
+            bankName: bankConnection.bankName || '',
+          });
+        }
+        if (this.isJoint() && bankConnection.applicant2?.connected) {
+          this.accountCandidates.push({
+            source: 'applicant2',
+            name: [personal.applicant2?.firstName, personal.applicant2?.lastName].filter(Boolean).join(' '),
+            bankName: bankConnection.applicant2.bankName || '',
+          });
+        }
+
+        if (this.accountCandidates.length) {
+          this.applyAccountSource(this.accountCandidates[0].source);
         }
       }
     });
+  }
+
+  applyAccountSource(source: 'applicant1' | 'applicant2' | 'manual'): void {
+    this.form.patchValue({ accountSource: source });
+    const candidate = this.accountCandidates.find(c => c.source === source);
+    if (!candidate) {
+      this.prefilledFromBank.set(false);
+      return;
+    }
+    this.form.patchValue({
+      accountHolderName: candidate.name,
+      bankName: candidate.bankName,
+      accountNumber: String(Math.floor(10000000 + Math.random() * 89999999)),
+      branchCode: String(Math.floor(100 + Math.random() * 899)),
+    });
+    this.prefilledFromBank.set(true);
   }
 
   toggleGuarantor(): void {

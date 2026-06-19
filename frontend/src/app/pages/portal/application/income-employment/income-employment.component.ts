@@ -1,5 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
@@ -35,6 +35,7 @@ export class IncomeEmploymentComponent implements OnInit {
       monthlyGrossIncome: [null, [Validators.required, Validators.min(0)]],
       monthlyNetIncome:   [null, [Validators.required, Validators.min(0)]],
       otherIncome:        [0],
+      additionalEmployments: this.fb.array([]),
     });
     this.applicant2Form = this.fb.group({
       employmentStatus:   [''],
@@ -59,7 +60,15 @@ export class IncomeEmploymentComponent implements OnInit {
         }
         if (app.incomeEmploymentJson) {
           const data = JSON.parse(app.incomeEmploymentJson);
-          this.form.patchValue(data);
+          if (Array.isArray(data.employments) && data.employments.length) {
+            // monthlyGrossIncome/monthlyNetIncome at the top level are saved as totals across all
+            // employments (affordability calc reads them flat) — rehydrate employment 1's own
+            // figures from the breakdown instead of the total.
+            this.form.patchValue({ ...data, ...data.employments[0] });
+            data.employments.slice(1).forEach((e: any) => this.additionalEmployments.push(this.buildEmployment(e)));
+          } else {
+            this.form.patchValue(data);
+          }
           if (data.applicant2) this.applicant2Form.patchValue(data.applicant2);
         }
       }
@@ -68,6 +77,47 @@ export class IncomeEmploymentComponent implements OnInit {
 
   get isJoint(): boolean {
     return this.numberOfApplicants() === 2;
+  }
+
+  get additionalEmployments(): FormArray {
+    return this.form.get('additionalEmployments') as FormArray;
+  }
+
+  private buildEmployment(data?: any): FormGroup {
+    return this.fb.group({
+      employmentStatus:   [data?.employmentStatus || '', Validators.required],
+      employer:           [data?.employer || ''],
+      jobTitle:           [data?.jobTitle || ''],
+      employmentDuration: [data?.employmentDuration || ''],
+      monthlyGrossIncome: [data?.monthlyGrossIncome ?? null, [Validators.required, Validators.min(0)]],
+      monthlyNetIncome:   [data?.monthlyNetIncome ?? null, [Validators.required, Validators.min(0)]],
+      otherIncome:        [data?.otherIncome ?? 0],
+    });
+  }
+
+  addEmployment(): void {
+    this.additionalEmployments.push(this.buildEmployment());
+  }
+
+  removeEmployment(index: number): void {
+    this.additionalEmployments.removeAt(index);
+  }
+
+  isEmployedAt(group: any): boolean {
+    const s = group.get('employmentStatus')?.value;
+    return s && !['Retired', 'Unemployed', 'Student'].includes(s);
+  }
+
+  get totalGrossIncome(): number {
+    const primary = Number(this.f('monthlyGrossIncome')?.value) || 0;
+    const extra = this.additionalEmployments.controls.reduce((sum, c) => sum + (Number(c.get('monthlyGrossIncome')?.value) || 0), 0);
+    return primary + extra;
+  }
+
+  get totalNetIncome(): number {
+    const primary = Number(this.f('monthlyNetIncome')?.value) || 0;
+    const extra = this.additionalEmployments.controls.reduce((sum, c) => sum + (Number(c.get('monthlyNetIncome')?.value) || 0), 0);
+    return primary + extra;
   }
 
   saveAndNext(): void {
@@ -82,7 +132,15 @@ export class IncomeEmploymentComponent implements OnInit {
       }
     }
     this.saving.set(true);
-    const payload = { ...this.form.value, applicant2: this.isJoint ? this.applicant2Form.value : null };
+    const formValue = this.form.value;
+    const { additionalEmployments, ...employment1 } = formValue;
+    const payload = {
+      ...employment1,
+      monthlyGrossIncome: this.totalGrossIncome,
+      monthlyNetIncome: this.totalNetIncome,
+      employments: [employment1, ...additionalEmployments],
+      applicant2: this.isJoint ? this.applicant2Form.value : null,
+    };
     this.appSvc.saveSection(this.appRef(), 'incomeEmployment', payload, this.auth.userId!).subscribe({
       next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/outgoings']); },
       error: () => this.saving.set(false)
