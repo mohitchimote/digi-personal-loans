@@ -1,5 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../core/services/application.service';
 import { DocumentService } from '../../../core/services/document.service';
@@ -26,7 +26,8 @@ export class ApprovalComponent implements OnInit {
   constructor(
     private appSvc: ApplicationService,
     private docSvc: DocumentService,
-    private auth: AuthService
+    private auth: AuthService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -34,7 +35,10 @@ export class ApprovalComponent implements OnInit {
     const email  = this.auth.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.getCurrent(userId).subscribe({
+    const appRef = this.route.snapshot.paramMap.get('appRef');
+    const source = appRef ? this.appSvc.getApplication(appRef) : this.appSvc.getCurrent(userId);
+
+    source.subscribe({
       next: app => {
         this.application.set(app);
 

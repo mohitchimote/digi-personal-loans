@@ -29,6 +29,7 @@ export const routes: Routes = [
       { path: 'affordability-results',     loadComponent: () => import('./pages/portal/affordability-results/affordability-results.component').then(m => m.AffordabilityResultsComponent) },
       { path: 'products',                  loadComponent: () => import('./pages/portal/products/products.component').then(m => m.ProductsComponent) },
       { path: 'approval',                  loadComponent: () => import('./pages/portal/approval/approval.component').then(m => m.ApprovalComponent) },
+      { path: 'approval/:appRef',          loadComponent: () => import('./pages/portal/approval/approval.component').then(m => m.ApprovalComponent) },
       { path: 'documents',                 loadComponent: () => import('./pages/portal/documents/documents.component').then(m => m.DocumentsComponent) },
       { path: 'view-application/:appRef',  loadComponent: () => import('./pages/portal/view-application/view-application.component').then(m => m.ViewApplicationComponent) },
       { path: 'notifications',             loadComponent: () => import('./pages/portal/notifications/notifications.component').then(m => m.NotificationsComponent) },

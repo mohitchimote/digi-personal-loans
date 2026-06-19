@@ -134,6 +134,9 @@ export class ApplicationService {
     if (app.status === 'DRAFT' || app.status === 'IN_PROGRESS') {
       return this.sectionRoutes[app.currentSection] || '/portal/apply/loan-requirements';
     }
+    if (app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED') {
+      return `/portal/approval/${app.applicationRef}`;
+    }
     return `/portal/view-application/${app.applicationRef}`;
   }
 }
