@@ -11,26 +11,29 @@ A full-stack demo of an end-to-end digital personal loan origination journey for
 1. **Landing page** → **Register** (full name, email, phone, National ID, ID issue date — no password).
 2. **OTP verification** — a 6-digit code gates account activation. No SMS/email provider is integrated yet, so in this demo the code is returned in the API response and shown on screen with a "Demo Environment" banner. 5-minute expiry, 5 max attempts before requiring a resend.
 3. **Intro page** — explains the journey and required documents, then into the **Portal**.
-4. **10-step application wizard** (`/portal/apply/...`), each step persisted independently and resumable:
+4. **9-step application wizard** (`/portal/apply/...`), each step persisted independently and resumable:
 
    | # | Step | Key data captured |
    |---|------|---|
    | 1 | Loan Requirements | Amount, purpose, term, number of applicants (1 = single, 2 = joint) |
-   | 2 | Consent Management | Explicit checkbox consent: credit bureau search, PEP screening, sanctions screening, data processing — required before any credit checks happen |
-   | 3 | Personal Details | Identity (name, DOB, national ID + issue date — prefilled from registration for applicant 1, with a simulated national-ID-database verification tick), contact (phone/email, prefilled from registration for applicant 1), address + address history (must total ≥36 months across current + previous addresses, for credit-check purposes), and applicant 2 details for joint applications |
-   | 4 | Connect Bank | Simulated Open Banking connection (per applicant, independently, for joint applications) — generates a fake account summary (masked account, average balance, transaction count) |
-   | 5 | Income & Employment | Employment status/employer/income; supports declaring **multiple employments** per applicant via "+ Add Another Employment" — total income is kept in sync at the top level for downstream affordability calculation |
-   | 6 | Outgoings | Rent/mortgage, existing loans, credit cards, living expenses |
-   | 7 | Credit Declarations | Self-declared credit history (defaults, bankruptcy, CCJs, payment plans, credit score) |
-   | 8 | Verify ID | Document upload (national ID) |
-   | 9 | Direct Debit | Repayment account details — prepopulated from a connected bank account if available; for joint applications, the customer picks which applicant's connected account to use, or enters details manually |
-   | 10 | Review & Submit | Full summary + final declaration checkboxes (terms, privacy, credit search consent) + signature |
+   | 2 | Personal Details | Identity (name, DOB, national ID + issue date — prefilled from registration for applicant 1, with a simulated national-ID-database verification tick), contact (phone/email, prefilled from registration for applicant 1), address + address history (must total ≥36 months across current + previous addresses, for credit-check purposes), and applicant 2 details for joint applications. **Consent** (credit bureau, PEP, sanctions, data processing) is captured here too, as a modal — triggered by **Save & Next** once the whole form is valid (not mid-typing); confirming it shows the recorded validity date and fires a customer notification. There's an orphaned standalone `/apply/consent-management` route/component left over from an earlier iteration, no longer linked from anywhere — consent now lives entirely in this step |
+   | 3 | Connect Bank | Simulated Open Banking connection (per applicant, independently, for joint applications) — generates a fake account summary (masked account, average balance, transaction count) |
+   | 4 | Income & Employment | Employment status/employer/income; supports declaring **multiple employments** per applicant via "+ Add Another Employment" — total income is kept in sync at the top level for downstream affordability calculation |
+   | 5 | Outgoings | Rent/mortgage, existing loans, credit cards, living expenses |
+   | 6 | Credit Declarations | Self-declared credit history (defaults, bankruptcy, CCJs, payment plans, credit score) |
+   | 7 | Verify ID | Document upload (national ID) |
+   | 8 | Direct Debit | Repayment account details — prepopulated from a connected bank account if available; for joint applications, the customer picks which applicant's connected account to use, or enters details manually |
+   | 9 | Review & Submit | Full summary + final declaration checkboxes (terms, privacy, credit search consent) + signature |
 
 5. **Submission** triggers an automated **affordability assessment** (DTI/HTI ratios, credit score, repayment capacity) against admin-configurable rules.
 6. If affordability passes, the customer sees **eligible products** (filtered by credit score, income, requested amount, DTI, risk category) and selects one.
 7. **Auto-approval**: if the requested amount is under an admin-configurable threshold (different for single vs. joint applications) and affordability passed, the application is **automatically approved** — otherwise it's routed to an underwriter queue.
 8. **Approval page**: shows the decision, lets the customer generate/download a conditional approval letter, then (once supporting documents are uploaded) a final approval letter + loan agreement.
 9. Customers can hold multiple applications over time (e.g. a past approved one and a new draft); the **dashboard** lists all of them, and the **sidebar application switcher** lets the customer jump between any of them from anywhere in the portal without returning to the dashboard.
+
+### 1.1.1 Pre-approved existing-customer fast-track
+
+For a customer the bank has already pre-approved (represented by a `PreApprovedOffer` record keyed on National ID — see §2.6), the dashboard shows a "You're Pre-Approved!" card with an **Apply Now** button (deliberately not "Accept & Continue" — it's still a loan being applied for, even if the bank already knows most of the answer). Clicking it creates an application pre-filled with synthetic data for every section *except* **Personal Details** (identity + the consent gate) and **Connect Bank** (confirm/change the repayment account), which the customer still passes through explicitly; the wizard then jumps straight to **Review & Submit**, skipping the pre-filled middle steps. See §2.4 for the `nextSection()` mechanics that make this possible without a separate code path for the normal journey.
 
 ### 1.2 Underwriter journey
 
