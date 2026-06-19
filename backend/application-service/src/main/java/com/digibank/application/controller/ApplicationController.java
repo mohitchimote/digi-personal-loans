@@ -2,6 +2,7 @@ package com.digibank.application.controller;
 
 import com.digibank.application.dto.ApplicationSectionRequest;
 import com.digibank.application.dto.StartApplicationRequest;
+import com.digibank.application.dto.StartPreApprovedRequest;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.service.ApplicationService;
@@ -26,6 +27,12 @@ public class ApplicationController {
     public ResponseEntity<LoanApplication> startApplication(@Valid @RequestBody StartApplicationRequest request) {
         return ResponseEntity.ok(
                 applicationService.createOrResumeApplication(request.getCustomerId(), request.getCustomerEmail()));
+    }
+
+    @PostMapping("/start-pre-approved")
+    public ResponseEntity<LoanApplication> startPreApprovedApplication(@Valid @RequestBody StartPreApprovedRequest request) {
+        return ResponseEntity.ok(applicationService.createPreApprovedApplication(
+                request.getCustomerId(), request.getCustomerEmail(), request.getNationalId()));
     }
 
     @PutMapping("/{appRef}/section")

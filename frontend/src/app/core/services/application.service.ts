@@ -17,6 +17,10 @@ export class ApplicationService {
     return this.http.post<LoanApplication>(`${API}/start`, { customerId, customerEmail });
   }
 
+  startPreApproved(customerId: number, customerEmail: string, nationalId: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/start-pre-approved`, { customerId, customerEmail, nationalId });
+  }
+
   /**
    * Resolves the application a wizard step should edit. Never spawns a phantom draft for an
    * already-decided application: if the customer's current application isn't DRAFT/IN_PROGRESS,

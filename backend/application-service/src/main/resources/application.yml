@@ -27,6 +27,8 @@ app:
     url: http://localhost:8085
   affordability-service:
     url: http://localhost:8083
+  product-service:
+    url: http://localhost:8084
 
 logging:
   level:

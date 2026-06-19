@@ -3,8 +3,10 @@ package com.digibank.product.service;
 import com.digibank.product.dto.EligibleProduct;
 import com.digibank.product.dto.ProductEligibilityRequest;
 import com.digibank.product.model.LoanProduct;
+import com.digibank.product.model.PreApprovedOffer;
 import com.digibank.product.model.ProductSelection;
 import com.digibank.product.repository.LoanProductRepository;
+import com.digibank.product.repository.PreApprovedOfferRepository;
 import com.digibank.product.repository.ProductSelectionRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
@@ -22,11 +24,14 @@ public class ProductService {
 
     private final LoanProductRepository productRepository;
     private final ProductSelectionRepository selectionRepository;
+    private final PreApprovedOfferRepository preApprovedOfferRepository;
     private static final MathContext MC = new MathContext(10, RoundingMode.HALF_UP);
 
-    public ProductService(LoanProductRepository productRepository, ProductSelectionRepository selectionRepository) {
+    public ProductService(LoanProductRepository productRepository, ProductSelectionRepository selectionRepository,
+                           PreApprovedOfferRepository preApprovedOfferRepository) {
         this.productRepository = productRepository;
         this.selectionRepository = selectionRepository;
+        this.preApprovedOfferRepository = preApprovedOfferRepository;
     }
 
     @PostConstruct
@@ -80,6 +85,41 @@ public class ProductService {
                     .build()
             ));
         }
+        seedPreApprovedOffers();
+    }
+
+    /** Demo data only: represents what a real core-banking system would already know about an
+     * existing customer and have pre-approved them for, ahead of any application being started. */
+    private void seedPreApprovedOffers() {
+        if (preApprovedOfferRepository.count() > 0) return;
+        String nationalId = "000000050";
+        BigDecimal amount = new BigDecimal("120000");
+        int term = 60;
+        BigDecimal rate = new BigDecimal("4.80");
+        BigDecimal monthlyRepayment = calculateRepayment(rate, amount, term);
+        BigDecimal totalRepayable = monthlyRepayment.multiply(new BigDecimal(term)).setScale(2, RoundingMode.HALF_UP);
+
+        preApprovedOfferRepository.save(PreApprovedOffer.builder()
+                .nationalId(nationalId)
+                .productCode("PL001")
+                .productName("Premium Personal Loan")
+                .annualInterestRate(rate)
+                .amount(amount)
+                .termMonths(term)
+                .monthlyRepayment(monthlyRepayment)
+                .totalRepayable(totalRepayable)
+                .build());
+    }
+
+    public PreApprovedOffer getPreApprovedOffer(String nationalId) {
+        return preApprovedOfferRepository.findByNationalIdAndConsumedFalse(nationalId).orElse(null);
+    }
+
+    public PreApprovedOffer consumePreApprovedOffer(String nationalId) {
+        PreApprovedOffer offer = preApprovedOfferRepository.findByNationalIdAndConsumedFalse(nationalId)
+                .orElseThrow(() -> new IllegalArgumentException("No pre-approved offer found for this National ID."));
+        offer.setConsumed(true);
+        return preApprovedOfferRepository.save(offer);
     }
 
     public List<EligibleProduct> getEligibleProducts(ProductEligibilityRequest req) {

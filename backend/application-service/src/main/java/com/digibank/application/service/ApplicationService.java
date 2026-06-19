@@ -3,6 +3,7 @@ package com.digibank.application.service;
 import com.digibank.application.client.AffordabilityClient;
 import com.digibank.application.client.DocumentClient;
 import com.digibank.application.client.NotificationClient;
+import com.digibank.application.client.ProductClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.repository.LoanApplicationRepository;
@@ -15,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 @Service
 public class ApplicationService {
@@ -28,19 +31,21 @@ public class ApplicationService {
     private final NotificationClient notificationClient;
     private final DocumentClient documentClient;
     private final AffordabilityClient affordabilityClient;
+    private final ProductClient productClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of(
             "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
 
     public ApplicationService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
                                ObjectMapper objectMapper, NotificationClient notificationClient, DocumentClient documentClient,
-                               AffordabilityClient affordabilityClient) {
+                               AffordabilityClient affordabilityClient, ProductClient productClient) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
         this.documentClient = documentClient;
         this.affordabilityClient = affordabilityClient;
+        this.productClient = productClient;
     }
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
@@ -48,6 +53,11 @@ public class ApplicationService {
             "loanRequirements", "personalDetails", "connectBank", "incomeEmployment",
             "outgoings", "creditDeclarations", "verifyId", "directDebit", "reviewSubmit"
     );
+
+    /** Sections that must always be visited explicitly, even when pre-filled (e.g. via the
+     * pre-approved fast-track flow) — personalDetails carries the consent gate, connectBank is
+     * where the customer confirms/changes the repayment account, reviewSubmit is always last. */
+    private static final Set<String> MANDATORY_STOPS = Set.of("personalDetails", "connectBank", "reviewSubmit");
 
     @Transactional
     public LoanApplication createOrResumeApplication(Long customerId, String email) {
@@ -63,6 +73,153 @@ public class ApplicationService {
                             .build();
                     return repository.save(app);
                 });
+    }
+
+    /** Fast-track entry point for an existing customer accepting a pre-approved offer (see the
+     * dashboard "Apply Now" card). Pre-fills every section with synthetic-but-plausible data
+     * representing what the bank already knows about the customer, except personalDetails
+     * (identity verification + consent) and connectBank (confirm repayment account), which stay
+     * null so the customer still passes through those two stops explicitly via nextSection()'s
+     * MANDATORY_STOPS. Demo-only: the synthetic profile values are illustrative, not derived from
+     * a real core-banking system. */
+    @Transactional
+    public LoanApplication createPreApprovedApplication(Long customerId, String customerEmail, String nationalId) {
+        Map<String, Object> offer = productClient.getPreApprovedOffer(nationalId);
+        if (offer == null) {
+            throw new IllegalArgumentException("No pre-approved offer found for this customer.");
+        }
+
+        LoanApplication app = LoanApplication.builder()
+                .applicationRef(generateApplicationRef())
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .status("IN_PROGRESS")
+                .currentSection("personalDetails")
+                .build();
+
+        try {
+            app.setLoanRequirementsJson(objectMapper.writeValueAsString(Map.of(
+                    "loanAmount", offer.get("amount"),
+                    "loanPurpose", "Pre-Approved Offer",
+                    "loanTerm", offer.get("termMonths"),
+                    "numberOfApplicants", 1
+            )));
+
+            Map<String, Object> personalDetails = new LinkedHashMap<>();
+            personalDetails.put("firstName", "Noa");
+            personalDetails.put("lastName", "Levi");
+            personalDetails.put("dateOfBirth", "1988-04-12");
+            personalDetails.put("nationalId", nationalId);
+            personalDetails.put("idIssueDate", "2018-01-01");
+            personalDetails.put("nationality", "Israeli");
+            personalDetails.put("maritalStatus", "Married");
+            personalDetails.put("dependents", 1);
+            personalDetails.put("phoneNumber", "+972 50 123 4567");
+            personalDetails.put("email", customerEmail);
+            personalDetails.put("street", "12 Rothschild Boulevard");
+            personalDetails.put("city", "Tel Aviv");
+            personalDetails.put("postCode", "6688112");
+            personalDetails.put("country", "Israel");
+            personalDetails.put("monthsAtCurrentAddress", 48);
+            personalDetails.put("previousAddresses", List.of());
+            personalDetails.put("assistedByStaff", false);
+            personalDetails.put("preferredBranch", "");
+            app.setPersonalDetailsJson(objectMapper.writeValueAsString(personalDetails));
+
+            Map<String, Object> bankConnection = new LinkedHashMap<>();
+            bankConnection.put("connected", true);
+            bankConnection.put("bankId", "leumi");
+            bankConnection.put("bankName", "Bank Leumi");
+            bankConnection.put("summary", Map.of("accountMasked", "**** **** **** 7421", "avgBalance", 48250, "transactions", 62));
+            bankConnection.put("applicant2", null);
+            app.setBankConnectionJson(objectMapper.writeValueAsString(bankConnection));
+
+            Map<String, Object> incomeEmployment = new LinkedHashMap<>();
+            incomeEmployment.put("employmentStatus", "Employed");
+            incomeEmployment.put("employer", "Teva Pharmaceutical Industries");
+            incomeEmployment.put("jobTitle", "Senior Operations Manager");
+            incomeEmployment.put("employmentDuration", "6 years");
+            incomeEmployment.put("monthlyGrossIncome", 28000);
+            incomeEmployment.put("monthlyNetIncome", 21500);
+            incomeEmployment.put("otherIncome", 0);
+            incomeEmployment.put("employments", List.of(Map.of(
+                    "employmentStatus", "Employed", "employer", "Teva Pharmaceutical Industries",
+                    "jobTitle", "Senior Operations Manager", "employmentDuration", "6 years",
+                    "monthlyGrossIncome", 28000, "monthlyNetIncome", 21500, "otherIncome", 0
+            )));
+            incomeEmployment.put("applicant2", null);
+            app.setIncomeEmploymentJson(objectMapper.writeValueAsString(incomeEmployment));
+
+            app.setOutgoingsJson(objectMapper.writeValueAsString(Map.of(
+                    "monthlyRent", 0,
+                    "monthlyMortgage", 4200,
+                    "monthlyLoans", 0,
+                    "creditCardPayments", 800,
+                    "otherMonthlyCommitments", 300,
+                    "monthlyLivingExpenses", 5500
+            )));
+
+            Map<String, Object> creditDeclarations = new LinkedHashMap<>();
+            creditDeclarations.put("hasDefaulted", false);
+            creditDeclarations.put("hasBankruptcy", false);
+            creditDeclarations.put("hasCCJ", false);
+            creditDeclarations.put("hasPaymentPlan", false);
+            creditDeclarations.put("creditScore", 9);
+            creditDeclarations.put("applicant2", null);
+            app.setCreditDeclarationsJson(objectMapper.writeValueAsString(creditDeclarations));
+
+            app.setVerifyIdJson(objectMapper.writeValueAsString(Map.of(
+                    "idVerified", true,
+                    "files", List.of("national_id_on_file.pdf")
+            )));
+
+            Map<String, Object> directDebit = new LinkedHashMap<>();
+            directDebit.put("accountSource", "manual");
+            directDebit.put("accountHolderName", "Noa Levi");
+            directDebit.put("bankCode", "10");
+            directDebit.put("branchCode", "938");
+            directDebit.put("accountNumber", "07421639");
+            directDebit.put("preferredRepaymentDay", 1);
+            directDebit.put("confirmAuthorisation", true);
+            directDebit.put("bankName", "Bank Leumi");
+            directDebit.put("branchName", "Rothschild Branch");
+            directDebit.put("guarantorName", "");
+            directDebit.put("guarantorNationalId", "");
+            directDebit.put("guarantorRelationship", "");
+            directDebit.put("guarantorPhone", "");
+            directDebit.put("guarantorEmail", "");
+            app.setDirectDebitJson(objectMapper.writeValueAsString(directDebit));
+
+            app.setSelectedProductId((String) offer.get("productCode"));
+            app.setSelectedProductJson(objectMapper.writeValueAsString(Map.of(
+                    "applicationRef", app.getApplicationRef(),
+                    "productCode", offer.get("productCode"),
+                    "productName", offer.get("productName"),
+                    "termMonths", offer.get("termMonths"),
+                    "monthlyRepayment", offer.get("monthlyRepayment"),
+                    "totalRepayable", offer.get("totalRepayable"),
+                    "apr", offer.get("annualInterestRate")
+            )));
+
+            Map<String, Object> affordabilityResult = new LinkedHashMap<>();
+            affordabilityResult.put("passed", true);
+            affordabilityResult.put("dti", 22.4);
+            affordabilityResult.put("hti", 15.0);
+            affordabilityResult.put("disposableIncome", 10700);
+            affordabilityResult.put("monthlyRepaymentCapacity", 4280);
+            affordabilityResult.put("calculatedMonthlyRepayment", offer.get("monthlyRepayment"));
+            affordabilityResult.put("failureReasons", List.of());
+            affordabilityResult.put("riskCategory", "LOW");
+            affordabilityResult.put("creditScoreCategory", "EXCELLENT");
+            app.setAffordabilityResultJson(objectMapper.writeValueAsString(affordabilityResult));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize pre-approved application data", e);
+        }
+
+        app.setCompletionPercentage(calculateCompletion(app));
+        LoanApplication saved = repository.save(app);
+        productClient.consumePreApprovedOffer(nationalId);
+        return saved;
     }
 
     @Transactional
@@ -89,7 +246,7 @@ public class ApplicationService {
         }
 
         app.setStatus("IN_PROGRESS");
-        app.setCurrentSection(nextSection(section));
+        app.setCurrentSection(nextSection(section, app));
         app.setCompletionPercentage(calculateCompletion(app));
 
         return repository.save(app);
@@ -423,8 +580,8 @@ public class ApplicationService {
                 .orElseThrow(() -> new IllegalArgumentException("Application not found: " + appRef));
     }
 
-    private int calculateCompletion(LoanApplication app) {
-        long filled = ALL_SECTIONS.stream().filter(section -> switch (section) {
+    private boolean isSectionFilled(LoanApplication app, String section) {
+        return switch (section) {
             case "loanRequirements"   -> app.getLoanRequirementsJson() != null;
             case "personalDetails"    -> app.getPersonalDetailsJson() != null;
             case "connectBank"        -> app.getBankConnectionJson() != null;
@@ -435,15 +592,28 @@ public class ApplicationService {
             case "directDebit"        -> app.getDirectDebitJson() != null;
             case "reviewSubmit"       -> app.getReviewSubmitJson() != null;
             default -> false;
-        }).count();
+        };
+    }
+
+    private int calculateCompletion(LoanApplication app) {
+        long filled = ALL_SECTIONS.stream().filter(section -> isSectionFilled(app, section)).count();
         return (int) (filled * 100 / ALL_SECTIONS.size());
     }
 
-    private String nextSection(String currentSection) {
+    /** Normally advances one section at a time. Skips forward over any later section that's
+     * already filled in (e.g. pre-filled by the pre-approved fast-track flow), except the
+     * permanent MANDATORY_STOPS — so the standard journey is unaffected (every later section is
+     * null until reached in order) while a fast-track application jumps straight to the next
+     * thing that actually needs the customer's attention. */
+    private String nextSection(String currentSection, LoanApplication app) {
         int idx = ALL_SECTIONS.indexOf(currentSection);
-        return (idx >= 0 && idx < ALL_SECTIONS.size() - 1)
-                ? ALL_SECTIONS.get(idx + 1)
-                : currentSection;
+        for (int i = idx + 1; i < ALL_SECTIONS.size(); i++) {
+            String candidate = ALL_SECTIONS.get(i);
+            if (MANDATORY_STOPS.contains(candidate) || !isSectionFilled(app, candidate)) {
+                return candidate;
+            }
+        }
+        return ALL_SECTIONS.get(ALL_SECTIONS.size() - 1);
     }
 
     private String generateApplicationRef() {

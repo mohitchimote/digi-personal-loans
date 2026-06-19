@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { EligibleProduct } from '../models';
+import { Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { EligibleProduct, PreApprovedOffer } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/products`;
@@ -12,6 +13,12 @@ export class ProductService {
 
   getEligible(request: any): Observable<EligibleProduct[]> {
     return this.http.post<EligibleProduct[]>(`${API}/eligible`, request);
+  }
+
+  getPreApprovedOffer(nationalId: string): Observable<PreApprovedOffer | null> {
+    return this.http.get<PreApprovedOffer>(`${API}/pre-approved/${nationalId}`).pipe(
+      catchError(() => of(null))
+    );
   }
 
   selectProduct(applicationRef: string, productCode: string, termMonths: number): Observable<any> {

@@ -10,6 +10,18 @@
     </button>
   </div>
 
+  <!-- Pre-approved offer (existing customers the bank already knows) -->
+  <div class="preapproved-banner mb-24" *ngIf="preApprovedOffer()">
+    <span class="material-icons mi-lg preapproved-icon">stars</span>
+    <div class="preapproved-body">
+      <strong>{{ 'dashboard.preApprovedTitle' | translate }}</strong>
+      <p>{{ 'dashboard.preApprovedBody' | translate:{ amount: $any(preApprovedOffer()!.amount | number), rate: preApprovedOffer()!.annualInterestRate, product: preApprovedOffer()!.productName } }}</p>
+    </div>
+    <button class="db-btn db-btn--accent" [disabled]="startingPreApproved()" (click)="applyForPreApprovedOffer()">
+      {{ startingPreApproved() ? ('dashboard.applyingNow' | translate) : ('dashboard.applyNow' | translate) }}
+    </button>
+  </div>
+
   <!-- Quick stats -->
   <div class="stats-row">
     <div class="stat-card">

@@ -193,6 +193,17 @@ export interface EligibleProduct {
   recommended: boolean;
 }
 
+export interface PreApprovedOffer {
+  nationalId: string;
+  productCode: string;
+  productName: string;
+  annualInterestRate: number;
+  amount: number;
+  termMonths: number;
+  monthlyRepayment: number;
+  totalRepayable: number;
+}
+
 export interface Notification {
   id: number;
   customerId: number;
