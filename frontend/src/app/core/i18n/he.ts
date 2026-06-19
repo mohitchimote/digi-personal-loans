@@ -31,6 +31,7 @@ export const HE: Record<string, string> = {
   'sidebar.notifications': 'התראות',
   'sidebar.helpFaq': 'עזרה ושאלות נפוצות',
   'sidebar.viewingApplication': 'מציג בקשה',
+  'sidebar.viewFullApplication': 'הצג את הבקשה המלאה',
   'sidebar.reachAdvisor': 'פנייה ליועץ',
   'sidebar.advisorHours': 'זמין א׳-ה׳ 9:00–18:00',
 

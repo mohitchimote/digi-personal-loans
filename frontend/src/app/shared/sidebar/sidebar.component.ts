@@ -123,6 +123,12 @@ export class SidebarComponent implements OnInit {
     return Math.round((this.completedCount() / this.applicationSteps.length) * 100);
   }
 
+  /** The wizard steps always edit the customer's current draft/in-progress application —
+   * once an application is submitted/decided, those links no longer apply to it. */
+  get isEditableApplication(): boolean {
+    return this.application?.status === 'DRAFT' || this.application?.status === 'IN_PROGRESS';
+  }
+
   contactAdvisor(): void {
     alert('Your advisor will be in touch shortly.\nFor immediate assistance, call: +972-3-123-4567');
   }

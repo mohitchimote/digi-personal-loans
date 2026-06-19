@@ -31,6 +31,7 @@ export const EN: Record<string, string> = {
   'sidebar.notifications': 'Notifications',
   'sidebar.helpFaq': 'Help & FAQ',
   'sidebar.viewingApplication': 'Viewing Application',
+  'sidebar.viewFullApplication': 'View full application',
   'sidebar.reachAdvisor': 'Reach Your Advisor',
   'sidebar.advisorHours': 'Available Mon–Fri 9am–6pm',
 

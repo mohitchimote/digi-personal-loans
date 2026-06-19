@@ -70,17 +70,32 @@
             </button>
           </div>
         </div>
-        <a *ngFor="let step of applicationSteps; let i = index"
-           class="section-step"
-           [class.completed]="isStepCompleted(step.sectionKey!)"
-           [routerLink]="step.route"
-           routerLinkActive="active">
-          <span class="step-number">
-            <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNum"><span class="material-icons mi-sm">check</span></ng-container>
-            <ng-template #stepNum>{{ i + 1 }}</ng-template>
-          </span>
-          <span class="step-label">{{ step.labelKey | translate }}</span>
-        </a>
+        <ng-container *ngIf="isEditableApplication">
+          <a *ngFor="let step of applicationSteps; let i = index"
+             class="section-step"
+             [class.completed]="isStepCompleted(step.sectionKey!)"
+             [routerLink]="step.route"
+             routerLinkActive="active">
+            <span class="step-number">
+              <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNum"><span class="material-icons mi-sm">check</span></ng-container>
+              <ng-template #stepNum>{{ i + 1 }}</ng-template>
+            </span>
+            <span class="step-label">{{ step.labelKey | translate }}</span>
+          </a>
+        </ng-container>
+
+        <ng-container *ngIf="application && !isEditableApplication">
+          <div class="section-step section-step--readonly" *ngFor="let step of applicationSteps; let i = index">
+            <span class="step-number">
+              <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNumRo"><span class="material-icons mi-sm">check</span></ng-container>
+              <ng-template #stepNumRo>{{ i + 1 }}</ng-template>
+            </span>
+            <span class="step-label">{{ step.labelKey | translate }}</span>
+          </div>
+          <a class="nav-app-view-link" [routerLink]="['/portal/view-application', application.applicationRef]">
+            <span class="material-icons mi-sm">visibility</span> {{ 'sidebar.viewFullApplication' | translate }}
+          </a>
+        </ng-container>
       </div>
     </div>
 
