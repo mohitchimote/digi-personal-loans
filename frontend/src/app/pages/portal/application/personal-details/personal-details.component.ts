@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
@@ -40,11 +41,13 @@ export class PersonalDetailsComponent implements OnInit {
   consentValid = signal(false);
   consentValidUntil = signal<string | null>(null);
   showConsentModal = signal(false);
+  consentRecorded = signal(false);
   consentError = signal('');
   private storedConsent: any = null;
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private auth: AuthService, private router: Router, private i18n: I18nService) {
+              private auth: AuthService, private router: Router, private i18n: I18nService,
+              private notifications: NotificationService) {
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
       lastName:     ['', Validators.required],
@@ -102,7 +105,7 @@ export class PersonalDetailsComponent implements OnInit {
         setTimeout(() => {
           verifying.set(false);
           verified.set(true);
-          if (isPrimary) this.checkConsentValidity();
+          if (isPrimary) this.refreshConsentValidity();
         }, 700);
       } else {
         verifying.set(false);
@@ -112,18 +115,18 @@ export class PersonalDetailsComponent implements OnInit {
     group.get('idIssueDate')!.valueChanges.subscribe(check);
   }
 
-  /** Consent is recorded in the bank's CMS and is valid for CONSENT_VALIDITY_DAYS — we can only
-   * check this once the customer's identity (ID + issue date) is confirmed. If there's no valid
-   * consent on file, prompt for it now instead of as a separate wizard step. */
-  private checkConsentValidity(): void {
+  /** Consent is recorded in the bank's CMS and is valid for CONSENT_VALIDITY_DAYS. This only ever
+   * picks up an *existing* valid consent (e.g. resuming an application) — it never opens the
+   * consent modal itself, so identity verification can run silently while the customer is still
+   * filling in the rest of the form. The modal is only ever opened explicitly, from saveAndNext(),
+   * once the whole form (including address history and branch questions) is complete. */
+  private refreshConsentValidity(): void {
     if (this.consentValid()) return;
     const timestamp = this.storedConsent?.consentTimestamp;
     const validUntil = timestamp ? new Date(new Date(timestamp).getTime() + this.CONSENT_VALIDITY_DAYS * 86400000) : null;
     if (validUntil && validUntil > new Date()) {
       this.consentValid.set(true);
       this.consentValidUntil.set(validUntil.toISOString());
-    } else {
-      this.showConsentModal.set(true);
     }
   }
 
@@ -134,12 +137,29 @@ export class PersonalDetailsComponent implements OnInit {
     this.appSvc.saveSection(this.appRef(), 'consentManagement', payload, this.auth.userId!).subscribe({
       next: () => {
         this.storedConsent = payload;
+        const validUntil = new Date(Date.now() + this.CONSENT_VALIDITY_DAYS * 86400000);
         this.consentValid.set(true);
-        this.consentValidUntil.set(new Date(Date.now() + this.CONSENT_VALIDITY_DAYS * 86400000).toISOString());
-        this.showConsentModal.set(false);
+        this.consentValidUntil.set(validUntil.toISOString());
+        this.consentRecorded.set(true);
+        const userId = this.auth.userId;
+        if (userId) {
+          this.notifications.create(
+            userId,
+            this.i18n.t('consent.notifyTitle'),
+            this.i18n.t('consent.notifyMessage', { date: validUntil.toLocaleDateString() }),
+            'INFO',
+            this.appRef()
+          ).subscribe();
+        }
       },
       error: () => this.consentError.set(this.i18n.t('consent.requiredError'))
     });
+  }
+
+  continueAfterConsent(): void {
+    this.showConsentModal.set(false);
+    this.consentRecorded.set(false);
+    this.proceedToSave();
   }
 
   get previousAddresses(): FormArray {
@@ -210,7 +230,6 @@ export class PersonalDetailsComponent implements OnInit {
 
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    if (this.showConsentModal()) { return; }
     this.applicant2Error.set('');
     this.addressHistoryError.set('');
     if (this.needsMoreAddressHistory) {
@@ -225,6 +244,18 @@ export class PersonalDetailsComponent implements OnInit {
         return;
       }
     }
+    // The whole form (identity, contact, address history, branch questions) is complete at this
+    // point — only now do we check whether a valid consent is on file, and interrupt with the
+    // consent modal if not. Confirming consent there continues straight on to the actual save.
+    this.refreshConsentValidity();
+    if (!this.consentValid()) {
+      this.showConsentModal.set(true);
+      return;
+    }
+    this.proceedToSave();
+  }
+
+  private proceedToSave(): void {
     this.saving.set(true);
     const payload = { ...this.form.value, applicant2: this.isJoint ? this.applicant2Form.value : null };
     this.appSvc.saveSection(this.appRef(), 'personalDetails', payload, this.auth.userId!).subscribe({

@@ -16,6 +16,7 @@ export const HE: Record<string, string> = {
   'common.select': 'בחר…',
   'common.yes': 'כן',
   'common.no': 'לא',
+  'common.continue': 'המשך',
 
   // Portal shell
   'portal.breadcrumb': 'פורטל הלוואות פרטיות',
@@ -62,6 +63,10 @@ export const HE: Record<string, string> = {
   'dashboard.welcomeBack': 'ברוך שובך, {{name}}',
   'dashboard.overview': 'הנה סקירה של בקשת ההלוואה שלך.',
   'dashboard.startResume': '+ התחל / המשך בקשה',
+  'dashboard.preApprovedTitle': 'אתה מאושר מראש!',
+  'dashboard.preApprovedBody': 'בהתבסס על הקשר הבנקאי שלך איתנו, אושרת מראש ל{{product}} בסך ₪{{amount}} בריבית {{rate}}% שנתית.',
+  'dashboard.applyNow': 'הגש בקשה עכשיו',
+  'dashboard.applyingNow': 'מתחיל את הבקשה שלך…',
   'dashboard.totalApplications': 'סך הבקשות',
   'dashboard.inProgress': 'בתהליך',
   'dashboard.approved': 'אושרו',
@@ -757,4 +762,7 @@ export const HE: Record<string, string> = {
   'consent.dataProcessingLabel': 'אני מסכים/ה לכך ש-DigiBank תעבד את הנתונים האישיים שלי לצורכי בקשה זו.',
   'consent.requiredError': 'עליך לאשר הסכמה זו כדי להמשיך.',
   'consent.confirm': 'אשר הסכמה',
+  'consent.recordedMessage': 'תודה — ההסכמה שלך נרשמה ותקפה עד {{date}}.',
+  'consent.notifyTitle': 'ההסכמה נרשמה',
+  'consent.notifyMessage': 'רשמנו את הסכמתך לבדיקות אשראי, PEP וסנקציות. ההסכמה תקפה עד {{date}}.',
 };

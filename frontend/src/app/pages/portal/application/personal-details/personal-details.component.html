@@ -271,9 +271,10 @@
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.personalDetails' | translate"></app-application-aside>
 </div>
 
-<!-- Consent modal: shown when no valid consent (within 90 days) is on file in the bank's CMS -->
+<!-- Consent modal: shown from "Save & Next" once the rest of the form is complete, only if no
+     valid consent (within 90 days) is on file in the bank's CMS -->
 <div class="consent-modal-overlay" *ngIf="showConsentModal()">
-  <div class="consent-modal" [formGroup]="consentForm">
+  <div class="consent-modal" *ngIf="!consentRecorded()" [formGroup]="consentForm">
     <h2>{{ 'consent.title' | translate }}</h2>
     <p class="text-muted mb-16">{{ 'consent.subtitle' | translate }}</p>
 
@@ -318,6 +319,17 @@
     <div class="form-actions mt-16">
       <div></div>
       <button type="button" class="db-btn db-btn--primary" (click)="confirmConsent()">{{ 'consent.confirm' | translate }}</button>
+    </div>
+  </div>
+
+  <div class="consent-modal" *ngIf="consentRecorded()">
+    <div class="db-alert db-alert--success mb-16">
+      <span class="material-icons mi-sm">check_circle</span>
+      {{ 'consent.recordedMessage' | translate:{ date: $any(consentValidUntil() | date:'dd MMM yyyy') } }}
+    </div>
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="button" class="db-btn db-btn--primary" (click)="continueAfterConsent()">{{ 'common.continue' | translate }}</button>
     </div>
   </div>
 </div>

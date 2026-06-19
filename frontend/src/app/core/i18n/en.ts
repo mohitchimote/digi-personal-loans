@@ -16,6 +16,7 @@ export const EN: Record<string, string> = {
   'common.select': 'Select…',
   'common.yes': 'Yes',
   'common.no': 'No',
+  'common.continue': 'Continue',
 
   // Portal shell
   'portal.breadcrumb': 'Personal Loans Portal',
@@ -62,6 +63,10 @@ export const EN: Record<string, string> = {
   'dashboard.welcomeBack': 'Welcome back, {{name}}',
   'dashboard.overview': "Here's an overview of your loan application.",
   'dashboard.startResume': '+ Start / Resume Application',
+  'dashboard.preApprovedTitle': "You're Pre-Approved!",
+  'dashboard.preApprovedBody': "Based on your banking relationship with us, you're pre-approved for a {{product}} of ₪{{amount}} at {{rate}}% APR.",
+  'dashboard.applyNow': 'Apply Now',
+  'dashboard.applyingNow': 'Starting your application…',
   'dashboard.totalApplications': 'Total Applications',
   'dashboard.inProgress': 'In Progress',
   'dashboard.approved': 'Approved',
@@ -757,4 +762,7 @@ export const EN: Record<string, string> = {
   'consent.dataProcessingLabel': 'I consent to DigiBank processing my personal data for the purposes of this application.',
   'consent.requiredError': 'You must provide this consent to continue.',
   'consent.confirm': 'Confirm Consent',
+  'consent.recordedMessage': 'Thank you — your consent has been recorded and is valid until {{date}}.',
+  'consent.notifyTitle': 'Consent Recorded',
+  'consent.notifyMessage': 'We\'ve recorded your consent for credit, PEP, and sanctions checks. It\'s valid until {{date}}.',
 };

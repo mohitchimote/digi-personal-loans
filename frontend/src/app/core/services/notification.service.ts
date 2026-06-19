@@ -34,4 +34,8 @@ export class NotificationService {
   seedWelcome(customerId: number): Observable<void> {
     return this.http.post<void>(`${API}/customer/${customerId}/seed-welcome`, {});
   }
+
+  create(customerId: number, title: string, message: string, type: string, applicationRef?: string): Observable<Notification> {
+    return this.http.post<Notification>(`${API}/create`, { customerId, title, message, type, applicationRef });
+  }
 }
