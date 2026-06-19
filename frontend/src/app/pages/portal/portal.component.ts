@@ -1,5 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
 import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
@@ -31,10 +31,21 @@ export class PortalComponent implements OnInit {
   private refreshApplication(): void {
     const userId = this.auth.userId;
     if (!userId) return;
-    this.appSvc.getCurrent(userId).subscribe({
+    const appRef = this.findAppRefParam(this.router.routerState.snapshot.root);
+    const source = appRef ? this.appSvc.getApplication(appRef) : this.appSvc.getCurrent(userId);
+    source.subscribe({
       next: app => this.application.set(app),
       error: () => {}
     });
+  }
+
+  private findAppRefParam(route: ActivatedRouteSnapshot): string | null {
+    if (route.paramMap.has('appRef')) return route.paramMap.get('appRef');
+    for (const child of route.children) {
+      const found = this.findAppRefParam(child);
+      if (found) return found;
+    }
+    return null;
   }
 
   toggleSidebar(): void {

@@ -115,4 +115,25 @@ export class ApplicationService {
   submitForSecondCheck(appRef: string, reviewedBy: string): Observable<LoanApplication> {
     return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/second-check`, { reviewedBy });
   }
+
+  private readonly sectionRoutes: Record<string, string> = {
+    loanRequirements:   '/portal/apply/loan-requirements',
+    consentManagement:  '/portal/apply/consent-management',
+    personalDetails:    '/portal/apply/personal-details',
+    connectBank:        '/portal/apply/connect-bank',
+    incomeEmployment:   '/portal/apply/income-employment',
+    outgoings:          '/portal/apply/outgoings',
+    creditDeclarations: '/portal/apply/credit-declarations',
+    verifyId:           '/portal/apply/verify-id',
+    directDebit:        '/portal/apply/direct-debit',
+    reviewSubmit:       '/portal/apply/review-submit',
+  };
+
+  /** Route to resume editing a draft/in-progress application, or view a decided one. */
+  getResumeRoute(app: LoanApplication): string {
+    if (app.status === 'DRAFT' || app.status === 'IN_PROGRESS') {
+      return this.sectionRoutes[app.currentSection] || '/portal/apply/loan-requirements';
+    }
+    return `/portal/view-application/${app.applicationRef}`;
+  }
 }

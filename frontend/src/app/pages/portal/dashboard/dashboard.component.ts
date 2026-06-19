@@ -105,17 +105,6 @@ export class DashboardComponent implements OnInit {
   }
 
   getResumeRoute(app: LoanApplication): string {
-    const sectionRoutes: Record<string, string> = {
-      loanRequirements:   '/portal/apply/loan-requirements',
-      personalDetails:    '/portal/apply/personal-details',
-      connectBank:        '/portal/apply/connect-bank',
-      incomeEmployment:   '/portal/apply/income-employment',
-      outgoings:          '/portal/apply/outgoings',
-      creditDeclarations: '/portal/apply/credit-declarations',
-      verifyId:           '/portal/apply/verify-id',
-      directDebit:        '/portal/apply/direct-debit',
-      reviewSubmit:       '/portal/apply/review-submit',
-    };
-    return sectionRoutes[app.currentSection] || '/portal/apply/loan-requirements';
+    return this.appSvc.getResumeRoute(app);
   }
 }

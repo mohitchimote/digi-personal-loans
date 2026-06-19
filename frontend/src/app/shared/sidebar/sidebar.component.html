@@ -49,9 +49,26 @@
 
       <div class="nav-children" *ngIf="isSectionExpanded('apply') && !collapsed">
         <div class="nav-app-context" *ngIf="application">
-          <span class="nav-app-context-label">{{ 'sidebar.viewingApplication' | translate }}</span>
-          <span class="nav-app-context-ref">{{ application.applicationRef }}</span>
-          <span class="nav-app-context-status">{{ statusLabel(application.status) }}</span>
+          <div class="nav-app-context-row" (click)="myApplications().length > 1 && toggleSwitcher()">
+            <div>
+              <span class="nav-app-context-label">{{ 'sidebar.viewingApplication' | translate }}</span>
+              <span class="nav-app-context-ref">{{ application.applicationRef }}</span>
+              <span class="nav-app-context-status">{{ statusLabel(application.status) }}</span>
+            </div>
+            <span class="material-icons nav-chevron app-switcher-chevron" *ngIf="myApplications().length > 1">
+              {{ switcherOpen() ? 'expand_less' : 'expand_more' }}
+            </span>
+          </div>
+          <div class="nav-app-switcher" *ngIf="switcherOpen()">
+            <button type="button" class="nav-app-switcher-item"
+                    *ngFor="let app of myApplications()"
+                    [class.active]="app.applicationRef === application.applicationRef"
+                    (click)="selectApplication(app)">
+              <span class="material-icons mi-sm" *ngIf="app.applicationRef === application.applicationRef">check</span>
+              <span class="switcher-ref">{{ app.applicationRef }}</span>
+              <span class="switcher-status">{{ statusLabel(app.status) }}</span>
+            </button>
+          </div>
         </div>
         <a *ngFor="let step of applicationSteps; let i = index"
            class="section-step"

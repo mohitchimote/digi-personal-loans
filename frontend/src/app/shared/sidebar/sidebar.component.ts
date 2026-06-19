@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ApplicationService } from '../../core/services/application.service';
 import { LoanApplication } from '../../core/models';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -34,6 +35,8 @@ export class SidebarComponent implements OnInit {
   @Input() collapsed = false;
 
   expandedSection = signal<string>('apply');
+  myApplications = signal<LoanApplication[]>([]);
+  switcherOpen = signal(false);
 
   applicationSteps: NavItem[] = [
     { labelKey: 'steps.loanRequirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
@@ -59,13 +62,28 @@ export class SidebarComponent implements OnInit {
   constructor(
     public auth: AuthService,
     public notifications: NotificationService,
+    private appSvc: ApplicationService,
     private router: Router,
     private i18n: I18nService
   ) {}
 
   ngOnInit(): void {
     const userId = this.auth.userId;
-    if (userId) this.notifications.refreshCount(userId);
+    if (!userId) return;
+    this.notifications.refreshCount(userId);
+    this.appSvc.getMyApplications(userId).subscribe({
+      next: apps => this.myApplications.set(apps),
+      error: () => {}
+    });
+  }
+
+  toggleSwitcher(): void {
+    this.switcherOpen.set(!this.switcherOpen());
+  }
+
+  selectApplication(app: LoanApplication): void {
+    this.switcherOpen.set(false);
+    this.router.navigate([this.appSvc.getResumeRoute(app)]);
   }
 
   statusLabel(status: string): string {

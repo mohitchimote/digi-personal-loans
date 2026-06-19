@@ -46,15 +46,14 @@
             {{ 'loanReq.termError' | translate }}
           </div>
         </div>
-      </div>
-
-      <div class="db-form-group" style="max-width:320px">
-        <label>{{ 'loanReq.numberOfApplicantsLabel' | translate }} <span class="required">*</span></label>
-        <select class="db-select" formControlName="numberOfApplicants">
-          <option [value]="1">{{ 'loanReq.applicant1Only' | translate }}</option>
-          <option [value]="2">{{ 'loanReq.jointApplication' | translate }}</option>
-        </select>
-        <div class="db-hint">{{ 'loanReq.numberOfApplicantsHint' | translate }}</div>
+        <div class="db-form-group">
+          <label>{{ 'loanReq.numberOfApplicantsLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="numberOfApplicants">
+            <option [value]="1">{{ 'loanReq.applicant1Only' | translate }}</option>
+            <option [value]="2">{{ 'loanReq.jointApplication' | translate }}</option>
+          </select>
+          <div class="db-hint">{{ 'loanReq.numberOfApplicantsHint' | translate }}</div>
+        </div>
       </div>
 
       <!-- Indicative repayment preview -->
