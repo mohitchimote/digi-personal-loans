@@ -8,7 +8,7 @@ A full-stack demo of an end-to-end digital personal loan origination journey for
 
 ### 1.1 Customer journey (end to end)
 
-1. **Landing page** → **Register** (full name, email, phone, password).
+1. **Landing page** → **Register** (full name, email, phone, National ID, ID issue date — no password).
 2. **OTP verification** — a 6-digit code gates account activation. No SMS/email provider is integrated yet, so in this demo the code is returned in the API response and shown on screen with a "Demo Environment" banner. 5-minute expiry, 5 max attempts before requiring a resend.
 3. **Intro page** — explains the journey and required documents, then into the **Portal**.
 4. **10-step application wizard** (`/portal/apply/...`), each step persisted independently and resumable:
@@ -17,7 +17,7 @@ A full-stack demo of an end-to-end digital personal loan origination journey for
    |---|------|---|
    | 1 | Loan Requirements | Amount, purpose, term, number of applicants (1 = single, 2 = joint) |
    | 2 | Consent Management | Explicit checkbox consent: credit bureau search, PEP screening, sanctions screening, data processing — required before any credit checks happen |
-   | 3 | Personal Details | Identity (name, DOB, national ID — with a simulated national-ID-database verification tick), contact (phone/email, prefilled from registration for applicant 1), address + address history (must total ≥36 months across current + previous addresses, for credit-check purposes), and applicant 2 details for joint applications |
+   | 3 | Personal Details | Identity (name, DOB, national ID + issue date — prefilled from registration for applicant 1, with a simulated national-ID-database verification tick), contact (phone/email, prefilled from registration for applicant 1), address + address history (must total ≥36 months across current + previous addresses, for credit-check purposes), and applicant 2 details for joint applications |
    | 4 | Connect Bank | Simulated Open Banking connection (per applicant, independently, for joint applications) — generates a fake account summary (masked account, average balance, transaction count) |
    | 5 | Income & Employment | Employment status/employer/income; supports declaring **multiple employments** per applicant via "+ Add Another Employment" — total income is kept in sync at the top level for downstream affordability calculation |
    | 6 | Outgoings | Rent/mortgage, existing loans, credit cards, living expenses |
@@ -84,10 +84,10 @@ CORS is configured here for `localhost:4200` and the LAN IP used for demo access
 
 ### 2.3 auth-service
 
-- **Entity**: `User` (id, email, password [BCrypt], fullName, phoneNumber, role [`CUSTOMER`/`UNDERWRITER`/`ADMIN`], enabled, emailVerified, otpCode/otpExpiresAt/otpAttempts, createdAt, lastLogin).
-- **Registration flow**: `POST /api/auth/register` creates the user `enabled=false`, generates and stores a 6-digit OTP, returns it in the response (`demoOtp` field — explicitly demo-only, no SMS/email provider wired up). `POST /api/auth/register/verify-otp` validates the code (5-min expiry, 5 max attempts) and on success flips `enabled`/`emailVerified` true and issues a JWT. `POST /api/auth/register/resend-otp` regenerates the code.
-- **Login**: `POST /api/auth/login` — Spring Security `DaoAuthenticationProvider` + BCrypt; disabled (unverified) accounts can't log in.
-- **JWT**: HS256, 24h expiry, subject = email. `JwtAuthenticationFilter` validates on every request; `SecurityConfig` keeps `/register`, `/register/verify-otp`, `/register/resend-otp`, `/login`, `/faqs`, and `GET /branding*` public, everything else requires a valid token (`/admin/**` requires `ROLE_ADMIN`).
+- **Entity**: `User` (id, uuid [generated, used as the JWT subject], email, nationalId [unique], idIssueDate, fullName, phoneNumber, role [`CUSTOMER`/`UNDERWRITER`/`ADMIN`], enabled, emailVerified, otpCode/otpExpiresAt/otpAttempts, createdAt, lastLogin). **No password field** — there is no password-based authentication anywhere in this app, for any role.
+- **Registration flow**: `POST /api/auth/register` takes full name, email, phone, National ID, and ID issue date (no password); creates the user `enabled=false`, generates and stores a 6-digit OTP, returns it in the response (`demoOtp` field — explicitly demo-only, no SMS/email provider wired up). `POST /api/auth/register/verify-otp` validates the code against the user's **email** (5-min expiry, 5 max attempts) and on success flips `enabled`/`emailVerified` true and issues a JWT. `POST /api/auth/register/resend-otp` regenerates the code. The submitted National ID/issue date are later used to prepopulate the Personal Details wizard step.
+- **Login**: two-step, National ID + OTP, for every role (customer, underwriter, admin) — there is no email/password login. `POST /api/auth/login/request-otp` (body: `{ nationalId }`) looks the user up by National ID, generates a 6-digit OTP (again echoed in the response as `demoOtp` for this demo), and is shown on screen. `POST /api/auth/login/verify-otp` (body: `{ nationalId, otp }`) validates it and issues a JWT. `OtpService.verifyOtp(user, otp)` is shared between the registration and login flows; only the registration path additionally flips `emailVerified`/`enabled`.
+- **JWT**: HS256, 24h expiry, subject = the user's `uuid` (not email or National ID, so neither is exposed in the token). `JwtAuthenticationFilter` validates on every request; `SecurityConfig` keeps `/register`, `/register/verify-otp`, `/register/resend-otp`, `/login/request-otp`, `/login/verify-otp`, `/faqs`, and `GET /branding*` public, everything else requires a valid token (`/admin/**` requires `ROLE_ADMIN`).
 - **Branding**: admin-managed logo + theme colors, served publicly so the unauthenticated landing/login pages can brand themselves.
 - **FAQs**: seeded on startup (categories: Loan Eligibility, Application Process, Interest Rates & Repayments, Credit & Affordability, Security & Privacy).
 
@@ -163,7 +163,7 @@ ng serve
 
 Requires: JDK 21+, Maven Daemon (mvnd), Node.js, MySQL running locally (`jdbc:mysql://localhost:3306/<db>?createDatabaseIfNotExist=true`, default `root`/`root` credentials per service's `application.yml` — schemas are created automatically on first run, no manual DB setup beyond having a MySQL server up).
 
-Seeded accounts (auth-service `DataSeeder`): `underwriter@digibank.com` / `Underwriter@123`, `admin@digibank.com` / `Admin@123` (both pre-verified, bypassing OTP).
+Seeded accounts (auth-service `DataSeeder`), pre-verified/enabled — log in with National ID, then the on-screen OTP: `underwriter@digibank.com` (National ID `000000014`), `admin@digibank.com` (National ID `000000015`).
 
 ---
 
@@ -172,4 +172,5 @@ Seeded accounts (auth-service `DataSeeder`): `underwriter@digibank.com` / `Under
 - **JSON-blob-per-section over normalized tables**: chosen specifically so the wizard's shape could keep evolving (consent step insertion, address history, multiple employments, joint bank connections) without database migrations — every increment in this project's history added at most one nullable `TEXT` column.
 - **Flat-applicant-1 + nested-`applicant2`** convention: keeps every read-only summary view (review, underwriter case detail, customer view-application) working unchanged whenever a section gains joint-applicant support, since they only ever read the unnested top-level fields.
 - **Demo-mode OTP echoed in the API response**: a placeholder until a real SMS/email provider is integrated — clearly labeled in both code comments and the UI ("Demo Environment" banner) so it's never mistaken for production behavior.
+- **National ID + OTP login instead of email/password, for every role**: matches how Israeli banking customers actually expect to authenticate (Teudat Zehut, not a password they have to remember), and removes password storage/reset entirely from the system. The JWT subject is a generated `uuid` rather than the National ID itself, so the credential customers log in with is never embedded in the token.
 - **`getResumeRoute()` centralized in `ApplicationService`**: originally duplicated in `dashboard.component.ts`; hoisted into the service so the dashboard and the sidebar application switcher can't drift out of sync on "where does clicking this application take you."
