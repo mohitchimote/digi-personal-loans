@@ -53,6 +53,7 @@
     <thead>
       <tr>
         <th>{{ 'dashboard.reference' | translate }}</th>
+        <th>{{ 'uw.applicantType' | translate }}</th>
         <th>{{ 'uw.applicant' | translate }}</th>
         <th>{{ 'uw.loanAmount' | translate }}</th>
         <th>{{ 'reviewSubmit.purpose' | translate }}</th>
@@ -65,6 +66,9 @@
     <tbody>
       <tr *ngFor="let app of filteredApplications()">
         <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
+        <td>
+          <span class="material-icons mi-sm" [title]="isBusiness(app) ? ('uw.business' | translate) : ('uw.personal' | translate)">{{ isBusiness(app) ? 'apartment' : 'person' }}</span>
+        </td>
         <td>{{ applicantName(app) }}</td>
         <td>₪{{ loanAmount(app) | number }}</td>
         <td>{{ loanPurpose(app) || '—' }}</td>

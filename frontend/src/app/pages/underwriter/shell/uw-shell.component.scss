@@ -55,6 +55,21 @@
   }
 }
 
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .user-avatar-sm {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
+  }
+  .header-name { display: block; font-size: 0.875rem; font-weight: 500; color: #fff; }
+  .header-role { display: block; font-size: 0.7rem; color: rgba(255, 255, 255, 0.65); text-transform: uppercase; letter-spacing: 0.3px; }
+}
+
 .uw-search {
   position: relative;
   display: flex;

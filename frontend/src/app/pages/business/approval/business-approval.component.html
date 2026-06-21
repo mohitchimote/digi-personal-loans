@@ -1,0 +1,142 @@
+<div class="approval-page">
+  <!-- Approval banner -->
+  <div class="approval-banner">
+    <div class="banner-icon">✓</div>
+    <div class="banner-content" *ngIf="isFinal()">
+      <h2>{{ 'approval.finalTitle' | translate }}</h2>
+      <p>{{ 'approval.congrats' | translate }}, <strong>{{ company.companyName || ('approval.valuedCustomer' | translate) }}</strong>! {{ 'approval.finalBody' | translate }}</p>
+    </div>
+    <div class="banner-content" *ngIf="!isFinal()">
+      <h2>{{ 'approval.conditionalTitle' | translate }}</h2>
+      <p>{{ 'approval.congrats' | translate }}, <strong>{{ company.companyName || ('approval.valuedCustomer' | translate) }}</strong>! {{ 'approval.conditionalBody' | translate }}</p>
+    </div>
+  </div>
+
+  <div class="approval-grid">
+    <!-- Approval details -->
+    <div class="db-card">
+      <div class="card-header"><h3>{{ 'approval.loanDetails' | translate }}</h3></div>
+      <div class="detail-list">
+        <div class="detail-row">
+          <span>{{ 'approval.appRef' | translate }}</span>
+          <strong>{{ application()?.applicationRef || '—' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'approval.product' | translate }}</span>
+          <strong>{{ product.productName || '—' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'approval.approvedAmount' | translate }}</span>
+          <strong>₪{{ (application()?.approvedAmount || company.loanAmount) | number }}</strong>
+        </div>
+        <div class="detail-row" *ngIf="application()?.approvedAmount && application()!.approvedAmount !== company.loanAmount">
+          <span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span>
+          <strong>₪{{ company.loanAmount | number }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'approval.interestRate' | translate }}</span>
+          <strong>{{ product.interestRate }}% APR</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'reviewSubmit.loanTerm' | translate }}</span>
+          <strong>{{ product.termMonths }} {{ 'reviewSubmit.months' | translate }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'products.monthlyRepayment' | translate }}</span>
+          <strong class="highlight-value">₪{{ product.monthlyRepayment | number:'1.0-0' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'approval.decisionDate' | translate }}</span>
+          <strong>{{ today | date:'dd MMMM yyyy' }}</strong>
+        </div>
+        <div class="detail-row">
+          <span>{{ 'dashboard.status' | translate }}</span>
+          <span class="db-badge db-badge--approved" *ngIf="isFinal()">{{ 'status.APPROVED' | translate }}</span>
+          <span class="db-badge db-badge--review" *ngIf="!isFinal()">{{ 'status.CONDITIONALLY_APPROVED' | translate }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next steps -->
+    <div class="steps-panel">
+      <div class="db-card mb-16">
+        <div class="card-header"><h3>{{ 'approval.nextSteps' | translate }}</h3></div>
+        <ol class="next-steps">
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>{{ 'approval.step1Title' | translate }}</strong><p>{{ 'approval.step1Body' | translate }}</p></div>
+          </li>
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>{{ 'approval.step2Title' | translate }}</strong><p>{{ 'approval.step2Body' | translate }}</p></div>
+          </li>
+          <li class="step-item step-done">
+            <div class="step-num">✓</div>
+            <div><strong>{{ 'approval.step3Title' | translate }}</strong><p>{{ 'approval.step3Body' | translate }}</p></div>
+          </li>
+          <li class="step-item" [class.step-done]="letterStepDone()" [class.step-active]="!letterStepDone()">
+            <div class="step-num"><ng-container *ngIf="letterStepDone()">✓</ng-container><ng-container *ngIf="!letterStepDone()">4</ng-container></div>
+            <div><strong>{{ 'approval.step4Title' | translate }}</strong><p>{{ 'approval.step4Body' | translate }}</p></div>
+          </li>
+          <li class="step-item" [class.step-done]="documentsUploaded()" [class.step-active]="letterStepDone() && !documentsUploaded()">
+            <div class="step-num"><ng-container *ngIf="documentsUploaded()">✓</ng-container><ng-container *ngIf="!documentsUploaded()">5</ng-container></div>
+            <div><strong>{{ 'approval.step5Title' | translate }}</strong><p>{{ 'approval.step5Body' | translate }}</p></div>
+          </li>
+          <li class="step-item" [class.step-done]="isFinal()" [class.step-active]="documentsUploaded() && !isFinal()">
+            <div class="step-num"><ng-container *ngIf="isFinal()">✓</ng-container><ng-container *ngIf="!isFinal()">6</ng-container></div>
+            <div><strong>{{ 'approval.step6Title' | translate }}</strong><p>{{ 'approval.step6Body' | translate }}</p></div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Document generation -->
+      <div class="db-card">
+        <div class="card-header"><h3>{{ 'approval.yourDocuments' | translate }}</h3></div>
+        <p class="doc-intro">{{ 'approval.generateIntro' | translate }}</p>
+
+        <div class="doc-action" *ngIf="!isFinal() && !generated()">
+          <button class="db-btn db-btn--accent db-btn--lg" (click)="generateLetter()" [disabled]="generating()">
+            <span *ngIf="generating()">{{ 'approval.generatingPdf' | translate }}</span>
+            <span *ngIf="!generating()"><span class="material-icons mi-sm">description</span> {{ 'approval.generateLetter' | translate }}</span>
+          </button>
+        </div>
+
+        <div class="doc-ready" *ngIf="!isFinal() && generated()">
+          <div class="db-alert db-alert--success">
+            ✅ {{ 'approval.letterReady' | translate }}
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon material-icons">description</div>
+            <div class="doc-info">
+              <div class="doc-name">{{ 'docs.conditionalLetter' | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ today | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadDoc()">{{ 'common.download' | translate }}</button>
+          </div>
+        </div>
+
+        <div class="doc-ready mt-16" *ngIf="finalLetter()">
+          <div class="db-alert db-alert--success">
+            ✅ {{ 'approval.finalLetterReady' | translate }}
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon material-icons">description</div>
+            <div class="doc-info">
+              <div class="doc-name">{{ 'docs.finalLetter' | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ finalLetter()!.generatedAt | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadFinalLetter()">{{ 'common.download' | translate }}</button>
+          </div>
+        </div>
+
+        <a routerLink="/business/documents" class="db-btn db-btn--ghost mt-8" style="display:block; text-align:center; margin-top:12px;">
+          {{ 'approval.viewAllDocs' | translate }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-alert db-alert--info approval-footer">
+    ℹ {{ 'approval.footerDisclaimer' | translate }}
+  </div>
+</div>

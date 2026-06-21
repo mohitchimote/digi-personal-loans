@@ -1,0 +1,60 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 6, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'company.creditTitle' | translate }}</h2>
+    <p class="section-subtitle">{{ 'company.creditSubtitle' | translate }}</p>
+  </div>
+
+  <div class="db-alert db-alert--info mb-24">
+    <span class="material-icons mi-sm">lock</span> {{ 'credit.confidentialityNote' | translate }}
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card mb-16">
+      <div class="card-header"><h3>{{ 'credit.historyHeader' | translate }}</h3></div>
+
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <strong>{{ 'company.liquidationTitle' | translate }}</strong>
+          <p>{{ 'company.liquidationQuestion' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <label class="toggle-label"><input type="radio" formControlName="hasLiquidationOrWindingUp" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasLiquidationOrWindingUp" [value]="true" /> {{ 'common.yes' | translate }}</label>
+        </div>
+      </div>
+
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <strong>{{ 'company.companyDefaultTitle' | translate }}</strong>
+          <p>{{ 'company.companyDefaultQuestion' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <label class="toggle-label"><input type="radio" formControlName="hasCompanyDefaulted" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasCompanyDefaulted" [value]="true" /> {{ 'common.yes' | translate }}</label>
+        </div>
+      </div>
+
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <strong>{{ 'credit.ccjTitle' | translate }}</strong>
+          <p>{{ 'company.ccjQuestion' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> {{ 'common.yes' | translate }}</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </form>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.businessCredit' | translate"></app-application-aside>
+</div>

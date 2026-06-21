@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { underwriterGuard } from './core/guards/underwriter.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { businessGuard } from './core/guards/business.guard';
 
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
@@ -20,6 +21,7 @@ export const routes: Routes = [
       { path: 'apply/loan-requirements',   loadComponent: () => import('./pages/portal/application/loan-requirements/loan-requirements.component').then(m => m.LoanRequirementsComponent) },
       { path: 'apply/consent-management',  loadComponent: () => import('./pages/portal/application/consent-management/consent-management.component').then(m => m.ConsentManagementComponent) },
       { path: 'apply/personal-details',    loadComponent: () => import('./pages/portal/application/personal-details/personal-details.component').then(m => m.PersonalDetailsComponent) },
+      { path: 'apply/guarantor-details',   loadComponent: () => import('./pages/portal/application/guarantor-details/guarantor-details.component').then(m => m.GuarantorDetailsComponent) },
       { path: 'apply/connect-bank',        loadComponent: () => import('./pages/portal/application/connect-bank/connect-bank.component').then(m => m.ConnectBankComponent) },
       { path: 'apply/income-employment',   loadComponent: () => import('./pages/portal/application/income-employment/income-employment.component').then(m => m.IncomeEmploymentComponent) },
       { path: 'apply/outgoings',           loadComponent: () => import('./pages/portal/application/outgoings/outgoings.component').then(m => m.OutgoingsComponent) },
@@ -35,6 +37,32 @@ export const routes: Routes = [
       { path: 'view-application/:appRef',  loadComponent: () => import('./pages/portal/view-application/view-application.component').then(m => m.ViewApplicationComponent) },
       { path: 'notifications',             loadComponent: () => import('./pages/portal/notifications/notifications.component').then(m => m.NotificationsComponent) },
       { path: 'faq',                       loadComponent: () => import('./pages/portal/faq/faq.component').then(m => m.FaqComponent) },
+    ]
+  },
+  {
+    path: 'business',
+    loadComponent: () => import('./pages/business/shell/business-portal.component').then(m => m.BusinessPortalComponent),
+    canActivate: [businessGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./pages/business/dashboard/business-dashboard.component').then(m => m.BusinessDashboardComponent) },
+      { path: 'apply/company-details',      loadComponent: () => import('./pages/business/apply/company-details/company-details.component').then(m => m.CompanyDetailsComponent) },
+      { path: 'apply/signatories',          loadComponent: () => import('./pages/business/apply/signatories/signatories.component').then(m => m.SignatoriesComponent) },
+      { path: 'apply/guarantor-details',    loadComponent: () => import('./pages/business/apply/guarantor-details/business-guarantor-details.component').then(m => m.BusinessGuarantorDetailsComponent) },
+      { path: 'apply/connect-bank',         loadComponent: () => import('./pages/business/apply/connect-bank/business-connect-bank.component').then(m => m.BusinessConnectBankComponent) },
+      { path: 'apply/financials',           loadComponent: () => import('./pages/business/apply/financials/financials.component').then(m => m.FinancialsComponent) },
+      { path: 'apply/outgoings',            loadComponent: () => import('./pages/business/apply/outgoings/business-outgoings.component').then(m => m.BusinessOutgoingsComponent) },
+      { path: 'apply/credit-declarations',  loadComponent: () => import('./pages/business/apply/credit-declarations/business-credit-declarations.component').then(m => m.BusinessCreditDeclarationsComponent) },
+      { path: 'apply/verify-id',            loadComponent: () => import('./pages/business/apply/verify-id/business-verify-id.component').then(m => m.BusinessVerifyIdComponent) },
+      { path: 'apply/direct-debit',         loadComponent: () => import('./pages/business/apply/direct-debit/business-direct-debit.component').then(m => m.BusinessDirectDebitComponent) },
+      { path: 'apply/review-submit',        loadComponent: () => import('./pages/business/apply/review-submit/business-review-submit.component').then(m => m.BusinessReviewSubmitComponent) },
+      { path: 'affordability-results',      loadComponent: () => import('./pages/business/affordability-results/business-affordability-results.component').then(m => m.BusinessAffordabilityResultsComponent) },
+      { path: 'products',                   loadComponent: () => import('./pages/business/products/business-products.component').then(m => m.BusinessProductsComponent) },
+      { path: 'approval',                   loadComponent: () => import('./pages/business/approval/business-approval.component').then(m => m.BusinessApprovalComponent) },
+      { path: 'approval/:appRef',           loadComponent: () => import('./pages/business/approval/business-approval.component').then(m => m.BusinessApprovalComponent) },
+      { path: 'documents',                  loadComponent: () => import('./pages/portal/documents/documents.component').then(m => m.DocumentsComponent) },
+      { path: 'view-application/:appRef',   loadComponent: () => import('./pages/business/view-application/business-view-application.component').then(m => m.BusinessViewApplicationComponent) },
+      { path: 'notifications',              loadComponent: () => import('./pages/portal/notifications/notifications.component').then(m => m.NotificationsComponent) },
     ]
   },
   {
@@ -56,6 +84,7 @@ export const routes: Routes = [
       { path: 'users', loadComponent: () => import('./pages/admin/users/admin-users.component').then(m => m.AdminUsersComponent) },
       { path: 'faqs',  loadComponent: () => import('./pages/admin/faqs/admin-faqs.component').then(m => m.AdminFaqsComponent) },
       { path: 'rules', loadComponent: () => import('./pages/admin/rules/admin-rules.component').then(m => m.AdminRulesComponent) },
+      { path: 'mandates', loadComponent: () => import('./pages/admin/mandates/admin-mandates.component').then(m => m.AdminMandatesComponent) },
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
     ]
   },

@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, MandateRules } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -26,7 +26,10 @@ export class CaseDetailComponent implements OnInit {
   requiredTypes = REQUIRED_DOCUMENT_TYPES;
   checklist = computed(() => {
     const receivedTypes = new Set(this.uploadedDocs().map(u => u.documentType));
-    return this.requiredTypes.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
+    const types = this.application()?.guarantorRequired
+      ? [...this.requiredTypes, { type: 'GUARANTOR_ID', labelKey: 'docs.requiredGuarantorId' }]
+      : this.requiredTypes;
+    return types.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
   });
   loading = signal(true);
   submittingAction = signal(false);
@@ -36,7 +39,7 @@ export class CaseDetailComponent implements OnInit {
 
   activeTab = signal<TabKey>('overview');
 
-  navTabs: { key: TabKey; labelKey: string; icon: string }[] = [
+  personalNavTabs: { key: TabKey; labelKey: string; icon: string }[] = [
     { key: 'overview',         labelKey: 'uw.tabOverview',         icon: 'description' },
     { key: 'identity',         labelKey: 'uw.tabIdentity',         icon: 'badge' },
     { key: 'affordability',    labelKey: 'uw.tabAffordability',    icon: 'account_balance' },
@@ -45,7 +48,26 @@ export class CaseDetailComponent implements OnInit {
     { key: 'decision',         labelKey: 'uw.tabDecision',         icon: 'gavel' },
   ];
 
-  sections = [
+  /** Business cases skip Data Verification for now (out of scope for this pass — see
+   * PROJECT_DOCUMENTATION.md) and relabel Identity/Affordability/Credit & Risk to their
+   * company/DSCR equivalents; same tab mechanics, same Decision/Disbursement tabs reused. */
+  businessNavTabs: { key: TabKey; labelKey: string; icon: string }[] = [
+    { key: 'overview',      labelKey: 'uw.tabOverview',          icon: 'description' },
+    { key: 'identity',      labelKey: 'company.tabCompany',      icon: 'apartment' },
+    { key: 'affordability', labelKey: 'company.tabAffordability', icon: 'account_balance' },
+    { key: 'creditRisk',    labelKey: 'company.tabCreditRisk',   icon: 'shield' },
+    { key: 'decision',      labelKey: 'uw.tabDecision',          icon: 'gavel' },
+  ];
+
+  get navTabs(): { key: TabKey; labelKey: string; icon: string }[] {
+    return this.isBusiness ? this.businessNavTabs : this.personalNavTabs;
+  }
+
+  get isBusiness(): boolean {
+    return this.application()?.applicationType === 'BUSINESS';
+  }
+
+  personalSections = [
     { key: 'loanRequirements',   labelKey: 'steps.loanRequirements' },
     { key: 'consentManagement',  labelKey: 'steps.consentManagement' },
     { key: 'personalDetails',    labelKey: 'steps.personalDetails' },
@@ -58,6 +80,22 @@ export class CaseDetailComponent implements OnInit {
     { key: 'general',            labelKey: 'uw.generalSection' },
   ];
 
+  businessSections = [
+    { key: 'companyDetails',             labelKey: 'company.detailsTitle' },
+    { key: 'signatories',                labelKey: 'company.signatoriesTitle' },
+    { key: 'connectBusinessBank',        labelKey: 'company.connectBankTitle' },
+    { key: 'businessFinancials',         labelKey: 'company.financialsTitle' },
+    { key: 'businessOutgoings',          labelKey: 'company.outgoingsTitle' },
+    { key: 'businessCreditDeclarations', labelKey: 'company.creditTitle' },
+    { key: 'verifyId',                   labelKey: 'steps.verifyId' },
+    { key: 'directDebit',                labelKey: 'steps.directDebit' },
+    { key: 'general',                    labelKey: 'uw.generalSection' },
+  ];
+
+  get sections() {
+    return this.isBusiness ? this.businessSections : this.personalSections;
+  }
+
   noteSection = 'loanRequirements';
   noteText = '';
   noteType: 'NOTE' | 'CLARIFICATION_REQUEST' | 'DOCUMENT_REQUEST' = 'NOTE';
@@ -65,6 +103,7 @@ export class CaseDetailComponent implements OnInit {
   decisionReason = '';
   approvedAmount: number | null = null;
   exceptionNotes = '';
+  requireGuarantor = false;
 
   editingSection = signal<string | null>(null);
   editBuffer: any = {};
@@ -80,6 +119,33 @@ export class CaseDetailComponent implements OnInit {
   amberCount = computed(() => this.dataVerification()?.rules.filter(r => r.status === 'AMBER' && !r.resolution).length ?? 0);
   greenCount = computed(() => this.dataVerification()?.rules.filter(r => r.status === 'GREEN').length ?? 0);
   hasUnresolvedRed = computed(() => this.redCount() > 0);
+
+  /** Approval Mandates (UW -> Senior UW -> Head of Lending -> COO -> CEO): admin-editable limits
+   * per role, fetched once on load. If the requested/approved amount exceeds the logged-in
+   * approver's own mandate, they cannot Approve at all — only Refer to Senior. */
+  mandateRules = signal<MandateRules | null>(null);
+
+  myMandateLimit = computed(() => {
+    const rules = this.mandateRules();
+    if (!rules) return null;
+    switch (this.auth.role) {
+      case 'SENIOR_UNDERWRITER': return rules.seniorUnderwriterLimit;
+      case 'HEAD_OF_LENDING':    return rules.headOfLendingLimit;
+      case 'COO':                return rules.cooLimit;
+      case 'CEO':                return rules.ceoLimit;
+      default:                   return rules.underwriterLimit;
+    }
+  });
+
+  /** Plain method, not computed() — approvedAmount is a plain ngModel-bound property, not a
+   * signal, so a computed() here would go stale exactly like the underwriter search bug earlier
+   * (computed() only re-runs when a signal it reads changes). Template re-evaluates methods every
+   * change-detection cycle, which is what we want here. */
+  isOverMandate(): boolean {
+    const limit = this.myMandateLimit();
+    if (limit == null || this.isApproved) return false;
+    return (this.approvedAmount ?? 0) > limit;
+  }
 
   constructor(
     private route: ActivatedRoute,
@@ -114,6 +180,10 @@ export class CaseDetailComponent implements OnInit {
     this.appRef = this.route.snapshot.paramMap.get('appRef') || '';
     if (!this.appRef) return;
     this.load();
+    this.appSvc.getMandateRules().subscribe({
+      next: rules => this.mandateRules.set(rules),
+      error: () => {}
+    });
   }
 
   private load(): void {
@@ -121,8 +191,19 @@ export class CaseDetailComponent implements OnInit {
       next: app => {
         this.application.set(app);
         this.loading.set(false);
-        const requested = this.parseSection(app.loanRequirementsJson)?.loanAmount;
+        const requested = app.applicationType === 'BUSINESS'
+          ? this.parseSection(app.companyDetailsJson)?.loanAmount
+          : this.parseSection(app.loanRequirementsJson)?.loanAmount;
         this.approvedAmount = app.approvedAmount ?? requested ?? null;
+        if (app.applicationType === 'BUSINESS') {
+          this.noteSection = 'companyDetails';
+        }
+        if (app.applicationType !== 'BUSINESS') {
+          this.appSvc.getDataVerification(this.appRef).subscribe({
+            next: dv => this.dataVerification.set(dv),
+            error: () => {}
+          });
+        }
       },
       error: () => this.loading.set(false)
     });
@@ -135,10 +216,6 @@ export class CaseDetailComponent implements OnInit {
     });
     this.docSvc.getUploaded(this.appRef).subscribe({
       next: docs => this.uploadedDocs.set(docs),
-      error: () => {}
-    });
-    this.appSvc.getDataVerification(this.appRef).subscribe({
-      next: dv => this.dataVerification.set(dv),
       error: () => {}
     });
   }
@@ -157,6 +234,13 @@ export class CaseDetailComponent implements OnInit {
   get credit()   { return this.parseSection(this.application()?.creditDeclarationsJson); }
   get verifyId() { return this.parseSection(this.application()?.verifyIdJson); }
   get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
+  get guarantorDetails() { return this.parseSection(this.application()?.guarantorDetailsJson); }
+  get company() { return this.parseSection(this.application()?.companyDetailsJson); }
+  get signatories() { return this.parseSection(this.application()?.signatoriesJson).signatories || []; }
+  get businessBankConnection() { return this.parseSection(this.application()?.businessBankConnectionJson); }
+  get businessFinancials() { return this.parseSection(this.application()?.businessFinancialsJson); }
+  get businessOutgoings() { return this.parseSection(this.application()?.businessOutgoingsJson); }
+  get businessCredit() { return this.parseSection(this.application()?.businessCreditDeclarationsJson); }
   get affordability() { return this.parseSection(this.application()?.affordabilityResultJson); }
   get product()  { return this.parseSection(this.application()?.selectedProductJson); }
 
@@ -284,6 +368,7 @@ export class CaseDetailComponent implements OnInit {
 
   approve(): void {
     if (!this.approvedAmount || this.approvedAmount <= 0) { this.error.set(this.i18n.t('uw.errApprovedAmount')); return; }
+    if (this.isOverMandate()) { this.error.set(this.i18n.t('mandate.errOverLimit')); return; }
     if (this.hasUnresolvedRed() && !this.exceptionNotes.trim()) {
       this.error.set(this.i18n.t('dataVerification.errExceptionNotesRequired'));
       return;
@@ -325,7 +410,7 @@ export class CaseDetailComponent implements OnInit {
   sendBack(): void {
     if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errSendBackReason')); return; }
     this.submittingAction.set(true);
-    this.appSvc.sendBack(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter').subscribe({
+    this.appSvc.sendBack(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter', this.requireGuarantor).subscribe({
       next: () => this.router.navigate(['/underwriter/pipeline']),
       error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errSendBack')); }
     });

@@ -121,7 +121,18 @@
       <div class="review-item" *ngIf="directDebit.branchName"><span>{{ 'directDebit.branchCodeLabel' | translate }}</span><strong>{{ directDebit.branchName }} ({{ directDebit.branchCode }})</strong></div>
       <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.repaymentDay' | translate }}</span><strong>{{ 'loanReq.ofEachMonth' | translate:{ day: directDebit.preferredRepaymentDay } }}</strong></div>
-      <div class="review-item" *ngIf="directDebit.guarantorName"><span>{{ 'directDebit.guarantorHeader' | translate }}</span><strong>{{ directDebit.guarantorName }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+    <div class="card-header">
+      <h3>{{ 'guarantor.title' | translate }}</h3>
+      <a routerLink="/portal/apply/guarantor-details" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
     </div>
   </div>
 

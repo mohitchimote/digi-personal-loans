@@ -3,7 +3,10 @@ package com.digibank.affordability.controller;
 import com.digibank.affordability.config.AffordabilityRules;
 import com.digibank.affordability.dto.AffordabilityRequest;
 import com.digibank.affordability.dto.AffordabilityResult;
+import com.digibank.affordability.dto.BusinessAffordabilityRequest;
+import com.digibank.affordability.dto.BusinessAffordabilityResult;
 import com.digibank.affordability.service.AffordabilityService;
+import com.digibank.affordability.service.BusinessAffordabilityService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class AffordabilityController {
 
     private final AffordabilityService affordabilityService;
+    private final BusinessAffordabilityService businessAffordabilityService;
     private final AffordabilityRules rules;
 
-    public AffordabilityController(AffordabilityService affordabilityService, AffordabilityRules rules) {
+    public AffordabilityController(AffordabilityService affordabilityService, BusinessAffordabilityService businessAffordabilityService, AffordabilityRules rules) {
         this.affordabilityService = affordabilityService;
+        this.businessAffordabilityService = businessAffordabilityService;
         this.rules = rules;
     }
 
@@ -24,6 +29,12 @@ public class AffordabilityController {
     public ResponseEntity<AffordabilityResult> checkAffordability(
             @Valid @RequestBody AffordabilityRequest request) {
         return ResponseEntity.ok(affordabilityService.assess(request));
+    }
+
+    @PostMapping("/check-business")
+    public ResponseEntity<BusinessAffordabilityResult> checkBusinessAffordability(
+            @Valid @RequestBody BusinessAffordabilityRequest request) {
+        return ResponseEntity.ok(businessAffordabilityService.assess(request));
     }
 
     @GetMapping("/rules")

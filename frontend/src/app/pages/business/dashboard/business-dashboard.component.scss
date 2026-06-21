@@ -1,0 +1,50 @@
+.dashboard { max-width: 1100px; }
+
+.welcome-banner {
+  background: linear-gradient(135deg, var(--tcs-blue), var(--tcs-blue-light));
+  border-radius: 12px;
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  color: #fff;
+
+  h2 { margin-bottom: 4px; color: #fff; }
+  p  { color: rgba(255,255,255,0.75); font-size: 0.9rem; }
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.stat-card {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid var(--light-grey);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+
+  .stat-icon  { font-size: 1.8rem; }
+  .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--tcs-blue); line-height: 1; }
+  .stat-label { color: var(--mid-grey); font-size: 0.78rem; margin-top: 2px; }
+}
+
+.table-progress {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+
+  .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  h4 { color: var(--dark-text); margin-bottom: 6px; }
+  p  { color: var(--mid-grey); }
+}

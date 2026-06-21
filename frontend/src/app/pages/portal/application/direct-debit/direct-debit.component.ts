@@ -19,7 +19,6 @@ export class DirectDebitComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
-  addGuarantor = signal(false);
   prefilledFromBank = signal(false);
   isJoint = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
@@ -41,11 +40,6 @@ export class DirectDebitComponent implements OnInit {
       accountNumber:     ['', Validators.required],
       preferredRepaymentDay: [1, Validators.required],
       confirmAuthorisation: [false, Validators.requiredTrue],
-      guarantorName:     [''],
-      guarantorNationalId: [''],
-      guarantorRelationship: [''],
-      guarantorPhone:    [''],
-      guarantorEmail:    [''],
     });
 
     this.form.get('bankCode')!.valueChanges.subscribe(() => this.form.patchValue({ branchCode: '' }, { emitEvent: false }));
@@ -86,7 +80,6 @@ export class DirectDebitComponent implements OnInit {
             if (match) data.bankCode = match.code;
           }
           this.form.patchValue(data);
-          if (data.guarantorName) this.addGuarantor.set(true);
           return;
         }
 
@@ -133,10 +126,6 @@ export class DirectDebitComponent implements OnInit {
     this.prefilledFromBank.set(true);
   }
 
-  toggleGuarantor(): void {
-    this.addGuarantor.set(!this.addGuarantor());
-  }
-
   f(name: string) { return this.form.get(name); }
 
   saveAndNext(): void {
@@ -147,13 +136,6 @@ export class DirectDebitComponent implements OnInit {
       bankName: this.bankDisplayName(this.form.value.bankCode),
       branchName: this.selectedBranchName,
     };
-    if (!this.addGuarantor()) {
-      value.guarantorName = '';
-      value.guarantorNationalId = '';
-      value.guarantorRelationship = '';
-      value.guarantorPhone = '';
-      value.guarantorEmail = '';
-    }
     this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.auth.userId!).subscribe({
       next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/review-submit']); },
       error: () => this.saving.set(false)

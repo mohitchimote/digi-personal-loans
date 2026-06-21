@@ -45,7 +45,10 @@ export class LoginVerifyOtpComponent {
       next: res => {
         this.loading.set(false);
         if (res.success) {
-          const dest = this.auth.isAdmin ? '/admin/users' : this.auth.isUnderwriter ? '/underwriter/pipeline' : '/portal/dashboard';
+          const dest = this.auth.isAdmin ? '/admin/users'
+            : this.auth.isUnderwriter ? '/underwriter/pipeline'
+            : this.auth.isBusinessOwner ? '/business/dashboard'
+            : '/portal/dashboard';
           this.router.navigate([dest]);
         } else {
           this.error.set(res.message || 'Verification failed.');

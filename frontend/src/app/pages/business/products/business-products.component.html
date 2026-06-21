@@ -1,0 +1,92 @@
+<div class="products-page">
+  <div class="page-header">
+    <div>
+      <h2>{{ 'products.title' | translate }}</h2>
+      <p class="page-sub">{{ 'products.subtitle' | translate }}</p>
+    </div>
+    <div class="loan-amount-chip">{{ 'products.loanAmount' | translate }} <strong>₪{{ loanAmount() | number }}</strong></div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading()">
+    <div class="spinner"></div>
+    <p>{{ 'products.matching' | translate }}</p>
+  </div>
+
+  <!-- No products -->
+  <div class="db-alert db-alert--warning" *ngIf="!loading() && products().length === 0">
+    {{ 'products.none' | translate }}
+  </div>
+
+  <!-- Product cards -->
+  <div class="products-grid" *ngIf="!loading() && products().length > 0">
+    <div class="product-card-wrap" *ngFor="let p of products()">
+      <div class="recommended-ribbon" *ngIf="p.recommended"><span class="material-icons mi-sm">star</span> {{ 'products.recommended' | translate }}</div>
+      <div class="db-card product-card" [class.product-card--recommended]="p.recommended">
+
+        <div class="product-header">
+          <div>
+            <div class="product-id">{{ p.productId }}</div>
+            <h3 class="product-name">{{ p.productName }}</h3>
+          </div>
+          <div class="product-rate">
+            <div class="rate-value">{{ p.interestRate }}%</div>
+            <div class="rate-label">APR</div>
+          </div>
+        </div>
+
+        <div class="product-highlights">
+          <div class="highlight">
+            <span>{{ 'products.minAmount' | translate }}</span><strong>₪{{ p.minAmount | number }}</strong>
+          </div>
+          <div class="highlight">
+            <span>{{ 'products.maxAmount' | translate }}</span><strong>₪{{ p.maxAmount | number }}</strong>
+          </div>
+          <div class="highlight">
+            <span>{{ 'products.termRange' | translate }}</span><strong>{{ p.minTermMonths }}–{{ p.maxTermMonths }} {{ 'reviewSubmit.months' | translate }}</strong>
+          </div>
+          <div class="highlight">
+            <span>{{ 'products.minCreditScore' | translate }}</span><strong>{{ p.minCreditScore }}</strong>
+          </div>
+        </div>
+
+        <!-- Term selector -->
+        <div class="term-selector">
+          <label>{{ 'products.selectTerm' | translate }} <strong>{{ selectedTerm[p.productId] || p.minTermMonths }} {{ 'reviewSubmit.months' | translate }}</strong></label>
+          <input type="range"
+                 [min]="p.minTermMonths" [max]="p.maxTermMonths" step="6"
+                 [(ngModel)]="selectedTerm[p.productId]"
+                 class="term-range" />
+          <div class="term-labels">
+            <span>{{ p.minTermMonths }}m</span><span>{{ p.maxTermMonths }}m</span>
+          </div>
+        </div>
+
+        <!-- Repayment summary -->
+        <div class="repayment-summary">
+          <div class="repayment-row">
+            <span>{{ 'products.monthlyRepayment' | translate }}</span>
+            <strong class="monthly-amount">₪{{ monthlyRepayment(p, p.productId) | number:'1.0-0' }}</strong>
+          </div>
+          <div class="repayment-row repayment-row--sub">
+            <span>{{ 'products.totalRepayable' | translate }}</span>
+            <span>₪{{ totalRepayable(p, p.productId) | number:'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <button class="db-btn db-btn--lg product-select-btn"
+                [class.db-btn--accent]="p.recommended"
+                [class.db-btn--primary]="!p.recommended"
+                [disabled]="selecting()"
+                (click)="selectProduct(p)">
+          <span *ngIf="selecting() && selectedId() === p.productId">{{ 'products.processing' | translate }}</span>
+          <span *ngIf="!(selecting() && selectedId() === p.productId)">{{ 'products.selectThis' | translate }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer db-alert db-alert--info">
+    ℹ {{ 'products.disclaimer' | translate }}
+  </div>
+</div>

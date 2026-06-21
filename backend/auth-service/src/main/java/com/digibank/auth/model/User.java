@@ -35,6 +35,15 @@ public class User {
     private LocalDateTime otpExpiresAt;
     private int otpAttempts = 0;
 
+    // Business accounts only (role = BUSINESS_OWNER) — null for personal customers/staff
+    private String companyName;
+
+    @Column(unique = true)
+    private String companyRegistrationNumber;
+
+    private String companyIndustry;
+    private Integer companyFoundedYear;
+
     public User() {}
 
     @PrePersist
@@ -71,6 +80,15 @@ public class User {
     public int getOtpAttempts() { return otpAttempts; }
     public void setOtpAttempts(int otpAttempts) { this.otpAttempts = otpAttempts; }
 
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    public String getCompanyRegistrationNumber() { return companyRegistrationNumber; }
+    public void setCompanyRegistrationNumber(String companyRegistrationNumber) { this.companyRegistrationNumber = companyRegistrationNumber; }
+    public String getCompanyIndustry() { return companyIndustry; }
+    public void setCompanyIndustry(String companyIndustry) { this.companyIndustry = companyIndustry; }
+    public Integer getCompanyFoundedYear() { return companyFoundedYear; }
+    public void setCompanyFoundedYear(Integer companyFoundedYear) { this.companyFoundedYear = companyFoundedYear; }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
@@ -83,6 +101,10 @@ public class User {
         public Builder role(String v) { u.role = v; return this; }
         public Builder enabled(boolean v) { u.enabled = v; return this; }
         public Builder emailVerified(boolean v) { u.emailVerified = v; return this; }
+        public Builder companyName(String v) { u.companyName = v; return this; }
+        public Builder companyRegistrationNumber(String v) { u.companyRegistrationNumber = v; return this; }
+        public Builder companyIndustry(String v) { u.companyIndustry = v; return this; }
+        public Builder companyFoundedYear(Integer v) { u.companyFoundedYear = v; return this; }
         public User build() { return u; }
     }
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
-import { SidebarComponent } from '../../shared/sidebar/sidebar.component';
+import { SidebarComponent, NavItem } from '../../shared/sidebar/sidebar.component';
 import { ChatbotComponent } from '../../shared/chatbot/chatbot.component';
 import { ApplicationService } from '../../core/services/application.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -50,5 +50,27 @@ export class PortalComponent implements OnInit {
 
   toggleSidebar(): void {
     this.sidebarCollapsed.set(!this.sidebarCollapsed());
+  }
+
+  /** Guarantor Details is only inserted when an underwriter has flagged guarantorRequired (see
+   * ApplicationService.sendBackApplication) — never shown in the first pass. */
+  get applicationSteps(): NavItem[] {
+    const steps: NavItem[] = [
+      { labelKey: 'steps.loanRequirements', route: '/portal/apply/loan-requirements', sectionKey: 'loanRequirements' },
+      { labelKey: 'steps.personalDetails',  route: '/portal/apply/personal-details',  sectionKey: 'personalDetails' },
+    ];
+    if (this.application()?.guarantorRequired) {
+      steps.push({ labelKey: 'guarantor.title', route: '/portal/apply/guarantor-details', sectionKey: 'guarantorDetails' });
+    }
+    steps.push(
+      { labelKey: 'steps.connectBank',        route: '/portal/apply/connect-bank',        sectionKey: 'connectBank' },
+      { labelKey: 'steps.incomeEmployment',   route: '/portal/apply/income-employment',   sectionKey: 'incomeEmployment' },
+      { labelKey: 'steps.outgoings',          route: '/portal/apply/outgoings',           sectionKey: 'outgoings' },
+      { labelKey: 'steps.creditDeclarations', route: '/portal/apply/credit-declarations', sectionKey: 'creditDeclarations' },
+      { labelKey: 'steps.verifyId',           route: '/portal/apply/verify-id',           sectionKey: 'verifyId' },
+      { labelKey: 'steps.directDebit',        route: '/portal/apply/direct-debit',        sectionKey: 'directDebit' },
+      { labelKey: 'steps.reviewSubmit',       route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
+    );
+    return steps;
   }
 }

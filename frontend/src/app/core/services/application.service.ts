@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction } from '../models';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/applications`;
@@ -21,6 +21,10 @@ export class ApplicationService {
     return this.http.post<LoanApplication>(`${API}/start-pre-approved`, { customerId, customerEmail, nationalId });
   }
 
+  startOrResumeBusiness(customerId: number, customerEmail: string): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/start-business`, { customerId, customerEmail });
+  }
+
   /**
    * Resolves the application a wizard step should edit. Never spawns a phantom draft for an
    * already-decided application: if the customer's current application isn't DRAFT/IN_PROGRESS,
@@ -32,6 +36,18 @@ export class ApplicationService {
       switchMap(app => {
         if (EDITABLE_STATUSES.includes(app.status)) return of(app);
         this.router.navigate(['/portal/view-application', app.applicationRef]);
+        return EMPTY;
+      })
+    );
+  }
+
+  /** Business-loan equivalent of resolveEditable. */
+  resolveEditableBusiness(customerId: number, customerEmail: string): Observable<LoanApplication> {
+    return this.getCurrent(customerId).pipe(
+      catchError(() => this.startOrResumeBusiness(customerId, customerEmail)),
+      switchMap(app => {
+        if (EDITABLE_STATUSES.includes(app.status)) return of(app);
+        this.router.navigate(['/business/view-application', app.applicationRef]);
         return EMPTY;
       })
     );
@@ -88,8 +104,8 @@ export class ApplicationService {
     return this.http.post<LoanApplication>(`${API}/${appRef}/decline`, { reason, reviewedBy });
   }
 
-  sendBack(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/send-back`, { reason, reviewedBy });
+  sendBack(appRef: string, reason: string, reviewedBy: string, requireGuarantor = false): Observable<LoanApplication> {
+    return this.http.post<LoanApplication>(`${API}/${appRef}/send-back`, { reason, reviewedBy, requireGuarantor: String(requireGuarantor) });
   }
 
   approveByUnderwriter(appRef: string, reviewedBy: string, approvedAmount?: number): Observable<LoanApplication> {
@@ -128,6 +144,14 @@ export class ApplicationService {
     return this.http.post<DataVerificationSummary>(`${API}/${appRef}/data-verification/resolve`, { ruleKey, action, note, reviewedBy });
   }
 
+  getMandateRules(): Observable<MandateRules> {
+    return this.http.get<MandateRules>(`${API}/mandate-rules`);
+  }
+
+  updateMandateRules(rules: MandateRules): Observable<MandateRules> {
+    return this.http.put<MandateRules>(`${API}/mandate-rules`, rules);
+  }
+
   private readonly sectionRoutes: Record<string, string> = {
     loanRequirements:   '/portal/apply/loan-requirements',
     personalDetails:    '/portal/apply/personal-details',
@@ -140,14 +164,29 @@ export class ApplicationService {
     reviewSubmit:       '/portal/apply/review-submit',
   };
 
+  private readonly businessSectionRoutes: Record<string, string> = {
+    companyDetails:             '/business/apply/company-details',
+    signatories:                '/business/apply/signatories',
+    connectBusinessBank:        '/business/apply/connect-bank',
+    businessFinancials:         '/business/apply/financials',
+    businessOutgoings:          '/business/apply/outgoings',
+    businessCreditDeclarations: '/business/apply/credit-declarations',
+    verifyId:                   '/business/apply/verify-id',
+    directDebit:                '/business/apply/direct-debit',
+    reviewSubmit:               '/business/apply/review-submit',
+  };
+
   /** Route to resume editing a draft/in-progress application, or view a decided one. */
   getResumeRoute(app: LoanApplication): string {
+    const isBusiness = app.applicationType === 'BUSINESS';
+    const base = isBusiness ? '/business' : '/portal';
     if (app.status === 'DRAFT' || app.status === 'IN_PROGRESS') {
-      return this.sectionRoutes[app.currentSection] || '/portal/apply/loan-requirements';
+      const routes = isBusiness ? this.businessSectionRoutes : this.sectionRoutes;
+      return routes[app.currentSection] || (isBusiness ? '/business/apply/company-details' : '/portal/apply/loan-requirements');
     }
     if (app.status === 'APPROVED' || app.status === 'CONDITIONALLY_APPROVED') {
-      return `/portal/approval/${app.applicationRef}`;
+      return `${base}/approval/${app.applicationRef}`;
     }
-    return `/portal/view-application/${app.applicationRef}`;
+    return `${base}/view-application/${app.applicationRef}`;
   }
 }

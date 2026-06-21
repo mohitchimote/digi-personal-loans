@@ -68,23 +68,33 @@ export class PipelineComponent implements OnInit {
     return this.statusLabel(app.status);
   }
 
+  isBusiness(app: LoanApplication): boolean {
+    return app.applicationType === 'BUSINESS';
+  }
+
+  private loanRequirementsSource(app: LoanApplication): any {
+    try { return JSON.parse((this.isBusiness(app) ? app.companyDetailsJson : app.loanRequirementsJson) || '{}'); }
+    catch { return {}; }
+  }
+
   loanAmount(app: LoanApplication): number {
-    try { return JSON.parse(app.loanRequirementsJson || '{}').loanAmount || 0; }
-    catch { return 0; }
+    return this.loanRequirementsSource(app).loanAmount || 0;
   }
 
   loanPurpose(app: LoanApplication): string {
-    try { return JSON.parse(app.loanRequirementsJson || '{}').loanPurpose || ''; }
-    catch { return ''; }
+    return this.loanRequirementsSource(app).loanPurpose || '';
   }
 
   loanTerm(app: LoanApplication): number {
-    try { return JSON.parse(app.loanRequirementsJson || '{}').loanTerm || 0; }
-    catch { return 0; }
+    return this.loanRequirementsSource(app).loanTerm || 0;
   }
 
   applicantName(app: LoanApplication): string {
     try {
+      if (this.isBusiness(app)) {
+        const c = JSON.parse(app.companyDetailsJson || '{}');
+        return c.companyName || app.customerEmail;
+      }
       const p = JSON.parse(app.personalDetailsJson || '{}');
       return `${p.firstName || ''} ${p.lastName || ''}`.trim() || app.customerEmail;
     } catch { return app.customerEmail; }

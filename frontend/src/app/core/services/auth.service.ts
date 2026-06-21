@@ -83,12 +83,23 @@ export class AuthService {
     return this.currentUser()?.role ?? null;
   }
 
+  /** Covers the whole approval-mandate hierarchy (UW -> Senior UW -> Head of Lending -> COO ->
+   * CEO) — all five roles share the same Underwriter shell/pipeline/case-detail UI for this demo
+   * (see PROJECT_DOCUMENTATION.md's Mandates section for why no per-role shells were built). */
   get isUnderwriter(): boolean {
-    return this.role === 'UNDERWRITER';
+    return ['UNDERWRITER', 'SENIOR_UNDERWRITER', 'HEAD_OF_LENDING', 'COO', 'CEO'].includes(this.role || '');
   }
 
   get isAdmin(): boolean {
     return this.role === 'ADMIN';
+  }
+
+  get isBusinessOwner(): boolean {
+    return this.role === 'BUSINESS_OWNER';
+  }
+
+  get companyName(): string | null {
+    return this.currentUser()?.companyName ?? null;
   }
 
   private storeSession(auth: AuthResponse): void {

@@ -47,6 +47,7 @@ export class ReviewSubmitComponent implements OnInit {
   get credit()    { return this.parseSection(this.application()?.creditDeclarationsJson); }
   get verifyId()  { return this.parseSection(this.application()?.verifyIdJson); }
   get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
+  get guarantorDetails() { return this.parseSection(this.application()?.guarantorDetailsJson); }
 
   get canSubmit(): boolean {
     return this.agreedToTerms && this.agreedToPrivacy && this.agreedToCredit && this.signature.trim().length > 2;

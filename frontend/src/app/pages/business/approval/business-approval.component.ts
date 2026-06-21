@@ -1,0 +1,111 @@
+import { Component, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { ApplicationService } from '../../../core/services/application.service';
+import { DocumentService } from '../../../core/services/document.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { LoanApplication, GeneratedDocument } from '../../../core/models';
+import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+
+@Component({
+  selector: 'app-business-approval',
+  standalone: true,
+  imports: [CommonModule, RouterLink, TranslatePipe],
+  templateUrl: './business-approval.component.html',
+  styleUrl: './business-approval.component.scss'
+})
+export class BusinessApprovalComponent implements OnInit {
+  application = signal<LoanApplication | null>(null);
+  generating = signal(false);
+  generated = signal(false);
+  docId = signal<number | null>(null);
+  finalLetter = signal<GeneratedDocument | null>(null);
+  documentsUploaded = signal(false);
+  today = new Date();
+
+  constructor(
+    private appSvc: ApplicationService,
+    private docSvc: DocumentService,
+    private auth: AuthService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit(): void {
+    const userId = this.auth.userId;
+    const email  = this.auth.userEmail;
+    if (!userId || !email) return;
+
+    const appRef = this.route.snapshot.paramMap.get('appRef');
+    const source = appRef ? this.appSvc.getApplication(appRef) : this.appSvc.getCurrent(userId);
+
+    source.subscribe({
+      next: app => {
+        this.application.set(app);
+
+        this.docSvc.getByApplication(app.applicationRef).subscribe({
+          next: docs => {
+            const letter = docs.find(d => d.documentType === 'APPROVAL_LETTER');
+            if (letter) {
+              this.docId.set(letter.id);
+              this.generated.set(true);
+            }
+            const final = docs.find(d => d.documentType === 'FINAL_APPROVAL_LETTER');
+            if (final) this.finalLetter.set(final);
+          },
+          error: () => {}
+        });
+
+        this.docSvc.getUploaded(app.applicationRef).subscribe({
+          next: uploaded => this.documentsUploaded.set(uploaded.length > 0),
+          error: () => {}
+        });
+      }
+    });
+  }
+
+  get company() { return JSON.parse(this.application()?.companyDetailsJson || '{}'); }
+  get product() { return JSON.parse(this.application()?.selectedProductJson || '{}'); }
+
+  isFinal(): boolean {
+    return this.application()?.status === 'APPROVED';
+  }
+
+  letterStepDone(): boolean {
+    return this.isFinal() || this.generated();
+  }
+
+  generateLetter(): void {
+    const app = this.application();
+    if (!app || this.generated()) return;
+    this.generating.set(true);
+
+    this.docSvc.generate({
+      applicationRef: app.applicationRef,
+      customerId: this.auth.userId!,
+      documentType: 'APPROVAL_LETTER',
+      customerName: this.company.companyName,
+      loanAmount: this.company.loanAmount,
+      productName: this.product.productName,
+      interestRate: this.product.interestRate,
+      termMonths: this.product.termMonths,
+      monthlyRepayment: this.product.monthlyRepayment
+    }).subscribe({
+      next: doc => {
+        this.docId.set(doc.id);
+        this.generated.set(true);
+        this.generating.set(false);
+      },
+      error: () => this.generating.set(false)
+    });
+  }
+
+  downloadDoc(): void {
+    const id = this.docId();
+    if (id) this.docSvc.download(id);
+  }
+
+  downloadFinalLetter(): void {
+    const doc = this.finalLetter();
+    if (doc) this.docSvc.download(doc.id);
+  }
+}

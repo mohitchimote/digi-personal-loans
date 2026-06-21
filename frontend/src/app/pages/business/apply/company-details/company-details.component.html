@@ -1,0 +1,86 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 1, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'company.detailsTitle' | translate }}</h2>
+    <p class="section-subtitle">{{ 'company.detailsSubtitle' | translate }}</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card mb-16">
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'register.companyNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="companyName" />
+          <div class="db-error-msg" *ngIf="f('companyName')?.invalid && f('companyName')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'register.companyRegNumberLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="companyRegistrationNumber" />
+          <div class="db-error-msg" *ngIf="f('companyRegistrationNumber')?.invalid && f('companyRegistrationNumber')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'register.companyIndustryLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="industry" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'register.companyFoundedYearLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="yearFounded" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'personal.streetLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="street" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="city" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'register.postCodeLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="postCode" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.countryLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="country" />
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="card-header"><h3>{{ 'company.loanRequestHeader' | translate }}</h3></div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'loanReq.amountLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="loanAmount" min="20000" max="1000000" />
+          <div class="db-error-msg" *ngIf="f('loanAmount')?.invalid && f('loanAmount')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="loanPurpose">
+            <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="db-form-group" style="max-width:360px">
+        <label>{{ 'loanReq.termLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="number" formControlName="loanTerm" min="6" max="84" />
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <div></div>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </form>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.companyDetails' | translate"></app-application-aside>
+</div>

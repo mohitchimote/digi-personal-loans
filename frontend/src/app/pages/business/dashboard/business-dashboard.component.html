@@ -1,0 +1,82 @@
+<div class="dashboard">
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h2>{{ 'company.welcomeBack' | translate:{ company: auth.companyName || auth.userFullName || '' } }}</h2>
+      <p>{{ 'company.dashboardOverview' | translate }}</p>
+    </div>
+    <button class="db-btn db-btn--accent" (click)="startOrResumeApplication()" [disabled]="startingApplication()">
+      {{ 'dashboard.startResume' | translate }}
+    </button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="material-icons mi-xl stat-icon">article</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ applications().length }}</div>
+        <div class="stat-label">{{ 'dashboard.totalApplications' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons mi-xl stat-icon">pending_actions</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ activeCount }}</div>
+        <div class="stat-label">{{ 'dashboard.inProgress' | translate }}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="material-icons mi-xl stat-icon">check_circle</span>
+      <div class="stat-body">
+        <div class="stat-value">{{ approvedCount }}</div>
+        <div class="stat-label">{{ 'dashboard.approved' | translate }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="db-card mt-24">
+    <div class="card-header">
+      <h3>{{ 'company.myLoanApplications' | translate }}</h3>
+      <button class="db-btn db-btn--outline db-btn--sm" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.newApplication' | translate }}</button>
+    </div>
+
+    <div *ngIf="applications().length === 0" class="empty-state">
+      <span class="material-icons mi-xl empty-icon">inbox</span>
+      <h4>{{ 'company.noApplicationsYet' | translate }}</h4>
+      <p>{{ 'company.startFirstApplication' | translate }}</p>
+      <button class="db-btn db-btn--primary mt-16" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.beginApplication' | translate }}</button>
+    </div>
+
+    <table class="db-table" *ngIf="applications().length > 0">
+      <thead>
+        <tr>
+          <th>{{ 'dashboard.reference' | translate }}</th>
+          <th>{{ 'dashboard.status' | translate }}</th>
+          <th>{{ 'dashboard.progress' | translate }}</th>
+          <th>{{ 'dashboard.lastUpdated' | translate }}</th>
+          <th>{{ 'dashboard.action' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let app of applications()">
+          <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
+          <td><span class="db-badge" [class]="getStatusClass(app.status)">{{ statusLabel(app.status) }}</span></td>
+          <td>
+            <div class="table-progress">
+              <div class="progress-bar-container" style="width:120px">
+                <div class="progress-fill" [style.width.%]="app.completionPercentage"></div>
+              </div>
+              <span class="text-muted" style="font-size:0.78rem">{{ app.completionPercentage }}%</span>
+            </div>
+          </td>
+          <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy' }}</td>
+          <td>
+            <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--outline db-btn--sm"
+               *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">{{ 'dashboard.resume' | translate }}</a>
+            <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--ghost db-btn--sm"
+               *ngIf="app.status !== 'DRAFT' && app.status !== 'IN_PROGRESS'">{{ 'dashboard.view' | translate }}</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -72,43 +72,6 @@
       <div class="db-error-msg" *ngIf="f('confirmAuthorisation')?.invalid && f('confirmAuthorisation')?.touched">{{ 'directDebit.authRequired' | translate }}</div>
     </div>
 
-    <div class="db-card">
-      <div class="card-header">
-        <h3>{{ 'directDebit.guarantorHeader' | translate }}</h3>
-        <button type="button" class="db-btn db-btn--outline db-btn--sm" (click)="toggleGuarantor()">
-          {{ addGuarantor() ? ('directDebit.removeGuarantor' | translate) : ('directDebit.addGuarantor' | translate) }}
-        </button>
-      </div>
-      <p class="text-muted mb-16" *ngIf="!addGuarantor()">{{ 'directDebit.guarantorIntro' | translate }}</p>
-
-      <div *ngIf="addGuarantor()">
-        <div class="form-row">
-          <div class="db-form-group">
-            <label>{{ 'directDebit.guarantorNameLabel' | translate }}</label>
-            <input class="db-input" type="text" formControlName="guarantorName" />
-          </div>
-          <div class="db-form-group">
-            <label>{{ 'directDebit.guarantorIdLabel' | translate }}</label>
-            <input class="db-input" type="text" formControlName="guarantorNationalId" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="db-form-group">
-            <label>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</label>
-            <input class="db-input" type="text" formControlName="guarantorRelationship" />
-          </div>
-          <div class="db-form-group">
-            <label>{{ 'directDebit.guarantorPhoneLabel' | translate }}</label>
-            <input class="db-input" type="tel" formControlName="guarantorPhone" />
-          </div>
-        </div>
-        <div class="db-form-group">
-          <label>{{ 'directDebit.guarantorEmailLabel' | translate }}</label>
-          <input class="db-input" type="email" formControlName="guarantorEmail" />
-        </div>
-      </div>
-    </div>
-
     <div class="form-actions">
       <a routerLink="/portal/apply/verify-id" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">

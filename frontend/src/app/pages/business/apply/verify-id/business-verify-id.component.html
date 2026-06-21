@@ -1,0 +1,46 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 7, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'company.verifyTitle' | translate }}</h2>
+    <p class="section-subtitle">{{ 'company.verifySubtitle' | translate }}</p>
+  </div>
+
+  <div class="db-card">
+    <p class="upload-intro">{{ 'company.verifyIntro' | translate }}</p>
+
+    <div class="drop-zone" [class.drop-zone--active]="dragOver()"
+         (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+      <div class="drop-icon material-icons">badge</div>
+      <div class="drop-text">{{ 'docs.dropText' | translate }}</div>
+      <label class="db-btn db-btn--outline">
+        {{ 'docs.browseFiles' | translate }}
+        <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" (change)="onFileSelect($event)" />
+      </label>
+      <div class="drop-hint">{{ 'docs.requiredIncorporation' | translate }}</div>
+    </div>
+
+    <div class="uploading-row" *ngIf="uploading()">
+      <div class="spinner"></div><span>{{ 'docs.uploading' | translate }}</span>
+    </div>
+
+    <div class="upload-error" *ngIf="uploadError()" style="color:#c62828;margin-top:8px;">{{ uploadError() }}</div>
+
+    <div class="uploaded-list" *ngIf="uploadedFiles().length > 0">
+      <div class="upload-header">{{ 'docs.uploadedFiles' | translate:{ count: uploadedFiles().length } }}</div>
+      <div class="doc-row" *ngFor="let f of uploadedFiles()">
+        <div class="doc-icon material-icons">badge</div>
+        <div class="doc-info"><div class="doc-name">{{ f }}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <div></div>
+    <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="!canContinue || saving()">
+      {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+    </button>
+  </div>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.businessVerifyId' | translate"></app-application-aside>
+</div>

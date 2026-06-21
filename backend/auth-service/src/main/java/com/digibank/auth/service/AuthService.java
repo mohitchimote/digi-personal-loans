@@ -39,16 +39,34 @@ public class AuthService implements UserDetailsService {
             throw new IllegalArgumentException("An account with this National ID already exists.");
         }
 
-        User user = User.builder()
+        boolean isBusiness = "BUSINESS".equals(request.getAccountType());
+        if (isBusiness) {
+            if (request.getCompanyName() == null || request.getCompanyName().isBlank()) {
+                throw new IllegalArgumentException("Company name is required for a business account.");
+            }
+            if (request.getCompanyRegistrationNumber() == null || request.getCompanyRegistrationNumber().isBlank()) {
+                throw new IllegalArgumentException("Company registration number is required for a business account.");
+            }
+        }
+
+        User.Builder builder = User.builder()
                 .email(request.getEmail())
                 .nationalId(request.getNationalId())
                 .idIssueDate(request.getIdIssueDate())
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
-                .role("CUSTOMER")
+                .role(isBusiness ? "BUSINESS_OWNER" : "CUSTOMER")
                 .enabled(false)
-                .emailVerified(false)
-                .build();
+                .emailVerified(false);
+
+        if (isBusiness) {
+            builder.companyName(request.getCompanyName())
+                    .companyRegistrationNumber(request.getCompanyRegistrationNumber())
+                    .companyIndustry(request.getCompanyIndustry())
+                    .companyFoundedYear(request.getCompanyFoundedYear());
+        }
+
+        User user = builder.build();
 
         User saved = userRepository.save(user);
         String otp = otpService.generateAndAssign(saved);
@@ -144,6 +162,7 @@ public class AuthService implements UserDetailsService {
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .expiresIn(jwtTokenProvider.getExpirationTime())
+                .companyName(user.getCompanyName())
                 .build();
     }
 

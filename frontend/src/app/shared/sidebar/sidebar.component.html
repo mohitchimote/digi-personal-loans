@@ -33,7 +33,7 @@
   <nav class="sidebar-nav">
 
     <!-- Dashboard -->
-    <a class="nav-item" routerLink="/portal/dashboard" routerLinkActive="active">
+    <a class="nav-item" [routerLink]="basePath + '/dashboard'" routerLinkActive="active">
       <span class="material-icons nav-icon">dashboard</span>
       <span class="nav-label" *ngIf="!collapsed">{{ 'sidebar.dashboard' | translate }}</span>
     </a>
@@ -92,7 +92,7 @@
             </span>
             <span class="step-label">{{ step.labelKey | translate }}</span>
           </div>
-          <a class="nav-app-view-link" [routerLink]="['/portal/view-application', application.applicationRef]">
+          <a class="nav-app-view-link" [routerLink]="[basePath + '/view-application', application.applicationRef]">
             <span class="material-icons mi-sm">visibility</span> {{ 'sidebar.viewFullApplication' | translate }}
           </a>
         </ng-container>
@@ -100,13 +100,13 @@
     </div>
 
     <!-- Documents -->
-    <a class="nav-item" routerLink="/portal/documents" routerLinkActive="active">
+    <a class="nav-item" [routerLink]="basePath + '/documents'" routerLinkActive="active">
       <span class="material-icons nav-icon">folder_open</span>
       <span class="nav-label" *ngIf="!collapsed">{{ 'sidebar.documents' | translate }}</span>
     </a>
 
     <!-- Notifications -->
-    <a class="nav-item" routerLink="/portal/notifications" routerLinkActive="active">
+    <a class="nav-item" [routerLink]="basePath + '/notifications'" routerLinkActive="active">
       <span class="material-icons nav-icon">notifications</span>
       <span class="nav-label" *ngIf="!collapsed">{{ 'sidebar.notifications' | translate }}</span>
       <span class="nav-badge" *ngIf="notifications.unreadCount() > 0 && !collapsed">
@@ -115,7 +115,7 @@
     </a>
 
     <!-- FAQ -->
-    <a class="nav-item" routerLink="/portal/faq" routerLinkActive="active">
+    <a class="nav-item" [routerLink]="basePath + '/faq'" routerLinkActive="active" *ngIf="basePath === '/portal'">
       <span class="material-icons nav-icon">help_outline</span>
       <span class="nav-label" *ngIf="!collapsed">{{ 'sidebar.helpFaq' | translate }}</span>
     </a>

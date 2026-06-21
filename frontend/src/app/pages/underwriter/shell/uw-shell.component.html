@@ -26,7 +26,10 @@
       <app-language-switcher />
       <div class="header-user">
         <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
-        <span class="header-name">{{ auth.userFullName }}</span>
+        <div>
+          <span class="header-name">{{ auth.userFullName }}</span>
+          <span class="header-role">{{ ('role.' + auth.role) | translate }}</span>
+        </div>
       </div>
       <button class="db-btn db-btn--ghost db-btn--sm" (click)="auth.logout()">{{ 'common.signOut' | translate }}</button>
     </div>

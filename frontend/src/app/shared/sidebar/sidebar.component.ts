@@ -34,11 +34,11 @@ export class SidebarComponent implements OnInit {
   @Input() application: LoanApplication | null = null;
   @Input() collapsed = false;
 
-  expandedSection = signal<string>('apply');
-  myApplications = signal<LoanApplication[]>([]);
-  switcherOpen = signal(false);
-
-  applicationSteps: NavItem[] = [
+  /** Lets BusinessSidebarComponent usage (via the same component) point at /business/* routes
+   * and a business-specific step list/section-completion map, while every existing personal-portal
+   * usage keeps working unchanged since all of these default to today's personal values. */
+  @Input() basePath = '/portal';
+  @Input() applicationSteps: NavItem[] = [
     { labelKey: 'steps.loanRequirements',    route: '/portal/apply/loan-requirements',   sectionKey: 'loanRequirements' },
     { labelKey: 'steps.personalDetails',     route: '/portal/apply/personal-details',    sectionKey: 'personalDetails' },
     { labelKey: 'steps.connectBank',         route: '/portal/apply/connect-bank',        sectionKey: 'connectBank' },
@@ -49,6 +49,12 @@ export class SidebarComponent implements OnInit {
     { labelKey: 'steps.directDebit',         route: '/portal/apply/direct-debit',        sectionKey: 'directDebit' },
     { labelKey: 'steps.reviewSubmit',        route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
   ];
+  /** When provided, used instead of the hardcoded personal-section map in isStepCompleted(). */
+  @Input() sectionValues?: Record<string, string | undefined>;
+
+  expandedSection = signal<string>('apply');
+  myApplications = signal<LoanApplication[]>([]);
+  switcherOpen = signal(false);
 
   mainNav: NavSection[] = [
     { id: 'dashboard', label: 'Dashboard',     icon: '⊞', route: '/portal/dashboard' },
@@ -99,10 +105,11 @@ export class SidebarComponent implements OnInit {
 
   isStepCompleted(sectionKey: string): boolean {
     if (!this.application) return false;
-    const map: Record<string, string | undefined> = {
+    const map: Record<string, string | undefined> = this.sectionValues || {
       loanRequirements:   this.application.loanRequirementsJson,
       consentManagement:  this.application.consentManagementJson,
       personalDetails:    this.application.personalDetailsJson,
+      guarantorDetails:   this.application.guarantorDetailsJson,
       connectBank:        this.application.bankConnectionJson,
       incomeEmployment:   this.application.incomeEmploymentJson,
       outgoings:          this.application.outgoingsJson,

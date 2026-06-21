@@ -36,6 +36,7 @@ public class ProductService {
 
     @PostConstruct
     public void initializeProducts() {
+        backfillMissingProductType();
         if (productRepository.count() == 0) {
             productRepository.saveAll(List.of(
                 LoanProduct.builder()
@@ -85,7 +86,75 @@ public class ProductService {
                     .build()
             ));
         }
+        seedBusinessProducts();
         seedPreApprovedOffers();
+    }
+
+    /** The productType column is new — pre-existing rows seeded before it existed have it NULL,
+     * not "PERSONAL", which would silently break findByActiveTrueAndProductType("PERSONAL") for
+     * every already-running personal product. Run once on startup to backfill them. */
+    private void backfillMissingProductType() {
+        List<LoanProduct> untyped = productRepository.findAll().stream()
+                .filter(p -> p.getProductType() == null)
+                .toList();
+        if (!untyped.isEmpty()) {
+            untyped.forEach(p -> p.setProductType("PERSONAL"));
+            productRepository.saveAll(untyped);
+        }
+    }
+
+    private void seedBusinessProducts() {
+        if (productRepository.findByActiveTrueAndProductType("BUSINESS").size() > 0) return;
+        productRepository.saveAll(List.of(
+            LoanProduct.builder()
+                .productCode("BTL001")
+                .productName("Business Term Loan")
+                .description("A lump-sum loan for established businesses to fund expansion, equipment, or major one-off investments, repaid over a fixed term.")
+                .annualInterestRate(new BigDecimal("7.00"))
+                .minAmount(new BigDecimal("50000"))
+                .maxAmount(new BigDecimal("1000000"))
+                .minTermMonths(12)
+                .maxTermMonths(84)
+                .minCreditScore(6)
+                .minMonthlyIncome(BigDecimal.ZERO)
+                .maxDti(new BigDecimal("100"))
+                .riskCategories("LOW,MEDIUM,HIGH")
+                .active(true)
+                .productType("BUSINESS")
+                .build(),
+            LoanProduct.builder()
+                .productCode("WCL001")
+                .productName("Working Capital Line")
+                .description("Short-term financing to cover day-to-day operating expenses, payroll, and inventory while awaiting receivables.")
+                .annualInterestRate(new BigDecimal("8.20"))
+                .minAmount(new BigDecimal("20000"))
+                .maxAmount(new BigDecimal("400000"))
+                .minTermMonths(6)
+                .maxTermMonths(36)
+                .minCreditScore(6)
+                .minMonthlyIncome(BigDecimal.ZERO)
+                .maxDti(new BigDecimal("100"))
+                .riskCategories("LOW,MEDIUM,HIGH")
+                .active(true)
+                .productType("BUSINESS")
+                .build(),
+            LoanProduct.builder()
+                .productCode("EQF001")
+                .productName("Equipment Finance Loan")
+                .description("Finance for purchasing machinery, vehicles, or other business equipment, secured against the asset itself.")
+                .annualInterestRate(new BigDecimal("6.50"))
+                .minAmount(new BigDecimal("30000"))
+                .maxAmount(new BigDecimal("600000"))
+                .minTermMonths(12)
+                .maxTermMonths(60)
+                .minCreditScore(7)
+                .minMonthlyIncome(BigDecimal.ZERO)
+                .maxDti(new BigDecimal("100"))
+                .riskCategories("LOW,MEDIUM")
+                .active(true)
+                .productType("BUSINESS")
+                .build()
+        ));
     }
 
     /** Demo data only: represents what a real core-banking system would already know about an
@@ -128,7 +197,8 @@ public class ProductService {
     }
 
     public List<EligibleProduct> getEligibleProducts(ProductEligibilityRequest req) {
-        List<LoanProduct> allProducts = productRepository.findByActiveTrue();
+        String productType = req.getProductType() != null ? req.getProductType() : "PERSONAL";
+        List<LoanProduct> allProducts = productRepository.findByActiveTrueAndProductType(productType);
 
         List<EligibleProduct> eligible = allProducts.stream()
                 .filter(p -> isEligible(p, req))

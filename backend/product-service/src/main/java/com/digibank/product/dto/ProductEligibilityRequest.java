@@ -10,6 +10,7 @@ public class ProductEligibilityRequest {
     private BigDecimal requestedAmount;
     private Integer requestedTermMonths;
     private BigDecimal dti;
+    private String productType = "PERSONAL";
 
     public String getApplicationRef() { return applicationRef; }
     public void setApplicationRef(String applicationRef) { this.applicationRef = applicationRef; }
@@ -31,4 +32,7 @@ public class ProductEligibilityRequest {
 
     public BigDecimal getDti() { return dti; }
     public void setDti(BigDecimal dti) { this.dti = dti; }
+
+    public String getProductType() { return productType; }
+    public void setProductType(String productType) { this.productType = productType; }
 }

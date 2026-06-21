@@ -33,6 +33,9 @@ public class LoanProduct {
 
     private boolean active = true;
 
+    /** "PERSONAL" (default — every pre-existing product) or "BUSINESS". */
+    private String productType = "PERSONAL";
+
     public LoanProduct() {}
 
     public Long getId() { return id; }
@@ -77,6 +80,9 @@ public class LoanProduct {
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 
+    public String getProductType() { return productType; }
+    public void setProductType(String productType) { this.productType = productType; }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
@@ -94,6 +100,7 @@ public class LoanProduct {
         public Builder maxDti(BigDecimal v) { obj.maxDti = v; return this; }
         public Builder riskCategories(String v) { obj.riskCategories = v; return this; }
         public Builder active(boolean v) { obj.active = v; return this; }
+        public Builder productType(String v) { obj.productType = v; return this; }
         public LoanProduct build() { return obj; }
     }
 }

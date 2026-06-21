@@ -17,7 +17,7 @@ export class AdminUsersComponent implements OnInit {
   loading = signal(true);
   error = signal('');
 
-  roles = ['CUSTOMER', 'UNDERWRITER', 'ADMIN'];
+  roles = ['CUSTOMER', 'BUSINESS_OWNER', 'UNDERWRITER', 'SENIOR_UNDERWRITER', 'HEAD_OF_LENDING', 'COO', 'CEO', 'ADMIN'];
 
   constructor(private adminSvc: AdminService, private i18n: I18nService) {}
 

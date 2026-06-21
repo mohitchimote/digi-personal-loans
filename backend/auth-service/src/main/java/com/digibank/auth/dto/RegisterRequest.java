@@ -27,6 +27,16 @@ public class RegisterRequest {
 
     private String phoneNumber;
 
+    /** "PERSONAL" (default) or "BUSINESS". When BUSINESS, the four company fields below are
+     * required (validated in AuthService, not via annotations here, so the personal path's
+     * existing optionality is untouched). */
+    private String accountType = "PERSONAL";
+
+    private String companyName;
+    private String companyRegistrationNumber;
+    private String companyIndustry;
+    private Integer companyFoundedYear;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getNationalId() { return nationalId; }
@@ -37,4 +47,14 @@ public class RegisterRequest {
     public void setFullName(String fullName) { this.fullName = fullName; }
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    public String getAccountType() { return accountType; }
+    public void setAccountType(String accountType) { this.accountType = accountType; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    public String getCompanyRegistrationNumber() { return companyRegistrationNumber; }
+    public void setCompanyRegistrationNumber(String companyRegistrationNumber) { this.companyRegistrationNumber = companyRegistrationNumber; }
+    public String getCompanyIndustry() { return companyIndustry; }
+    public void setCompanyIndustry(String companyIndustry) { this.companyIndustry = companyIndustry; }
+    public Integer getCompanyFoundedYear() { return companyFoundedYear; }
+    public void setCompanyFoundedYear(Integer companyFoundedYear) { this.companyFoundedYear = companyFoundedYear; }
 }

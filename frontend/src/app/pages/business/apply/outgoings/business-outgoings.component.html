@@ -1,0 +1,42 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 5, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'company.outgoingsTitle' | translate }}</h2>
+    <p class="section-subtitle">{{ 'company.outgoingsSubtitle' | translate }}</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card">
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'company.existingDebtServiceLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" min="0" formControlName="existingBusinessDebtService" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'company.leaseRentLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" min="0" formControlName="monthlyLeaseRent" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'company.payrollLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" min="0" formControlName="monthlyPayroll" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'company.supplierPaymentsLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" min="0" formControlName="monthlySupplierPayments" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <div></div>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </form>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.businessOutgoings' | translate"></app-application-aside>
+</div>

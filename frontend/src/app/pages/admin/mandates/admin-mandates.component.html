@@ -1,0 +1,48 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.mandates' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.mandatesSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.rulesUpdated' | translate }}</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'admin.loadingRules' | translate }}</span>
+</div>
+
+<div class="db-card" *ngIf="!loading() && rules()">
+  <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'admin.mandatesIntro' | translate }}</p>
+
+  <div class="db-form-group">
+    <label>{{ 'role.UNDERWRITER' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.underwriterLimit" />
+    <div class="db-hint">{{ 'admin.mandateLimitHint' | translate }}</div>
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'role.SENIOR_UNDERWRITER' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.seniorUnderwriterLimit" />
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'role.HEAD_OF_LENDING' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.headOfLendingLimit" />
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'role.COO' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.cooLimit" />
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'role.CEO' | translate }}</label>
+    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.ceoLimit" />
+    <div class="db-hint">{{ 'admin.ceoLimitHint' | translate }}</div>
+  </div>
+
+  <div class="form-actions">
+    <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
+      {{ saving() ? ('admin.savingRules' | translate) : ('admin.saveRules' | translate) }}
+    </button>
+  </div>
+</div>

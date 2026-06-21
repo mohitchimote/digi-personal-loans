@@ -1,5 +1,6 @@
 package com.digibank.application.controller;
 
+import com.digibank.application.config.MandateRules;
 import com.digibank.application.dto.ApplicationSectionRequest;
 import com.digibank.application.dto.DataVerificationResolutionRequest;
 import com.digibank.application.dto.DataVerificationSummary;
@@ -22,16 +23,24 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final DataVerificationService dataVerificationService;
+    private final MandateRules mandateRules;
 
-    public ApplicationController(ApplicationService applicationService, DataVerificationService dataVerificationService) {
+    public ApplicationController(ApplicationService applicationService, DataVerificationService dataVerificationService, MandateRules mandateRules) {
         this.applicationService = applicationService;
         this.dataVerificationService = dataVerificationService;
+        this.mandateRules = mandateRules;
     }
 
     @PostMapping("/start")
     public ResponseEntity<LoanApplication> startApplication(@Valid @RequestBody StartApplicationRequest request) {
         return ResponseEntity.ok(
                 applicationService.createOrResumeApplication(request.getCustomerId(), request.getCustomerEmail()));
+    }
+
+    @PostMapping("/start-business")
+    public ResponseEntity<LoanApplication> startBusinessApplication(@Valid @RequestBody StartApplicationRequest request) {
+        return ResponseEntity.ok(
+                applicationService.createOrResumeBusinessApplication(request.getCustomerId(), request.getCustomerEmail()));
     }
 
     @PostMapping("/start-pre-approved")
@@ -100,7 +109,8 @@ public class ApplicationController {
 
     @PostMapping("/{appRef}/send-back")
     public ResponseEntity<LoanApplication> sendBackApplication(@PathVariable String appRef, @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(applicationService.sendBackApplication(appRef, body.get("reason"), body.get("reviewedBy")));
+        boolean requireGuarantor = "true".equalsIgnoreCase(body.get("requireGuarantor"));
+        return ResponseEntity.ok(applicationService.sendBackApplication(appRef, body.get("reason"), body.get("reviewedBy"), requireGuarantor));
     }
 
     @PostMapping("/{appRef}/approve-by-underwriter")
@@ -163,5 +173,20 @@ public class ApplicationController {
     public ResponseEntity<DataVerificationSummary> resolveDataVerificationRule(
             @PathVariable String appRef, @Valid @RequestBody DataVerificationResolutionRequest request) {
         return ResponseEntity.ok(dataVerificationService.resolveRule(appRef, request));
+    }
+
+    @GetMapping("/mandate-rules")
+    public ResponseEntity<MandateRules> getMandateRules() {
+        return ResponseEntity.ok(mandateRules);
+    }
+
+    @PutMapping("/mandate-rules")
+    public ResponseEntity<MandateRules> updateMandateRules(@RequestBody MandateRules update) {
+        mandateRules.setUnderwriterLimit(update.getUnderwriterLimit());
+        mandateRules.setSeniorUnderwriterLimit(update.getSeniorUnderwriterLimit());
+        mandateRules.setHeadOfLendingLimit(update.getHeadOfLendingLimit());
+        mandateRules.setCooLimit(update.getCooLimit());
+        mandateRules.setCeoLimit(update.getCeoLimit());
+        return ResponseEntity.ok(mandateRules);
     }
 }

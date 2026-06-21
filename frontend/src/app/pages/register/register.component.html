@@ -17,6 +17,35 @@
     <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
     <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="account-type-toggle mb-16">
+        <button type="button" [class.active]="!isBusiness" (click)="setAccountType('PERSONAL')">{{ 'register.individual' | translate }}</button>
+        <button type="button" [class.active]="isBusiness" (click)="setAccountType('BUSINESS')">{{ 'register.business' | translate }}</button>
+      </div>
+
+      <ng-container *ngIf="isBusiness">
+        <div class="db-form-group">
+          <label>{{ 'register.companyNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="companyName" [placeholder]="'register.companyNamePlaceholder' | translate" />
+          <div class="db-error-msg" *ngIf="f('companyName')?.invalid && f('companyName')?.touched">{{ 'register.companyNameError' | translate }}</div>
+        </div>
+        <div class="form-row">
+          <div class="db-form-group">
+            <label>{{ 'register.companyRegNumberLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" formControlName="companyRegistrationNumber" [placeholder]="'register.companyRegNumberPlaceholder' | translate" />
+            <div class="db-error-msg" *ngIf="f('companyRegistrationNumber')?.invalid && f('companyRegistrationNumber')?.touched">{{ 'register.companyRegNumberError' | translate }}</div>
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'register.companyIndustryLabel' | translate }}</label>
+            <input class="db-input" type="text" formControlName="companyIndustry" [placeholder]="'register.companyIndustryPlaceholder' | translate" />
+          </div>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'register.companyFoundedYearLabel' | translate }}</label>
+          <input class="db-input" type="number" formControlName="companyFoundedYear" placeholder="2015" />
+        </div>
+        <p class="auth-subtitle mb-16">{{ 'register.signatoryIntro' | translate }}</p>
+      </ng-container>
+
       <div class="db-form-group">
         <label>{{ 'register.fullNameLabel' | translate }} <span class="required">*</span></label>
         <input class="db-input" type="text" formControlName="fullName" [placeholder]="'register.fullNamePlaceholder' | translate" autocomplete="name" />

@@ -49,9 +49,22 @@ public class ApplicationService {
     }
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
+
+    /** "guarantorDetails" sits right after personalDetails but is normally skipped — see
+     * isSectionFilled(), which treats it as filled/skippable unless an underwriter has flagged
+     * guarantorRequired via sendBackApplication(). */
     private static final List<String> ALL_SECTIONS = List.of(
-            "loanRequirements", "personalDetails", "connectBank", "incomeEmployment",
+            "loanRequirements", "personalDetails", "guarantorDetails", "connectBank", "incomeEmployment",
             "outgoings", "creditDeclarations", "verifyId", "directDebit", "reviewSubmit"
+    );
+
+    /** Business-loan equivalent of ALL_SECTIONS — companyDetails doubles as "loan requirements"
+     * for a business application (amount/purpose/term captured alongside company identity).
+     * guarantorDetails sits after signatories (the closest business equivalent of personalDetails),
+     * same skip-unless-required semantics as the personal list. */
+    private static final List<String> BUSINESS_SECTIONS = List.of(
+            "companyDetails", "signatories", "guarantorDetails", "connectBusinessBank", "businessFinancials",
+            "businessOutgoings", "businessCreditDeclarations", "verifyId", "directDebit", "reviewSubmit"
     );
 
     /** Sections that must always be visited explicitly, even when pre-filled (e.g. via the
@@ -70,6 +83,26 @@ public class ApplicationService {
                             .status("DRAFT")
                             .currentSection("loanRequirements")
                             .completionPercentage(0)
+                            .applicationType("PERSONAL")
+                            .build();
+                    return repository.save(app);
+                });
+    }
+
+    /** Business-loan equivalent of createOrResumeApplication — same resume-an-active-draft
+     * semantics, just tagged applicationType=BUSINESS and starting at the company details step. */
+    @Transactional
+    public LoanApplication createOrResumeBusinessApplication(Long customerId, String email) {
+        return repository.findFirstByCustomerIdAndStatusInOrderByUpdatedAtDesc(customerId, ACTIVE_STATUSES)
+                .orElseGet(() -> {
+                    LoanApplication app = LoanApplication.builder()
+                            .applicationRef(generateApplicationRef())
+                            .customerId(customerId)
+                            .customerEmail(email)
+                            .status("DRAFT")
+                            .currentSection("companyDetails")
+                            .completionPercentage(0)
+                            .applicationType("BUSINESS")
                             .build();
                     return repository.save(app);
                 });
@@ -240,6 +273,13 @@ public class ApplicationService {
                 case "verifyId"           -> app.setVerifyIdJson(json);
                 case "directDebit"        -> app.setDirectDebitJson(json);
                 case "reviewSubmit"       -> app.setReviewSubmitJson(json);
+                case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
+                case "companyDetails"             -> app.setCompanyDetailsJson(json);
+                case "signatories"                -> app.setSignatoriesJson(json);
+                case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
+                case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
+                case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
+                case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
                 default -> throw new IllegalArgumentException("Unknown section: " + section);
             }
         } catch (JsonProcessingException e) {
@@ -269,6 +309,13 @@ public class ApplicationService {
                 case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
                 case "verifyId"           -> app.setVerifyIdJson(json);
                 case "directDebit"        -> app.setDirectDebitJson(json);
+                case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
+                case "companyDetails"             -> app.setCompanyDetailsJson(json);
+                case "signatories"                -> app.setSignatoriesJson(json);
+                case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
+                case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
+                case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
+                case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
                 default -> throw new IllegalArgumentException("Unknown section: " + section);
             }
         } catch (JsonProcessingException e) {
@@ -318,6 +365,10 @@ public class ApplicationService {
 
     private void maybeAutoApprove(LoanApplication app) {
         try {
+            // Business loans always go to manual underwriter review for now — the auto-approval
+            // threshold below is sized for personal-loan amounts/risk and reads loanRequirementsJson,
+            // which business applications never populate (their amount lives in companyDetailsJson).
+            if ("BUSINESS".equals(app.getApplicationType())) return;
             if (app.getAffordabilityResultJson() == null) return;
             JsonNode result = objectMapper.readTree(app.getAffordabilityResultJson());
             if (!result.path("passed").asBoolean(false)) return;
@@ -407,13 +458,22 @@ public class ApplicationService {
     }
 
     @Transactional
-    public LoanApplication sendBackApplication(String appRef, String reason, String reviewedBy) {
+    public LoanApplication sendBackApplication(String appRef, String reason, String reviewedBy, boolean requireGuarantor) {
         LoanApplication app = getByRef(appRef);
         app.setStatus("IN_PROGRESS");
-        app.setCurrentSection("reviewSubmit");
+
+        boolean guarantorNewlyNeeded = requireGuarantor && app.getGuarantorDetailsJson() == null;
+        if (requireGuarantor) {
+            app.setGuarantorRequired(true);
+        }
+        app.setCurrentSection(guarantorNewlyNeeded ? "guarantorDetails" : "reviewSubmit");
         repository.save(app);
         addNote(appRef, "general", reason, "SEND_BACK", reviewedBy);
 
+        String guarantorNote = guarantorNewlyNeeded
+                ? " A guarantor is now required for this application — please complete the new Guarantor Details section, "
+                  + "including a supporting document for your guarantor, before resubmitting."
+                : "";
         notificationClient.send(app.getCustomerId(), "Action Needed on Your Loan Application",
                 greeting(app) + " Thank you for applying for a personal loan for " + loanPurpose(app) + " with DigiBank. "
                         + "Our underwriting team has reviewed your application and sent it back for a few additional details "
@@ -421,7 +481,7 @@ public class ApplicationService {
                         + "Underwriter's note: " + reason + "\n\n"
                         + "Next steps: Please log in to your DigiBank portal, review the feedback on your application, "
                         + "update the relevant section(s), upload any supporting documents if requested, and resubmit "
-                        + "for review.",
+                        + "for review." + guarantorNote,
                 "APPLICATION_UPDATE", appRef);
         return app;
     }
@@ -568,6 +628,7 @@ public class ApplicationService {
             case "creditDeclarations" -> "Credit Declarations";
             case "verifyId"           -> "ID Verification";
             case "directDebit"        -> "Direct Debit Details";
+            case "guarantorDetails"   -> "Guarantor Details";
             default -> "application";
         };
     }
@@ -592,13 +653,27 @@ public class ApplicationService {
             case "verifyId"           -> app.getVerifyIdJson() != null;
             case "directDebit"        -> app.getDirectDebitJson() != null;
             case "reviewSubmit"       -> app.getReviewSubmitJson() != null;
+            // Skipped by default — only becomes a real stop once an underwriter has flagged
+            // guarantorRequired (via sendBackApplication) and it hasn't been filled in yet.
+            case "guarantorDetails"   -> !Boolean.TRUE.equals(app.getGuarantorRequired()) || app.getGuarantorDetailsJson() != null;
+            case "companyDetails"             -> app.getCompanyDetailsJson() != null;
+            case "signatories"                -> app.getSignatoriesJson() != null;
+            case "connectBusinessBank"        -> app.getBusinessBankConnectionJson() != null;
+            case "businessFinancials"         -> app.getBusinessFinancialsJson() != null;
+            case "businessOutgoings"          -> app.getBusinessOutgoingsJson() != null;
+            case "businessCreditDeclarations" -> app.getBusinessCreditDeclarationsJson() != null;
             default -> false;
         };
     }
 
+    private List<String> sectionsFor(LoanApplication app) {
+        return "BUSINESS".equals(app.getApplicationType()) ? BUSINESS_SECTIONS : ALL_SECTIONS;
+    }
+
     private int calculateCompletion(LoanApplication app) {
-        long filled = ALL_SECTIONS.stream().filter(section -> isSectionFilled(app, section)).count();
-        return (int) (filled * 100 / ALL_SECTIONS.size());
+        List<String> sections = sectionsFor(app);
+        long filled = sections.stream().filter(section -> isSectionFilled(app, section)).count();
+        return (int) (filled * 100 / sections.size());
     }
 
     /** Normally advances one section at a time. Skips forward over any later section that's
@@ -607,14 +682,15 @@ public class ApplicationService {
      * null until reached in order) while a fast-track application jumps straight to the next
      * thing that actually needs the customer's attention. */
     private String nextSection(String currentSection, LoanApplication app) {
-        int idx = ALL_SECTIONS.indexOf(currentSection);
-        for (int i = idx + 1; i < ALL_SECTIONS.size(); i++) {
-            String candidate = ALL_SECTIONS.get(i);
+        List<String> sections = sectionsFor(app);
+        int idx = sections.indexOf(currentSection);
+        for (int i = idx + 1; i < sections.size(); i++) {
+            String candidate = sections.get(i);
             if (MANDATORY_STOPS.contains(candidate) || !isSectionFilled(app, candidate)) {
                 return candidate;
             }
         }
-        return ALL_SECTIONS.get(ALL_SECTIONS.size() - 1);
+        return sections.get(sections.size() - 1);
     }
 
     private String generateApplicationRef() {

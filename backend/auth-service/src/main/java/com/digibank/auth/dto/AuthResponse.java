@@ -13,6 +13,7 @@ public class AuthResponse {
     private String phoneNumber;
     private String role;
     private long expiresIn;
+    private String companyName;
 
     public AuthResponse() {}
 
@@ -35,6 +36,8 @@ public class AuthResponse {
     public void setRole(String role) { this.role = role; }
     public long getExpiresIn() { return expiresIn; }
     public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     public static Builder builder() { return new Builder(); }
 
@@ -50,6 +53,7 @@ public class AuthResponse {
         public Builder phoneNumber(String v) { r.phoneNumber = v; return this; }
         public Builder role(String v) { r.role = v; return this; }
         public Builder expiresIn(long v) { r.expiresIn = v; return this; }
+        public Builder companyName(String v) { r.companyName = v; return this; }
         public AuthResponse build() { return r; }
     }
 }

@@ -49,7 +49,7 @@ export class VerifyOtpComponent {
         if (res.success) {
           const userId = res.data?.userId;
           if (userId) this.notifications.seedWelcome(userId).subscribe();
-          this.router.navigate(['/intro']);
+          this.router.navigate([this.auth.isBusinessOwner ? '/business/dashboard' : '/intro']);
         } else {
           this.error.set(res.message || 'Verification failed.');
         }

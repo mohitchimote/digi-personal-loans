@@ -1,0 +1,151 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 9, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'steps.reviewSubmit' | translate }}</h2>
+    <p class="section-subtitle">{{ 'reviewSubmit.subtitle' | translate }}</p>
+  </div>
+
+  <div class="db-alert db-alert--info mb-16">
+    <span class="material-icons mi-sm">assignment</span> {{ 'company.autoAssessNote' | translate }}
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.detailsTitle' | translate }}</h3>
+      <a routerLink="/business/apply/company-details" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'register.companyNameLabel' | translate }}</span><strong>{{ company.companyName }}</strong></div>
+      <div class="review-item"><span>{{ 'register.companyRegNumberLabel' | translate }}</span><strong>{{ company.companyRegistrationNumber }}</strong></div>
+      <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ company.loanAmount | number }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ company.loanPurpose }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ company.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.signatoriesTitle' | translate }}</h3>
+      <a routerLink="/business/apply/signatories" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid" *ngFor="let s of signatories">
+      <div class="review-item"><span>{{ s.title }}</span><strong>{{ s.fullName }} ({{ s.ownershipPercentage }}%)</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.connectBankTitle' | translate }}</h3>
+      <a routerLink="/business/apply/connect-bank" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item" *ngIf="bankConnection.connected"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ bankConnection.bankName }} · {{ bankConnection.summary?.accountMasked }}</strong></div>
+      <div class="review-item" *ngIf="!bankConnection.connected"><span>{{ 'company.connectBankTitle' | translate }}</span><strong>{{ 'connectBank.skipForNow' | translate }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.financialsTitle' | translate }}</h3>
+      <a routerLink="/business/apply/financials" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'company.annualTurnoverLabel' | translate }}</span><strong>₪{{ financials.annualTurnover | number }}</strong></div>
+      <div class="review-item"><span>{{ 'company.monthlyRevenueLabel' | translate }}</span><strong>₪{{ financials.monthlyRevenue | number }}</strong></div>
+      <div class="review-item"><span>{{ 'company.yearsTradingLabel' | translate }}</span><strong>{{ financials.yearsTrading }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.outgoingsTitle' | translate }}</h3>
+      <a routerLink="/business/apply/outgoings" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'company.existingDebtServiceLabel' | translate }}</span><strong>₪{{ outgoings.existingBusinessDebtService | number }}</strong></div>
+      <div class="review-item"><span>{{ 'company.payrollLabel' | translate }}</span><strong>₪{{ outgoings.monthlyPayroll | number }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'company.creditTitle' | translate }}</h3>
+      <a routerLink="/business/apply/credit-declarations" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ credit.directorCreditScore }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'steps.verifyId' | translate }}</h3>
+      <a routerLink="/business/apply/verify-id" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'docs.uploadedFiles' | translate:{ count: verifyId.files?.length || 0 } }}</span><strong>{{ verifyId.idVerified ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16">
+    <div class="card-header">
+      <h3>{{ 'steps.directDebit' | translate }}</h3>
+      <a routerLink="/business/apply/direct-debit" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'directDebit.accountHolderLabel' | translate }}</span><strong>{{ directDebit.accountHolderName }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.bankNameLabel' | translate }}</span><strong>{{ directDebit.bankName }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+    <div class="card-header">
+      <h3>{{ 'guarantor.title' | translate }}</h3>
+      <a routerLink="/business/apply/guarantor-details" class="db-btn db-btn--ghost db-btn--sm">{{ 'common.edit' | translate }}</a>
+    </div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+      <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'reviewSubmit.declarationHeader' | translate }}</h3></div>
+
+    <label class="db-checkbox mb-16">
+      <input type="checkbox" [(ngModel)]="agreedToTerms" />
+      <span>{{ 'reviewSubmit.confirmAccurate' | translate }}</span>
+    </label>
+
+    <label class="db-checkbox mb-16">
+      <input type="checkbox" [(ngModel)]="agreedToPrivacy" />
+      <span>{{ 'reviewSubmit.agreeTermsPrefix' | translate }} <a href="#">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="#">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</span>
+    </label>
+
+    <label class="db-checkbox mb-24">
+      <input type="checkbox" [(ngModel)]="agreedToCredit" />
+      <span>{{ 'company.consentCreditSearch' | translate }}</span>
+    </label>
+
+    <div class="db-form-group">
+      <label>{{ 'reviewSubmit.signatureLabel' | translate }} <span class="required">*</span></label>
+      <input class="db-input" type="text" [(ngModel)]="signature"
+             [placeholder]="'reviewSubmit.signaturePlaceholder' | translate" style="font-style:italic; font-size:1rem;" />
+      <div class="db-hint">{{ 'reviewSubmit.signatureHint' | translate }}</div>
+    </div>
+
+    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+  </div>
+
+  <div class="form-actions mt-24">
+    <div></div>
+    <button class="db-btn db-btn--accent db-btn--lg" (click)="submit()" [disabled]="!canSubmit || submitting()">
+      {{ submitting() ? ('reviewSubmit.submitting' | translate) : ('reviewSubmit.submitApplication' | translate) }}
+    </button>
+  </div>
+</div>
+<app-application-aside [appRef]="application()?.applicationRef || ''" [tip]="'aside.tip.businessReviewSubmit' | translate"></app-application-aside>
+</div>

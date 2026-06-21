@@ -24,6 +24,10 @@ public class LoanApplication {
     private String currentSection = "loanRequirements";
     private Integer completionPercentage = 0;
 
+    /** "PERSONAL" (default — every pre-existing row) or "BUSINESS". Drives which section list/JSON
+     * columns ApplicationService reads/writes; decision/disbursement/notes machinery is shared. */
+    private String applicationType = "PERSONAL";
+
     @Column(columnDefinition = "TEXT")
     private String loanRequirementsJson;
 
@@ -69,6 +73,33 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String dataVerificationJson;
 
+    // Business-loan sections (applicationType = "BUSINESS") — null for personal applications
+    @Column(columnDefinition = "TEXT")
+    private String companyDetailsJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String signatoriesJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String businessBankConnectionJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String businessFinancialsJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String businessOutgoingsJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String businessCreditDeclarationsJson;
+
+    /** Guarantor is never asked in the first pass — only set true when an underwriter sends the
+     * case back specifically requesting one (see ApplicationService.sendBackApplication). Shared
+     * by both journeys (guarantor shape doesn't differ between personal and business). */
+    private Boolean guarantorRequired = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String guarantorDetailsJson;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
@@ -108,6 +139,9 @@ public class LoanApplication {
 
     public Integer getCompletionPercentage() { return completionPercentage; }
     public void setCompletionPercentage(Integer completionPercentage) { this.completionPercentage = completionPercentage; }
+
+    public String getApplicationType() { return applicationType; }
+    public void setApplicationType(String applicationType) { this.applicationType = applicationType; }
 
     public String getLoanRequirementsJson() { return loanRequirementsJson; }
     public void setLoanRequirementsJson(String loanRequirementsJson) { this.loanRequirementsJson = loanRequirementsJson; }
@@ -157,6 +191,30 @@ public class LoanApplication {
     public String getDataVerificationJson() { return dataVerificationJson; }
     public void setDataVerificationJson(String dataVerificationJson) { this.dataVerificationJson = dataVerificationJson; }
 
+    public String getCompanyDetailsJson() { return companyDetailsJson; }
+    public void setCompanyDetailsJson(String companyDetailsJson) { this.companyDetailsJson = companyDetailsJson; }
+
+    public String getSignatoriesJson() { return signatoriesJson; }
+    public void setSignatoriesJson(String signatoriesJson) { this.signatoriesJson = signatoriesJson; }
+
+    public String getBusinessBankConnectionJson() { return businessBankConnectionJson; }
+    public void setBusinessBankConnectionJson(String businessBankConnectionJson) { this.businessBankConnectionJson = businessBankConnectionJson; }
+
+    public String getBusinessFinancialsJson() { return businessFinancialsJson; }
+    public void setBusinessFinancialsJson(String businessFinancialsJson) { this.businessFinancialsJson = businessFinancialsJson; }
+
+    public String getBusinessOutgoingsJson() { return businessOutgoingsJson; }
+    public void setBusinessOutgoingsJson(String businessOutgoingsJson) { this.businessOutgoingsJson = businessOutgoingsJson; }
+
+    public String getBusinessCreditDeclarationsJson() { return businessCreditDeclarationsJson; }
+    public void setBusinessCreditDeclarationsJson(String businessCreditDeclarationsJson) { this.businessCreditDeclarationsJson = businessCreditDeclarationsJson; }
+
+    public Boolean getGuarantorRequired() { return guarantorRequired; }
+    public void setGuarantorRequired(Boolean guarantorRequired) { this.guarantorRequired = guarantorRequired; }
+
+    public String getGuarantorDetailsJson() { return guarantorDetailsJson; }
+    public void setGuarantorDetailsJson(String guarantorDetailsJson) { this.guarantorDetailsJson = guarantorDetailsJson; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -177,6 +235,7 @@ public class LoanApplication {
         public Builder status(String v) { obj.status = v; return this; }
         public Builder currentSection(String v) { obj.currentSection = v; return this; }
         public Builder completionPercentage(Integer v) { obj.completionPercentage = v; return this; }
+        public Builder applicationType(String v) { obj.applicationType = v; return this; }
         public LoanApplication build() { return obj; }
     }
 }

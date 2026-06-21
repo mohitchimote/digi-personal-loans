@@ -1,6 +1,7 @@
 <div *ngIf="!loading() && application()">
   <div class="page-header mb-24">
-    <h2>{{ personal.firstName }} {{ personal.lastName }} · {{ application()!.applicationRef }}</h2>
+    <h2 *ngIf="!isBusiness">{{ personal.firstName }} {{ personal.lastName }} · {{ application()!.applicationRef }}</h2>
+    <h2 *ngIf="isBusiness">{{ company.companyName }} · {{ application()!.applicationRef }}</h2>
     <p class="page-sub">{{ statusLabel(application()!.status) }} · {{ 'uw.submitted' | translate }} {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</p>
   </div>
 
@@ -8,15 +9,19 @@
   <div class="uw-summary-strip mb-24">
     <div class="uw-summary-item">
       <span>{{ 'uw.requestedAmount' | translate }}</span>
-      <strong>₪{{ loanReqs.loanAmount | number }}</strong>
+      <strong>₪{{ (isBusiness ? company.loanAmount : loanReqs.loanAmount) | number }}</strong>
     </div>
-    <div class="uw-summary-item" *ngIf="affordability.dti !== undefined">
+    <div class="uw-summary-item" *ngIf="!isBusiness && affordability.dti !== undefined">
       <span>{{ 'uw.dti' | translate }}</span>
       <strong>{{ affordability.dti }}%</strong>
     </div>
-    <div class="uw-summary-item" *ngIf="affordability.hti !== undefined">
+    <div class="uw-summary-item" *ngIf="!isBusiness && affordability.hti !== undefined">
       <span>{{ 'uw.hti' | translate }}</span>
       <strong>{{ affordability.hti }}%</strong>
+    </div>
+    <div class="uw-summary-item" *ngIf="isBusiness && affordability.dscr !== undefined">
+      <span>{{ 'company.dscrLabel' | translate }}</span>
+      <strong>{{ affordability.dscr }}</strong>
     </div>
     <div class="uw-summary-item" *ngIf="affordability.riskCategory">
       <span>{{ 'afford.riskCategoryLabel' | translate }}</span>
@@ -24,7 +29,7 @@
     </div>
     <div class="uw-summary-item">
       <span>{{ 'credit.scoreLabel' | translate }}</span>
-      <strong>{{ credit.creditScore }}</strong>
+      <strong>{{ isBusiness ? businessCredit.directorCreditScore : credit.creditScore }}</strong>
     </div>
     <div class="uw-summary-item" *ngIf="affordability.passed !== undefined">
       <span>{{ 'uw.autoAssessment' | translate }}</span>
@@ -113,8 +118,52 @@
         </div>
       </div>
 
+      <!-- Company (business cases) -->
+      <div *ngIf="activeTab() === 'identity' && isBusiness">
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.detailsTitle' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'register.companyNameLabel' | translate }}</span><strong>{{ company.companyName }}</strong></div>
+            <div class="review-item"><span>{{ 'register.companyRegNumberLabel' | translate }}</span><strong>{{ company.companyRegistrationNumber }}</strong></div>
+            <div class="review-item"><span>{{ 'register.companyIndustryLabel' | translate }}</span><strong>{{ company.industry }}</strong></div>
+            <div class="review-item"><span>{{ 'register.companyFoundedYearLabel' | translate }}</span><strong>{{ company.yearFounded }}</strong></div>
+            <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ company.street }}, {{ company.city }}</strong></div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.signatoriesTitle' | translate }}</h3></div>
+          <div class="review-grid" *ngFor="let s of signatories">
+            <div class="review-item"><span>{{ s.title }}{{ s.primarySignatory ? ' (' + ('company.primarySignatoryLabel' | translate) + ')' : '' }}</span><strong>{{ s.fullName }} — {{ s.nationalId }} — {{ s.ownershipPercentage }}%</strong></div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+          <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
+          <div class="review-grid" *ngIf="guarantorDetails.guarantorName">
+            <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
+          </div>
+          <div class="db-alert db-alert--warning" *ngIf="!guarantorDetails.guarantorName">
+            <span class="material-icons mi-sm">hourglass_empty</span> {{ 'guarantor.pendingCustomer' | translate }}
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'steps.verifyId' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'verifyId.title' | translate }}</span><strong>{{ verifyId.idVerified ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+          </div>
+          <div class="uw-doc-row" *ngFor="let f of verifyId.files">
+            <span class="material-icons mi-sm">badge</span>
+            <div class="uw-doc-info"><div>{{ f }}</div></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Identity & KYC -->
-      <div *ngIf="activeTab() === 'identity'">
+      <div *ngIf="activeTab() === 'identity' && !isBusiness">
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'steps.personalDetails' | translate }}</h3>
@@ -163,6 +212,18 @@
           </div>
         </div>
 
+        <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+          <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
+          <div class="review-grid" *ngIf="guarantorDetails.guarantorName">
+            <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
+          </div>
+          <div class="db-alert db-alert--warning" *ngIf="!guarantorDetails.guarantorName">
+            <span class="material-icons mi-sm">hourglass_empty</span> {{ 'guarantor.pendingCustomer' | translate }}
+          </div>
+        </div>
+
         <div class="db-card mb-16">
           <div class="card-header"><h3>{{ 'steps.verifyId' | translate }}</h3></div>
           <div class="review-grid">
@@ -192,8 +253,65 @@
         </div>
       </div>
 
+      <!-- Affordability (business: DSCR) -->
+      <div *ngIf="activeTab() === 'affordability' && isBusiness">
+        <div class="db-card mb-16" *ngIf="affordability.dscr !== undefined">
+          <div class="card-header"><h3>{{ 'company.affordabilityAssessment' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'company.dscrLabel' | translate }}</span><strong>{{ affordability.dscr }}</strong></div>
+            <div class="review-item"><span>{{ 'company.netOperatingIncomeLabel' | translate }}</span><strong>₪{{ affordability.monthlyNetOperatingIncome | number }}</strong></div>
+            <div class="review-item"><span>{{ 'afford.capacityLabel' | translate }}</span><strong>₪{{ affordability.monthlyRepaymentCapacity | number }}</strong></div>
+            <div class="review-item"><span>{{ 'afford.calcRepaymentLabel' | translate }}</span><strong>₪{{ affordability.calculatedMonthlyRepayment | number }}</strong></div>
+          </div>
+          <div class="db-alert db-alert--error mt-16" *ngIf="!affordability.passed && affordability.failureReasons?.length">
+            <strong>{{ 'uw.flagged' | translate }}</strong>
+            <ul style="margin:6px 0 0 18px;">
+              <li *ngFor="let r of affordability.failureReasons">{{ r }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.financialsTitle' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'company.annualTurnoverLabel' | translate }}</span><strong>₪{{ businessFinancials.annualTurnover | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.monthlyRevenueLabel' | translate }}</span><strong>₪{{ businessFinancials.monthlyRevenue | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.yearsTradingLabel' | translate }}</span><strong>{{ businessFinancials.yearsTrading }}</strong></div>
+            <div class="review-item"><span>{{ 'company.employeeCountLabel' | translate }}</span><strong>{{ businessFinancials.employeeCount }}</strong></div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.outgoingsTitle' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'company.existingDebtServiceLabel' | translate }}</span><strong>₪{{ businessOutgoings.existingBusinessDebtService | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.leaseRentLabel' | translate }}</span><strong>₪{{ businessOutgoings.monthlyLeaseRent | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.payrollLabel' | translate }}</span><strong>₪{{ businessOutgoings.monthlyPayroll | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.supplierPaymentsLabel' | translate }}</span><strong>₪{{ businessOutgoings.monthlySupplierPayments | number }}</strong></div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.connectBankTitle' | translate }}</h3></div>
+          <div class="review-grid" *ngIf="businessBankConnection.connected">
+            <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ businessBankConnection.bankName }} · {{ businessBankConnection.summary?.accountMasked }}</strong></div>
+            <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ businessBankConnection.summary?.avgBalance | number }}</strong></div>
+          </div>
+          <div class="text-muted" style="font-size:0.88rem;" *ngIf="!businessBankConnection.connected">{{ 'connectBank.skipForNow' | translate }}</div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'steps.directDebit' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'directDebit.accountHolderLabel' | translate }}</span><strong>{{ directDebit.accountHolderName }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.bankNameLabel' | translate }}</span><strong>{{ directDebit.bankName }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Affordability -->
-      <div *ngIf="activeTab() === 'affordability'">
+      <div *ngIf="activeTab() === 'affordability' && !isBusiness">
         <div class="db-card mb-16" *ngIf="affordability.dti !== undefined">
           <div class="card-header"><h3>{{ 'uw.affordabilityAssessment' | translate }}</h3></div>
           <div class="review-grid">
@@ -326,8 +444,35 @@
         </div>
       </div>
 
+      <!-- Business Credit & Risk -->
+      <div *ngIf="activeTab() === 'creditRisk' && isBusiness">
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'company.creditTitle' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'company.liquidationTitle' | translate }}</span><strong>{{ businessCredit.hasLiquidationOrWindingUp ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+            <div class="review-item"><span>{{ 'company.companyDefaultTitle' | translate }}</span><strong>{{ businessCredit.hasCompanyDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+            <div class="review-item"><span>{{ 'credit.ccjTitle' | translate }}</span><strong>{{ businessCredit.hasCCJ ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+            <div class="review-item"><span>{{ 'credit.scoreLabel' | translate }}</span><strong>{{ businessCredit.directorCreditScore }}</strong></div>
+          </div>
+          <div class="uw-notes" *ngIf="notesFor('businessCreditDeclarations').length">
+            <div class="uw-note" *ngFor="let n of notesFor('businessCreditDeclarations')">
+              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16" *ngIf="affordability.riskCategory">
+          <div class="card-header"><h3>{{ 'afford.riskCategoryLabel' | translate }}</h3></div>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'afford.riskCategoryLabel' | translate }}</span><strong [class]="riskClass()">{{ affordability.riskCategory }}</strong></div>
+            <div class="review-item"><span>{{ 'afford.creditCategoryLabel' | translate }}</span><strong>{{ affordability.creditScoreCategory }}</strong></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Credit Bureau & Risk -->
-      <div *ngIf="activeTab() === 'creditRisk'">
+      <div *ngIf="activeTab() === 'creditRisk' && !isBusiness">
         <div class="db-card mb-16">
           <div class="card-header">
             <h3>{{ 'steps.creditDeclarations' | translate }}</h3>
@@ -443,12 +588,16 @@
         <div class="db-card mb-16">
           <div class="card-header"><h3>{{ 'uw.decision' | translate }}</h3></div>
           <div class="review-grid mb-16">
-            <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
+            <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span><strong>₪{{ (isBusiness ? company.loanAmount : loanReqs.loanAmount) | number }}</strong></div>
+            <div class="review-item" *ngIf="myMandateLimit() != null"><span>{{ 'mandate.yourLimit' | translate }}</span><strong>₪{{ myMandateLimit() | number }}</strong></div>
           </div>
           <div class="db-form-group">
             <label>{{ 'uw.approvedAmountLabel' | translate }} <span class="required">*</span></label>
             <input class="db-input" type="number" min="1" [(ngModel)]="approvedAmount" [disabled]="isApproved" />
             <div class="db-hint">{{ 'uw.approvedAmountHint' | translate }}</div>
+          </div>
+          <div class="db-alert db-alert--error mb-16" *ngIf="isOverMandate()">
+            <span class="material-icons mi-sm">block</span> {{ 'mandate.overLimitNote' | translate }}
           </div>
           <div class="db-form-group">
             <label>{{ 'uw.reasonComments' | translate }}</label>
@@ -459,8 +608,15 @@
             <textarea class="db-input" rows="2" [(ngModel)]="exceptionNotes"></textarea>
             <div class="db-hint">{{ 'dataVerification.exceptionNotesHint' | translate }}</div>
           </div>
+          <label class="db-checkbox mb-16" *ngIf="!application()?.guarantorRequired">
+            <input type="checkbox" [(ngModel)]="requireGuarantor" />
+            <span>{{ 'guarantor.requireOnSendBack' | translate }}</span>
+          </label>
+          <div class="db-alert db-alert--info mb-16" *ngIf="application()?.guarantorRequired">
+            <span class="material-icons mi-sm">info</span> {{ 'guarantor.alreadyRequiredNote' | translate }}
+          </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
+            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
             <button class="db-btn db-btn--outline" (click)="referToSenior()" [disabled]="submittingAction()"><span class="material-icons mi-sm">arrow_upward</span> {{ 'uw.referToSenior' | translate }}</button>
             <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
             <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>

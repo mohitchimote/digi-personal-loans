@@ -99,7 +99,14 @@
       <div class="review-item" *ngIf="directDebit.branchName"><span>{{ 'directDebit.branchCodeLabel' | translate }}</span><strong>{{ directDebit.branchName }} ({{ directDebit.branchCode }})</strong></div>
       <div class="review-item"><span>{{ 'directDebit.accountNumberLabel' | translate }}</span><strong>{{ directDebit.accountNumber }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.repaymentDay' | translate }}</span><strong>{{ 'loanReq.ofEachMonth' | translate:{ day: directDebit.preferredRepaymentDay } }}</strong></div>
-      <div class="review-item" *ngIf="directDebit.guarantorName"><span>{{ 'directDebit.guarantorHeader' | translate }}</span><strong>{{ directDebit.guarantorName }}</strong></div>
+    </div>
+  </div>
+
+  <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+    <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName || ('guarantor.pending' | translate) }}</strong></div>
+      <div class="review-item" *ngIf="guarantorDetails.guarantorRelationship"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
     </div>
   </div>
 

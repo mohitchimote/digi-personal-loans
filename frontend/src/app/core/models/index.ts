@@ -9,6 +9,7 @@ export interface AuthResponse {
   phoneNumber?: string;
   role: string;
   expiresIn: number;
+  companyName?: string;
 }
 
 export interface RegisterRequest {
@@ -17,6 +18,11 @@ export interface RegisterRequest {
   idIssueDate: string;
   fullName: string;
   phoneNumber?: string;
+  accountType?: 'PERSONAL' | 'BUSINESS';
+  companyName?: string;
+  companyRegistrationNumber?: string;
+  companyIndustry?: string;
+  companyFoundedYear?: number;
 }
 
 export interface RegisterInitiatedResponse {
@@ -55,6 +61,7 @@ export interface LoanApplication {
   status: ApplicationStatus;
   currentSection: string;
   completionPercentage: number;
+  applicationType?: 'PERSONAL' | 'BUSINESS';
   loanRequirementsJson?: string;
   consentManagementJson?: string;
   personalDetailsJson?: string;
@@ -68,6 +75,14 @@ export interface LoanApplication {
   selectedProductJson?: string;
   affordabilityResultJson?: string;
   dataVerificationJson?: string;
+  companyDetailsJson?: string;
+  signatoriesJson?: string;
+  businessBankConnectionJson?: string;
+  businessFinancialsJson?: string;
+  businessOutgoingsJson?: string;
+  businessCreditDeclarationsJson?: string;
+  guarantorRequired?: boolean;
+  guarantorDetailsJson?: string;
   disbursementStatus?: DisbursementStatus;
   approvedAmount?: number;
   createdAt: string;
@@ -193,6 +208,81 @@ export interface CreditDeclarations {
   creditScore: number;
 }
 
+/** Admin-editable approval mandate limits per role in the hierarchy
+ * UW -> Senior UW -> Head of Lending -> COO -> CEO. See PROJECT_DOCUMENTATION.md. */
+export interface MandateRules {
+  underwriterLimit: number;
+  seniorUnderwriterLimit: number;
+  headOfLendingLimit: number;
+  cooLimit: number;
+  ceoLimit: number;
+}
+
+/** Only collected when an underwriter has flagged guarantorRequired via Send Back — never asked
+ * in the first pass. Shared shape between personal and business journeys. */
+export interface GuarantorDetails {
+  guarantorName: string;
+  guarantorNationalId: string;
+  guarantorRelationship: string;
+  guarantorPhone: string;
+  guarantorEmail: string;
+}
+
+export interface CompanyDetails {
+  companyName: string;
+  companyRegistrationNumber: string;
+  industry: string;
+  yearFounded: number;
+  street: string;
+  city: string;
+  postCode: string;
+  country: string;
+  loanAmount: number;
+  loanPurpose: string;
+  loanTerm: number;
+}
+
+export interface Signatory {
+  fullName: string;
+  nationalId: string;
+  title: string;
+  ownershipPercentage: number;
+  primarySignatory: boolean;
+}
+
+export interface BusinessFinancials {
+  annualTurnover: number;
+  monthlyRevenue: number;
+  netProfitMargin: number;
+  yearsTrading: number;
+  employeeCount: number;
+}
+
+export interface BusinessOutgoings {
+  existingBusinessDebtService: number;
+  monthlyLeaseRent: number;
+  monthlyPayroll: number;
+  monthlySupplierPayments: number;
+}
+
+export interface BusinessCreditDeclarations {
+  hasLiquidationOrWindingUp: boolean;
+  hasCompanyDefaulted: boolean;
+  hasCCJ: boolean;
+  directorCreditScore: number;
+}
+
+export interface BusinessAffordabilityResult {
+  passed: boolean;
+  dscr: number;
+  monthlyNetOperatingIncome: number;
+  monthlyRepaymentCapacity: number;
+  calculatedMonthlyRepayment: number;
+  failureReasons: string[];
+  riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
+  creditScoreCategory: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+}
+
 export interface AffordabilityResult {
   passed: boolean;
   dti: number;
@@ -296,10 +386,21 @@ export const REQUIRED_DOCUMENT_TYPES: RequiredDocType[] = [
   { type: 'PROOF_OF_ADDRESS',  labelKey: 'docs.requiredProofAddress' },
 ];
 
+export const BUSINESS_REQUIRED_DOCUMENT_TYPES: RequiredDocType[] = [
+  { type: 'CERTIFICATE_OF_INCORPORATION', labelKey: 'docs.requiredIncorporation' },
+  { type: 'FINANCIAL_STATEMENTS',         labelKey: 'docs.requiredFinancialStatements' },
+  { type: 'BUSINESS_BANK_STATEMENTS',     labelKey: 'docs.requiredBusinessBankStatements' },
+];
+
 export const LOAN_PURPOSES = [
   'Home Improvement', 'Debt Consolidation', 'Vehicle Purchase',
   'Education', 'Medical Expenses', 'Wedding', 'Travel',
   'Business', 'Other'
+];
+
+export const BUSINESS_LOAN_PURPOSES = [
+  'Working Capital', 'Equipment Purchase', 'Business Expansion',
+  'Inventory Financing', 'Debt Refinancing', 'Commercial Property', 'Other'
 ];
 
 export const EMPLOYMENT_STATUSES = [

@@ -1,0 +1,56 @@
+<div class="application-layout">
+<div class="form-page">
+  <div class="form-section-header">
+    <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 9 } }}</div>
+    <h2 class="section-title">{{ 'company.signatoriesTitle' | translate }}</h2>
+    <p class="section-subtitle">{{ 'company.signatoriesSubtitle' | translate }}</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+    <div class="db-card mb-16" *ngFor="let group of signatories.controls; let i = index" [formGroup]="$any(group)">
+      <div class="card-header">
+        <h3>{{ 'company.signatoryHeader' | translate:{ n: i + 1 } }}</h3>
+        <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="signatories.length > 1" (click)="removeSignatory(i)">
+          <span class="material-icons mi-sm">close</span> {{ 'common.remove' | translate }}
+        </button>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'register.fullNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="fullName" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" inputmode="numeric" maxlength="9" formControlName="nationalId" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'company.signatoryTitleLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="title" [placeholder]="'company.signatoryTitlePlaceholder' | translate" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'company.ownershipLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" min="0" max="100" formControlName="ownershipPercentage" />
+        </div>
+      </div>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="primarySignatory" />
+        <span>{{ 'company.primarySignatoryLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <button type="button" class="db-btn db-btn--outline db-btn--sm mb-16" (click)="addSignatory()">
+      <span class="material-icons mi-sm">add</span> {{ 'company.addSignatory' | translate }}
+    </button>
+
+    <div class="form-actions">
+      <div></div>
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </form>
+</div>
+<app-application-aside [appRef]="appRef()" [tip]="'aside.tip.signatories' | translate"></app-application-aside>
+</div>

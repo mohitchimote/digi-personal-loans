@@ -1,0 +1,73 @@
+.products-page { max-width: 1000px; }
+
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px;
+  h2 { margin-bottom: 6px; }
+  .page-sub { color: var(--mid-grey); font-size: 0.9rem; max-width: 600px; }
+}
+
+.loan-amount-chip {
+  background: var(--tcs-blue); color: #fff; padding: 8px 16px; border-radius: 20px;
+  font-size: 0.875rem; white-space: nowrap; flex-shrink: 0;
+}
+
+.loading-state { text-align: center; padding: 60px 0; color: var(--mid-grey);
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--light-grey); border-top-color: var(--tcs-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+}
+
+.products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px; }
+
+.product-card-wrap { position: relative; }
+
+.recommended-ribbon {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--tcs-yellow); color: var(--tcs-blue); padding: 3px 14px;
+  border-radius: 12px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; z-index: 1;
+}
+
+.product-card {
+  border: 2px solid var(--light-grey); transition: border-color 0.2s, box-shadow 0.2s;
+  &--recommended { border-color: var(--tcs-yellow); box-shadow: 0 4px 16px rgba(var(--tcs-yellow-rgb),0.2); }
+}
+
+.product-header {
+  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;
+  .product-id   { font-size: 0.7rem; color: var(--mid-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .product-name { font-size: 1.1rem; font-weight: 700; color: var(--tcs-blue); }
+  .product-rate { text-align: right;
+    .rate-value { font-size: 2rem; font-weight: 700; color: var(--tcs-blue); line-height: 1; }
+    .rate-label { font-size: 0.7rem; color: var(--mid-grey); text-transform: uppercase; }
+  }
+}
+
+.product-highlights {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
+  .highlight { background: var(--off-white); border-radius: 6px; padding: 8px 10px;
+    span   { display: block; font-size: 0.7rem; color: var(--mid-grey); text-transform: uppercase; }
+    strong { font-size: 0.85rem; color: var(--dark-text); }
+  }
+}
+
+.term-selector {
+  margin-bottom: 16px;
+  label { font-size: 0.8rem; color: var(--body-text); display: block; margin-bottom: 8px; strong { color: var(--tcs-blue); } }
+  .term-range {
+    width: 100%; -webkit-appearance: none; height: 4px; border-radius: 2px;
+    background: linear-gradient(to right, var(--tcs-blue) 0%, var(--light-grey) 0%); cursor: pointer;
+    &::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: var(--tcs-blue); border-radius: 50%; cursor: pointer; }
+  }
+  .term-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--mid-grey); margin-top: 4px; }
+}
+
+.repayment-summary {
+  background: var(--info-light); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+  .repayment-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem;
+    &--sub { margin-top: 6px; font-size: 0.8rem; color: var(--mid-grey); }
+    .monthly-amount { font-size: 1.3rem; font-weight: 700; color: var(--tcs-blue); }
+  }
+}
+
+.product-select-btn { width: 100%; }
+
+.disclaimer { margin-top: 24px; }

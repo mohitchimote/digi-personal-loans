@@ -25,6 +25,11 @@ export class RegisterComponent {
     private router: Router
   ) {
     this.form = this.fb.group({
+      accountType: ['PERSONAL' as 'PERSONAL' | 'BUSINESS'],
+      companyName: [''],
+      companyRegistrationNumber: [''],
+      companyIndustry: [''],
+      companyFoundedYear: [null],
       fullName:    ['', [Validators.required, Validators.minLength(2)]],
       email:       ['', [Validators.required, Validators.email]],
       phoneNumber: [''],
@@ -32,6 +37,31 @@ export class RegisterComponent {
       idIssueDate: ['', Validators.required],
       agreeTerms:  [false, Validators.requiredTrue],
     });
+
+    this.form.get('accountType')!.valueChanges.subscribe(type => this.applyAccountTypeValidators(type));
+    this.applyAccountTypeValidators('PERSONAL');
+  }
+
+  get isBusiness(): boolean {
+    return this.form.get('accountType')?.value === 'BUSINESS';
+  }
+
+  setAccountType(type: 'PERSONAL' | 'BUSINESS'): void {
+    this.form.get('accountType')!.setValue(type);
+  }
+
+  private applyAccountTypeValidators(type: 'PERSONAL' | 'BUSINESS'): void {
+    const companyName = this.form.get('companyName')!;
+    const companyRegistrationNumber = this.form.get('companyRegistrationNumber')!;
+    if (type === 'BUSINESS') {
+      companyName.setValidators([Validators.required]);
+      companyRegistrationNumber.setValidators([Validators.required]);
+    } else {
+      companyName.clearValidators();
+      companyRegistrationNumber.clearValidators();
+    }
+    companyName.updateValueAndValidity();
+    companyRegistrationNumber.updateValueAndValidity();
   }
 
   submit(): void {
