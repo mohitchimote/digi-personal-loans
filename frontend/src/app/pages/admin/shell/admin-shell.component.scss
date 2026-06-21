@@ -47,6 +47,12 @@
   display: flex;
   align-items: center;
   gap: 16px;
+
+  .db-btn--ghost {
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.4);
+    &:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  }
 }
 
 .uw-content {

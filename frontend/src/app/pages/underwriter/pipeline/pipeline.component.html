@@ -55,6 +55,8 @@
         <th>{{ 'dashboard.reference' | translate }}</th>
         <th>{{ 'uw.applicant' | translate }}</th>
         <th>{{ 'uw.loanAmount' | translate }}</th>
+        <th>{{ 'reviewSubmit.purpose' | translate }}</th>
+        <th>{{ 'reviewSubmit.loanTerm' | translate }}</th>
         <th>{{ 'dashboard.status' | translate }}</th>
         <th>{{ 'uw.submitted' | translate }}</th>
         <th>{{ 'dashboard.action' | translate }}</th>
@@ -65,6 +67,8 @@
         <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
         <td>{{ applicantName(app) }}</td>
         <td>₪{{ loanAmount(app) | number }}</td>
+        <td>{{ loanPurpose(app) || '—' }}</td>
+        <td>{{ loanTerm(app) ? (loanTerm(app) + ' ' + ('reviewSubmit.months' | translate)) : '—' }}</td>
         <td><span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span></td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.submittedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>

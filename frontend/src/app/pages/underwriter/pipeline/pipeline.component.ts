@@ -73,6 +73,16 @@ export class PipelineComponent implements OnInit {
     catch { return 0; }
   }
 
+  loanPurpose(app: LoanApplication): string {
+    try { return JSON.parse(app.loanRequirementsJson || '{}').loanPurpose || ''; }
+    catch { return ''; }
+  }
+
+  loanTerm(app: LoanApplication): number {
+    try { return JSON.parse(app.loanRequirementsJson || '{}').loanTerm || 0; }
+    catch { return 0; }
+  }
+
   applicantName(app: LoanApplication): string {
     try {
       const p = JSON.parse(app.personalDetailsJson || '{}');

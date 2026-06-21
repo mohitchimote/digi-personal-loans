@@ -7,6 +7,21 @@
     <nav class="uw-nav">
       <a routerLink="/underwriter/pipeline" routerLinkActive="active">{{ 'uw.casePipeline' | translate }}</a>
     </nav>
+    <div class="uw-search">
+      <span class="material-icons mi-sm uw-search-icon">search</span>
+      <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" (focus)="onSearchFocus()" (blur)="onSearchBlur()"
+             [placeholder]="'uw.searchPlaceholder' | translate" />
+      <div class="uw-search-results" *ngIf="searchOpen() && searchQuery().trim().length >= 3">
+        <div class="uw-search-empty" *ngIf="searchResults().length === 0">{{ 'uw.searchNoResults' | translate }}</div>
+        <button type="button" class="uw-search-result" *ngFor="let app of searchResults()" (mousedown)="openResult(app)">
+          <span class="material-icons mi-sm">description</span>
+          <div class="uw-search-result-body">
+            <strong>{{ searchLabel(app) }}</strong>
+            <span>{{ app.applicationRef }} · {{ statusLabel(app.status) }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
     <div class="uw-header-right">
       <app-language-switcher />
       <div class="header-user">

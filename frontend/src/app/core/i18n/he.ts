@@ -541,6 +541,8 @@ export const HE: Record<string, string> = {
   // Underwriter portal
   'uw.brand': 'חיתום דיגיבנק',
   'uw.casePipeline': 'תור התיקים',
+  'uw.searchPlaceholder': 'חיפוש בקשות…',
+  'uw.searchNoResults': 'לא נמצאו בקשות תואמות.',
   'uw.pipelineSubtitle': 'בקשות שהוגשו על ידי לקוחות וממתינות להחלטת חיתום.',
   'uw.loadingPipeline': 'טוען תור תיקים…',
   'uw.noApplications': 'אין בקשות הממתינות לבדיקה.',

@@ -11,6 +11,11 @@
   span { font-size: 1.8rem; }
   .brand-name { color: #fff; font-size: 1.1rem; font-weight: 700; }
   .brand-sub  { color: var(--tcs-yellow); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; }
+
+  ::ng-deep .lang-switcher {
+    color: rgba(255, 255, 255, 0.85);
+    button.active { color: #fff; }
+  }
 }
 
 .intro-main { max-width: 900px; margin: 0 auto; padding: 48px 32px; }

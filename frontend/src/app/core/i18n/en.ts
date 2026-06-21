@@ -541,6 +541,8 @@ export const EN: Record<string, string> = {
   // Underwriter portal
   'uw.brand': 'DigiBank Underwriting',
   'uw.casePipeline': 'Case Pipeline',
+  'uw.searchPlaceholder': 'Search applications…',
+  'uw.searchNoResults': 'No matching applications found.',
   'uw.pipelineSubtitle': 'Applications submitted by customers awaiting underwriting decision.',
   'uw.loadingPipeline': 'Loading pipeline…',
   'uw.noApplications': 'No applications waiting for review.',

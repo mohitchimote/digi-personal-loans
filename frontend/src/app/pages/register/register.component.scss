@@ -12,6 +12,11 @@
   .brand-sub  { color: var(--tcs-yellow); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 }
 
+::ng-deep .lang-switcher {
+  color: rgba(255, 255, 255, 0.85);
+  button.active { color: #fff; }
+}
+
 .auth-card {
   background: #fff; border-radius: 16px; padding: 40px;
   width: 100%; max-width: 540px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
