@@ -1,0 +1,41 @@
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+  justify-content: center;
+}
+
+.products-toolbar {
+  justify-content: space-between;
+}
+
+.type-filter {
+  display: flex;
+  gap: 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 16px;
+}
+
+.db-form-group--full {
+  grid-column: 1 / -1;
+}
+
+.db-checkbox-group {
+  display: flex;
+  align-items: center;
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.text-center {
+  text-align: center;
+  color: var(--text-secondary, #666);
+}

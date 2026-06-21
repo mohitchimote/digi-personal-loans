@@ -9,4 +9,6 @@ import java.util.List;
 public interface LoanProductRepository extends JpaRepository<LoanProduct, Long> {
     List<LoanProduct> findByActiveTrue();
     List<LoanProduct> findByActiveTrueAndProductType(String productType);
+    List<LoanProduct> findAllByOrderByProductTypeAscProductNameAsc();
+    boolean existsByProductCode(String productCode);
 }

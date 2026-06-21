@@ -1,0 +1,128 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.products' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.productsSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+
+<div class="form-actions mb-16 products-toolbar">
+  <div class="type-filter">
+    <button class="db-btn db-btn--sm" [class.db-btn--primary]="filterType()==='ALL'" [class.db-btn--ghost]="filterType()!=='ALL'" (click)="filterType.set('ALL')">{{ 'admin.allProducts' | translate }}</button>
+    <button class="db-btn db-btn--sm" [class.db-btn--primary]="filterType()==='PERSONAL'" [class.db-btn--ghost]="filterType()!=='PERSONAL'" (click)="filterType.set('PERSONAL')">{{ 'admin.personalProducts' | translate }}</button>
+    <button class="db-btn db-btn--sm" [class.db-btn--primary]="filterType()==='BUSINESS'" [class.db-btn--ghost]="filterType()!=='BUSINESS'" (click)="filterType.set('BUSINESS')">{{ 'admin.businessProducts' | translate }}</button>
+  </div>
+  <button class="db-btn db-btn--primary db-btn--sm" (click)="startNew()">+ {{ 'admin.addProduct' | translate }}</button>
+</div>
+
+<div class="db-card mb-24" *ngIf="showForm()">
+  <div class="card-header"><h3>{{ editingId() ? ('admin.editProduct' | translate) : ('admin.newProduct' | translate) }}</h3></div>
+
+  <div class="form-grid">
+    <div class="db-form-group">
+      <label>{{ 'admin.productType' | translate }}</label>
+      <select class="db-input" [(ngModel)]="form.productType">
+        <option value="PERSONAL">{{ 'admin.personalProducts' | translate }}</option>
+        <option value="BUSINESS">{{ 'admin.businessProducts' | translate }}</option>
+      </select>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.productCode' | translate }}</label>
+      <input class="db-input" [(ngModel)]="form.productCode" placeholder="e.g. SL001" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.productName' | translate }}</label>
+      <input class="db-input" [(ngModel)]="form.productName" />
+    </div>
+    <div class="db-form-group db-form-group--full">
+      <label>{{ 'admin.description' | translate }}</label>
+      <textarea class="db-input" rows="2" [(ngModel)]="form.description"></textarea>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.interestRate' | translate }}</label>
+      <input class="db-input" type="number" step="0.01" [(ngModel)]="form.annualInterestRate" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.minAmount' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.minAmount" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.maxAmount' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.maxAmount" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.minTermMonths' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.minTermMonths" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.maxTermMonths' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.maxTermMonths" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.minCreditScore' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.minCreditScore" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.minMonthlyIncome' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.minMonthlyIncome" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.maxDti' | translate }}</label>
+      <input class="db-input" type="number" [(ngModel)]="form.maxDti" />
+    </div>
+    <div class="db-form-group db-form-group--full">
+      <label>{{ 'admin.riskCategories' | translate }}</label>
+      <input class="db-input" [(ngModel)]="form.riskCategories" placeholder="LOW,MEDIUM,HIGH" />
+    </div>
+    <div class="db-form-group db-checkbox-group">
+      <label><input type="checkbox" [(ngModel)]="form.active" /> {{ 'admin.active' | translate }}</label>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="db-btn db-btn--ghost" (click)="cancel()">{{ 'common.cancel' | translate }}</button>
+    <button class="db-btn db-btn--primary" (click)="save()">{{ 'common.save' | translate }}</button>
+  </div>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'faq.loading' | translate }}</span>
+</div>
+
+<div class="db-card" *ngIf="!loading()">
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>{{ 'admin.productType' | translate }}</th>
+        <th>{{ 'admin.productCode' | translate }}</th>
+        <th>{{ 'admin.productName' | translate }}</th>
+        <th>{{ 'admin.interestRate' | translate }}</th>
+        <th>{{ 'admin.amountRange' | translate }}</th>
+        <th>{{ 'admin.termRange' | translate }}</th>
+        <th>{{ 'admin.active' | translate }}</th>
+        <th>{{ 'admin.actions' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let p of filteredProducts()">
+        <td><span class="db-badge" [class.db-badge--info]="p.productType==='BUSINESS'">{{ p.productType }}</span></td>
+        <td>{{ p.productCode }}</td>
+        <td>{{ p.productName }}</td>
+        <td>{{ p.annualInterestRate }}%</td>
+        <td>₪{{ p.minAmount | number }} - ₪{{ p.maxAmount | number }}</td>
+        <td>{{ p.minTermMonths }} - {{ p.maxTermMonths }}m</td>
+        <td>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleActive(p)">
+            {{ p.active ? ('admin.active' | translate) : ('admin.inactive' | translate) }}
+          </button>
+        </td>
+        <td>
+          <button class="db-btn db-btn--outline db-btn--sm" (click)="startEdit(p)">{{ 'common.edit' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="remove(p)" style="color:#c62828;">{{ 'common.delete' | translate }}</button>
+        </td>
+      </tr>
+      <tr *ngIf="!filteredProducts().length">
+        <td colspan="8" class="text-center">{{ 'admin.noProducts' | translate }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -185,6 +185,54 @@ public class ProductService {
                 .build());
     }
 
+    public List<LoanProduct> adminListAll() {
+        return productRepository.findAllByOrderByProductTypeAscProductNameAsc();
+    }
+
+    public LoanProduct createProduct(LoanProduct product) {
+        product.setId(null);
+        if (product.getProductCode() == null || product.getProductCode().isBlank()) {
+            throw new IllegalArgumentException("Product code is required.");
+        }
+        if (productRepository.existsByProductCode(product.getProductCode())) {
+            throw new IllegalArgumentException("Product code already exists: " + product.getProductCode());
+        }
+        if (product.getProductType() == null || product.getProductType().isBlank()) {
+            product.setProductType("PERSONAL");
+        }
+        return productRepository.save(product);
+    }
+
+    public LoanProduct updateProduct(Long id, LoanProduct update) {
+        LoanProduct product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
+        if (!product.getProductCode().equals(update.getProductCode()) && productRepository.existsByProductCode(update.getProductCode())) {
+            throw new IllegalArgumentException("Product code already exists: " + update.getProductCode());
+        }
+        product.setProductCode(update.getProductCode());
+        product.setProductName(update.getProductName());
+        product.setDescription(update.getDescription());
+        product.setAnnualInterestRate(update.getAnnualInterestRate());
+        product.setMinAmount(update.getMinAmount());
+        product.setMaxAmount(update.getMaxAmount());
+        product.setMinTermMonths(update.getMinTermMonths());
+        product.setMaxTermMonths(update.getMaxTermMonths());
+        product.setMinCreditScore(update.getMinCreditScore());
+        product.setMinMonthlyIncome(update.getMinMonthlyIncome());
+        product.setMaxDti(update.getMaxDti());
+        product.setRiskCategories(update.getRiskCategories());
+        product.setActive(update.isActive());
+        product.setProductType(update.getProductType());
+        return productRepository.save(product);
+    }
+
+    public void deleteProduct(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new IllegalArgumentException("Product not found: " + id);
+        }
+        productRepository.deleteById(id);
+    }
+
     public PreApprovedOffer getPreApprovedOffer(String nationalId) {
         return preApprovedOfferRepository.findByNationalIdAndConsumedFalse(nationalId).orElse(null);
     }
