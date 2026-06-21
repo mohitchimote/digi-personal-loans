@@ -34,6 +34,10 @@
 
   <div class="db-alert db-alert--success mb-16" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
   <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+  <div class="db-alert db-alert--warning mb-16" *ngIf="dataVerification()">
+    <span class="material-icons mi-sm">fact_check</span>
+    {{ 'dataVerification.bannerSummary' | translate:{ red: redCount(), amber: amberCount(), green: greenCount() } }}
+  </div>
 
   <div class="uw-case-layout">
     <!-- Left: section navigation -->
@@ -374,6 +378,66 @@
         </div>
       </div>
 
+      <!-- Data Verification -->
+      <div *ngIf="activeTab() === 'dataVerification'">
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'dataVerification.title' | translate }}</h3></div>
+          <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'dataVerification.intro' | translate }}</p>
+          <table class="dv-table">
+            <thead>
+              <tr>
+                <th>{{ 'dataVerification.field' | translate }}</th>
+                <th>{{ 'dataVerification.applicationData' | translate }}</th>
+                <th>{{ 'dataVerification.documentData' | translate }}</th>
+                <th>{{ 'dataVerification.thirdPartyData' | translate }}</th>
+                <th>{{ 'dataVerification.status' | translate }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let rule of dataVerification()?.rules">
+                <td>{{ 'dataVerification.rule.' + rule.ruleKey | translate }}</td>
+                <td>{{ rule.applicationValue || '—' }}</td>
+                <td>{{ rule.documentValue || '—' }}</td>
+                <td>{{ rule.thirdPartyValue || '—' }}</td>
+                <td><span class="dv-dot" [class]="ragClass(rule)">●</span></td>
+                <td>
+                  <button *ngIf="rule.status !== 'GREEN'" class="db-btn db-btn--ghost db-btn--sm" (click)="openResolution(rule)">
+                    {{ rule.resolution ? ('dataVerification.resolved' | translate) : ('dataVerification.resolve' | translate) }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="dv-resolution-panel" *ngIf="openResolutionFor() && dataVerification()">
+            <ng-container *ngFor="let rule of dataVerification()!.rules">
+              <div *ngIf="rule.ruleKey === openResolutionFor()">
+                <div class="db-form-group">
+                  <label>{{ 'dataVerification.action' | translate }}</label>
+                  <select class="db-input" [(ngModel)]="resolutionAction">
+                    <option value="" disabled>{{ 'common.select' | translate }}</option>
+                    <option value="SEND_BACK">{{ 'dataVerification.actionSendBack' | translate }}</option>
+                    <option value="APPROVE_EXCEPTION">{{ 'dataVerification.actionApproveException' | translate }}</option>
+                    <option value="CALL_STAFF" [disabled]="!staffContactHint()">{{ 'dataVerification.actionCallStaff' | translate }}{{ staffContactHint() ? ' (' + staffContactHint() + ')' : '' }}</option>
+                    <option value="CALL_CUSTOMER">{{ 'dataVerification.actionCallCustomer' | translate }}{{ personal.phoneNumber ? ' (' + personal.phoneNumber + ')' : '' }}</option>
+                  </select>
+                  <div class="db-hint" *ngIf="!staffContactHint()">{{ 'dataVerification.callStaffHint' | translate }}</div>
+                </div>
+                <div class="db-form-group">
+                  <label>{{ 'dataVerification.note' | translate }} <span class="required" *ngIf="resolutionAction === 'APPROVE_EXCEPTION'">*</span></label>
+                  <textarea class="db-input" rows="2" [(ngModel)]="resolutionNote"></textarea>
+                </div>
+                <div class="uw-decision-actions">
+                  <button class="db-btn db-btn--accent db-btn--sm" (click)="submitResolution(rule)" [disabled]="savingResolution()">{{ 'common.save' | translate }}</button>
+                  <button class="db-btn db-btn--ghost db-btn--sm" (click)="cancelResolution()" [disabled]="savingResolution()">{{ 'common.cancel' | translate }}</button>
+                </div>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
       <!-- Decision -->
       <div *ngIf="activeTab() === 'decision'">
         <div class="db-card mb-16">
@@ -390,8 +454,13 @@
             <label>{{ 'uw.reasonComments' | translate }}</label>
             <textarea class="db-input" rows="3" [(ngModel)]="decisionReason" [placeholder]="'uw.reasonPlaceholder' | translate"></textarea>
           </div>
+          <div class="db-form-group" *ngIf="hasUnresolvedRed()">
+            <label>{{ 'dataVerification.exceptionNotesLabel' | translate }} <span class="required">*</span></label>
+            <textarea class="db-input" rows="2" [(ngModel)]="exceptionNotes"></textarea>
+            <div class="db-hint">{{ 'dataVerification.exceptionNotesHint' | translate }}</div>
+          </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved">✓ {{ 'uw.approve' | translate }}</button>
+            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
             <button class="db-btn db-btn--outline" (click)="referToSenior()" [disabled]="submittingAction()"><span class="material-icons mi-sm">arrow_upward</span> {{ 'uw.referToSenior' | translate }}</button>
             <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
             <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>

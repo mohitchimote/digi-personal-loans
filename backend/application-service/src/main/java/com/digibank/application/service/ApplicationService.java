@@ -123,6 +123,7 @@ public class ApplicationService {
             personalDetails.put("monthsAtCurrentAddress", 48);
             personalDetails.put("previousAddresses", List.of());
             personalDetails.put("assistedByStaff", false);
+            personalDetails.put("staffNationalId", "");
             personalDetails.put("preferredBranch", "");
             app.setPersonalDetailsJson(objectMapper.writeValueAsString(personalDetails));
 

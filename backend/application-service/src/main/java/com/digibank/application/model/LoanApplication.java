@@ -66,6 +66,9 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String affordabilityResultJson;
 
+    @Column(columnDefinition = "TEXT")
+    private String dataVerificationJson;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
@@ -150,6 +153,9 @@ public class LoanApplication {
 
     public String getAffordabilityResultJson() { return affordabilityResultJson; }
     public void setAffordabilityResultJson(String affordabilityResultJson) { this.affordabilityResultJson = affordabilityResultJson; }
+
+    public String getDataVerificationJson() { return dataVerificationJson; }
+    public void setDataVerificationJson(String dataVerificationJson) { this.dataVerificationJson = dataVerificationJson; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -5,11 +5,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
-type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'decision' | 'disbursement';
+type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVerification' | 'decision' | 'disbursement';
 
 @Component({
   selector: 'app-uw-case-detail',
@@ -37,11 +37,12 @@ export class CaseDetailComponent implements OnInit {
   activeTab = signal<TabKey>('overview');
 
   navTabs: { key: TabKey; labelKey: string; icon: string }[] = [
-    { key: 'overview',      labelKey: 'uw.tabOverview',      icon: 'description' },
-    { key: 'identity',      labelKey: 'uw.tabIdentity',      icon: 'badge' },
-    { key: 'affordability', labelKey: 'uw.tabAffordability', icon: 'account_balance' },
-    { key: 'creditRisk',    labelKey: 'uw.tabCreditRisk',    icon: 'shield' },
-    { key: 'decision',      labelKey: 'uw.tabDecision',      icon: 'gavel' },
+    { key: 'overview',         labelKey: 'uw.tabOverview',         icon: 'description' },
+    { key: 'identity',         labelKey: 'uw.tabIdentity',         icon: 'badge' },
+    { key: 'affordability',    labelKey: 'uw.tabAffordability',    icon: 'account_balance' },
+    { key: 'creditRisk',       labelKey: 'uw.tabCreditRisk',       icon: 'shield' },
+    { key: 'dataVerification', labelKey: 'uw.tabDataVerification', icon: 'fact_check' },
+    { key: 'decision',         labelKey: 'uw.tabDecision',         icon: 'gavel' },
   ];
 
   sections = [
@@ -63,10 +64,22 @@ export class CaseDetailComponent implements OnInit {
 
   decisionReason = '';
   approvedAmount: number | null = null;
+  exceptionNotes = '';
 
   editingSection = signal<string | null>(null);
   editBuffer: any = {};
   savingEdit = signal(false);
+
+  dataVerification = signal<DataVerificationSummary | null>(null);
+  openResolutionFor = signal<string | null>(null);
+  resolutionAction: DataVerificationAction | '' = '';
+  resolutionNote = '';
+  savingResolution = signal(false);
+
+  redCount = computed(() => this.dataVerification()?.rules.filter(r => r.status === 'RED' && !r.resolution).length ?? 0);
+  amberCount = computed(() => this.dataVerification()?.rules.filter(r => r.status === 'AMBER' && !r.resolution).length ?? 0);
+  greenCount = computed(() => this.dataVerification()?.rules.filter(r => r.status === 'GREEN').length ?? 0);
+  hasUnresolvedRed = computed(() => this.redCount() > 0);
 
   constructor(
     private route: ActivatedRoute,
@@ -124,6 +137,10 @@ export class CaseDetailComponent implements OnInit {
       next: docs => this.uploadedDocs.set(docs),
       error: () => {}
     });
+    this.appSvc.getDataVerification(this.appRef).subscribe({
+      next: dv => this.dataVerification.set(dv),
+      error: () => {}
+    });
   }
 
   parseSection(json: string | null | undefined): any {
@@ -178,6 +195,51 @@ export class CaseDetailComponent implements OnInit {
     return '';
   }
 
+  ragClass(rule: DataVerificationRule): string {
+    if (rule.resolution) return 'dv-resolved';
+    if (rule.status === 'GREEN') return 'risk-low';
+    if (rule.status === 'AMBER') return 'risk-medium';
+    if (rule.status === 'RED') return 'risk-high';
+    return '';
+  }
+
+  staffContactHint(): string {
+    const p = this.personal;
+    if (p.staffNationalId) return p.staffNationalId;
+    if (p.preferredBranch) return p.preferredBranch;
+    return '';
+  }
+
+  openResolution(rule: DataVerificationRule): void {
+    this.openResolutionFor.set(rule.ruleKey);
+    this.resolutionAction = rule.resolution?.action ?? '';
+    this.resolutionNote = rule.resolution?.note ?? '';
+  }
+
+  cancelResolution(): void {
+    this.openResolutionFor.set(null);
+    this.resolutionAction = '';
+    this.resolutionNote = '';
+  }
+
+  submitResolution(rule: DataVerificationRule): void {
+    if (!this.resolutionAction) { this.error.set(this.i18n.t('dataVerification.errActionRequired')); return; }
+    if (this.resolutionAction === 'APPROVE_EXCEPTION' && !this.resolutionNote.trim()) {
+      this.error.set(this.i18n.t('dataVerification.errNoteRequired'));
+      return;
+    }
+    this.savingResolution.set(true);
+    this.error.set('');
+    this.appSvc.resolveDataVerificationRule(this.appRef, rule.ruleKey, this.resolutionAction, this.resolutionNote.trim(), this.auth.userFullName || 'Underwriter').subscribe({
+      next: dv => {
+        this.dataVerification.set(dv);
+        this.savingResolution.set(false);
+        this.cancelResolution();
+      },
+      error: () => { this.savingResolution.set(false); this.error.set(this.i18n.t('dataVerification.errSaveResolution')); }
+    });
+  }
+
   notesFor(sectionKey: string): UnderwritingNote[] {
     return this.notes().filter(n => n.section === sectionKey);
   }
@@ -222,12 +284,20 @@ export class CaseDetailComponent implements OnInit {
 
   approve(): void {
     if (!this.approvedAmount || this.approvedAmount <= 0) { this.error.set(this.i18n.t('uw.errApprovedAmount')); return; }
+    if (this.hasUnresolvedRed() && !this.exceptionNotes.trim()) {
+      this.error.set(this.i18n.t('dataVerification.errExceptionNotesRequired'));
+      return;
+    }
     this.submittingAction.set(true);
     this.error.set('');
+    const exceptionNotes = this.exceptionNotes.trim();
     this.appSvc.approveByUnderwriter(this.appRef, this.auth.userFullName || 'Underwriter', this.approvedAmount).subscribe({
       next: () => {
         this.submittingAction.set(false);
         this.actionMessage.set(this.i18n.t('uw.caseApproved'));
+        if (exceptionNotes) {
+          this.appSvc.addNote(this.appRef, 'general', exceptionNotes, 'DECISION_APPROVED_WITH_EXCEPTION', this.auth.userFullName || 'Underwriter').subscribe();
+        }
         this.load();
       },
       error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errApprove')); }

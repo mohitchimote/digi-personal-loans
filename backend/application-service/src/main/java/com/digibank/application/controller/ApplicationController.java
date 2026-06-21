@@ -1,11 +1,14 @@
 package com.digibank.application.controller;
 
 import com.digibank.application.dto.ApplicationSectionRequest;
+import com.digibank.application.dto.DataVerificationResolutionRequest;
+import com.digibank.application.dto.DataVerificationSummary;
 import com.digibank.application.dto.StartApplicationRequest;
 import com.digibank.application.dto.StartPreApprovedRequest;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.service.ApplicationService;
+import com.digibank.application.service.DataVerificationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +21,11 @@ import java.util.Map;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final DataVerificationService dataVerificationService;
 
-    public ApplicationController(ApplicationService applicationService) {
+    public ApplicationController(ApplicationService applicationService, DataVerificationService dataVerificationService) {
         this.applicationService = applicationService;
+        this.dataVerificationService = dataVerificationService;
     }
 
     @PostMapping("/start")
@@ -147,5 +152,16 @@ public class ApplicationController {
     @PostMapping("/{appRef}/disbursement/second-check")
     public ResponseEntity<LoanApplication> submitForSecondCheck(@PathVariable String appRef, @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(applicationService.submitForSecondCheck(appRef, body.get("reviewedBy")));
+    }
+
+    @GetMapping("/{appRef}/data-verification")
+    public ResponseEntity<DataVerificationSummary> getDataVerification(@PathVariable String appRef) {
+        return ResponseEntity.ok(dataVerificationService.getOrGenerate(appRef));
+    }
+
+    @PostMapping("/{appRef}/data-verification/resolve")
+    public ResponseEntity<DataVerificationSummary> resolveDataVerificationRule(
+            @PathVariable String appRef, @Valid @RequestBody DataVerificationResolutionRequest request) {
+        return ResponseEntity.ok(dataVerificationService.resolveRule(appRef, request));
     }
 }

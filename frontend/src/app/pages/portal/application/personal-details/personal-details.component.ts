@@ -66,6 +66,7 @@ export class PersonalDetailsComponent implements OnInit {
       monthsAtCurrentAddress: [null, [Validators.required, Validators.min(0)]],
       previousAddresses: this.fb.array([]),
       assistedByStaff: [false],
+      staffNationalId: ['', Validators.pattern(/^\d{9}$/)],
       preferredBranch: [''],
     });
     this.applicant2Form = this.fb.group({

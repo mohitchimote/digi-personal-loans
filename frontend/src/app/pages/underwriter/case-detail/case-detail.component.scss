@@ -139,6 +139,26 @@
   justify-content: center;
 }
 
+.dv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.3px; color: #888; }
+}
+
+.dv-dot { font-size: 1.1rem; }
+.dv-resolved { color: #81c784 !important; }
+
+.dv-resolution-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border-top: 1px solid #eee;
+  background: var(--off-white, #F7F9FC);
+  border-radius: 8px;
+}
+
 .checklist { display: flex; flex-direction: column; gap: 4px; }
 .checklist-item {
   display: flex; align-items: center; gap: 10px;

@@ -67,6 +67,7 @@ export interface LoanApplication {
   reviewSubmitJson?: string;
   selectedProductJson?: string;
   affordabilityResultJson?: string;
+  dataVerificationJson?: string;
   disbursementStatus?: DisbursementStatus;
   approvedAmount?: number;
   createdAt: string;
@@ -80,6 +81,32 @@ export type ApplicationStatus =
   | 'APPROVED' | 'DECLINED' | 'WITHDRAWN';
 
 export type DisbursementStatus = 'SECOND_CHECK_PENDING' | 'FUNDS_RELEASED';
+
+export type DataVerificationStatus = 'GREEN' | 'AMBER' | 'RED';
+export type DataVerificationAction = 'SEND_BACK' | 'APPROVE_EXCEPTION' | 'CALL_STAFF' | 'CALL_CUSTOMER';
+
+export interface DataVerificationResolution {
+  action: DataVerificationAction;
+  note?: string;
+  reviewedBy: string;
+  resolvedAt: string;
+}
+
+export interface DataVerificationRule {
+  ruleKey: string;
+  section: string;
+  applicationValue: string;
+  documentValue?: string;
+  thirdPartyValue?: string;
+  status: DataVerificationStatus;
+  resolution?: DataVerificationResolution;
+}
+
+export interface DataVerificationSummary {
+  generatedAt: string;
+  seed: string;
+  rules: DataVerificationRule[];
+}
 
 export interface UnderwritingNote {
   id: number;
@@ -126,6 +153,7 @@ export interface PersonalDetails {
   monthsAtCurrentAddress?: number;
   previousAddresses?: AddressHistoryEntry[];
   assistedByStaff?: boolean;
+  staffNationalId?: string;
   preferredBranch?: string;
 }
 

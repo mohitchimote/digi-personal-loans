@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote } from '../models';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/applications`;
@@ -118,6 +118,14 @@ export class ApplicationService {
 
   submitForSecondCheck(appRef: string, reviewedBy: string): Observable<LoanApplication> {
     return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/second-check`, { reviewedBy });
+  }
+
+  getDataVerification(appRef: string): Observable<DataVerificationSummary> {
+    return this.http.get<DataVerificationSummary>(`${API}/${appRef}/data-verification`);
+  }
+
+  resolveDataVerificationRule(appRef: string, ruleKey: string, action: DataVerificationAction, note: string, reviewedBy: string): Observable<DataVerificationSummary> {
+    return this.http.post<DataVerificationSummary>(`${API}/${appRef}/data-verification/resolve`, { ruleKey, action, note, reviewedBy });
   }
 
   private readonly sectionRoutes: Record<string, string> = {
