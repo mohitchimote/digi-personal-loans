@@ -271,6 +271,49 @@
           </div>
         </div>
 
+        <div class="db-card mb-16" *ngIf="businessFinancialsAnalysis() as fa">
+          <div class="card-header">
+            <h3>{{ 'company.financialsIntelHeader' | translate }}</h3>
+            <span class="db-badge" [class.db-badge--success]="fa.riskGrade === 'A' || fa.riskGrade === 'B'"
+                  [class.db-badge--warning]="fa.riskGrade === 'C'"
+                  [class.db-badge--error]="fa.riskGrade === 'D' || fa.riskGrade === 'E'">
+              {{ 'company.riskGradeLabel' | translate }}: {{ fa.riskGrade }}
+            </span>
+          </div>
+          <p class="text-muted" style="font-size:0.82rem; margin: -4px 0 12px;">{{ 'company.financialsIntelDisclaimer' | translate }}</p>
+
+          <h4 class="mb-8">{{ 'company.pnlHeader' | translate }}</h4>
+          <div class="review-grid mb-16">
+            <div class="review-item"><span>{{ 'company.annualRevenueLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.annualRevenue | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.cogsLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.costOfGoodsSold | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.grossProfitLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.grossProfit | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.opexLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.operatingExpenses | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.ebitdaLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.ebitda | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.netProfitLabel' | translate }}</span><strong>₪{{ fa.profitAndLoss.netProfit | number }}</strong></div>
+          </div>
+
+          <h4 class="mb-8">{{ 'company.cashflowHeader' | translate }}</h4>
+          <div class="review-grid mb-16">
+            <div class="review-item"><span>{{ 'company.operatingCashFlowLabel' | translate }}</span><strong>₪{{ fa.cashFlow.operatingCashFlow | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.investingCashFlowLabel' | translate }}</span><strong>₪{{ fa.cashFlow.investingCashFlow | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.financingCashFlowLabel' | translate }}</span><strong>₪{{ fa.cashFlow.financingCashFlow | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.netCashFlowLabel' | translate }}</span><strong>₪{{ fa.cashFlow.netCashFlow | number }}</strong></div>
+            <div class="review-item"><span>{{ 'company.closingCashBalanceLabel' | translate }}</span><strong>₪{{ fa.cashFlow.closingCashBalance | number }}</strong></div>
+          </div>
+
+          <h4 class="mb-8">{{ 'company.ratiosHeader' | translate }}</h4>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'company.currentRatioLabel' | translate }}</span><strong>{{ fa.ratios.currentRatio }}</strong></div>
+            <div class="review-item"><span>{{ 'company.quickRatioLabel' | translate }}</span><strong>{{ fa.ratios.quickRatio }}</strong></div>
+            <div class="review-item"><span>{{ 'company.debtToEquityLabel' | translate }}</span><strong>{{ fa.ratios.debtToEquityRatio }}</strong></div>
+            <div class="review-item"><span>{{ 'company.netProfitMarginLabel' | translate }}</span><strong>{{ fa.ratios.netProfitMarginPct }}%</strong></div>
+          </div>
+        </div>
+        <div class="db-card mb-16" *ngIf="!businessFinancialsAnalysis()">
+          <div class="card-header"><h3>{{ 'company.financialsIntelHeader' | translate }}</h3></div>
+          <p class="text-muted" style="font-size:0.88rem;">{{ 'company.financialsIntelPending' | translate }}</p>
+        </div>
+
         <div class="db-card mb-16">
           <div class="card-header"><h3>{{ 'company.financialsTitle' | translate }}</h3></div>
           <div class="review-grid">
@@ -469,6 +512,15 @@
             <div class="review-item"><span>{{ 'afford.creditCategoryLabel' | translate }}</span><strong>{{ affordability.creditScoreCategory }}</strong></div>
           </div>
         </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'uw.lenderRiskGradingHeader' | translate }}</h3></div>
+          <p class="text-muted" style="font-size:0.82rem; margin: -4px 0 12px;">{{ 'uw.lenderRiskGradingDisclaimer' | translate }}</p>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'uw.lenderRiskGradeLabel' | translate }}</span><strong>{{ lenderRiskGrade() }} / 9</strong></div>
+            <div class="review-item"><span>{{ 'uw.dnbRiskClassLabel' | translate }}</span><strong>{{ 'uw.dnbRiskClassValue' | translate:{ n: dnbRiskClass() } }}</strong></div>
+          </div>
+        </div>
       </div>
 
       <!-- Credit Bureau & Risk -->
@@ -495,7 +547,7 @@
 
           <div *ngIf="isEditing('creditDeclarations')">
             <div class="form-row">
-              <div class="db-form-group"><label>{{ 'credit.scoreLabel' | translate }}</label><input class="db-input" type="number" [(ngModel)]="editBuffer.creditScore" /></div>
+              <div class="db-form-group"><label>{{ 'credit.scoreLabel' | translate }}</label><input class="db-input" type="number" min="300" max="850" [(ngModel)]="editBuffer.creditScore" /></div>
             </div>
             <label class="db-checkbox mb-8"><input type="checkbox" [(ngModel)]="editBuffer.hasDefaulted" /><span>{{ 'reviewSubmit.previousDefault' | translate }}</span></label>
             <label class="db-checkbox mb-8"><input type="checkbox" [(ngModel)]="editBuffer.hasBankruptcy" /><span>{{ 'credit.bankruptcyTitle' | translate }}</span></label>
@@ -519,6 +571,15 @@
           <div class="review-grid">
             <div class="review-item"><span>{{ 'afford.riskCategoryLabel' | translate }}</span><strong [class]="riskClass()">{{ affordability.riskCategory }}</strong></div>
             <div class="review-item"><span>{{ 'afford.creditCategoryLabel' | translate }}</span><strong>{{ affordability.creditScoreCategory }}</strong></div>
+          </div>
+        </div>
+
+        <div class="db-card mb-16">
+          <div class="card-header"><h3>{{ 'uw.lenderRiskGradingHeader' | translate }}</h3></div>
+          <p class="text-muted" style="font-size:0.82rem; margin: -4px 0 12px;">{{ 'uw.lenderRiskGradingDisclaimer' | translate }}</p>
+          <div class="review-grid">
+            <div class="review-item"><span>{{ 'uw.lenderRiskGradeLabel' | translate }}</span><strong>{{ lenderRiskGrade() }} / 9</strong></div>
+            <div class="review-item" *ngIf="credit.applicant2"><span>{{ 'credit.applicant2Header' | translate }}</span><strong>{{ lenderRiskGradeApplicant2() }} / 9</strong></div>
           </div>
         </div>
       </div>

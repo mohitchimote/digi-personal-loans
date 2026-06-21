@@ -81,6 +81,7 @@ export interface LoanApplication {
   businessFinancialsJson?: string;
   businessOutgoingsJson?: string;
   businessCreditDeclarationsJson?: string;
+  businessFinancialsAnalysisJson?: string;
   guarantorRequired?: boolean;
   guarantorDetailsJson?: string;
   disbursementStatus?: DisbursementStatus;
@@ -121,6 +122,34 @@ export interface DataVerificationSummary {
   generatedAt: string;
   seed: string;
   rules: DataVerificationRule[];
+}
+
+export interface BusinessFinancialsAnalysis {
+  generatedAt: string;
+  seed: string;
+  riskGrade: string;
+  dscr?: number;
+  profitAndLoss: {
+    annualRevenue: number;
+    costOfGoodsSold: number;
+    grossProfit: number;
+    operatingExpenses: number;
+    ebitda: number;
+    netProfit: number;
+  };
+  cashFlow: {
+    operatingCashFlow: number;
+    investingCashFlow: number;
+    financingCashFlow: number;
+    netCashFlow: number;
+    closingCashBalance: number;
+  };
+  ratios: {
+    currentRatio: number;
+    quickRatio: number;
+    debtToEquityRatio: number;
+    netProfitMarginPct: number;
+  };
 }
 
 export interface UnderwritingNote {

@@ -212,12 +212,15 @@ public class DataVerificationService {
         return rule("employer", "incomeEmployment", appValue, docValue, "—", status);
     }
 
+    /** Customer-declared creditScore is already a FICO-style bureau score (300-850), not a 1-9
+     * self-declared value — this rule simulates the 3rd-party bureau lookup landing on a slightly
+     * different number (the discrepancy the rule exists to showcase), rather than converting scales. */
     private DataVerificationRule buildCreditScoreRule(JsonNode credit, long seed) {
         int declared = credit.path("creditScore").asInt(0);
         String appValue = declared > 0 ? String.valueOf(declared) : "";
         Random rng = ruleRandom(seed, "creditScore");
         String status = bucket(rng.nextInt(100));
-        int bureauScore = bureauScoreFromDeclared(declared);
+        int bureauScore = declared > 0 ? declared : 650;
         switch (status) {
             case "AMBER" -> bureauScore -= 40;
             case "RED" -> bureauScore -= 120;
@@ -306,12 +309,6 @@ public class DataVerificationService {
         double low = Math.max(0, aroundAmount - 2500);
         double high = aroundAmount + 2500;
         return formatCurrency(low) + " – " + formatCurrency(high) + " (est.)";
-    }
-
-    /** Maps the customer's self-declared 1-9 score onto a plausible 300-850 bureau-style score. */
-    private int bureauScoreFromDeclared(int declared) {
-        if (declared <= 0) return 650;
-        return 300 + (declared * 550 / 9);
     }
 
     private LocalDate parseDate(String value) {

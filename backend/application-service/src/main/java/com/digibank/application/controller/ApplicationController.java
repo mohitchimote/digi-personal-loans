@@ -6,9 +6,11 @@ import com.digibank.application.dto.DataVerificationResolutionRequest;
 import com.digibank.application.dto.DataVerificationSummary;
 import com.digibank.application.dto.StartApplicationRequest;
 import com.digibank.application.dto.StartPreApprovedRequest;
+import com.digibank.application.dto.BusinessFinancialsAnalysis;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.service.ApplicationService;
+import com.digibank.application.service.BusinessFinancialsAnalysisService;
 import com.digibank.application.service.DataVerificationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +25,14 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final DataVerificationService dataVerificationService;
+    private final BusinessFinancialsAnalysisService businessFinancialsAnalysisService;
     private final MandateRules mandateRules;
 
-    public ApplicationController(ApplicationService applicationService, DataVerificationService dataVerificationService, MandateRules mandateRules) {
+    public ApplicationController(ApplicationService applicationService, DataVerificationService dataVerificationService,
+                                  BusinessFinancialsAnalysisService businessFinancialsAnalysisService, MandateRules mandateRules) {
         this.applicationService = applicationService;
         this.dataVerificationService = dataVerificationService;
+        this.businessFinancialsAnalysisService = businessFinancialsAnalysisService;
         this.mandateRules = mandateRules;
     }
 
@@ -173,6 +178,11 @@ public class ApplicationController {
     public ResponseEntity<DataVerificationSummary> resolveDataVerificationRule(
             @PathVariable String appRef, @Valid @RequestBody DataVerificationResolutionRequest request) {
         return ResponseEntity.ok(dataVerificationService.resolveRule(appRef, request));
+    }
+
+    @GetMapping("/{appRef}/business-financials-analysis")
+    public ResponseEntity<BusinessFinancialsAnalysis> getBusinessFinancialsAnalysis(@PathVariable String appRef) {
+        return ResponseEntity.ok(businessFinancialsAnalysisService.getOrGenerate(appRef));
     }
 
     @GetMapping("/mandate-rules")

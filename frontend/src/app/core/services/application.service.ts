@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules } from '../models';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/applications`;
@@ -142,6 +142,10 @@ export class ApplicationService {
 
   resolveDataVerificationRule(appRef: string, ruleKey: string, action: DataVerificationAction, note: string, reviewedBy: string): Observable<DataVerificationSummary> {
     return this.http.post<DataVerificationSummary>(`${API}/${appRef}/data-verification/resolve`, { ruleKey, action, note, reviewedBy });
+  }
+
+  getBusinessFinancialsAnalysis(appRef: string): Observable<BusinessFinancialsAnalysis> {
+    return this.http.get<BusinessFinancialsAnalysis>(`${API}/${appRef}/business-financials-analysis`);
   }
 
   getMandateRules(): Observable<MandateRules> {

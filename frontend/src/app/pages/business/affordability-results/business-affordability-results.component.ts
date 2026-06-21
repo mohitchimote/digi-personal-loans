@@ -6,6 +6,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { BusinessAffordabilityResult } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { dnbScoreToLenderGrade } from '../../../core/utils/credit-score.util';
 
 @Component({
   selector: 'app-business-affordability-results',
@@ -45,7 +46,7 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
           existingBusinessDebtService: outgoings.existingBusinessDebtService || 0,
           requestedLoanAmount:         company.loanAmount || 100000,
           requestedTermMonths:         company.loanTerm || 36,
-          directorCreditScore:         credit.directorCreditScore || 7,
+          directorCreditScore:         dnbScoreToLenderGrade(credit.directorCreditScore || 65),
           hasCompanyDefaulted:         credit.hasCompanyDefaulted || false,
           hasLiquidationOrWindingUp:   credit.hasLiquidationOrWindingUp || false,
         };

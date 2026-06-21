@@ -24,17 +24,21 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
       hasLiquidationOrWindingUp: [false, Validators.required],
       hasCompanyDefaulted:       [false, Validators.required],
       hasCCJ:                    [false, Validators.required],
+      directorCreditScore:       [65, [Validators.required, Validators.min(1), Validators.max(100)]],
     });
   }
 
-  /** Director credit score is no longer asked of customers (underwriter-only data) — a simulated
-   * bureau score is generated instead, deterministically seeded so it's stable across edits. */
-  private existingScore: number | null = null;
-
+  /** DEMO-ONLY: director credit score is normally underwriter-only data (a simulated bureau score).
+   * Surfaced here as an editable input so a presenter can dial it up/down to show the
+   * approval/decline (and "no eligible products") paths live. Scale is a Dun & Bradstreet-style
+   * Commercial Delinquency Score (1-100, higher = lower risk) — the internal 1-9 lender risk grade
+   * and D&B Risk Class used by eligibility/affordability logic are derived from this via
+   * dnbScoreToLenderGrade()/dnbScoreToRiskClass(), underwriter-only, never shown here. In a real
+   * deployment this input would be removed again and the synthetic default would apply unconditionally. */
   private syntheticScore(seed: string): number {
     let h = 0;
     for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    return 1 + (h % 9);
+    return 1 + (h % 100); // 1-100, D&B Delinquency Score-style range
   }
 
   ngOnInit(): void {
@@ -43,11 +47,11 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
     this.appSvc.resolveEditableBusiness(userId, email).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
-        if (app.businessCreditDeclarationsJson) {
-          const data = JSON.parse(app.businessCreditDeclarationsJson);
-          this.form.patchValue(data);
-          this.existingScore = data.directorCreditScore ?? null;
-        }
+        const data = app.businessCreditDeclarationsJson ? JSON.parse(app.businessCreditDeclarationsJson) : null;
+        this.form.patchValue({
+          ...data,
+          directorCreditScore: data?.directorCreditScore ?? this.syntheticScore(this.auth.userNationalId || app.applicationRef),
+        });
       }
     });
   }
@@ -57,8 +61,7 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
-    const directorCreditScore = this.existingScore ?? this.syntheticScore(this.auth.userNationalId || this.appRef());
-    const payload = { ...this.form.value, directorCreditScore };
+    const payload = this.form.value;
     this.appSvc.saveSection(this.appRef(), 'businessCreditDeclarations', payload, this.auth.userId!).subscribe({
       next: () => { this.saving.set(false); this.router.navigate(['/business/apply/verify-id']); },
       error: () => this.saving.set(false)

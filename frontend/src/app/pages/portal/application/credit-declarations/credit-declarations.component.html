@@ -12,6 +12,20 @@
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
+      <div class="card-header"><h3>{{ 'credit.demoScoreHeader' | translate }}</h3></div>
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <strong>{{ 'credit.demoScoreTitle' | translate }}</strong>
+          <p>{{ 'credit.demoScoreSubtitle' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="width: 160px;" />
+          <strong style="min-width: 36px; text-align: center;">{{ f('creditScore')?.value }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="db-card mb-16">
       <div class="card-header"><h3>{{ 'credit.historyHeader' | translate }}</h3></div>
 
       <div class="declaration-item">
@@ -68,6 +82,17 @@
   <form [formGroup]="applicant2Form" *ngIf="isJoint">
     <div class="db-card mb-16 mt-16">
       <div class="card-header"><h3>{{ 'credit.applicant2Header' | translate }}</h3></div>
+
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <strong>{{ 'credit.demoScoreTitle' | translate }}</strong>
+          <p>{{ 'credit.demoScoreSubtitle' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="width: 160px;" />
+          <strong style="min-width: 36px; text-align: center;">{{ f2('creditScore')?.value }}</strong>
+        </div>
+      </div>
 
       <div class="declaration-item">
         <div class="declaration-text">

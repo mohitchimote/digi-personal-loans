@@ -198,7 +198,7 @@ public class ApplicationService {
             creditDeclarations.put("hasBankruptcy", false);
             creditDeclarations.put("hasCCJ", false);
             creditDeclarations.put("hasPaymentPlan", false);
-            creditDeclarations.put("creditScore", 9);
+            creditDeclarations.put("creditScore", 780); // FICO-style bureau score — these are the bank's pre-approved personas
             creditDeclarations.put("applicant2", null);
             app.setCreditDeclarationsJson(objectMapper.writeValueAsString(creditDeclarations));
 

@@ -7,6 +7,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { EligibleProduct } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { dnbScoreToLenderGrade } from '../../../core/utils/credit-score.util';
 
 @Component({
   selector: 'app-business-products',
@@ -48,7 +49,7 @@ export class BusinessProductsComponent implements OnInit {
         this.productSvc.getEligible({
           requestedAmount: amount,
           requestedTermMonths: term,
-          creditScore: credit.directorCreditScore || 7,
+          creditScore: dnbScoreToLenderGrade(credit.directorCreditScore || 65),
           productType: 'BUSINESS'
         }).subscribe({
           next: list => {

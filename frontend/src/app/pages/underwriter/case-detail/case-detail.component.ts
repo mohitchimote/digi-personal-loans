@@ -5,9 +5,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, MandateRules } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { ficoToLenderGrade, dnbScoreToLenderGrade, dnbScoreToRiskClass } from '../../../core/utils/credit-score.util';
 
 type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVerification' | 'decision' | 'disbursement';
 
@@ -26,9 +27,10 @@ export class CaseDetailComponent implements OnInit {
   requiredTypes = REQUIRED_DOCUMENT_TYPES;
   checklist = computed(() => {
     const receivedTypes = new Set(this.uploadedDocs().map(u => u.documentType));
+    const baseTypes = this.application()?.applicationType === 'BUSINESS' ? BUSINESS_REQUIRED_DOCUMENT_TYPES : this.requiredTypes;
     const types = this.application()?.guarantorRequired
-      ? [...this.requiredTypes, { type: 'GUARANTOR_ID', labelKey: 'docs.requiredGuarantorId' }]
-      : this.requiredTypes;
+      ? [...baseTypes, { type: 'GUARANTOR_ID', labelKey: 'docs.requiredGuarantorId' }]
+      : baseTypes;
     return types.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
   });
   loading = signal(true);
@@ -110,6 +112,8 @@ export class CaseDetailComponent implements OnInit {
   savingEdit = signal(false);
 
   dataVerification = signal<DataVerificationSummary | null>(null);
+  businessFinancialsAnalysis = signal<BusinessFinancialsAnalysis | null>(null);
+  private financialsAnalysisRequested = false;
   openResolutionFor = signal<string | null>(null);
   resolutionAction: DataVerificationAction | '' = '';
   resolutionNote = '';
@@ -203,6 +207,8 @@ export class CaseDetailComponent implements OnInit {
             next: dv => this.dataVerification.set(dv),
             error: () => {}
           });
+        } else {
+          this.maybeLoadFinancialsAnalysis();
         }
       },
       error: () => this.loading.set(false)
@@ -215,7 +221,22 @@ export class CaseDetailComponent implements OnInit {
       error: () => {}
     });
     this.docSvc.getUploaded(this.appRef).subscribe({
-      next: docs => this.uploadedDocs.set(docs),
+      next: docs => { this.uploadedDocs.set(docs); this.maybeLoadFinancialsAnalysis(); },
+      error: () => {}
+    });
+  }
+
+  /** Business Financials Intelligence is only generated once a qualifying business document
+   * (financial statements or business bank statements) has been uploaded — mirrors the "customer
+   * attaches docs, system derives the rest" design (no OCR exists, figures are fabricated but
+   * seeded/stable, see BusinessFinancialsAnalysisService). */
+  private maybeLoadFinancialsAnalysis(): void {
+    if (this.financialsAnalysisRequested || !this.isBusiness) return;
+    const types = new Set(this.uploadedDocs().map(d => d.documentType));
+    if (!types.has('FINANCIAL_STATEMENTS') && !types.has('BUSINESS_BANK_STATEMENTS')) return;
+    this.financialsAnalysisRequested = true;
+    this.appSvc.getBusinessFinancialsAnalysis(this.appRef).subscribe({
+      next: analysis => this.businessFinancialsAnalysis.set(analysis),
       error: () => {}
     });
   }
@@ -241,6 +262,27 @@ export class CaseDetailComponent implements OnInit {
   get businessFinancials() { return this.parseSection(this.application()?.businessFinancialsJson); }
   get businessOutgoings() { return this.parseSection(this.application()?.businessOutgoingsJson); }
   get businessCredit() { return this.parseSection(this.application()?.businessCreditDeclarationsJson); }
+
+  /** Internal lender risk grading (1-9) and, for business, D&B's own Risk Class (1-5) — derived
+   * purely from the customer-visible bureau score, underwriter-only, never shown to the customer. */
+  lenderRiskGrade(): number | null {
+    if (this.isBusiness) {
+      const score = this.businessCredit?.directorCreditScore;
+      return score != null ? dnbScoreToLenderGrade(score) : null;
+    }
+    const score = this.credit?.creditScore;
+    return score != null ? ficoToLenderGrade(score) : null;
+  }
+
+  lenderRiskGradeApplicant2(): number | null {
+    const score = this.credit?.applicant2?.creditScore;
+    return score != null ? ficoToLenderGrade(score) : null;
+  }
+
+  dnbRiskClass(): number {
+    const score = this.businessCredit?.directorCreditScore;
+    return score != null ? dnbScoreToRiskClass(score) : 5;
+  }
   get affordability() { return this.parseSection(this.application()?.affordabilityResultJson); }
   get product()  { return this.parseSection(this.application()?.selectedProductJson); }
 

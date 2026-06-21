@@ -7,6 +7,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { EligibleProduct } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { ficoToLenderGrade } from '../../../core/utils/credit-score.util';
 
 @Component({
   selector: 'app-products',
@@ -48,11 +49,12 @@ export class ProductsComponent implements OnInit {
 
         const a2Income = income.applicant2?.monthlyGrossIncome || 0;
         const a2Credit = credit.applicant2?.creditScore;
+        const fico = a2Credit ? Math.min(credit.creditScore || 700, a2Credit) : (credit.creditScore || 700);
 
         this.productSvc.getEligible({
           requestedAmount: amount,
           requestedTermMonths: term,
-          creditScore: a2Credit ? Math.min(credit.creditScore || 7, a2Credit) : (credit.creditScore || 7),
+          creditScore: ficoToLenderGrade(fico),
           monthlyIncome: (income.monthlyGrossIncome || 0) + a2Income
         }).subscribe({
           next: list => {

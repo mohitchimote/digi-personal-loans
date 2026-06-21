@@ -6,6 +6,7 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { AffordabilityResult } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { ficoToLenderGrade } from '../../../core/utils/credit-score.util';
 
 @Component({
   selector: 'app-affordability-results',
@@ -54,7 +55,7 @@ export class AffordabilityResultsComponent implements OnInit {
           monthlyLivingExpenses:   outgoings.monthlyLivingExpenses || 0,
           requestedLoanAmount:     loan.loanAmount || 50000,
           requestedTermMonths:     loan.loanTerm || 36,
-          creditScore:             a2Credit?.creditScore ? Math.min(credit.creditScore || 7, a2Credit.creditScore) : (credit.creditScore || 7),
+          creditScore:             ficoToLenderGrade(a2Credit?.creditScore ? Math.min(credit.creditScore || 700, a2Credit.creditScore) : (credit.creditScore || 700)),
           hasDefaulted:            (credit.hasDefaulted || false) || (a2Credit?.hasDefaulted || false),
           hasBankruptcy:           (credit.hasBankruptcy || false) || (a2Credit?.hasBankruptcy || false),
         };

@@ -92,6 +92,12 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String businessCreditDeclarationsJson;
 
+    /** Demo-fabricated Financial Ratios / P&L / Cashflow / Risk Grade panel for the underwriter,
+     * generated once a qualifying business document is uploaded (see BusinessFinancialsAnalysisService)
+     * and cached here so it stays stable across reloads — same "fake it" pattern as dataVerificationJson. */
+    @Column(columnDefinition = "TEXT")
+    private String businessFinancialsAnalysisJson;
+
     /** Guarantor is never asked in the first pass — only set true when an underwriter sends the
      * case back specifically requesting one (see ApplicationService.sendBackApplication). Shared
      * by both journeys (guarantor shape doesn't differ between personal and business). */
@@ -208,6 +214,9 @@ public class LoanApplication {
 
     public String getBusinessCreditDeclarationsJson() { return businessCreditDeclarationsJson; }
     public void setBusinessCreditDeclarationsJson(String businessCreditDeclarationsJson) { this.businessCreditDeclarationsJson = businessCreditDeclarationsJson; }
+
+    public String getBusinessFinancialsAnalysisJson() { return businessFinancialsAnalysisJson; }
+    public void setBusinessFinancialsAnalysisJson(String businessFinancialsAnalysisJson) { this.businessFinancialsAnalysisJson = businessFinancialsAnalysisJson; }
 
     public Boolean getGuarantorRequired() { return guarantorRequired; }
     public void setGuarantorRequired(Boolean guarantorRequired) { this.guarantorRequired = guarantorRequired; }

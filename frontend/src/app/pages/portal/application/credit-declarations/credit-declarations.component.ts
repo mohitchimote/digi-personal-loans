@@ -28,26 +28,28 @@ export class CreditDeclarationsComponent implements OnInit {
       hasBankruptcy:  [false, Validators.required],
       hasCCJ:         [false, Validators.required],
       hasPaymentPlan: [false, Validators.required],
+      creditScore:    [650, [Validators.required, Validators.min(300), Validators.max(850)]],
     });
     this.applicant2Form = this.fb.group({
       hasDefaulted:   [false],
       hasBankruptcy:  [false],
       hasCCJ:         [false],
       hasPaymentPlan: [false],
+      creditScore:    [650, [Validators.min(300), Validators.max(850)]],
     });
   }
 
-  /** Credit score is no longer asked of customers (underwriter-only data) — a simulated bureau
-   * score is generated here instead, deterministically seeded so it stays stable across edits to
-   * this section. Mirrors the seeded-PRNG "fake it" pattern used elsewhere (DataVerificationService,
-   * DashboardComponent.seededRandom). */
-  private existingScore: number | null = null;
-  private existingScore2: number | null = null;
-
+  /** DEMO-ONLY: credit score is normally underwriter-only data (a simulated bureau score, seeded
+   * so it's stable across edits — same "fake it" pattern as DataVerificationService). For this demo
+   * we surface it as an editable input so a presenter can dial it up/down to show the
+   * approval/decline paths live. In a real deployment this input would be removed again and the
+   * synthetic default below would apply unconditionally. Scale is a FICO-style bureau score
+   * (300-850) — the internal 1-9 lender risk grade used by eligibility/affordability logic is
+   * derived from this via ficoToLenderGrade(), underwriter-only, never shown here. */
   private syntheticScore(seed: string): number {
     let h = 0;
     for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    return 1 + (h % 9); // 1-9, same range/scale the old self-declared input used
+    return 300 + (h % 551); // 300-850, FICO-style range
   }
 
   ngOnInit(): void {
@@ -60,15 +62,15 @@ export class CreditDeclarationsComponent implements OnInit {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
           this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);
         }
-        if (app.creditDeclarationsJson) {
-          const data = JSON.parse(app.creditDeclarationsJson);
-          this.form.patchValue(data);
-          this.existingScore = data.creditScore ?? null;
-          if (data.applicant2) {
-            this.applicant2Form.patchValue(data.applicant2);
-            this.existingScore2 = data.applicant2.creditScore ?? null;
-          }
-        }
+        const data = app.creditDeclarationsJson ? JSON.parse(app.creditDeclarationsJson) : null;
+        this.form.patchValue({
+          ...data,
+          creditScore: data?.creditScore ?? this.syntheticScore(this.auth.userNationalId || app.applicationRef),
+        });
+        this.applicant2Form.patchValue({
+          ...data?.applicant2,
+          creditScore: data?.applicant2?.creditScore ?? this.syntheticScore(app.applicationRef + '-a2'),
+        });
       }
     });
   }
@@ -80,11 +82,8 @@ export class CreditDeclarationsComponent implements OnInit {
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
-    const creditScore = this.existingScore ?? this.syntheticScore(this.auth.userNationalId || this.appRef());
-    const applicant2 = this.isJoint
-      ? { ...this.applicant2Form.value, creditScore: this.existingScore2 ?? this.syntheticScore(this.appRef() + '-a2') }
-      : null;
-    const payload = { ...this.form.value, creditScore, applicant2 };
+    const applicant2 = this.isJoint ? this.applicant2Form.value : null;
+    const payload = { ...this.form.value, applicant2 };
     this.appSvc.saveSection(this.appRef(), 'creditDeclarations', payload, this.auth.userId!).subscribe({
       next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/verify-id']); },
       error: () => this.saving.set(false)
