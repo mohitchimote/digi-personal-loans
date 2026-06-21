@@ -232,6 +232,20 @@ export interface PreApprovedOffer {
   totalRepayable: number;
 }
 
+/** Demo-only, deterministically generated (seeded by nationalId) "what this customer already
+ * holds with the bank" — no core-banking integration exists, so this is illustrative only. See
+ * DashboardComponent.buildRelationshipAccounts(). */
+export interface BankRelationshipAccount {
+  type: 'CURRENT' | 'DEPOSIT';
+  accountMasked: string;
+  branch: string;
+  balance: number;
+  customerSinceYear: number;
+  interestRate?: number;
+  termMonths?: number;
+  maturityDate?: string;
+}
+
 export interface Notification {
   id: number;
   customerId: number;

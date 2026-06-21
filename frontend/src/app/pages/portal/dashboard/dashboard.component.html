@@ -22,6 +22,26 @@
     </button>
   </div>
 
+  <!-- Existing relationship accounts (current account / deposit) for pre-approved/existing customers -->
+  <div class="db-card mb-24" *ngIf="relationshipAccounts().length > 0">
+    <div class="card-header"><h3>{{ 'dashboard.relationshipTitle' | translate }}</h3></div>
+    <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'dashboard.relationshipSub' | translate }}</p>
+    <div class="relationship-cards">
+      <div class="relationship-card" *ngFor="let acc of relationshipAccounts()">
+        <span class="material-icons mi-xl relationship-icon">{{ acc.type === 'CURRENT' ? 'account_balance_wallet' : 'savings' }}</span>
+        <div class="relationship-body">
+          <strong>{{ (acc.type === 'CURRENT' ? 'dashboard.currentAccountLabel' : 'dashboard.depositAccountLabel') | translate }}</strong>
+          <div class="relationship-row"><span>{{ 'dashboard.accountNumber' | translate }}</span><span>{{ acc.accountMasked }}</span></div>
+          <div class="relationship-row"><span>{{ 'dashboard.accountBranch' | translate }}</span><span>{{ acc.branch }}</span></div>
+          <div class="relationship-row"><span>{{ 'dashboard.accountBalance' | translate }}</span><span>₪{{ acc.balance | number }}</span></div>
+          <div class="relationship-row" *ngIf="acc.type === 'DEPOSIT'"><span>{{ 'dashboard.depositRate' | translate }}</span><span>{{ acc.interestRate }}%</span></div>
+          <div class="relationship-row" *ngIf="acc.type === 'DEPOSIT'"><span>{{ 'dashboard.depositMaturity' | translate }}</span><span>{{ acc.maturityDate | date:'dd MMM yyyy' }}</span></div>
+          <div class="relationship-row"><span>{{ 'dashboard.accountCustomerSince' | translate }}</span><span>{{ acc.customerSinceYear }}</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Quick stats -->
   <div class="stats-row">
     <div class="stat-card">

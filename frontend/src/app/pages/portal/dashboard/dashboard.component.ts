@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { ProductService } from '../../../core/services/product.service';
-import { LoanApplication, PreApprovedOffer, UnderwritingNote } from '../../../core/models';
+import { LoanApplication, PreApprovedOffer, UnderwritingNote, BankRelationshipAccount, DIGIBANK_BRANCHES } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -21,6 +21,7 @@ export class DashboardComponent implements OnInit {
   startingApplication = signal(false);
   preApprovedOffer = signal<PreApprovedOffer | null>(null);
   startingPreApproved = signal(false);
+  relationshipAccounts = signal<BankRelationshipAccount[]>([]);
 
   constructor(public auth: AuthService, private appSvc: ApplicationService, private productSvc: ProductService,
               public i18n: I18nService, private router: Router) {}
@@ -58,8 +59,57 @@ export class DashboardComponent implements OnInit {
     }
     const nationalId = this.auth.userNationalId;
     if (nationalId) {
-      this.productSvc.getPreApprovedOffer(nationalId).subscribe(offer => this.preApprovedOffer.set(offer));
+      this.productSvc.getPreApprovedOffer(nationalId).subscribe(offer => {
+        this.preApprovedOffer.set(offer);
+        if (offer) this.relationshipAccounts.set(this.buildRelationshipAccounts(nationalId));
+      });
     }
+  }
+
+  /** Demo-only: fakes "what this customer already holds with the bank" for pre-approved/existing
+   * customers, since there's no core-banking integration to pull real accounts from. Deterministic
+   * per nationalId (same customer always sees the same accounts; different customers see different
+   * ones) so it works for any pre-approved persona without hardcoding specific names/numbers. */
+  private buildRelationshipAccounts(nationalId: string): BankRelationshipAccount[] {
+    const rand = this.seededRandom(nationalId);
+    const branch = DIGIBANK_BRANCHES[Math.floor(rand() * DIGIBANK_BRANCHES.length)];
+    const customerSinceYear = 2015 + Math.floor(rand() * 8);
+
+    const accounts: BankRelationshipAccount[] = [{
+      type: 'CURRENT',
+      accountMasked: `**** ${1000 + Math.floor(rand() * 9000)}`,
+      branch,
+      balance: Math.round((8000 + rand() * 42000) / 100) * 100,
+      customerSinceYear,
+    }];
+
+    if (rand() < 0.6) {
+      const termMonths = [6, 12, 24, 36][Math.floor(rand() * 4)];
+      const maturity = new Date();
+      maturity.setMonth(maturity.getMonth() + termMonths);
+      accounts.push({
+        type: 'DEPOSIT',
+        accountMasked: `**** ${1000 + Math.floor(rand() * 9000)}`,
+        branch,
+        balance: Math.round((20000 + rand() * 130000) / 500) * 500,
+        customerSinceYear,
+        interestRate: Math.round((2.5 + rand() * 2) * 10) / 10,
+        termMonths,
+        maturityDate: maturity.toISOString().slice(0, 10),
+      });
+    }
+    return accounts;
+  }
+
+  /** Tiny deterministic PRNG seeded from a string (no crypto requirement — this only drives
+   * cosmetic demo data), so the same nationalId always yields the same fake account details. */
+  private seededRandom(seed: string): () => number {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    return () => {
+      h = (h * 1103515245 + 12345) >>> 0;
+      return h / 4294967296;
+    };
   }
 
   private loadFeedback(appRef: string): void {

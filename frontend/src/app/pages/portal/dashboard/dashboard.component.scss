@@ -82,6 +82,35 @@
   p  { color: var(--mid-grey); }
 }
 
+.relationship-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.relationship-card {
+  display: flex;
+  gap: 14px;
+  background: var(--off-white, #F7F9FC);
+  border: 1px solid var(--light-grey);
+  border-radius: 10px;
+  padding: 18px 20px;
+
+  .relationship-icon { color: var(--tcs-blue); }
+  .relationship-body { flex: 1; }
+  .relationship-body strong { display: block; color: var(--dark-text); margin-bottom: 8px; font-size: 0.92rem; }
+}
+
+.relationship-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--mid-grey);
+  padding: 3px 0;
+
+  span:last-child { color: var(--dark-text); font-weight: 600; }
+}
+
 .info-tiles {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
