@@ -105,102 +105,11 @@ A second, fully parallel end-to-end journey for companies — same overall shape
 
 ## 2. Technical Architecture
 
-### 2.1 High-level shape
-
-```
-Angular SPA (frontend, :4200)
-        │  all calls go through
-        ▼
-API Gateway — Spring Cloud Gateway (:8080)
-        │  path-based routing, CORS handling
-        ▼
-┌─────────────┬──────────────────┬─────────────────────┬──────────────┬───────────────┬────────────────────┐
-│ auth-service│application-svc   │affordability-service │product-svc   │document-svc    │notification-svc    │
-│   :8081     │    :8082         │      :8083           │   :8084      │    :8085       │     :8086          │
-│ digibank_auth│ digibank_app    │  (stateless,         │digibank_     │digibank_docs   │digibank_           │
-│             │                 │   no DB —             │product       │                │notifications       │
-│             │                 │   rules in memory)    │              │                │                    │
-└─────────────┴──────────────────┴─────────────────────┴──────────────┴───────────────┴────────────────────┘
-```
-
-All backend services are **Java 21 / Spring Boot 3.2.5**, built and run via **mvnd** (Maven Daemon — faster incremental builds than plain Maven), each as an independent microservice with its own MySQL schema (created automatically via Hibernate `ddl-auto: update` — no Flyway/Liquibase migrations in this demo). `start-backend.ps1` launches all 7 services, each in its own PowerShell window running `mvnd spring-boot:run`.
-
-The frontend is Angular 22 (standalone components, signals-based reactive state, no NgModules), served via `ng serve` in development.
-
-### 2.2 API Gateway routing (`backend/api-gateway`)
-
-Pure path-based proxy — no business logic. Routes by URL prefix to the matching service:
-
-| Path prefix | Routes to |
-|---|---|
-| `/api/auth/**`, `/api/branding/**` | auth-service (:8081) |
-| `/api/applications/**` | application-service (:8082) |
-| `/api/affordability/**` | affordability-service (:8083) |
-| `/api/products/**` | product-service (:8084) |
-| `/api/documents/**` | document-service (:8085) |
-| `/api/notifications/**` | notification-service (:8086) |
-
-CORS is configured here for `localhost:4200` and the LAN IP used for demo access from other devices.
-
-### 2.3 auth-service
-
-- **Entity**: `User` (id, uuid [generated, used as the JWT subject], email, nationalId [unique], idIssueDate, fullName, phoneNumber, role [`CUSTOMER`/`BUSINESS_OWNER`/`UNDERWRITER`/`SENIOR_UNDERWRITER`/`HEAD_OF_LENDING`/`COO`/`CEO`/`ADMIN`, plain `String`, no enum], enabled, emailVerified, otpCode/otpExpiresAt/otpAttempts, createdAt, lastLogin, plus nullable `companyName`/`companyRegistrationNumber` [unique]/`companyIndustry`/`companyFoundedYear`, only populated for `BUSINESS_OWNER` accounts). **No password field** — there is no password-based authentication anywhere in this app, for any role.
-- **Registration flow**: `POST /api/auth/register` takes full name, email, phone, National ID, ID issue date, and an `accountType` (`PERSONAL` default / `BUSINESS`, with the 4 company fields required only when `BUSINESS`) — no password; creates the user `enabled=false` with `role = CUSTOMER` or `BUSINESS_OWNER` accordingly, generates and stores a 6-digit OTP, returns it in the response (`demoOtp` field — explicitly demo-only, no SMS/email provider wired up). `POST /api/auth/register/verify-otp` validates the code against the user's **email** (5-min expiry, 5 max attempts) and on success flips `enabled`/`emailVerified` true and issues a JWT. `POST /api/auth/register/resend-otp` regenerates the code. The submitted National ID/issue date are later used to prepopulate the Personal Details wizard step (personal) or the signatory's identity (business).
-- **Login**: two-step, National ID + OTP, for every role (customer, business owner, the 5-tier underwriter hierarchy, admin) — there is no email/password login. `POST /api/auth/login/request-otp` (body: `{ nationalId }`) looks the user up by National ID, generates a 6-digit OTP (again echoed in the response as `demoOtp` for this demo), and is shown on screen. `POST /api/auth/login/verify-otp` (body: `{ nationalId, otp }`) validates it and issues a JWT. `OtpService.verifyOtp(user, otp)` is shared between the registration and login flows; only the registration path additionally flips `emailVerified`/`enabled`. `AuthService.isUnderwriter`/`AuthService.isBusinessOwner` are role-in-set checks that drive route guards and post-login redirects, not the raw role string.
-- **JWT**: HS256, 24h expiry, subject = the user's `uuid` (not email or National ID, so neither is exposed in the token). `JwtAuthenticationFilter` validates on every request; `SecurityConfig` keeps `/register`, `/register/verify-otp`, `/register/resend-otp`, `/login/request-otp`, `/login/verify-otp`, `/faqs`, and `GET /branding*` public, everything else requires a valid token (`/admin/**` requires `ROLE_ADMIN`).
-- **Branding**: admin-managed logo + theme colors, served publicly so the unauthenticated landing/login pages can brand themselves.
-- **FAQs**: seeded on startup (categories: Loan Eligibility, Application Process, Interest Rates & Repayments, Credit & Affordability, Security & Privacy).
-
-### 2.4 application-service — the core of the wizard
-
-- **Entity**: `LoanApplication` — one row per application. `applicationRef` (e.g. `DGB-2026-12345`), `customerId`/`customerEmail`, `applicationType` (`PERSONAL` default / `BUSINESS` — every pre-existing row implicitly stays `PERSONAL`, additive-nullable-with-default, no backfill needed), `status` (`DRAFT` → `IN_PROGRESS` → `SUBMITTED` → `UNDER_REVIEW` → `CONDITIONALLY_APPROVED`/`REFERRED_TO_SENIOR` → `APPROVED`/`DECLINED`/`WITHDRAWN`), `currentSection`, `completionPercentage`, and **one `TEXT` column per wizard step holding that step's data as a raw JSON blob** — personal: `loanRequirementsJson`, `consentManagementJson`, `personalDetailsJson`, `guarantorDetailsJson` (see §1.1.2), `bankConnectionJson`, `incomeEmploymentJson`, `outgoingsJson`, `creditDeclarationsJson`, `verifyIdJson`, `directDebitJson`, `reviewSubmitJson`; business: `companyDetailsJson`, `signatoriesJson`, `businessBankConnectionJson`, `businessFinancialsJson`, `businessOutgoingsJson`, `businessCreditDeclarationsJson` (reuses `guarantorDetailsJson`/`verifyIdJson`/`directDebitJson`/`reviewSubmitJson` as-is, since those shapes aren't personal-specific) — plus `selectedProductJson`, `affordabilityResultJson`, `dataVerificationJson` (see §1.2.1), `guarantorRequired` (Boolean, default false), `approvedAmount`, `disbursementStatus`.
-- **Why JSON blobs per section, not normalized tables**: every step's shape can evolve independently without a migration — the generic `PUT /api/applications/{appRef}/section` endpoint (`{ section, data }`) just serializes whatever map it's given into the matching column. This is what let every increment in this project (consent management, address history, multiple employments, joint bank connections, the entire business journey, guarantor, etc.) ship as a pure additive frontend change with zero backend schema churn beyond adding new `TEXT` columns.
-- **Joint-applicant convention**: every section that supports a second applicant keeps applicant 1's fields flat at the top level and nests applicant 2 under an `applicant2` key (e.g. `personalDetailsJson: { firstName, ..., applicant2: { firstName, ... } }`). This is consistent across `personalDetailsJson`, `incomeEmploymentJson`, `creditDeclarationsJson`, and `bankConnectionJson` — and is the reason read-only views (review-submit, view-application, underwriter case-detail) didn't need any changes when applicant-2 support was added to a section: they only ever read the flat top-level fields for "the" applicant.
-- **`ALL_SECTIONS`** (personal) and **`BUSINESS_SECTIONS`** (business) — two parallel ordered lists, selected by `app.getApplicationType()` — drive `nextSection()` (what the wizard advances to after a save), `calculateCompletion()` (the % shown in the sidebar/dashboard), and `isSectionFilled()`. `guarantorDetails` sits in both lists (after `personalDetails`/`signatories` respectively) and is treated as always-filled (skippable) unless `guarantorRequired` is true and `guarantorDetailsJson` is still null — the same skip-forward mechanic that already powers the pre-approved fast-track (§1.1.1), just driven by a different boolean.
-- **Auto-approval**: `selectProduct()` → `maybeAutoApprove()` returns immediately for business applications (always routed to manual review — see §1.4). For personal applications it checks the affordability result passed, computes whether it's a joint application (from `personalDetailsJson.applicant2`), and compares the requested loan amount against `AffordabilityRules.autoApprovalThresholdSingle`/`Joint` (fetched from affordability-service) — if under threshold, calls `approveApplicationByUnderwriter("System (Auto-Approval)", ...)` automatically.
-- **`sendBackApplication(appRef, reason, reviewedBy, requireGuarantor)`**: when `requireGuarantor` is true and no guarantor details exist yet, sets `guarantorRequired = true` and routes `currentSection` to `guarantorDetails` instead of the default `reviewSubmit`, and appends a note to the customer notification about the new requirement (see §1.1.2).
-- **`MandateRules`** (`@Component`, in-memory, admin-editable via `GET`/`PUT /api/applications/mandate-rules`, mirrors `AffordabilityRules`'s pattern exactly — resets to defaults on service restart): one `BigDecimal` limit per approver role (`underwriterLimit`/`seniorUnderwriterLimit`/`headOfLendingLimit`/`cooLimit`/`ceoLimit`). `limitFor(role)` is defined but currently advisory-only — the frontend computes and enforces the limit client-side on the Decision tab (§1.2.2); this is **not a security boundary** as implemented.
-- **Notifications**: declines, send-backs, approvals, and clarification/document requests all trigger a customer-facing notification via `NotificationClient` (calls notification-service).
-- **Documents**: final approval automatically triggers `DocumentClient.generateFinalApprovalLetter(...)` (calls document-service); failures here are swallowed (a PDF generation hiccup must never block an underwriting decision).
-
-### 2.5 affordability-service (stateless)
-
-- `POST /api/affordability/check`: given income, outgoings, requested loan amount/term, and credit info, computes:
-  - **DTI** (debt-to-income) and **HTI** (housing-to-income) ratios.
-  - Hard stops: active bankruptcy, previous default.
-  - Soft stops: net income below minimum, DTI/HTI over max, credit score below minimum, calculated repayment exceeding repayment capacity (40% of disposable income by default).
-  - Standard loan amortisation formula for the calculated monthly repayment.
-  - Risk category (`LOW`/`MEDIUM`/`HIGH`) and credit score category (`EXCELLENT`/`GOOD`/`FAIR`/`POOR`).
-- `GET`/`PUT /api/affordability/rules`: admin-editable thresholds (`AffordabilityRules` — max DTI/HTI, min income, base rate, repayment capacity factor, min credit score, auto-approval thresholds). **In-memory only — resets to defaults on service restart** (documented as a placeholder for a future external rules engine).
-- `POST /api/affordability/check-business`: business-loan counterpart, modeled on the same DTO shape as `check`. Computes **DSCR** (debt-service coverage ratio) instead of DTI/HTI from annual turnover, business outgoings, and annual debt service; hard stops for company liquidation/director default, soft stop below a DSCR threshold; risk category from DSCR + director credit score. Thresholds are hardcoded constants in `BusinessAffordabilityService` for now, not yet on the admin Rules page.
-
-### 2.6 product-service
-
-- Seeds 3 personal products on first run: Standard Personal Loan (5.50% APR, ₪10k–150k), Premium Personal Loan (4.80% APR, ₪50k–300k, higher eligibility bar), Express Loan (6.20% APR, ₪5k–50k, fast-track) — plus a few business products (Business Term Loan, Working Capital Line, Equipment Finance Loan), distinguished by a `productType` (`PERSONAL`/`BUSINESS`) discriminator column on `LoanProduct`. A startup `backfillMissingProductType()` sets `productType = PERSONAL` on any pre-existing seeded row, since adding the column left old rows `NULL`.
-- `POST /api/products/eligible`: filters products by `productType` (defaults to `PERSONAL`), credit score, income, requested amount range, DTI, and risk category; the cheapest eligible product is marked "recommended" / "Best Rate".
-- `POST /api/products/select`: records the customer's chosen product + computed repayment schedule.
-
-### 2.7 document-service
-
-- Generates PDFs (conditional approval letter, final approval letter, loan agreement, repayment schedule) and stores them; also handles customer-uploaded supporting documents — national ID, payslips, bank statements, proof of address, plus business-journey types (`CERTIFICATE_OF_INCORPORATION`, `FINANCIAL_STATEMENTS`, `BUSINESS_BANK_STATEMENTS`) and `GUARANTOR_ID` (§1.1.2) — with view/download endpoints for both generated and uploaded files. `documentType` is an unconstrained free-form string here, so adding new types needed zero backend changes.
-
-### 2.8 notification-service
-
-- In-app notification feed per customer (title, message, type, optional application reference), unread count, mark-as-read/mark-all-read, and a "seed welcome notification" call fired right after a new customer completes OTP verification.
-
-### 2.9 Frontend (Angular)
-
-- **Standalone components throughout**, signals for local state, `TranslatePipe` + `I18nService` for English/Hebrew i18n (RTL-aware), reactive forms for every step.
-- **Routing** (`app.routes.ts`): `portal/*` guarded by `authGuard`, `underwriter/*` by `underwriterGuard`, `admin/*` by `adminGuard`. Several pages support an optional `:appRef` route param to target a *specific* application rather than always defaulting to "the customer's most recently updated application" — see §2.10.
-- **`ApplicationService`**: thin HTTP wrapper around every application-service endpoint, plus `getResumeRoute(app)` — a single shared function (used by the dashboard and the sidebar switcher) that maps an application's status to the right place to send the customer: wizard step (draft/in-progress), `/portal/approval/:appRef` (approved/conditionally approved), or `/portal/view-application/:appRef` (everything else).
-- **`AuthService`**: JWT/session storage in `localStorage`, exposes `userId`/`userEmail`/`userFullName`/`userPhone`/`role` as simple getters off a `currentUser` signal.
-- **Sidebar**: shows the active application's progress + step checklist (only clickable when that application is actually editable — draft/in-progress; otherwise a read-only checklist + "view full application" link), and an application switcher (chevron dropdown) listing all the customer's applications.
-
-### 2.10 The "appRef-aware vs. current-application" pattern
-
-A structural detail worth understanding before touching customer-facing pages: most application data is fetched via `ApplicationService.getCurrent(customerId)`, which returns **the customer's most recently updated application** — fine for the in-flow wizard (there's only ever one active draft) but wrong for any page meant to show a *specific* application when a customer has more than one (e.g. one approved, one still in progress).
-
-The established, additive fix pattern: the component checks `route.snapshot.paramMap.get('appRef')` (or, for `PortalComponent`, walks the route tree since the param lives on a child route) and calls `getApplication(appRef)` if present, falling back to `getCurrent(customerId)` exactly as before if not — so nothing that doesn't pass an appRef ever changes behavior. Components/routes that follow this pattern: `PortalComponent` (sidebar context), `ViewApplicationComponent` (route `view-application/:appRef`, appRef-aware from the start), `ApprovalComponent` (route `approval/:appRef` added alongside the original param-less `approval`, which is still used by the product-selection flow for the current application). `affordability-results.component.ts` and `products.component.ts` have **not** been audited for this — they're only reached via the natural in-wizard flow today, so likely fine, but haven't been explicitly verified.
+Service topology, data ownership, request flow, security model, and cross-cutting architectural
+patterns (skip-forward wizard sections, appRef-aware components, the "fake it" simulation pattern,
+bureau-vs-internal credit score scales) now live in **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** —
+a separate document that changes only when the architecture itself changes, not with every
+feature. This document (§1, §3, §5 below) stays the regularly-updated functional/feature record.
 
 ---
 
@@ -217,18 +126,14 @@ The established, additive fix pattern: the component checks `route.snapshot.para
 
 ## 4. Local development
 
-```powershell
-# Backend — one window per service, all via mvnd
-.\start-backend.ps1
+See **[`ARCHITECTURE.md` §8](./ARCHITECTURE.md#8-local-development)** for how to bring up the
+stack and seeded login credentials.
 
-# Frontend
-cd frontend
-ng serve
-```
-
-Requires: JDK 21+, Maven Daemon (mvnd), Node.js, MySQL running locally (`jdbc:mysql://localhost:3306/<db>?createDatabaseIfNotExist=true`, default `root`/`root` credentials per service's `application.yml` — schemas are created automatically on first run, no manual DB setup beyond having a MySQL server up).
-
-Seeded accounts (auth-service `DataSeeder`), pre-verified/enabled — log in with National ID, then the on-screen OTP: `underwriter@digibank.com` (National ID `000000014`), `admin@digibank.com` (National ID `000000015`).
+**Known startup gotcha**: starting all 7 services simultaneously via `start-backend.ps1` can
+occasionally cause one service to fail its DB connection during the initial thundering-herd of
+Hikari pool startups against MySQL — it'll just sit idle in its window rather than retrying. If a
+service isn't responding after the others are up, restart that one service's window individually
+(`cd backend/<service>; mvnd spring-boot:run`) rather than re-running the whole script.
 
 ---
 
