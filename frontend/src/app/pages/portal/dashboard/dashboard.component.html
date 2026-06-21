@@ -10,6 +10,8 @@
     </button>
   </div>
 
+  <div class="db-alert db-alert--info mb-16" *ngIf="infoMessage()">{{ infoMessage() }}</div>
+
   <!-- Pre-approved offer (existing customers the bank already knows) -->
   <div class="preapproved-banner mb-24" *ngIf="preApprovedOffer()">
     <span class="material-icons mi-lg preapproved-icon">stars</span>
@@ -22,24 +24,48 @@
     </button>
   </div>
 
-  <!-- Existing relationship accounts (current account / deposit) for pre-approved/existing customers -->
-  <div class="db-card mb-24" *ngIf="relationshipAccounts().length > 0">
-    <div class="card-header"><h3>{{ 'dashboard.relationshipTitle' | translate }}</h3></div>
-    <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'dashboard.relationshipSub' | translate }}</p>
-    <div class="relationship-cards">
-      <div class="relationship-card" *ngFor="let acc of relationshipAccounts()">
-        <span class="material-icons mi-xl relationship-icon">{{ acc.type === 'CURRENT' ? 'account_balance_wallet' : 'savings' }}</span>
-        <div class="relationship-body">
-          <strong>{{ (acc.type === 'CURRENT' ? 'dashboard.currentAccountLabel' : 'dashboard.depositAccountLabel') | translate }}</strong>
-          <div class="relationship-row"><span>{{ 'dashboard.accountNumber' | translate }}</span><span>{{ acc.accountMasked }}</span></div>
-          <div class="relationship-row"><span>{{ 'dashboard.accountBranch' | translate }}</span><span>{{ acc.branch }}</span></div>
-          <div class="relationship-row"><span>{{ 'dashboard.accountBalance' | translate }}</span><span>₪{{ acc.balance | number }}</span></div>
-          <div class="relationship-row" *ngIf="acc.type === 'DEPOSIT'"><span>{{ 'dashboard.depositRate' | translate }}</span><span>{{ acc.interestRate }}%</span></div>
-          <div class="relationship-row" *ngIf="acc.type === 'DEPOSIT'"><span>{{ 'dashboard.depositMaturity' | translate }}</span><span>{{ acc.maturityDate | date:'dd MMM yyyy' }}</span></div>
-          <div class="relationship-row"><span>{{ 'dashboard.accountCustomerSince' | translate }}</span><span>{{ acc.customerSinceYear }}</span></div>
+  <!-- Existing relationship accounts (current account / deposit / disbursed loan) -->
+  <div class="db-card mb-24 collapsible-card" *ngIf="allAccounts().length > 0">
+    <div class="card-header collapsible-header" (click)="toggleSection('relationship')">
+      <h3>{{ 'dashboard.relationshipTitle' | translate }}</h3>
+      <span class="material-icons mi-lg">{{ isCollapsed('relationship') ? 'expand_more' : 'expand_less' }}</span>
+    </div>
+    <ng-container *ngIf="!isCollapsed('relationship')">
+      <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'dashboard.relationshipSub' | translate }}</p>
+      <div class="relationship-cards">
+        <div class="relationship-card" *ngFor="let acc of allAccounts()">
+          <span class="material-icons mi-xl relationship-icon">{{ accountIcon(acc) }}</span>
+          <div class="relationship-body">
+            <strong>{{ accountLabelKey(acc) | translate }}</strong>
+            <div class="relationship-row" *ngIf="acc.type !== 'LOAN'"><span>{{ 'dashboard.accountNumber' | translate }}</span><span>{{ acc.accountMasked }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'LOAN'"><span>{{ 'dashboard.applicationRef' | translate }}</span><span>{{ acc.accountMasked }}</span></div>
+            <div class="relationship-row" *ngIf="acc.branch"><span>{{ 'dashboard.accountBranch' | translate }}</span><span>{{ acc.branch }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'LOAN'"><span>{{ 'dashboard.loanOriginalAmount' | translate }}</span><span>₪{{ acc.principal | number }}</span></div>
+            <div class="relationship-row"><span>{{ balanceLabelKey(acc) | translate }}</span><span>₪{{ acc.balance | number }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type !== 'CURRENT'"><span>{{ 'dashboard.depositRate' | translate }}</span><span>{{ acc.interestRate }}%</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'LOAN'"><span>{{ 'dashboard.loanMonthlyRepayment' | translate }}</span><span>₪{{ acc.monthlyRepayment | number }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'LOAN'"><span>{{ 'dashboard.loanDisbursedDate' | translate }}</span><span>{{ acc.disbursedDate | date:'dd MMM yyyy' }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'DEPOSIT'"><span>{{ 'dashboard.depositMaturity' | translate }}</span><span>{{ acc.maturityDate | date:'dd MMM yyyy' }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type === 'LOAN'"><span>{{ 'dashboard.loanMaturity' | translate }}</span><span>{{ acc.maturityDate | date:'dd MMM yyyy' }}</span></div>
+            <div class="relationship-row" *ngIf="acc.type !== 'LOAN'"><span>{{ 'dashboard.accountCustomerSince' | translate }}</span><span>{{ acc.customerSinceYear }}</span></div>
+            <div class="loan-actions" *ngIf="acc.type === 'LOAN'">
+              <button class="db-btn db-btn--outline db-btn--sm" (click)="openStatement(acc)">
+                <span class="material-icons mi-sm">receipt_long</span> {{ 'dashboard.viewStatements' | translate }}
+              </button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="comingSoon('dashboard.contractVariation')">
+                <span class="material-icons mi-sm">edit_document</span> {{ 'dashboard.contractVariation' | translate }}
+              </button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="comingSoon('dashboard.makePrepayment')">
+                <span class="material-icons mi-sm">payments</span> {{ 'dashboard.makePrepayment' | translate }}
+              </button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="comingSoon('dashboard.closeLoan')">
+                <span class="material-icons mi-sm">lock</span> {{ 'dashboard.closeLoan' | translate }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </ng-container>
   </div>
 
   <!-- Quick stats -->
@@ -90,12 +116,16 @@
   </ng-container>
 
   <!-- Applications table -->
-  <div class="db-card mt-24">
-    <div class="card-header">
+  <div class="db-card mt-24 collapsible-card">
+    <div class="card-header collapsible-header" (click)="toggleSection('applications')">
       <h3>{{ 'dashboard.myApplications' | translate }}</h3>
-      <button class="db-btn db-btn--outline db-btn--sm" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.newApplication' | translate }}</button>
+      <div class="card-header-actions">
+        <button class="db-btn db-btn--outline db-btn--sm" (click)="$event.stopPropagation(); startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.newApplication' | translate }}</button>
+        <span class="material-icons mi-lg">{{ isCollapsed('applications') ? 'expand_more' : 'expand_less' }}</span>
+      </div>
     </div>
 
+    <ng-container *ngIf="!isCollapsed('applications')">
     <div *ngIf="applications().length === 0" class="empty-state">
       <span class="material-icons mi-xl empty-icon">inbox</span>
       <h4>{{ 'dashboard.noApplicationsYet' | translate }}</h4>
@@ -141,6 +171,7 @@
         </tr>
       </tbody>
     </table>
+    </ng-container>
   </div>
 
   <!-- Info tiles -->
@@ -166,5 +197,44 @@
         <p>{{ 'dashboard.notificationsSub' | translate }}</p>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Loan statement modal (real figures: derived from the loan's own rate/term/repayment) -->
+<div class="statement-modal-overlay" *ngIf="viewingStatementFor()" (click)="closeStatement()">
+  <div class="statement-modal" (click)="$event.stopPropagation()">
+    <div class="card-header">
+      <h3>{{ 'dashboard.loanStatementTitle' | translate }}</h3>
+      <button class="db-btn db-btn--ghost db-btn--sm" (click)="closeStatement()">✕</button>
+    </div>
+    <div class="review-grid mb-16">
+      <div class="review-item"><span>{{ 'dashboard.applicationRef' | translate }}</span><strong>{{ viewingStatementFor()!.accountMasked }}</strong></div>
+      <div class="review-item"><span>{{ 'dashboard.loanOriginalAmount' | translate }}</span><strong>₪{{ viewingStatementFor()!.principal | number }}</strong></div>
+      <div class="review-item"><span>{{ 'dashboard.depositRate' | translate }}</span><strong>{{ viewingStatementFor()!.interestRate }}%</strong></div>
+      <div class="review-item"><span>{{ 'dashboard.outstandingBalance' | translate }}</span><strong>₪{{ viewingStatementFor()!.balance | number }}</strong></div>
+    </div>
+    <table class="db-table" *ngIf="statementRows().length > 0">
+      <thead>
+        <tr>
+          <th>{{ 'dashboard.statementMonth' | translate }}</th>
+          <th>{{ 'dashboard.statementDate' | translate }}</th>
+          <th>{{ 'dashboard.statementPayment' | translate }}</th>
+          <th>{{ 'dashboard.statementPrincipal' | translate }}</th>
+          <th>{{ 'dashboard.statementInterest' | translate }}</th>
+          <th>{{ 'dashboard.statementBalance' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of statementRows()">
+          <td>{{ row.month }}</td>
+          <td>{{ row.date | date:'dd MMM yyyy' }}</td>
+          <td>₪{{ row.payment | number:'1.2-2' }}</td>
+          <td>₪{{ row.principalPortion | number:'1.2-2' }}</td>
+          <td>₪{{ row.interestPortion | number:'1.2-2' }}</td>
+          <td>₪{{ row.balance | number:'1.2-2' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="text-muted" *ngIf="statementRows().length === 0" style="font-size:0.85rem;">{{ 'dashboard.statementNoPayments' | translate }}</p>
   </div>
 </div>

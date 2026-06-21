@@ -232,11 +232,13 @@ export interface PreApprovedOffer {
   totalRepayable: number;
 }
 
-/** Demo-only, deterministically generated (seeded by nationalId) "what this customer already
- * holds with the bank" — no core-banking integration exists, so this is illustrative only. See
- * DashboardComponent.buildRelationshipAccounts(). */
+/** "What this customer holds with the bank", shown on the dashboard. CURRENT/DEPOSIT are
+ * demo-only, deterministically generated (seeded by nationalId) since no core-banking integration
+ * exists — see DashboardComponent.buildRelationshipAccounts(). LOAN is real: once an application
+ * is disbursed, its outstanding balance is genuinely calculated from the approved amount, product
+ * rate/term, and elapsed time since approval — see DashboardComponent.buildLoanAccount(). */
 export interface BankRelationshipAccount {
-  type: 'CURRENT' | 'DEPOSIT';
+  type: 'CURRENT' | 'DEPOSIT' | 'LOAN';
   accountMasked: string;
   branch: string;
   balance: number;
@@ -244,6 +246,10 @@ export interface BankRelationshipAccount {
   interestRate?: number;
   termMonths?: number;
   maturityDate?: string;
+  principal?: number;
+  monthlyRepayment?: number;
+  disbursedDate?: string;
+  elapsedMonths?: number;
 }
 
 export interface Notification {
