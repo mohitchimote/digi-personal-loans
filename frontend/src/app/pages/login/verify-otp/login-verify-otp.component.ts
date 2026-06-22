@@ -47,6 +47,7 @@ export class LoginVerifyOtpComponent {
         if (res.success) {
           const dest = this.auth.isAdmin ? '/admin/users'
             : this.auth.isUnderwriter ? '/underwriter/pipeline'
+            : this.auth.isBanker ? '/banker/queue'
             : this.auth.isBusinessOwner ? '/business/dashboard'
             : '/portal/dashboard';
           this.router.navigate([dest]);

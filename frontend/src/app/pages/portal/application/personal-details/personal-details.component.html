@@ -176,20 +176,20 @@
         </div>
       </div>
       <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
-        <label>{{ 'personal.staffNationalIdLabel' | translate }}</label>
-        <input class="db-input" type="text" inputmode="numeric" maxlength="9" formControlName="staffNationalId" />
-        <small class="text-muted">{{ 'personal.staffNationalIdHint' | translate }}</small>
-        <div class="db-alert db-alert--error mt-8" *ngIf="f('staffNationalId')?.errors?.['pattern'] && f('staffNationalId')?.touched">
-          {{ 'personal.staffNationalIdLabel' | translate }} — {{ 'common.invalidNationalId' | translate }}
-        </div>
-      </div>
-
-      <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
         <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
-        <select class="db-select" formControlName="preferredBranch">
+        <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
           <option value="">{{ 'common.select' | translate }}</option>
           <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
         </select>
+      </div>
+
+      <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
+        <label>{{ 'personal.staffNameLabel' | translate }}</label>
+        <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
+          <option value="">{{ 'common.select' | translate }}</option>
+          <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+        </select>
+        <small class="text-muted">{{ 'personal.staffNameHint' | translate }}</small>
       </div>
     </div>
 

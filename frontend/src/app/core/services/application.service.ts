@@ -100,6 +100,10 @@ export class ApplicationService {
     return this.http.get<LoanApplication[]>(`${API}/pipeline`);
   }
 
+  getBankerQueue(): Observable<LoanApplication[]> {
+    return this.http.get<LoanApplication[]>(`${API}/banker-queue`);
+  }
+
   decline(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {
     return this.http.post<LoanApplication>(`${API}/${appRef}/decline`, { reason, reviewedBy });
   }

@@ -98,6 +98,10 @@ export class AuthService {
     return this.role === 'BUSINESS_OWNER';
   }
 
+  get isBanker(): boolean {
+    return this.role === 'BANKER';
+  }
+
   get companyName(): string | null {
     return this.currentUser()?.companyName ?? null;
   }

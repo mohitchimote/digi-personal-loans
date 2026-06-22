@@ -331,7 +331,7 @@ export class CaseDetailComponent implements OnInit {
 
   staffContactHint(): string {
     const p = this.personal;
-    if (p.staffNationalId) return p.staffNationalId;
+    if (p.staffName) return p.staffName;
     if (p.preferredBranch) return p.preferredBranch;
     return '';
   }

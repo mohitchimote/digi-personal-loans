@@ -323,7 +323,7 @@ public class ApplicationService {
         }
 
         repository.save(app);
-        addNote(appRef, section, "Section edited by underwriter.", "EDIT", editedBy);
+        addNote(appRef, section, "Section edited by staff member.", "EDIT", editedBy);
         return app;
     }
 
@@ -425,6 +425,12 @@ public class ApplicationService {
 
     public List<LoanApplication> getPipeline() {
         return repository.findByStatusInOrderBySubmittedAtAsc(PIPELINE_STATUSES);
+    }
+
+    /** Queue for the Banker role — applications a customer has started but not yet submitted,
+     * i.e. everything not already in the Underwriter's pipeline (PIPELINE_STATUSES). */
+    public List<LoanApplication> getBankerQueue() {
+        return repository.findByStatusInOrderByUpdatedAtDesc(ACTIVE_STATUSES);
     }
 
     private static final List<String> CANCELLABLE_STATUSES = List.of(

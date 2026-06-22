@@ -197,8 +197,8 @@ export interface PersonalDetails {
   monthsAtCurrentAddress?: number;
   previousAddresses?: AddressHistoryEntry[];
   assistedByStaff?: boolean;
-  staffNationalId?: string;
   preferredBranch?: string;
+  staffName?: string;
 }
 
 export interface AddressHistoryEntry {
@@ -456,6 +456,17 @@ export const DIGIBANK_BRANCHES = [
   'Netanya - City Center',
   'Eilat - Tourist Center',
 ];
+
+// Staff names a customer can pick from once they've selected a branch above, for the
+// "assisted by staff" question — static/demo data, not tied to real Banker login accounts.
+export const DIGIBANK_BRANCH_STAFF: Record<string, string[]> = {
+  'Tel Aviv - Rothschild Blvd': ['Yael Cohen', 'Itai Mor', 'Shira Ben-Ari', 'Omer Katz'],
+  'Jerusalem - Jaffa Road': ['Avi Steinberg', 'Noa Friedman', 'Eitan Azulay'],
+  'Haifa - Hadar': ['Liat Peretz', 'Ronen Asaf', 'Dana Shapiro', 'Gil Bar-On'],
+  'Beer Sheva - Old City': ['Maya Sasson', 'Tomer Halevi', 'Adi Malka'],
+  'Netanya - City Center': ['Yossi Amar', 'Keren Tzur', 'Nadav Eliyahu', 'Sigal Dotan'],
+  'Eilat - Tourist Center': ['Roni Vaknin', 'Eyal Barkan', 'Hila Marom'],
+};
 
 export interface IsraeliBankBranch { code: string; name: string; }
 export interface IsraeliBank { code: string; name: string; branches: IsraeliBankBranch[]; }

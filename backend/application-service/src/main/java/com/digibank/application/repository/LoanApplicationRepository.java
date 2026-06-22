@@ -14,4 +14,5 @@ public interface LoanApplicationRepository extends JpaRepository<LoanApplication
             Long customerId, List<String> statuses);
     Optional<LoanApplication> findFirstByCustomerIdOrderByUpdatedAtDesc(Long customerId);
     List<LoanApplication> findByStatusInOrderBySubmittedAtAsc(List<String> statuses);
+    List<LoanApplication> findByStatusInOrderByUpdatedAtDesc(List<String> statuses);
 }

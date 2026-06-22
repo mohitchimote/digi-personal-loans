@@ -107,6 +107,11 @@ public class ApplicationController {
         return ResponseEntity.ok(applicationService.getPipeline());
     }
 
+    @GetMapping("/banker-queue")
+    public ResponseEntity<List<LoanApplication>> getBankerQueue() {
+        return ResponseEntity.ok(applicationService.getBankerQueue());
+    }
+
     @PostMapping("/{appRef}/decline")
     public ResponseEntity<LoanApplication> declineApplication(@PathVariable String appRef, @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(applicationService.declineApplication(appRef, body.get("reason"), body.get("reviewedBy")));

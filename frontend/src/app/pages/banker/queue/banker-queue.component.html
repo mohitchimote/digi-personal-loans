@@ -1,0 +1,42 @@
+<div class="page-header mb-24">
+  <h2>{{ 'banker.queueTitle' | translate }}</h2>
+  <p class="page-sub">{{ 'banker.queueSubtitle' | translate }}</p>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'banker.loadingQueue' | translate }}</span>
+</div>
+
+<div class="empty-state" *ngIf="!loading() && applications().length === 0">
+  <div class="empty-icon material-icons">inbox</div>
+  <p>{{ 'banker.noApplications' | translate }}</p>
+</div>
+
+<div class="db-card" *ngIf="!loading() && applications().length > 0">
+  <table class="db-table">
+    <thead>
+      <tr>
+        <th>{{ 'dashboard.reference' | translate }}</th>
+        <th>{{ 'uw.applicantType' | translate }}</th>
+        <th>{{ 'uw.applicant' | translate }}</th>
+        <th>{{ 'dashboard.status' | translate }}</th>
+        <th>{{ 'banker.lastUpdated' | translate }}</th>
+        <th>{{ 'dashboard.action' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let app of applications()">
+        <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
+        <td>
+          <span class="material-icons mi-sm" [title]="isBusiness(app) ? ('uw.business' | translate) : ('uw.personal' | translate)">{{ isBusiness(app) ? 'apartment' : 'person' }}</span>
+        </td>
+        <td>{{ applicantName(app) }}</td>
+        <td><span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span></td>
+        <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy HH:mm' }}</td>
+        <td>
+          <a [routerLink]="['/banker/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'banker.openAssist' | translate }}</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

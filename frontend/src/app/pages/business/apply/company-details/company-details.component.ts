@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
-import { BUSINESS_LOAN_PURPOSES } from '../../../../core/models';
+import { BUSINESS_LOAN_PURPOSES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -22,6 +22,7 @@ export class CompanyDetailsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   purposes = BUSINESS_LOAN_PURPOSES;
+  branches = DIGIBANK_BRANCHES;
 
   constructor(
     private fb: FormBuilder,
@@ -41,7 +42,20 @@ export class CompanyDetailsComponent implements OnInit {
       loanAmount: [100000, [Validators.required, Validators.min(20000), Validators.max(1000000)]],
       loanPurpose: ['', Validators.required],
       loanTerm:   [36, [Validators.required, Validators.min(6), Validators.max(84)]],
+      assistedByStaff: [false],
+      preferredBranch: [''],
+      staffName: [''],
     });
+  }
+
+  staffOptionsForBranch(): string[] {
+    return DIGIBANK_BRANCH_STAFF[this.f('preferredBranch')?.value] || [];
+  }
+
+  onBranchChange(): void {
+    if (!this.staffOptionsForBranch().includes(this.f('staffName')?.value)) {
+      this.f('staffName')?.setValue('');
+    }
   }
 
   ngOnInit(): void {

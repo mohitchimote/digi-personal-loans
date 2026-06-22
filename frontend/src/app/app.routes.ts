@@ -3,6 +3,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { underwriterGuard } from './core/guards/underwriter.guard';
 import { adminGuard } from './core/guards/admin.guard';
 import { businessGuard } from './core/guards/business.guard';
+import { bankerGuard } from './core/guards/banker.guard';
 
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
@@ -73,6 +74,16 @@ export const routes: Routes = [
       { path: '', redirectTo: 'pipeline', pathMatch: 'full' },
       { path: 'pipeline',      loadComponent: () => import('./pages/underwriter/pipeline/pipeline.component').then(m => m.PipelineComponent) },
       { path: 'case/:appRef',  loadComponent: () => import('./pages/underwriter/case-detail/case-detail.component').then(m => m.CaseDetailComponent) },
+    ]
+  },
+  {
+    path: 'banker',
+    loadComponent: () => import('./pages/banker/shell/banker-shell.component').then(m => m.BankerShellComponent),
+    canActivate: [bankerGuard],
+    children: [
+      { path: '', redirectTo: 'queue', pathMatch: 'full' },
+      { path: 'queue',     loadComponent: () => import('./pages/banker/queue/banker-queue.component').then(m => m.BankerQueueComponent) },
+      { path: 'case/:appRef', loadComponent: () => import('./pages/banker/case-detail/banker-case-detail.component').then(m => m.BankerCaseDetailComponent) },
     ]
   },
   {

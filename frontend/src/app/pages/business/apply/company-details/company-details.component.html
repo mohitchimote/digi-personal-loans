@@ -74,6 +74,34 @@
       </div>
     </div>
 
+    <div class="db-card mb-16">
+      <div class="card-header"><h3>{{ 'personal.staffAssistHeader' | translate }}</h3></div>
+      <div class="declaration-item">
+        <div class="declaration-text">
+          <p>{{ 'personal.assistedByStaffQuestion' | translate }}</p>
+        </div>
+        <div class="declaration-toggle">
+          <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="false" /> {{ 'common.no' | translate }}</label>
+          <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="true" /> {{ 'common.yes' | translate }}</label>
+        </div>
+      </div>
+      <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
+        <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
+        <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
+          <option value="">{{ 'common.select' | translate }}</option>
+          <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+        </select>
+      </div>
+      <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
+        <label>{{ 'personal.staffNameLabel' | translate }}</label>
+        <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
+          <option value="">{{ 'common.select' | translate }}</option>
+          <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+        </select>
+        <small class="text-muted">{{ 'personal.staffNameHint' | translate }}</small>
+      </div>
+    </div>
+
     <div class="form-actions">
       <div></div>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">

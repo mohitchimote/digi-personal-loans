@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES } from '../../../../core/models';
+import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -66,8 +66,8 @@ export class PersonalDetailsComponent implements OnInit {
       monthsAtCurrentAddress: [null, [Validators.required, Validators.min(0)]],
       previousAddresses: this.fb.array([]),
       assistedByStaff: [false],
-      staffNationalId: ['', Validators.pattern(/^\d{9}$/)],
       preferredBranch: [''],
+      staffName: [''],
     });
     this.applicant2Form = this.fb.group({
       firstName:    [''],
@@ -227,6 +227,16 @@ export class PersonalDetailsComponent implements OnInit {
 
   get isJoint(): boolean {
     return this.numberOfApplicants() === 2;
+  }
+
+  staffOptionsForBranch(): string[] {
+    return DIGIBANK_BRANCH_STAFF[this.f('preferredBranch')?.value] || [];
+  }
+
+  onBranchChange(): void {
+    if (!this.staffOptionsForBranch().includes(this.f('staffName')?.value)) {
+      this.f('staffName')?.setValue('');
+    }
   }
 
   saveAndNext(): void {
