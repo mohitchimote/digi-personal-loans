@@ -59,7 +59,7 @@
         <th>{{ 'reviewSubmit.purpose' | translate }}</th>
         <th>{{ 'reviewSubmit.loanTerm' | translate }}</th>
         <th>{{ 'dashboard.status' | translate }}</th>
-        <th>{{ 'uw.submitted' | translate }}</th>
+        <th class="sortable-header" (click)="toggleSort()">{{ 'uw.submitted' | translate }} <span class="material-icons mi-sm">{{ sortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span></th>
         <th>{{ 'dashboard.action' | translate }}</th>
       </tr>
     </thead>

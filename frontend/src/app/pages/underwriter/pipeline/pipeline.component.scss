@@ -42,3 +42,12 @@
 @media (max-width: 1100px) {
   .uw-tiles { grid-template-columns: repeat(4, 1fr); }
 }
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  .material-icons { font-size: 14px; vertical-align: middle; }
+  &:hover { color: var(--tcs-blue, #003F79); }
+}

@@ -19,23 +19,35 @@ export class PipelineComponent implements OnInit {
   applications = signal<LoanApplication[]>([]);
   loading = signal(true);
   activeFilter = signal<string>('ALL');
+  sortDir = signal<'asc' | 'desc'>('desc');
 
   statuses = PIPELINE_STATUSES;
 
   filteredApplications = computed(() => {
     const filter = this.activeFilter();
-    if (filter === 'ALL') return this.applications();
-    if (filter === 'APPROVED') {
-      return this.applications().filter(a => a.status === 'APPROVED' && !a.disbursementStatus);
+    let result: LoanApplication[];
+    if (filter === 'ALL') result = this.applications();
+    else if (filter === 'APPROVED') {
+      result = this.applications().filter(a => a.status === 'APPROVED' && !a.disbursementStatus);
+    } else if (filter === 'PENDING_DISBURSEMENT') {
+      result = this.applications().filter(a => a.status === 'APPROVED' && a.disbursementStatus === 'SECOND_CHECK_PENDING');
+    } else if (filter === 'DISBURSED') {
+      result = this.applications().filter(a => a.disbursementStatus === 'FUNDS_RELEASED');
+    } else {
+      result = this.applications().filter(a => a.status === filter);
     }
-    if (filter === 'PENDING_DISBURSEMENT') {
-      return this.applications().filter(a => a.status === 'APPROVED' && a.disbursementStatus === 'SECOND_CHECK_PENDING');
-    }
-    if (filter === 'DISBURSED') {
-      return this.applications().filter(a => a.disbursementStatus === 'FUNDS_RELEASED');
-    }
-    return this.applications().filter(a => a.status === filter);
+
+    const dir = this.sortDir() === 'asc' ? 1 : -1;
+    return [...result].sort((a, b) => {
+      const dateA = new Date(a.submittedAt || a.createdAt).getTime();
+      const dateB = new Date(b.submittedAt || b.createdAt).getTime();
+      return (dateA - dateB) * dir;
+    });
   });
+
+  toggleSort(): void {
+    this.sortDir.update(d => (d === 'asc' ? 'desc' : 'asc'));
+  }
 
   constructor(private appSvc: ApplicationService, public i18n: I18nService) {}
 
