@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { LoanApplication, UnderwritingNote, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { CaseSectionNavComponent } from '../../../shared/case-section-nav/case-section-nav.component';
 
 /** Maps a wizard section key to the LoanApplication field that stores its JSON. "general" has no
  * backing field — it's a notes-only bucket, same convention as the Underwriter's case-detail. */
@@ -166,7 +167,7 @@ const ASSIST_KEYS = ['assistedByStaff', 'preferredBranch', 'staffName'];
 @Component({
   selector: 'app-banker-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent],
   templateUrl: './banker-case-detail.component.html',
   styleUrl: './banker-case-detail.component.scss'
 })
@@ -178,6 +179,11 @@ export class BankerCaseDetailComponent implements OnInit {
   appRef = '';
 
   branches = DIGIBANK_BRANCHES;
+
+  /** Single active section view, switched via the left case-nav sidebar — mirrors the
+   * Underwriter case-detail's tab mechanics instead of stacking every section's card on one
+   * long page. */
+  activeSection = signal<string>('overview');
 
   editingSection = signal<string | null>(null);
   savingEdit = signal(false);
@@ -237,6 +243,19 @@ export class BankerCaseDetailComponent implements OnInit {
 
   get sections() {
     return this.isBusiness ? this.businessSections : this.personalSections;
+  }
+
+  get navTopItems() {
+    return [{ key: 'overview', labelKey: 'banker.caseOverview' }];
+  }
+
+  get navGroupItems() {
+    return this.sections;
+  }
+
+  setActiveSection(key: string): void {
+    if (this.isEditing(this.activeSection())) this.cancelEdit();
+    this.activeSection.set(key);
   }
 
   get applicantName(): string {

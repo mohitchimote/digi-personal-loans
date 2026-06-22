@@ -17,6 +17,27 @@
   .page-sub { color: var(--mid-grey); font-size: 0.9rem; }
 }
 
+.banker-case-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+app-case-section-nav {
+  position: sticky;
+  top: 0;
+}
+
+.banker-case-content {
+  min-width: 0;
+}
+
+@media (max-width: 1000px) {
+  .banker-case-layout { grid-template-columns: 1fr; }
+  app-case-section-nav { position: static; }
+}
+
 .back-link {
   display: inline-flex;
   align-items: center;

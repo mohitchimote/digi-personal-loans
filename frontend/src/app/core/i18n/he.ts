@@ -545,6 +545,9 @@ export const HE: Record<string, string> = {
   'intro.ctaNotePrefix': 'בהמשך אתה מסכים ל',
 
   // Underwriter portal
+  'caseNav.applicationDetails': 'פרטי הבקשה',
+  'caseNav.placeholderQuery': 'פנייה',
+  'caseNav.placeholderWorklist': 'רשימת עבודה',
   'uw.brand': 'חיתום דיגיבנק',
   'uw.casePipeline': 'תור התיקים',
   'uw.searchPlaceholder': 'חיפוש בקשות…',
@@ -600,6 +603,7 @@ export const HE: Record<string, string> = {
   'banker.lastUpdated': 'עדכון אחרון',
   'banker.openAssist': 'פתח/י וסייע/י',
   'banker.loadingCase': 'טוען בקשה…',
+  'banker.caseOverview': 'סיכום בקשה',
   'banker.noDataYet': 'לא מולא עדיין.',
   'banker.complexFieldsNote': 'כולל גם',
   'banker.connectedLabel': 'בנק מקושר',

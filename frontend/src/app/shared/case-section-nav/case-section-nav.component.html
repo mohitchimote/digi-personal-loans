@@ -1,0 +1,23 @@
+<nav class="case-nav">
+  <button *ngFor="let item of topItems" class="case-nav-flat" [class.active]="activeKey === item.key" (click)="selectItem.emit(item.key)">
+    {{ item.labelKey | translate }}
+  </button>
+
+  <div class="case-nav-group" *ngIf="groupItems.length">
+    <div class="case-nav-group-header" (click)="toggleGroup()">
+      <span>{{ groupLabelKey | translate }}</span>
+      <span class="material-icons mi-sm">{{ groupExpanded() ? 'expand_less' : 'expand_more' }}</span>
+    </div>
+    <div class="case-nav-group-items" *ngIf="groupExpanded()">
+      <button *ngFor="let item of groupItems" class="case-nav-sub" [class.active]="activeKey === item.key" (click)="selectItem.emit(item.key)">
+        {{ item.labelKey | translate }}
+      </button>
+    </div>
+  </div>
+
+  <button *ngFor="let item of bottomItems" class="case-nav-flat" [class.active]="activeKey === item.key" (click)="selectItem.emit(item.key)">
+    {{ item.labelKey | translate }}
+  </button>
+
+  <div class="case-nav-placeholder" *ngFor="let labelKey of placeholderLabelKeys">{{ labelKey | translate }}</div>
+</nav>

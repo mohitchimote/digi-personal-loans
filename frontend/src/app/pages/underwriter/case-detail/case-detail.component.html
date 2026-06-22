@@ -46,14 +46,14 @@
 
   <div class="uw-case-layout">
     <!-- Left: section navigation -->
-    <nav class="uw-case-nav">
-      <button *ngFor="let t of navTabs" [class.active]="activeTab() === t.key" (click)="setTab(t.key)">
-        <span class="material-icons mi-sm">{{ t.icon }}</span> {{ t.labelKey | translate }}
-      </button>
-      <button *ngIf="isApproved" [class.active]="activeTab() === 'disbursement'" (click)="setTab('disbursement')" class="uw-disbursement-nav">
-        <span class="material-icons mi-sm">payments</span> {{ 'uw.tabDisbursement' | translate }}
-      </button>
-    </nav>
+    <app-case-section-nav
+      [topItems]="navTopItems"
+      [groupItems]="navGroupItems"
+      [bottomItems]="navBottomItems"
+      [placeholderLabelKeys]="['caseNav.placeholderQuery', 'caseNav.placeholderWorklist']"
+      [activeKey]="activeTab()"
+      (selectItem)="onNavSelect($event)">
+    </app-case-section-nav>
 
     <!-- Middle: section content -->
     <div class="uw-case-content">

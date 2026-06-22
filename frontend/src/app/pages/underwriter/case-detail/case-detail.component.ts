@@ -9,13 +9,14 @@ import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument,
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ficoToLenderGrade, dnbScoreToLenderGrade, dnbScoreToRiskClass } from '../../../core/utils/credit-score.util';
+import { CaseSectionNavComponent } from '../../../shared/case-section-nav/case-section-nav.component';
 
 type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVerification' | 'decision' | 'disbursement';
 
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent],
   templateUrl: './case-detail.component.html',
   styleUrl: './case-detail.component.scss'
 })
@@ -63,6 +64,23 @@ export class CaseDetailComponent implements OnInit {
 
   get navTabs(): { key: TabKey; labelKey: string; icon: string }[] {
     return this.isBusiness ? this.businessNavTabs : this.personalNavTabs;
+  }
+
+  /** Left-nav split into a flat top item (Application Overview), a collapsible group of the
+   * remaining section tabs, and a flat bottom item (Decision) — mirrors the staff-tool reference
+   * the user supplied, reusing the same navTabs/setTab() the old top-tab bar used. */
+  get navTopItems() {
+    return this.navTabs.filter(t => t.key === 'overview').map(t => ({ key: t.key, labelKey: t.labelKey }));
+  }
+
+  get navGroupItems() {
+    return this.navTabs.filter(t => t.key !== 'overview' && t.key !== 'decision').map(t => ({ key: t.key, labelKey: t.labelKey }));
+  }
+
+  get navBottomItems() {
+    const items = this.navTabs.filter(t => t.key === 'decision').map(t => ({ key: t.key, labelKey: t.labelKey }));
+    if (this.isApproved) items.push({ key: 'disbursement', labelKey: 'uw.tabDisbursement' });
+    return items;
   }
 
   get isBusiness(): boolean {
@@ -178,6 +196,10 @@ export class CaseDetailComponent implements OnInit {
 
   setTab(tab: TabKey): void {
     this.activeTab.set(tab);
+  }
+
+  onNavSelect(key: string): void {
+    this.setTab(key as TabKey);
   }
 
   ngOnInit(): void {

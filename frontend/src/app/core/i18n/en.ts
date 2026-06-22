@@ -545,6 +545,9 @@ export const EN: Record<string, string> = {
   'intro.ctaNotePrefix': 'By continuing you agree to our',
 
   // Underwriter portal
+  'caseNav.applicationDetails': 'Application Details',
+  'caseNav.placeholderQuery': 'Query',
+  'caseNav.placeholderWorklist': 'Customer Worklist',
   'uw.brand': 'DigiBank Underwriting',
   'uw.casePipeline': 'Case Pipeline',
   'uw.searchPlaceholder': 'Search applications…',
@@ -600,6 +603,7 @@ export const EN: Record<string, string> = {
   'banker.lastUpdated': 'Last Updated',
   'banker.openAssist': 'Open & Assist',
   'banker.loadingCase': 'Loading application…',
+  'banker.caseOverview': 'Application Summary',
   'banker.noDataYet': 'Not filled in yet.',
   'banker.complexFieldsNote': 'Also has',
   'banker.connectedLabel': 'Bank Connected',
