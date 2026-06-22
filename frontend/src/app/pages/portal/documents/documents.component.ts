@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DocumentService } from '../../../core/services/document.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
+import { GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -47,6 +47,10 @@ export class DocumentsComponent implements OnInit {
     this.appSvc.getCurrent(userId).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        if (app.applicationType === 'BUSINESS') {
+          this.requiredTypes = BUSINESS_REQUIRED_DOCUMENT_TYPES;
+          this.selectedDocType = BUSINESS_REQUIRED_DOCUMENT_TYPES[0].type;
+        }
         this.docSvc.getGenerated(userId).subscribe({
           next: docs => { this.generated.set(docs); this.loading.set(false); },
           error: () => this.loading.set(false)
