@@ -120,8 +120,11 @@ joint-applicant support to a new section never requires touching those views.
 ## 5. Security architecture
 
 - **No passwords anywhere.** Every role (customer, business owner, the 5-tier underwriter
-  hierarchy, admin) authenticates with **National ID + a 6-digit OTP**. There is no password
-  field on the `User` entity.
+  hierarchy, admin, banker) authenticates with **National ID + a 6-digit OTP**. There is no
+  password field on the `User` entity. The one exception: a Banker-created customer account
+  (`register-by-staff`) is pre-verified with no OTP step at all — the Banker has already confirmed
+  identity by phone/in branch — but the customer still logs in via the normal National ID + OTP
+  flow afterward.
 - **JWT**: HS256, 24h expiry, subject = a generated `uuid` — never the customer's National ID or
   email, so neither credential is embedded in the token itself.
 - **OTP delivery is demo-only**: no SMS/email provider is integrated; the code is echoed back in
@@ -129,9 +132,15 @@ joint-applicant support to a new section never requires touching those views.
   single clearest "swap before production" seam in the system.
 - **Route guards** (frontend): `authGuard` (`/portal/*`), `businessGuard` (`/business/*`),
   `underwriterGuard` (`/underwriter/*`, admits all 5 underwriter-hierarchy roles), `adminGuard`
-  (`/admin/*`). **Mandate limits are enforced client-side only** (`MandateRules.limitFor(role)`
+  (`/admin/*`), `bankerGuard` (`/banker/*`), `assistGuard` (`/banker/case/:appRef/apply/*` —
+  additionally requires `EntitlementsService.canActAsCustomer`, currently true only for `BANKER`).
+  **Mandate limits are enforced client-side only** (`MandateRules.limitFor(role)`
   exists server-side but is advisory) — not a security boundary as implemented, flagged
   deliberately rather than silently assumed safe.
+- **Banker-only endpoints** (`auth-service`, enforced server-side via `hasRole("BANKER")`):
+  `POST /api/auth/register-by-staff` (creates a pre-verified customer account) and
+  `GET /api/auth/customer-profile/{id}` (looks up a customer's own profile for wizard prefill —
+  see §6.6). Both are genuine server-side role checks, not client-side-only like mandate limits.
 - **Server-side validation**: Jakarta Bean Validation (`@Valid`) + a `GlobalExceptionHandler`
   (auth-service); business-rule violations throw `IllegalArgumentException`, caught at the
   controller and returned as a structured `ApiResponse.error(...)`.
@@ -162,9 +171,13 @@ has more than one (e.g. one approved, one still in progress).
 The established fix pattern: check `route.snapshot.paramMap.get('appRef')` first, fall back to
 `getCurrent(customerId)` if absent — so a component that doesn't pass an appRef behaves exactly as
 before. Components already following this pattern: `PortalComponent`, `ViewApplicationComponent`,
-`ApprovalComponent`. **Not yet audited**: `affordability-results.component.ts` and
-`products.component.ts` — reached only via the natural in-wizard flow today, likely fine, but
-unverified. Audit before relying on either with a multi-application customer.
+`ApprovalComponent`, `ReviewSubmitComponent`/`BusinessReviewSubmitComponent`,
+`AffordabilityResultsComponent`/`BusinessAffordabilityResultsComponent`,
+`ProductsComponent`/`BusinessProductsComponent` — the last three were audited and fixed as part of
+extending the Banker assist flow through to submission (§6.6): they now check
+`EffectiveIdentityService.appRef` (which is non-null only while a Banker is assisting) before
+falling back to `getCurrent(customerId)`, so they remain correct for both a normal customer with
+multiple applications and a Banker pinned to one specific case.
 
 ### 6.3 The "fake it" pattern (demo-only synthesis, seeded for stability)
 
@@ -212,6 +225,44 @@ Every user-facing string goes through `'key.path' | translate` (or `I18nService.
 TypeScript) against parallel `en.ts`/`he.ts` dictionaries with `{{param}}` interpolation. Hebrew is
 RTL. Bilingual labels are always two dictionary entries, never one string with both languages
 concatenated.
+
+### 6.6 Identity facade for assisted (Banker) applications
+
+The Banker role needed the *exact same* wizard step components a customer uses (so dropdown
+constraints, joint-applicant reveals, and validators never drift between the two), without a
+single `*ngIf="isBanker"` inside any of them. The fix was to make "whose identity is this form
+operating on" a question answered by one injected facade, not by branching inside ~20 components:
+
+- **`AssistContextService`** — holds the active "Banker acting as customer X" target as a signal
+  (`{ customerId, customerEmail, appRef, applicationType, customerFullName, customerPhone,
+  customerNationalId, customerIdIssueDate, customerCompanyName }` or `null`).
+- **`EffectiveIdentityService`** — the facade every wizard component injects instead of
+  `AuthService` directly. Pass-through to `AuthService` for a normal customer; while assisting,
+  resolves `userId`/`userEmail`/`appRef` to the assisted customer's, and resolves the
+  convenience-prefill getters (`userPhone`, `userNationalId`, `userIdIssueDate`, `userFullName`,
+  `companyName`) from the assisted customer's *own* profile — never the Banker's.
+- **`assistContextResolver`** (route resolver, not a component's `ngOnInit`) — fetches the
+  application **and** the customer's profile (`GET /api/auth/customer-profile/{id}`), then calls
+  `AssistContextService.start(...)`, attached to `case/:appRef/apply`'s `resolve` config. This
+  matters structurally: resolvers block child-route activation until they complete, whereas
+  starting the assist context from a component's `ngOnInit` races the child wizard step's own
+  `ngOnInit` and can lose — this exact race was hit once during development (silently fell back to
+  the Banker's own identity, spawning a stray draft application under the Banker's account instead
+  of editing the customer's).
+- **`EntitlementsService`** — single source of truth for what a role can do
+  (`canActAsCustomer`, `canFreelyNavigateSections`), computed from `AuthService.role`. The seam for
+  any future "staff sees an extra field/menu" requirement: add a flag here and one `*ngIf` at the
+  call site, not a parallel component.
+- **Dense vs. customer template, same component**: each wizard step component keeps one
+  `FormGroup`/validator set/save method, with two `*ngIf` template blocks
+  (`*ngIf="!identity.isAssisting"` / `*ngIf="identity.isAssisting"`) — the customer's step-wizard
+  chrome (Tip/Need Help aside, marketing copy) vs. a dense 3-column label+field grid for the
+  Banker. Zero logic duplication; only presentation differs.
+
+**Apply this pattern, don't reinvent it**, for any future "staff member acts on behalf of a
+customer" feature (e.g. underwriter-assisted edits) — inject `EffectiveIdentityService`, extend
+`AssistTarget`/`EntitlementsService` if new fields/permissions are needed, and add a route resolver
+rather than starting context from a component.
 
 ## 7. Frontend architecture
 

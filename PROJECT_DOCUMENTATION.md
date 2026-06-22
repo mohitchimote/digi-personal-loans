@@ -101,6 +101,43 @@ A second, fully parallel end-to-end journey for companies — same overall shape
 - **Endpoint**: `GET /api/applications/{appRef}/business-financials-analysis` (generate-if-absent).
 - **Known limitation**: figures are internally consistent per-application but not tied to anything in the uploaded document's actual content (no OCR exists) — same caveat as every other "fake it" feature in this project.
 
+### 1.5 Banker journey (assisted applications)
+
+A **Banker** role for customers who call in or walk into a branch but can't (or haven't yet)
+self-register and complete the wizard themselves — the Banker fills it in on their behalf, on the
+call/in person, while the customer can later log in normally (National ID + OTP) to check progress
+or finish it themselves.
+
+- **Assistance Queue** (`/banker/queue`): every application that's `DRAFT`/`IN_PROGRESS` across
+  *all* customers (`GET /api/applications/banker-queue`) — not just the Banker's own, since any
+  Banker can pick up any in-progress case.
+- **Create Application** (`/banker/create`): Personal/Business toggle, then the customer's own
+  name/email/phone/National ID/ID issue date (+ company fields for Business). Submits to
+  `POST /api/auth/register-by-staff` — creates a **pre-verified** account (no OTP step; the Banker
+  has already confirmed identity by phone/in branch) — then immediately starts a DRAFT application
+  and lands the Banker on case detail.
+- **Case detail** (`/banker/case/:appRef`): application summary, call notes, and a sidebar into
+  every wizard section.
+- **Assisted editing reuses the real customer wizard components** — clicking a section opens the
+  *actual* `LoanRequirementsComponent`, `PersonalDetailsComponent`, etc. (under
+  `/banker/case/:appRef/apply/...`), not a separate reimplementation. Every dropdown constraint,
+  conditional reveal (e.g. joint-application Applicant 2), and validator behaves identically to the
+  customer's own journey — only the template differs: a dense, 3-column label+field data-entry
+  layout (no step-wizard chrome, no Tip/Need Help marketing copy) instead of the customer's
+  multi-panel view, switched on a single `identity.isAssisting` flag. See ARCHITECTURE.md §6.6 for
+  the identity-resolution mechanics behind this.
+- **Prefill**: name/phone/National ID/issue date already keyed in at account creation
+  automatically prefill Personal Details (Company Details for business) the same way a normal
+  customer's own registration data would — fetched via a Banker-only profile lookup
+  (`GET /api/auth/customer-profile/{id}`), never the Banker's own identity.
+- **Full submission flow**: Review & Submit → Affordability → Product Selection → Approval all
+  work end-to-end inside the Banker shell, landing on the same Approval screen a customer would see.
+- **Audit trail**: every section save while assisting logs an underwriting note ("Section edited
+  by staff member (assisted application)."), visible to underwriters on the case's notes.
+- **Known gap**: Review & Submit still renders the customer-toned aside (Tip/Need Help copy) in
+  Banker mode — it predates the dense-layout rollout and was left out of that pass since it's a
+  summary/decision screen rather than a data-entry form; cosmetic only.
+
 ---
 
 ## 2. Technical Architecture
