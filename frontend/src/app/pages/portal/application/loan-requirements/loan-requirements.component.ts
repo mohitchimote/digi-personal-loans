@@ -24,7 +24,7 @@ export class LoanRequirementsComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
-    private identity: EffectiveIdentityService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {
     this.form = this.fb.group({

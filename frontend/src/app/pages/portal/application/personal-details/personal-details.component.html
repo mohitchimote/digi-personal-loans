@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 9 } }}</div>
@@ -278,6 +279,164 @@
   </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.personalDetails' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card mb-16">
+    <div class="card-header"><h3>{{ 'personal.title' | translate }}</h3></div>
+
+    <form [formGroup]="form">
+      <div class="dense-section-label">{{ 'personal.identityHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'personal.firstNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="firstName" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.lastNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="lastName" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="date" formControlName="dateOfBirth" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="nationalId" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.idIssueDateLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="date" formControlName="idIssueDate" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="nationality">
+            <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.maritalStatusLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="maritalStatus">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.dependentsLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="dependents" min="0" max="20" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.phoneLabel' | translate }}</label>
+          <input class="db-input" type="tel" formControlName="phoneNumber" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.emailLabel' | translate }}</label>
+          <input class="db-input" type="email" formControlName="email" />
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'personal.addressHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'personal.streetLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="street" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="city" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="postCode" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="country" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="monthsAtCurrentAddress" min="0" />
+        </div>
+      </div>
+
+      <div formArrayName="previousAddresses">
+        <div class="previous-address-card" *ngFor="let pa of previousAddresses.controls; let i = index" [formGroupName]="i">
+          <div class="card-header">
+            <h4>{{ 'personal.previousAddressHeader' | translate:{ n: i + 1 } }}</h4>
+            <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="removePreviousAddress(i)">{{ 'common.delete' | translate }}</button>
+          </div>
+          <div class="dense-grid">
+            <div class="dense-field"><label>{{ 'personal.streetLabel' | translate }}</label><input class="db-input" type="text" formControlName="street" /></div>
+            <div class="dense-field"><label>{{ 'personal.cityLabel' | translate }}</label><input class="db-input" type="text" formControlName="city" /></div>
+            <div class="dense-field"><label>{{ 'personal.postCodeLabel' | translate }}</label><input class="db-input" type="text" formControlName="postCode" /></div>
+            <div class="dense-field"><label>{{ 'personal.countryLabel' | translate }}</label><input class="db-input" type="text" formControlName="country" /></div>
+            <div class="dense-field"><label>{{ 'personal.monthsAtAddressLabel' | translate }}</label><input class="db-input" type="number" formControlName="monthsAtAddress" min="0" /></div>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="needsMoreAddressHistory" (click)="addPreviousAddress()">
+        {{ 'personal.addPreviousAddress' | translate }}
+      </button>
+      <div class="db-alert db-alert--error mt-16" *ngIf="addressHistoryError()">{{ addressHistoryError() }}</div>
+
+      <div class="dense-section-label">{{ 'personal.staffAssistHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'personal.assistedByStaffQuestion' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <ng-container *ngIf="f('assistedByStaff')?.value === true">
+          <div class="dense-field">
+            <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
+            <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
+              <option value="">{{ 'common.select' | translate }}</option>
+              <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+            </select>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'personal.staffNameLabel' | translate }}</label>
+            <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
+              <option value="">{{ 'common.select' | translate }}</option>
+              <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+            </select>
+          </div>
+        </ng-container>
+      </div>
+    </form>
+
+    <ng-container *ngIf="isJoint">
+      <form [formGroup]="applicant2Form">
+        <div class="dense-section-label">{{ 'personal.applicant2Header' | translate }}</div>
+        <div class="dense-grid">
+          <div class="dense-field"><label>{{ 'personal.firstNameLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="firstName" /></div>
+          <div class="dense-field"><label>{{ 'personal.lastNameLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="lastName" /></div>
+          <div class="dense-field"><label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="date" formControlName="dateOfBirth" /></div>
+          <div class="dense-field"><label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="nationalId" /></div>
+          <div class="dense-field"><label>{{ 'personal.idIssueDateLabel' | translate }}</label><input class="db-input" type="date" formControlName="idIssueDate" /></div>
+          <div class="dense-field"><label>{{ 'personal.nationalityLabel' | translate }}</label>
+            <select class="db-select" formControlName="nationality"><option *ngFor="let n of nationalities" [value]="n">{{ n }}</option></select>
+          </div>
+          <div class="dense-field"><label>{{ 'personal.maritalStatusLabel' | translate }}</label>
+            <select class="db-select" formControlName="maritalStatus"><option value="">{{ 'common.select' | translate }}</option><option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option></select>
+          </div>
+          <div class="dense-field"><label>{{ 'personal.phoneLabel' | translate }}</label><input class="db-input" type="tel" formControlName="phoneNumber" /></div>
+          <div class="dense-field"><label>{{ 'personal.emailLabel' | translate }}</label><input class="db-input" type="email" formControlName="email" /></div>
+          <div class="dense-field"><label>{{ 'personal.relationshipLabel' | translate }}</label><input class="db-input" type="text" formControlName="relationshipToApplicant1" /></div>
+        </div>
+        <div class="db-alert db-alert--error mt-16" *ngIf="applicant2Error()">{{ applicant2Error() }}</div>
+      </form>
+    </ng-container>
+
+    <div class="dense-form-actions">
+      <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Consent modal: shown from "Save & Next" once the rest of the form is complete, only if no

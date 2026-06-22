@@ -46,7 +46,7 @@ export class PersonalDetailsComponent implements OnInit {
   private storedConsent: any = null;
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
+              public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
               private notifications: NotificationService) {
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
