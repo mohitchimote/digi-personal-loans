@@ -26,7 +26,7 @@ export class IncomeEmploymentComponent implements OnInit {
   applicant2Error = signal('');
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private identity: EffectiveIdentityService, private router: Router, private i18n: I18nService) {
+              public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService) {
     this.form = this.fb.group({
       employmentStatus:   ['', Validators.required],
       employer:           [''],

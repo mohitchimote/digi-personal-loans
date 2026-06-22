@@ -25,7 +25,7 @@ export class VerifyIdComponent implements OnInit {
   constructor(
     private appSvc: ApplicationService,
     private docSvc: DocumentService,
-    private identity: EffectiveIdentityService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {}
 

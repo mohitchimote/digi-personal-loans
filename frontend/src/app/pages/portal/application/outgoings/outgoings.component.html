@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 5, total: 9 } }}</div>
@@ -67,4 +68,45 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.outgoings' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'outgoings.title' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <div class="dense-section-label">{{ 'outgoings.housingHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field"><label>{{ 'outgoings.rentLabel' | translate }}</label><input class="db-input" type="number" formControlName="monthlyRent" min="0" /></div>
+        <div class="dense-field"><label>{{ 'outgoings.mortgageLabel' | translate }}</label><input class="db-input" type="number" formControlName="monthlyMortgage" min="0" /></div>
+      </div>
+
+      <div class="dense-section-label">{{ 'outgoings.debtHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field"><label>{{ 'outgoings.loansLabel' | translate }}</label><input class="db-input" type="number" formControlName="monthlyLoans" min="0" /></div>
+        <div class="dense-field"><label>{{ 'outgoings.creditCardLabel' | translate }}</label><input class="db-input" type="number" formControlName="creditCardPayments" min="0" /></div>
+        <div class="dense-field"><label>{{ 'outgoings.otherLabel' | translate }}</label><input class="db-input" type="number" formControlName="otherMonthlyCommitments" min="0" /></div>
+      </div>
+
+      <div class="dense-section-label">{{ 'outgoings.livingHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'outgoings.livingLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="monthlyLivingExpenses" min="0" />
+          <div class="db-error-msg" *ngIf="f('monthlyLivingExpenses')?.invalid && f('monthlyLivingExpenses')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+      </div>
+      <div class="outgoings-total" *ngIf="totalOutgoings > 0">
+        <span>{{ 'outgoings.totalLabel' | translate }}</span>
+        <span class="total-amount">₪{{ totalOutgoings | number:'1.0-0' }}</span>
+      </div>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

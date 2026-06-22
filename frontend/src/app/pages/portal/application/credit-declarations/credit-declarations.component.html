@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 6, total: 9 } }}</div>
@@ -149,4 +150,104 @@
   </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.creditDeclarations' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card mb-16">
+    <div class="card-header"><h3>{{ 'credit.title' | translate }}</h3></div>
+
+    <form [formGroup]="form">
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'credit.demoScoreTitle' | translate }}</label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="flex:1" />
+            <strong style="min-width:36px; text-align:center;">{{ f('creditScore')?.value }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'credit.historyHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'credit.defaultTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasDefaulted" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasDefaulted" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'credit.bankruptcyTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'credit.ccjTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'credit.paymentPlanTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <ng-container *ngIf="isJoint">
+      <form [formGroup]="applicant2Form">
+        <div class="dense-section-label">{{ 'credit.applicant2Header' | translate }}</div>
+        <div class="dense-grid">
+          <div class="dense-field">
+            <label>{{ 'credit.demoScoreTitle' | translate }}</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="flex:1" />
+              <strong style="min-width:36px; text-align:center;">{{ f2('creditScore')?.value }}</strong>
+            </div>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'credit.defaultTitle' | translate }}</label>
+            <div class="declaration-toggle">
+              <label class="toggle-label"><input type="radio" formControlName="hasDefaulted" [value]="false" /> {{ 'common.no' | translate }}</label>
+              <label class="toggle-label"><input type="radio" formControlName="hasDefaulted" [value]="true" /> {{ 'common.yes' | translate }}</label>
+            </div>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'credit.bankruptcyTitle' | translate }}</label>
+            <div class="declaration-toggle">
+              <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="false" /> {{ 'common.no' | translate }}</label>
+              <label class="toggle-label"><input type="radio" formControlName="hasBankruptcy" [value]="true" /> {{ 'common.yes' | translate }}</label>
+            </div>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'credit.ccjTitle' | translate }}</label>
+            <div class="declaration-toggle">
+              <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> {{ 'common.no' | translate }}</label>
+              <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> {{ 'common.yes' | translate }}</label>
+            </div>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'credit.paymentPlanTitle' | translate }}</label>
+            <div class="declaration-toggle">
+              <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="false" /> {{ 'common.no' | translate }}</label>
+              <label class="toggle-label"><input type="radio" formControlName="hasPaymentPlan" [value]="true" /> {{ 'common.yes' | translate }}</label>
+            </div>
+          </div>
+        </div>
+      </form>
+    </ng-container>
+
+    <div class="dense-form-actions">
+      <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </div>
 </div>

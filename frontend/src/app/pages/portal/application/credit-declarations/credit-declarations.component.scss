@@ -42,3 +42,43 @@ app-application-aside { flex: 0 0 300px; max-width: 300px; }
 }
 
 .form-actions { display: flex; justify-content: space-between; margin-top: 24px; }
+
+// Banker dense data-entry layout — see loan-requirements.component.scss for the canonical
+// version of this pattern, reused identically here.
+.banker-dense-form {
+  max-width: 1100px;
+
+  .dense-section-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--tcs-blue);
+    margin: 24px 0 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--light-grey);
+
+    &:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  }
+
+  .dense-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px 24px;
+
+    @media (max-width: 900px) { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 600px) { grid-template-columns: 1fr; }
+  }
+
+  .dense-field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dark-text);
+    margin-bottom: 6px;
+  }
+
+  .dense-form-actions {
+    margin-top: 24px;
+  }
+}

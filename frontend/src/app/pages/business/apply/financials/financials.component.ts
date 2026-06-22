@@ -20,7 +20,7 @@ export class FinancialsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       annualTurnover:   [null, [Validators.required, Validators.min(0)]],
       monthlyRevenue:   [null, [Validators.required, Validators.min(0)]],

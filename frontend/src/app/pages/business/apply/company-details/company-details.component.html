@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 1, total: 9 } }}</div>
@@ -111,4 +112,100 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.companyDetails' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card mb-16">
+    <div class="card-header"><h3>{{ 'company.detailsTitle' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'register.companyNameLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="companyName" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'register.companyRegNumberLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="companyRegistrationNumber" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'register.companyIndustryLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="industry" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'register.companyFoundedYearLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="yearFounded" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.streetLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="street" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="city" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'register.postCodeLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="postCode" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.countryLabel' | translate }}</label>
+          <input class="db-input" type="text" formControlName="country" />
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'company.loanRequestHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'loanReq.amountLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="loanAmount" min="20000" max="1000000" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="loanPurpose">
+            <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'loanReq.termLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="number" formControlName="loanTerm" min="6" max="84" />
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'personal.staffAssistHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'personal.assistedByStaffQuestion' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="assistedByStaff" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <ng-container *ngIf="f('assistedByStaff')?.value === true">
+          <div class="dense-field">
+            <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
+            <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
+              <option value="">{{ 'common.select' | translate }}</option>
+              <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+            </select>
+          </div>
+          <div class="dense-field">
+            <label>{{ 'personal.staffNameLabel' | translate }}</label>
+            <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
+              <option value="">{{ 'common.select' | translate }}</option>
+              <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+            </select>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

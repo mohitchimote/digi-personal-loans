@@ -34,7 +34,7 @@ export class BusinessConnectBankComponent implements OnInit {
     { id: 'mizrahi',  name: 'Mizrahi-Tefahot', icon: 'account_balance' },
   ];
 
-  constructor(private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {}
+  constructor(private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {}
 
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;

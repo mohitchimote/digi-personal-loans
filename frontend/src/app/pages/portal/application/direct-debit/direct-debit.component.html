@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 8, total: 9 } }}</div>
@@ -81,4 +82,73 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.directDebit' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'directDebit.title' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <div class="dense-section-label" *ngIf="isJoint() && accountCandidates.length">{{ 'directDebit.accountSourceHeader' | translate }}</div>
+      <div class="dense-grid" *ngIf="isJoint() && accountCandidates.length">
+        <div class="dense-field" *ngFor="let c of accountCandidates">
+          <label class="db-checkbox">
+            <input type="radio" formControlName="accountSource" [value]="c.source" (change)="applyAccountSource(c.source)" />
+            <span>{{ 'directDebit.accountSourceOption' | translate:{ name: c.name, bank: c.bankName } }}</span>
+          </label>
+        </div>
+        <div class="dense-field">
+          <label class="db-checkbox">
+            <input type="radio" formControlName="accountSource" value="manual" (change)="applyAccountSource('manual')" />
+            <span>{{ 'directDebit.accountSourceManual' | translate }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'directDebit.accountHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'directDebit.accountHolderLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="accountHolderName" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'directDebit.bankNameLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="bankCode">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let b of banks" [value]="b.code">{{ b.name }} ({{ b.code }})</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'directDebit.branchCodeLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="branchCode" [disabled]="!selectedBank">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let br of selectedBankBranches" [value]="br.code">{{ br.name }} ({{ br.code }})</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'directDebit.accountNumberLabel' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" formControlName="accountNumber" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'loanReq.repaymentDayLabel' | translate }} <span class="required">*</span></label>
+          <select class="db-select" formControlName="preferredRepaymentDay">
+            <option *ngFor="let d of repaymentDays" [value]="d">{{ 'loanReq.ofEachMonth' | translate:{ day: d } }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label class="db-checkbox">
+            <input type="checkbox" formControlName="confirmAuthorisation" />
+            <span>{{ 'directDebit.authConsent' | translate }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

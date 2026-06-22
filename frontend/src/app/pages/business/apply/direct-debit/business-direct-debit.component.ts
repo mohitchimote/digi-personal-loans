@@ -25,7 +25,7 @@ export class BusinessDirectDebitComponent implements OnInit {
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
   banks: IsraeliBank[] = ISRAELI_BANKS;
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       accountHolderName: ['', Validators.required],
       bankCode:          ['', Validators.required],

@@ -30,7 +30,7 @@ export class GuarantorDetailsComponent implements OnInit {
     private fb: FormBuilder,
     private appSvc: ApplicationService,
     private docSvc: DocumentService,
-    private identity: EffectiveIdentityService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {
     this.form = this.fb.group({

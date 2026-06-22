@@ -44,7 +44,7 @@ export class ConnectBankComponent implements OnInit {
 
   constructor(
     private appSvc: ApplicationService,
-    private identity: EffectiveIdentityService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {}
 

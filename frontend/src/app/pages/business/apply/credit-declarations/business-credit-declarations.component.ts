@@ -19,7 +19,7 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       hasLiquidationOrWindingUp: [false, Validators.required],
       hasCompanyDefaulted:       [false, Validators.required],

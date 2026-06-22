@@ -20,7 +20,7 @@ export class OutgoingsComponent implements OnInit {
   appRef = signal('');
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private identity: EffectiveIdentityService, private router: Router) {
+              public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       monthlyRent:               [0, [Validators.required, Validators.min(0)]],
       monthlyMortgage:           [0, [Validators.required, Validators.min(0)]],

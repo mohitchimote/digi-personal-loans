@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 2, total: 9 } }}</div>
@@ -53,4 +54,52 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.signatories' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'company.signatoriesTitle' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <ng-container *ngFor="let group of signatories.controls; let i = index" [formGroup]="$any(group)">
+        <div class="dense-section-label" style="display:flex; align-items:center; justify-content:space-between;">
+          <span>{{ 'company.signatoryHeader' | translate:{ n: i + 1 } }}</span>
+          <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="signatories.length > 1" (click)="removeSignatory(i)">{{ 'common.remove' | translate }}</button>
+        </div>
+        <div class="dense-grid">
+          <div class="dense-field">
+            <label>{{ 'register.fullNameLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" formControlName="fullName" />
+          </div>
+          <div class="dense-field">
+            <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" inputmode="numeric" maxlength="9" formControlName="nationalId" />
+          </div>
+          <div class="dense-field">
+            <label>{{ 'company.signatoryTitleLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" formControlName="title" />
+          </div>
+          <div class="dense-field">
+            <label>{{ 'company.ownershipLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="number" min="0" max="100" formControlName="ownershipPercentage" />
+          </div>
+          <div class="dense-field">
+            <label class="db-checkbox">
+              <input type="checkbox" formControlName="primarySignatory" />
+              <span>{{ 'company.primarySignatoryLabel' | translate }}</span>
+            </label>
+          </div>
+        </div>
+      </ng-container>
+
+      <button type="button" class="db-btn db-btn--outline db-btn--sm mt-8" (click)="addSignatory()">{{ 'company.addSignatory' | translate }}</button>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

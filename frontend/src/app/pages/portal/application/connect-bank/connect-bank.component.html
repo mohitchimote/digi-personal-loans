@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 3, total: 9 } }}</div>
@@ -88,4 +89,66 @@
   </div>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.connectBank' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card mb-16">
+    <div class="card-header"><h3>{{ 'connectBank.title' | translate }}</h3></div>
+
+    <div class="dense-section-label" *ngIf="isJoint">{{ 'connectBank.applicant1Header' | translate }}</div>
+    <div *ngIf="!connected() && !connecting()">
+      <div class="bank-grid">
+        <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
+          <span class="bank-icon material-icons">{{ b.icon }}</span>
+          <span>{{ b.name }}</span>
+        </button>
+      </div>
+    </div>
+    <div class="connecting-state" *ngIf="connecting()">
+      <div class="spinner"></div>
+      <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank?.name }}…</p>
+    </div>
+    <div class="connected-state" *ngIf="connected() && connectionSummary">
+      <div class="db-alert db-alert--success mb-16">✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank?.name || '' } }}</div>
+      <div class="review-grid">
+        <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary.accountMasked }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary.avgBalance | number }}</strong></div>
+        <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary.transactions }}</strong></div>
+      </div>
+      <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
+    </div>
+
+    <ng-container *ngIf="isJoint">
+      <div class="dense-section-label">{{ 'connectBank.applicant2Header' | translate }}</div>
+      <div *ngIf="!connected2() && !connecting2()">
+        <div class="bank-grid">
+          <button class="bank-tile" *ngFor="let b of banks" (click)="connect2(b)">
+            <span class="bank-icon material-icons">{{ b.icon }}</span>
+            <span>{{ b.name }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="connecting-state" *ngIf="connecting2()">
+        <div class="spinner"></div>
+        <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank2?.name }}…</p>
+      </div>
+      <div class="connected-state" *ngIf="connected2() && connectionSummary2">
+        <div class="db-alert db-alert--success mb-16">✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank2?.name || '' } }}</div>
+        <div class="review-grid">
+          <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary2.accountMasked }}</strong></div>
+          <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary2.avgBalance | number }}</strong></div>
+          <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary2.transactions }}</strong></div>
+        </div>
+        <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect2()">{{ 'connectBank.disconnect' | translate }}</button>
+      </div>
+    </ng-container>
+
+    <div class="dense-form-actions">
+      <button class="db-btn db-btn--outline" (click)="continue()" [disabled]="saving() || connecting() || connecting2()" *ngIf="!connected() && !connected2()">{{ 'connectBank.skipForNow' | translate }}</button>
+      <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="saving() || connecting() || connecting2()">
+        {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+      </button>
+    </div>
+  </div>
 </div>

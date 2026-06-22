@@ -22,7 +22,7 @@ export class CreditDeclarationsComponent implements OnInit {
   numberOfApplicants = signal(1);
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private identity: EffectiveIdentityService, private router: Router) {
+              public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       hasDefaulted:   [false, Validators.required],
       hasBankruptcy:  [false, Validators.required],

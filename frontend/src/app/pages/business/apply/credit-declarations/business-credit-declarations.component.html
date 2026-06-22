@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 6, total: 9 } }}</div>
@@ -71,4 +72,54 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.businessCredit' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'company.creditTitle' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'company.demoScoreTitle' | translate }}</label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <input type="range" min="1" max="100" step="1" formControlName="directorCreditScore" style="flex:1" />
+            <strong style="min-width:32px; text-align:center;">{{ f('directorCreditScore')?.value }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="dense-section-label">{{ 'credit.historyHeader' | translate }}</div>
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'company.liquidationTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasLiquidationOrWindingUp" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasLiquidationOrWindingUp" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'company.companyDefaultTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasCompanyDefaulted" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasCompanyDefaulted" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'credit.ccjTitle' | translate }}</label>
+          <div class="declaration-toggle">
+            <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="false" /> {{ 'common.no' | translate }}</label>
+            <label class="toggle-label"><input type="radio" formControlName="hasCCJ" [value]="true" /> {{ 'common.yes' | translate }}</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

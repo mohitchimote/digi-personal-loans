@@ -1,4 +1,5 @@
-<div class="application-layout">
+<!-- Customer view -->
+<div class="application-layout" *ngIf="!identity.isAssisting">
 <div class="form-page">
   <div class="form-section-header">
     <div class="section-badge">{{ 'wizard.stepOf' | translate:{ n: 5, total: 9 } }}</div>
@@ -39,4 +40,26 @@
   </form>
 </div>
 <app-application-aside [appRef]="appRef()" [tip]="'aside.tip.businessOutgoings' | translate"></app-application-aside>
+</div>
+
+<!-- Banker dense view -->
+<div class="banker-dense-form" *ngIf="identity.isAssisting">
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'company.outgoingsTitle' | translate }}</h3></div>
+
+    <form [formGroup]="form" (ngSubmit)="saveAndNext()">
+      <div class="dense-grid">
+        <div class="dense-field"><label>{{ 'company.existingDebtServiceLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="number" min="0" formControlName="existingBusinessDebtService" /></div>
+        <div class="dense-field"><label>{{ 'company.leaseRentLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="number" min="0" formControlName="monthlyLeaseRent" /></div>
+        <div class="dense-field"><label>{{ 'company.payrollLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="number" min="0" formControlName="monthlyPayroll" /></div>
+        <div class="dense-field"><label>{{ 'company.supplierPaymentsLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="number" min="0" formControlName="monthlySupplierPayments" /></div>
+      </div>
+
+      <div class="dense-form-actions">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+          {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
