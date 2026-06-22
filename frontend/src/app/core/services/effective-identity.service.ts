@@ -53,15 +53,22 @@ export class EffectiveIdentityService {
 
   /** "Save & Next" route for a wizard step — every step hardcodes its own next-step slug. While
    * assisting, that needs to land back inside the Banker shell instead of the customer's /portal
-   * or /business routes (wrong shell entirely, and the Banker isn't logged in as that customer).
-   * `toCaseOverview` covers the one edge where the next step isn't part of the Banker's reachable
-   * sections (review-submit, out of scope for now — see plan) — falls back to the case page
-   * instead of a 404 inside the Banker shell. */
+   * or /business routes (wrong shell entirely, and the Banker isn't logged in as that customer). */
   applyUrl(routeSlug: string, isBusiness = false, toCaseOverview = false): any[] {
     if (this.isAssisting) {
       if (toCaseOverview) return ['/banker/case', this.appRef];
       return ['/banker/case', this.appRef, 'apply', isBusiness ? 'business' : 'personal', routeSlug];
     }
     return [isBusiness ? '/business/apply' : '/portal/apply', routeSlug];
+  }
+
+  /** Same idea as applyUrl, but for the post-submit stages (review-submit, affordability-results,
+   * products, approval) which live outside /portal/apply|/business/apply for a normal customer —
+   * they take an explicit customer-side prefix instead of assuming the wizard's "apply" base. */
+  stepUrl(routeSlug: string, isBusiness: boolean, customerPrefix: string): any[] {
+    if (this.isAssisting) {
+      return ['/banker/case', this.appRef, 'apply', isBusiness ? 'business' : 'personal', routeSlug];
+    }
+    return [customerPrefix, routeSlug];
   }
 }

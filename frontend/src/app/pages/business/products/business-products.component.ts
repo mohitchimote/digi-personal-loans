@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService } from '../../../core/services/product.service';
 import { ApplicationService } from '../../../core/services/application.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../core/services/effective-identity.service';
 import { EligibleProduct } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { dnbScoreToLenderGrade } from '../../../core/utils/credit-score.util';
@@ -28,16 +28,17 @@ export class BusinessProductsComponent implements OnInit {
   constructor(
     private productSvc: ProductService,
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId;
-    const email  = this.auth.userEmail;
+    const userId = this.identity.userId;
+    const email  = this.identity.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.getCurrent(userId).subscribe({
+    const source = this.identity.appRef ? this.appSvc.getApplication(this.identity.appRef) : this.appSvc.getCurrent(userId);
+    source.subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         const company = JSON.parse(app.companyDetailsJson || '{}');
@@ -91,13 +92,14 @@ export class BusinessProductsComponent implements OnInit {
       monthlyRepayment: this.monthlyRepayment(product, product.productId)
     }).subscribe({
       next: app => {
+        const approvalUrl = this.identity.stepUrl('approval', true, '/business');
         if (app.status === 'APPROVED') {
-          this.router.navigate(['/business/approval']);
+          this.router.navigate(approvalUrl);
           return;
         }
         this.appSvc.approve(ref).subscribe({
-          next: () => this.router.navigate(['/business/approval']),
-          error: () => { this.selecting.set(false); this.router.navigate(['/business/approval']); }
+          next: () => this.router.navigate(approvalUrl),
+          error: () => { this.selecting.set(false); this.router.navigate(approvalUrl); }
         });
       },
       error: () => this.selecting.set(false)

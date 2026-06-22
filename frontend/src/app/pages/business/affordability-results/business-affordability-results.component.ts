@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AffordabilityService } from '../../../core/services/affordability.service';
 import { ApplicationService } from '../../../core/services/application.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../core/services/effective-identity.service';
 import { BusinessAffordabilityResult } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { dnbScoreToLenderGrade } from '../../../core/utils/credit-score.util';
@@ -23,15 +23,16 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
   constructor(
     private affordability: AffordabilityService,
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    public identity: EffectiveIdentityService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.getCurrent(userId).subscribe({
+    const source = this.identity.appRef ? this.appSvc.getApplication(this.identity.appRef) : this.appSvc.getCurrent(userId);
+    source.subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         const financials = JSON.parse(app.businessFinancialsJson || '{}');
@@ -57,7 +58,7 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
             this.loading.set(false);
             this.appSvc.saveAffordabilityResult(app.applicationRef, res).subscribe({ error: () => {} });
             if (res.passed) {
-              this.router.navigate(['/business/products']);
+              this.router.navigate(this.identity.stepUrl('products', true, '/business'));
             }
           },
           error: () => this.loading.set(false)
@@ -67,6 +68,6 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
   }
 
   proceed(): void {
-    this.router.navigate(['/business/products']);
+    this.router.navigate(this.identity.stepUrl('products', true, '/business'));
   }
 }

@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../core/services/application.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../core/services/effective-identity.service';
 import { LoanApplication, GeneratedDocument } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
@@ -26,16 +26,16 @@ export class BusinessApprovalComponent implements OnInit {
   constructor(
     private appSvc: ApplicationService,
     private docSvc: DocumentService,
-    private auth: AuthService,
+    public identity: EffectiveIdentityService,
     private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId;
-    const email  = this.auth.userEmail;
+    const userId = this.identity.userId;
+    const email  = this.identity.userEmail;
     if (!userId || !email) return;
 
-    const appRef = this.route.snapshot.paramMap.get('appRef');
+    const appRef = this.identity.appRef ?? this.route.snapshot.paramMap.get('appRef');
     const source = appRef ? this.appSvc.getApplication(appRef) : this.appSvc.getCurrent(userId);
 
     source.subscribe({
@@ -81,7 +81,7 @@ export class BusinessApprovalComponent implements OnInit {
 
     this.docSvc.generate({
       applicationRef: app.applicationRef,
-      customerId: this.auth.userId!,
+      customerId: this.identity.userId!,
       documentType: 'APPROVAL_LETTER',
       customerName: this.company.companyName,
       loanAmount: this.company.loanAmount,

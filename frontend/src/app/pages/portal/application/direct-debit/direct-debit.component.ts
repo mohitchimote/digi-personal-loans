@@ -137,7 +137,7 @@ export class DirectDebitComponent implements OnInit {
       branchName: this.selectedBranchName,
     };
     this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.identity.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('review-submit', false, true)); },
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('review-submit', false)); },
       error: () => this.saving.set(false)
     });
   }

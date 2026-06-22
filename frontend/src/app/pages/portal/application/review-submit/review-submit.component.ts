@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { LoanApplication } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
@@ -24,12 +24,12 @@ export class ReviewSubmitComponent implements OnInit {
   submitting = signal(false);
   error = signal('');
 
-  constructor(private appSvc: ApplicationService, private auth: AuthService, private router: Router) {}
+  constructor(private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => this.application.set(app)
     });
   }
@@ -63,13 +63,13 @@ export class ReviewSubmitComponent implements OnInit {
 
     this.appSvc.saveSection(app.applicationRef, 'reviewSubmit',
       { agreedToTerms: true, agreedToPrivacyPolicy: true, electronicSignature: this.signature, submittedAt: new Date().toISOString() },
-      this.auth.userId!
+      this.identity.userId!
     ).subscribe({
       next: () => {
         this.appSvc.submit(app.applicationRef).subscribe({
           next: () => {
             this.submitting.set(false);
-            this.router.navigate(['/portal/affordability-results']);
+            this.router.navigate(this.identity.stepUrl('affordability-results', false, '/portal'));
           },
           error: () => { this.submitting.set(false); this.error.set('Submission failed. Please try again.'); }
         });

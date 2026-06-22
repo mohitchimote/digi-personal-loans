@@ -102,6 +102,10 @@ export const routes: Routes = [
           { path: 'personal/credit-declarations', loadComponent: () => import('./pages/portal/application/credit-declarations/credit-declarations.component').then(m => m.CreditDeclarationsComponent) },
           { path: 'personal/verify-id',           loadComponent: () => import('./pages/portal/application/verify-id/verify-id.component').then(m => m.VerifyIdComponent) },
           { path: 'personal/direct-debit',        loadComponent: () => import('./pages/portal/application/direct-debit/direct-debit.component').then(m => m.DirectDebitComponent) },
+          { path: 'personal/review-submit',       loadComponent: () => import('./pages/portal/application/review-submit/review-submit.component').then(m => m.ReviewSubmitComponent) },
+          { path: 'personal/affordability-results', loadComponent: () => import('./pages/portal/affordability-results/affordability-results.component').then(m => m.AffordabilityResultsComponent) },
+          { path: 'personal/products',            loadComponent: () => import('./pages/portal/products/products.component').then(m => m.ProductsComponent) },
+          { path: 'personal/approval',            loadComponent: () => import('./pages/portal/approval/approval.component').then(m => m.ApprovalComponent) },
           { path: 'business/company-details',      loadComponent: () => import('./pages/business/apply/company-details/company-details.component').then(m => m.CompanyDetailsComponent) },
           { path: 'business/signatories',          loadComponent: () => import('./pages/business/apply/signatories/signatories.component').then(m => m.SignatoriesComponent) },
           { path: 'business/guarantor-details',    loadComponent: () => import('./pages/business/apply/guarantor-details/business-guarantor-details.component').then(m => m.BusinessGuarantorDetailsComponent) },
@@ -111,6 +115,10 @@ export const routes: Routes = [
           { path: 'business/credit-declarations',  loadComponent: () => import('./pages/business/apply/credit-declarations/business-credit-declarations.component').then(m => m.BusinessCreditDeclarationsComponent) },
           { path: 'business/verify-id',            loadComponent: () => import('./pages/business/apply/verify-id/business-verify-id.component').then(m => m.BusinessVerifyIdComponent) },
           { path: 'business/direct-debit',         loadComponent: () => import('./pages/business/apply/direct-debit/business-direct-debit.component').then(m => m.BusinessDirectDebitComponent) },
+          { path: 'business/review-submit',        loadComponent: () => import('./pages/business/apply/review-submit/business-review-submit.component').then(m => m.BusinessReviewSubmitComponent) },
+          { path: 'business/affordability-results', loadComponent: () => import('./pages/business/affordability-results/business-affordability-results.component').then(m => m.BusinessAffordabilityResultsComponent) },
+          { path: 'business/products',             loadComponent: () => import('./pages/business/products/business-products.component').then(m => m.BusinessProductsComponent) },
+          { path: 'business/approval',             loadComponent: () => import('./pages/business/approval/business-approval.component').then(m => m.BusinessApprovalComponent) },
         ]
       },
     ]
