@@ -23,8 +23,8 @@
     <!-- Read mode -->
     <ng-container *ngIf="!isEditing(s.key)">
       <div class="review-grid">
-        <div class="review-item" *ngFor="let k of scalarKeys(s.key, sectionData(s.key))">
-          <span>{{ k }}</span><strong>{{ sectionData(s.key)[k] }}</strong>
+        <div class="review-item" *ngFor="let f of fieldsFor(s.key)">
+          <span>{{ f.labelKey | translate }}</span><strong>{{ displayValue(sectionData(s.key)[f.key]) }}</strong>
         </div>
       </div>
       <div class="review-grid mt-16" *ngIf="hasAssistFields(s.key)">
@@ -34,9 +34,6 @@
       </div>
       <div class="text-muted mt-8" style="font-size:0.8rem" *ngIf="complexKeys(s.key, sectionData(s.key)).length">
         {{ 'banker.complexFieldsNote' | translate }}: {{ complexKeys(s.key, sectionData(s.key)).join(', ') }}
-      </div>
-      <div class="text-muted" style="font-size:0.875rem" *ngIf="!scalarKeys(s.key, sectionData(s.key)).length && !complexKeys(s.key, sectionData(s.key)).length && !hasAssistFields(s.key)">
-        {{ 'banker.noDataYet' | translate }}
       </div>
     </ng-container>
 
@@ -69,12 +66,16 @@
         </div>
       </div>
 
-      <div class="form-row" *ngFor="let k of scalarKeys(s.key, editBuffer)">
-        <div class="db-form-group">
-          <label>{{ k }}</label>
-          <input *ngIf="fieldType(editBuffer[k]) === 'text'" class="db-input" [(ngModel)]="editBuffer[k]" />
-          <input *ngIf="fieldType(editBuffer[k]) === 'number'" class="db-input" type="number" [(ngModel)]="editBuffer[k]" />
-          <input *ngIf="fieldType(editBuffer[k]) === 'checkbox'" type="checkbox" [(ngModel)]="editBuffer[k]" />
+      <div class="form-row" *ngFor="let f of fieldsFor(s.key)">
+        <div class="db-form-group" [class.checkbox-field]="f.type === 'checkbox'">
+          <label *ngIf="f.type !== 'checkbox'">{{ f.labelKey | translate }}</label>
+          <input *ngIf="f.type === 'text'" class="db-input" [(ngModel)]="editBuffer[f.key]" />
+          <input *ngIf="f.type === 'number'" class="db-input" type="number" [(ngModel)]="editBuffer[f.key]" />
+          <input *ngIf="f.type === 'date'" class="db-input" type="date" [(ngModel)]="editBuffer[f.key]" />
+          <label *ngIf="f.type === 'checkbox'" class="db-checkbox">
+            <input type="checkbox" [(ngModel)]="editBuffer[f.key]" />
+            <span>{{ f.labelKey | translate }}</span>
+          </label>
         </div>
       </div>
 

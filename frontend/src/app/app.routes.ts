@@ -83,6 +83,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'queue', pathMatch: 'full' },
       { path: 'queue',     loadComponent: () => import('./pages/banker/queue/banker-queue.component').then(m => m.BankerQueueComponent) },
+      { path: 'create',    loadComponent: () => import('./pages/banker/create-application/banker-create-application.component').then(m => m.BankerCreateApplicationComponent) },
       { path: 'case/:appRef', loadComponent: () => import('./pages/banker/case-detail/banker-case-detail.component').then(m => m.BankerCaseDetailComponent) },
     ]
   },

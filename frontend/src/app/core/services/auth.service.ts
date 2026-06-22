@@ -30,6 +30,14 @@ export class AuthService {
     return this.http.post<any>(`${API}/register/resend-otp`, { email });
   }
 
+  /** Banker-assisted registration — creates the customer account pre-verified (the Banker has
+   * already confirmed identity by phone/in branch). Deliberately does NOT call storeSession():
+   * the response's token belongs to the new customer, not the Banker, and must never overwrite
+   * the Banker's own logged-in session. */
+  registerByStaff(req: RegisterRequest): Observable<{ success: boolean; message: string; data: AuthResponse }> {
+    return this.http.post<any>(`${API}/register-by-staff`, req);
+  }
+
   requestLoginOtp(req: LoginOtpRequest): Observable<{ success: boolean; message: string; data: LoginOtpInitiatedResponse }> {
     return this.http.post<any>(`${API}/login/request-otp`, req);
   }

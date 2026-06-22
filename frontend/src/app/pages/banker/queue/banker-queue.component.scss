@@ -1,3 +1,15 @@
+.page-header {
+  h2 { margin-bottom: 6px; }
+  .page-sub { color: var(--mid-grey); font-size: 0.9rem; }
+}
+
+.page-header--with-action {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .loading-row {
   display: flex;
   align-items: center;

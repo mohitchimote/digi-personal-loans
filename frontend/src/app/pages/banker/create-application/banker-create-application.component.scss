@@ -1,0 +1,38 @@
+.page-header {
+  h2 { margin-bottom: 6px; }
+  .page-sub { color: var(--mid-grey); font-size: 0.9rem; }
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--tcs-blue, #003F79);
+  text-decoration: none;
+  margin-bottom: 8px;
+
+  &:hover { text-decoration: underline; }
+}
+
+.account-type-toggle {
+  display: flex;
+  border: 1px solid var(--light-grey);
+  border-radius: 8px;
+  overflow: hidden;
+
+  button {
+    flex: 1;
+    padding: 10px;
+    background: var(--off-white, #F7F9FC);
+    border: none;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--mid-grey);
+    transition: all 0.15s;
+
+    &.active { background: var(--tcs-blue); color: #fff; }
+    &:not(.active):hover { background: var(--light-grey); }
+  }
+}

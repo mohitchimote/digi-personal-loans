@@ -78,6 +78,49 @@ public class AuthService implements UserDetailsService {
                 .build();
     }
 
+    /** Banker-assisted registration: a Banker has already verified the customer's identity in
+     * person or by phone, so the account is created enabled/verified straight away — no
+     * email-OTP round trip like the customer self-service register() above. */
+    @Transactional
+    public AuthResponse registerByStaff(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("An account with this email address already exists.");
+        }
+        if (userRepository.existsByNationalId(request.getNationalId())) {
+            throw new IllegalArgumentException("An account with this National ID already exists.");
+        }
+
+        boolean isBusiness = "BUSINESS".equals(request.getAccountType());
+        if (isBusiness) {
+            if (request.getCompanyName() == null || request.getCompanyName().isBlank()) {
+                throw new IllegalArgumentException("Company name is required for a business account.");
+            }
+            if (request.getCompanyRegistrationNumber() == null || request.getCompanyRegistrationNumber().isBlank()) {
+                throw new IllegalArgumentException("Company registration number is required for a business account.");
+            }
+        }
+
+        User.Builder builder = User.builder()
+                .email(request.getEmail())
+                .nationalId(request.getNationalId())
+                .idIssueDate(request.getIdIssueDate())
+                .fullName(request.getFullName())
+                .phoneNumber(request.getPhoneNumber())
+                .role(isBusiness ? "BUSINESS_OWNER" : "CUSTOMER")
+                .enabled(true)
+                .emailVerified(true);
+
+        if (isBusiness) {
+            builder.companyName(request.getCompanyName())
+                    .companyRegistrationNumber(request.getCompanyRegistrationNumber())
+                    .companyIndustry(request.getCompanyIndustry())
+                    .companyFoundedYear(request.getCompanyFoundedYear());
+        }
+
+        User saved = userRepository.save(builder.build());
+        return buildAuthResponse(saved);
+    }
+
     @Transactional
     public AuthResponse verifyRegistrationOtp(String email, String otp) {
         User user = userRepository.findByEmail(email)

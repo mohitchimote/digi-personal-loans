@@ -1,6 +1,9 @@
-<div class="page-header mb-24">
-  <h2>{{ 'banker.queueTitle' | translate }}</h2>
-  <p class="page-sub">{{ 'banker.queueSubtitle' | translate }}</p>
+<div class="page-header mb-24 page-header--with-action">
+  <div>
+    <h2>{{ 'banker.queueTitle' | translate }}</h2>
+    <p class="page-sub">{{ 'banker.queueSubtitle' | translate }}</p>
+  </div>
+  <a routerLink="/banker/create" class="db-btn db-btn--primary"><span class="material-icons mi-sm">add</span> {{ 'banker.createApplication' | translate }}</a>
 </div>
 
 <div class="loading-row" *ngIf="loading()">

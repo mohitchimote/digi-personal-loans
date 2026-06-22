@@ -53,6 +53,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/register-by-staff")
+    public ResponseEntity<ApiResponse<AuthResponse>> registerByStaff(@Valid @RequestBody RegisterRequest request) {
+        try {
+            AuthResponse response = authService.registerByStaff(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Customer account created.", response));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/register/verify-otp")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
         try {
