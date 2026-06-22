@@ -295,6 +295,26 @@ export class BankerCaseDetailComponent implements OnInit {
     return SECTION_FIELDS[sectionKey] || [];
   }
 
+  private fieldPairsCache: Record<string, FieldDef[][]> = {};
+
+  /** .form-row is a 2-column grid expecting two children — pairs fields up two at a time so the
+   * edit form renders in the same 2-column layout as the read-mode .review-grid, instead of one
+   * field per row each only filling the left half. Cached per section key: SECTION_FIELDS is
+   * static, so recomputing on every call (this is read from an *ngFor, i.e. every change-detection
+   * cycle) would hand back a new array each time and thrash the DOM for no reason. */
+  fieldPairs(sectionKey: string): FieldDef[][] {
+    const cacheKey = sectionKey === 'directDebit' ? `directDebit:${this.isBusiness}` : sectionKey;
+    if (!this.fieldPairsCache[cacheKey]) {
+      const fields = this.fieldsFor(sectionKey);
+      const pairs: FieldDef[][] = [];
+      for (let i = 0; i < fields.length; i += 2) {
+        pairs.push(fields.slice(i, i + 2));
+      }
+      this.fieldPairsCache[cacheKey] = pairs;
+    }
+    return this.fieldPairsCache[cacheKey];
+  }
+
   displayValue(value: any): string {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'boolean') return this.i18n.t(value ? 'common.yes' : 'common.no');

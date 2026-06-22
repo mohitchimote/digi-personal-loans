@@ -106,8 +106,8 @@
               </div>
             </div>
 
-            <div class="form-row" *ngFor="let f of fieldsFor(s.key)">
-              <div class="db-form-group" [class.checkbox-field]="f.type === 'checkbox'">
+            <div class="form-row" *ngFor="let pair of fieldPairs(s.key)">
+              <div class="db-form-group" *ngFor="let f of pair" [class.checkbox-field]="f.type === 'checkbox'">
                 <label *ngIf="f.type !== 'checkbox'">{{ f.labelKey | translate }}</label>
                 <input *ngIf="f.type === 'text'" class="db-input" [(ngModel)]="editBuffer[f.key]" />
                 <input *ngIf="f.type === 'number'" class="db-input" type="number" [(ngModel)]="editBuffer[f.key]" />
