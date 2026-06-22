@@ -30,7 +30,7 @@ public class SecurityConfig {
                         "/api/auth/login/request-otp", "/api/auth/login/verify-otp", "/api/auth/faqs").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/logo/**").permitAll()
                 .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/auth/register-by-staff").hasRole("BANKER")
+                .requestMatchers("/api/auth/register-by-staff", "/api/auth/customer-profile/**").hasRole("BANKER")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

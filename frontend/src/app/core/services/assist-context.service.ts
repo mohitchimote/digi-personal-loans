@@ -5,6 +5,15 @@ export interface AssistTarget {
   customerEmail: string;
   appRef: string;
   applicationType: 'PERSONAL' | 'BUSINESS';
+  /** The customer's own profile data, captured at account creation — never the Banker's. Used to
+   * prefill wizard sections (e.g. Personal Details) the way a normal customer's own login data
+   * would. Optional because it's a best-effort fetch (see assistContextResolver) — missing it
+   * just means no prefill, not a broken assist session. */
+  customerFullName?: string | null;
+  customerPhone?: string | null;
+  customerNationalId?: string | null;
+  customerIdIssueDate?: string | null;
+  customerCompanyName?: string | null;
 }
 
 /** Holds the active "Banker acting as customer X" target while a staff member fills in a

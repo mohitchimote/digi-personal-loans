@@ -214,7 +214,10 @@ export class PersonalDetailsComponent implements OnInit {
           this.form.patchValue(data);
           if (data.applicant2) this.applicant2Form.patchValue(data.applicant2);
         } else {
+          const [firstName, ...rest] = (this.identity.userFullName || '').trim().split(/\s+/).filter(Boolean);
           this.form.patchValue({
+            firstName: firstName || '',
+            lastName: rest.join(' '),
             phoneNumber: this.identity.userPhone,
             email: this.identity.userEmail,
             nationalId: this.identity.userNationalId,

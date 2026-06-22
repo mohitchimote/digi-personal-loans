@@ -25,6 +25,16 @@ export interface RegisterRequest {
   companyFoundedYear?: number;
 }
 
+export interface CustomerProfileResponse {
+  id: number;
+  email: string;
+  nationalId: string;
+  idIssueDate: string;
+  fullName: string;
+  phoneNumber?: string;
+  companyName?: string;
+}
+
 export interface RegisterInitiatedResponse {
   email: string;
   // Demo-only: in production this would be sent via SMS/email, not returned in the API response.

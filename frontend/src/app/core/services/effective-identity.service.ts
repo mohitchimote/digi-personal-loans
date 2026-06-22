@@ -5,9 +5,9 @@ import { AssistContextService } from './assist-context.service';
 /** Facade every wizard component reads identity through instead of AuthService directly. For a
  * normal customer this is a pass-through to AuthService. While a Banker is assisting, it resolves
  * to the assisted customer's identity instead — so the exact same wizard component works for both
- * without a single role check inside it. Convenience-prefill fields return null while assisting:
- * a brand-new assisted application should never get prefilled with the Banker's own phone/
- * National ID/company name. */
+ * without a single role check inside it. Convenience-prefill fields (phone/National ID/issue
+ * date/company name) read from the customer's own profile while assisting (fetched by
+ * assistContextResolver) — never the Banker's own AuthService data. */
 @Injectable({ providedIn: 'root' })
 export class EffectiveIdentityService {
   constructor(private auth: AuthService, private assist: AssistContextService) {}
@@ -32,23 +32,23 @@ export class EffectiveIdentityService {
   }
 
   get userPhone(): string | null {
-    return this.isAssisting ? null : this.auth.userPhone;
+    return this.isAssisting ? (this.assist.current?.customerPhone ?? null) : this.auth.userPhone;
   }
 
   get userNationalId(): string | null {
-    return this.isAssisting ? null : this.auth.userNationalId;
+    return this.isAssisting ? (this.assist.current?.customerNationalId ?? null) : this.auth.userNationalId;
   }
 
   get userIdIssueDate(): string | null {
-    return this.isAssisting ? null : this.auth.userIdIssueDate;
+    return this.isAssisting ? (this.assist.current?.customerIdIssueDate ?? null) : this.auth.userIdIssueDate;
   }
 
   get userFullName(): string | null {
-    return this.isAssisting ? null : this.auth.userFullName;
+    return this.isAssisting ? (this.assist.current?.customerFullName ?? null) : this.auth.userFullName;
   }
 
   get companyName(): string | null {
-    return this.isAssisting ? null : this.auth.companyName;
+    return this.isAssisting ? (this.assist.current?.customerCompanyName ?? null) : this.auth.companyName;
   }
 
   /** "Save & Next" route for a wizard step — every step hardcodes its own next-step slug. While

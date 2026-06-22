@@ -2,6 +2,7 @@ package com.digibank.auth.controller;
 
 import com.digibank.auth.dto.ApiResponse;
 import com.digibank.auth.dto.AuthResponse;
+import com.digibank.auth.dto.CustomerProfileResponse;
 import com.digibank.auth.dto.LoginOtpInitiatedResponse;
 import com.digibank.auth.dto.LoginOtpRequest;
 import com.digibank.auth.dto.LoginVerifyRequest;
@@ -11,6 +12,7 @@ import com.digibank.auth.dto.RegisterInitiatedResponse;
 import com.digibank.auth.dto.RegisterRequest;
 import com.digibank.auth.model.Faq;
 import com.digibank.auth.repository.FaqRepository;
+import com.digibank.auth.repository.UserRepository;
 import com.digibank.auth.security.JwtTokenProvider;
 import com.digibank.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -29,11 +31,13 @@ public class AuthController {
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
     private final FaqRepository faqRepository;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, JwtTokenProvider jwtTokenProvider, FaqRepository faqRepository) {
+    public AuthController(AuthService authService, JwtTokenProvider jwtTokenProvider, FaqRepository faqRepository, UserRepository userRepository) {
         this.authService = authService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.faqRepository = faqRepository;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/faqs")
@@ -107,6 +111,16 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /** Lets a Banker assisting a customer's application prefill wizard sections with data the
+     * customer already gave at account creation (name/phone/National ID/issue date) — never the
+     * Banker's own identity. See EffectiveIdentityService on the frontend. */
+    @GetMapping("/customer-profile/{id}")
+    public ResponseEntity<ApiResponse<CustomerProfileResponse>> getCustomerProfile(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(u -> ResponseEntity.ok(ApiResponse.success("OK", CustomerProfileResponse.from(u))))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.<CustomerProfileResponse>error("Customer not found.")));
     }
 
     @GetMapping("/validate")

@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
-import { AuthResponse, LoginOtpInitiatedResponse, LoginOtpRequest, LoginVerifyRequest, OtpVerifyRequest, RegisterInitiatedResponse, RegisterRequest } from '../models';
+import { AuthResponse, CustomerProfileResponse, LoginOtpInitiatedResponse, LoginOtpRequest, LoginVerifyRequest, OtpVerifyRequest, RegisterInitiatedResponse, RegisterRequest } from '../models';
 import { API_BASE } from './api-base';
 
 const API = `${API_BASE}/api/auth`;
@@ -36,6 +36,13 @@ export class AuthService {
    * the Banker's own logged-in session. */
   registerByStaff(req: RegisterRequest): Observable<{ success: boolean; message: string; data: AuthResponse }> {
     return this.http.post<any>(`${API}/register-by-staff`, req);
+  }
+
+  /** Banker-only — looks up a customer's own profile data (name/phone/National ID/issue date)
+   * so an assisted application's wizard can prefill it, without ever exposing the Banker's own
+   * identity in that prefill. See EffectiveIdentityService. */
+  getCustomerProfile(customerId: number): Observable<{ success: boolean; message: string; data: CustomerProfileResponse }> {
+    return this.http.get<any>(`${API}/customer-profile/${customerId}`);
   }
 
   requestLoginOtp(req: LoginOtpRequest): Observable<{ success: boolean; message: string; data: LoginOtpInitiatedResponse }> {
