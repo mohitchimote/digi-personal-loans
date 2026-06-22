@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { ISRAELI_BANKS, IsraeliBank, IsraeliBankBranch } from '../../../../core/models';
@@ -29,7 +29,7 @@ export class DirectDebitComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    private identity: EffectiveIdentityService,
     private router: Router
   ) {
     this.form = this.fb.group({
@@ -62,9 +62,9 @@ export class DirectDebitComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {
@@ -90,7 +90,7 @@ export class DirectDebitComponent implements OnInit {
         if (bankConnection.connected) {
           this.accountCandidates.push({
             source: 'applicant1',
-            name: [personal.firstName, personal.lastName].filter(Boolean).join(' ') || this.auth.userFullName || '',
+            name: [personal.firstName, personal.lastName].filter(Boolean).join(' ') || this.identity.userFullName || '',
             bankName: bankConnection.bankName || '',
           });
         }
@@ -136,8 +136,8 @@ export class DirectDebitComponent implements OnInit {
       bankName: this.bankDisplayName(this.form.value.bankCode),
       branchName: this.selectedBranchName,
     };
-    this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/review-submit']); },
+    this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('review-submit', false, true)); },
       error: () => this.saving.set(false)
     });
   }

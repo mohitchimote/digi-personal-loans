@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { LOAN_PURPOSES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
@@ -24,7 +24,7 @@ export class LoanRequirementsComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    private identity: EffectiveIdentityService,
     private router: Router
   ) {
     this.form = this.fb.group({
@@ -44,11 +44,11 @@ export class LoanRequirementsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId;
-    const email  = this.auth.userEmail;
+    const userId = this.identity.userId;
+    const email  = this.identity.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {
@@ -70,10 +70,10 @@ export class LoanRequirementsComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
 
-    this.appSvc.saveSection(this.appRef(), 'loanRequirements', this.form.value, this.auth.userId!).subscribe({
+    this.appSvc.saveSection(this.appRef(), 'loanRequirements', this.form.value, this.identity.userId!).subscribe({
       next: () => {
         this.saving.set(false);
-        this.router.navigate(['/portal/apply/personal-details']);
+        this.router.navigate(this.identity.applyUrl('personal-details'));
       },
       error: () => this.saving.set(false)
     });

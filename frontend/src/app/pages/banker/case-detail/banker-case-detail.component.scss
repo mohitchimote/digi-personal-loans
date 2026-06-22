@@ -50,16 +50,6 @@ app-case-section-nav {
   &:hover { text-decoration: underline; }
 }
 
-.declaration-toggle {
-  display: flex; gap: 16px; flex-shrink: 0; align-items: center;
-
-  .toggle-label {
-    display: flex; align-items: center; gap: 6px;
-    cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--dark-text);
-    input { width: 16px; height: 16px; accent-color: var(--tcs-blue); cursor: pointer; }
-  }
-}
-
 .uw-notes {
   margin-top: 12px;
   border-top: 1px solid #eee;
@@ -87,15 +77,4 @@ app-case-section-nav {
   display: block;
   color: #888;
   font-size: 0.75rem;
-}
-
-.uw-decision-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.checkbox-field {
-  display: flex;
-  align-items: flex-end;
 }

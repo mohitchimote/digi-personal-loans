@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { ISRAELI_BANKS, IsraeliBank, IsraeliBankBranch } from '../../../../core/models';
@@ -25,7 +25,7 @@ export class BusinessDirectDebitComponent implements OnInit {
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
   banks: IsraeliBank[] = ISRAELI_BANKS;
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private auth: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       accountHolderName: ['', Validators.required],
       bankCode:          ['', Validators.required],
@@ -55,9 +55,9 @@ export class BusinessDirectDebitComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.directDebitJson) {
@@ -72,7 +72,7 @@ export class BusinessDirectDebitComponent implements OnInit {
         if (bankConnection.connected) {
           const match = this.banks.find(b => bankConnection.bankName?.includes(b.name) || b.name.includes(bankConnection.bankName));
           this.form.patchValue({
-            accountHolderName: company.companyName || this.auth.companyName || '',
+            accountHolderName: company.companyName || this.identity.companyName || '',
             bankCode: match?.code || '',
             branchCode: match?.branches[0]?.code || '',
             accountNumber: String(Math.floor(10000000 + Math.random() * 89999999)),
@@ -93,8 +93,8 @@ export class BusinessDirectDebitComponent implements OnInit {
       bankName: this.bankDisplayName(this.form.value.bankCode),
       branchName: this.selectedBranchName,
     };
-    this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/business/apply/review-submit']); },
+    this.appSvc.saveSection(this.appRef(), 'directDebit', value, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('review-submit', true, true)); },
       error: () => this.saving.set(false)
     });
   }

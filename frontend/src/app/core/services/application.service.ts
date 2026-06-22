@@ -2,16 +2,23 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../models';
 import { API_BASE } from './api-base';
+import { AssistContextService } from './assist-context.service';
+import { AuthService } from './auth.service';
 
 const API = `${API_BASE}/api/applications`;
 const EDITABLE_STATUSES = ['DRAFT', 'IN_PROGRESS'];
 
 @Injectable({ providedIn: 'root' })
 export class ApplicationService {
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private assist: AssistContextService,
+    private auth: AuthService
+  ) {}
 
   startOrResume(customerId: number, customerEmail: string): Observable<LoanApplication> {
     return this.http.post<LoanApplication>(`${API}/start`, { customerId, customerEmail });
@@ -29,32 +36,50 @@ export class ApplicationService {
    * Resolves the application a wizard step should edit. Never spawns a phantom draft for an
    * already-decided application: if the customer's current application isn't DRAFT/IN_PROGRESS,
    * redirects to the read-only view instead and emits nothing.
+   *
+   * When `appRef` is provided (a Banker assisting a specific customer), fetches that exact
+   * application instead of "this customer's most recently updated one" — a customer with more
+   * than one application could otherwise land the Banker on the wrong one. `redirectBase` lets
+   * the Banker path redirect back into the Banker shell instead of the customer's read-only view.
    */
-  resolveEditable(customerId: number, customerEmail: string): Observable<LoanApplication> {
-    return this.getCurrent(customerId).pipe(
-      catchError(() => this.startOrResume(customerId, customerEmail)),
+  resolveEditable(customerId: number, customerEmail: string, appRef?: string, redirectBase = '/portal/view-application'): Observable<LoanApplication> {
+    const source = appRef
+      ? this.getApplication(appRef)
+      : this.getCurrent(customerId).pipe(catchError(() => this.startOrResume(customerId, customerEmail)));
+    return source.pipe(
       switchMap(app => {
         if (EDITABLE_STATUSES.includes(app.status)) return of(app);
-        this.router.navigate(['/portal/view-application', app.applicationRef]);
+        this.router.navigate([redirectBase, app.applicationRef]);
         return EMPTY;
       })
     );
   }
 
   /** Business-loan equivalent of resolveEditable. */
-  resolveEditableBusiness(customerId: number, customerEmail: string): Observable<LoanApplication> {
-    return this.getCurrent(customerId).pipe(
-      catchError(() => this.startOrResumeBusiness(customerId, customerEmail)),
+  resolveEditableBusiness(customerId: number, customerEmail: string, appRef?: string, redirectBase = '/business/view-application'): Observable<LoanApplication> {
+    const source = appRef
+      ? this.getApplication(appRef)
+      : this.getCurrent(customerId).pipe(catchError(() => this.startOrResumeBusiness(customerId, customerEmail)));
+    return source.pipe(
       switchMap(app => {
         if (EDITABLE_STATUSES.includes(app.status)) return of(app);
-        this.router.navigate(['/business/view-application', app.applicationRef]);
+        this.router.navigate([redirectBase, app.applicationRef]);
         return EMPTY;
       })
     );
   }
 
+  /** While a Banker is assisting, logs an audit note on every section save so there's a record
+   * of which sections staff touched on a customer's behalf — centralized here instead of at
+   * every one of the ~20 wizard step call sites. */
   saveSection(appRef: string, section: string, data: any, customerId: number): Observable<LoanApplication> {
-    return this.http.put<LoanApplication>(`${API}/${appRef}/section`, { section, data, customerId });
+    return this.http.put<LoanApplication>(`${API}/${appRef}/section`, { section, data, customerId }).pipe(
+      tap(() => {
+        if (this.assist.isActive) {
+          this.addNote(appRef, section, 'Section edited by staff member (assisted application).', 'EDIT', this.auth.userFullName || 'Banker').subscribe();
+        }
+      })
+    );
   }
 
   saveSectionByUnderwriter(appRef: string, section: string, data: any, editedBy: string): Observable<LoanApplication> {

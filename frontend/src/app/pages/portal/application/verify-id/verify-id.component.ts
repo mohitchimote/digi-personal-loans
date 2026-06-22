@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { DocumentService } from '../../../../core/services/document.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -25,14 +25,14 @@ export class VerifyIdComponent implements OnInit {
   constructor(
     private appSvc: ApplicationService,
     private docSvc: DocumentService,
-    private auth: AuthService,
+    private identity: EffectiveIdentityService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.verifyIdJson) {
@@ -59,7 +59,7 @@ export class VerifyIdComponent implements OnInit {
   private upload(file: File): void {
     this.uploading.set(true);
     this.uploadError.set('');
-    this.docSvc.upload(this.appRef(), this.auth.userId!, file, 'NATIONAL_ID').subscribe({
+    this.docSvc.upload(this.appRef(), this.identity.userId!, file, 'NATIONAL_ID').subscribe({
       next: () => {
         this.uploadedFiles.update(f => [...f, file.name]);
         this.uploading.set(false);
@@ -74,8 +74,8 @@ export class VerifyIdComponent implements OnInit {
 
   continue(): void {
     this.saving.set(true);
-    this.appSvc.saveSection(this.appRef(), 'verifyId', { idVerified: true, files: this.uploadedFiles() }, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/direct-debit']); },
+    this.appSvc.saveSection(this.appRef(), 'verifyId', { idVerified: true, files: this.uploadedFiles() }, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('direct-debit')); },
       error: () => this.saving.set(false)
     });
   }

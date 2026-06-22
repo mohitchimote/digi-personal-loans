@@ -1,0 +1,20 @@
+.apply-shell-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+app-case-section-nav {
+  position: sticky;
+  top: 0;
+}
+
+.apply-shell-content {
+  min-width: 0;
+}
+
+@media (max-width: 1000px) {
+  .apply-shell-layout { grid-template-columns: 1fr; }
+  app-case-section-nav { position: static; }
+}

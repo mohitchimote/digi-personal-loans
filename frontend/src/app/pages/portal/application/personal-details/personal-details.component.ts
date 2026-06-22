@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
@@ -46,7 +46,7 @@ export class PersonalDetailsComponent implements OnInit {
   private storedConsent: any = null;
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private auth: AuthService, private router: Router, private i18n: I18nService,
+              private identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
               private notifications: NotificationService) {
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
@@ -135,14 +135,14 @@ export class PersonalDetailsComponent implements OnInit {
     if (this.consentForm.invalid) { this.consentForm.markAllAsTouched(); return; }
     this.consentError.set('');
     const payload = { ...this.consentForm.value, consentTimestamp: new Date().toISOString() };
-    this.appSvc.saveSection(this.appRef(), 'consentManagement', payload, this.auth.userId!).subscribe({
+    this.appSvc.saveSection(this.appRef(), 'consentManagement', payload, this.identity.userId!).subscribe({
       next: () => {
         this.storedConsent = payload;
         const validUntil = new Date(Date.now() + this.CONSENT_VALIDITY_DAYS * 86400000);
         this.consentValid.set(true);
         this.consentValidUntil.set(validUntil.toISOString());
         this.consentRecorded.set(true);
-        const userId = this.auth.userId;
+        const userId = this.identity.userId;
         if (userId) {
           this.notifications.create(
             userId,
@@ -197,10 +197,10 @@ export class PersonalDetailsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId;
-    const email  = this.auth.userEmail;
+    const userId = this.identity.userId;
+    const email  = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {
@@ -215,10 +215,10 @@ export class PersonalDetailsComponent implements OnInit {
           if (data.applicant2) this.applicant2Form.patchValue(data.applicant2);
         } else {
           this.form.patchValue({
-            phoneNumber: this.auth.userPhone,
-            email: this.auth.userEmail,
-            nationalId: this.auth.userNationalId,
-            idIssueDate: this.auth.userIdIssueDate,
+            phoneNumber: this.identity.userPhone,
+            email: this.identity.userEmail,
+            nationalId: this.identity.userNationalId,
+            idIssueDate: this.identity.userIdIssueDate,
           });
         }
       }
@@ -269,8 +269,8 @@ export class PersonalDetailsComponent implements OnInit {
   private proceedToSave(): void {
     this.saving.set(true);
     const payload = { ...this.form.value, applicant2: this.isJoint ? this.applicant2Form.value : null };
-    this.appSvc.saveSection(this.appRef(), 'personalDetails', payload, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/connect-bank']); },
+    this.appSvc.saveSection(this.appRef(), 'personalDetails', payload, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('connect-bank')); },
       error: () => this.saving.set(false)
     });
   }

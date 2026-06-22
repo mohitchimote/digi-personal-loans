@@ -4,6 +4,8 @@ import { underwriterGuard } from './core/guards/underwriter.guard';
 import { adminGuard } from './core/guards/admin.guard';
 import { businessGuard } from './core/guards/business.guard';
 import { bankerGuard } from './core/guards/banker.guard';
+import { assistGuard } from './core/guards/assist.guard';
+import { assistContextResolver } from './core/guards/assist-context.resolver';
 
 export const routes: Routes = [
   { path: '', loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent) },
@@ -85,6 +87,32 @@ export const routes: Routes = [
       { path: 'queue',     loadComponent: () => import('./pages/banker/queue/banker-queue.component').then(m => m.BankerQueueComponent) },
       { path: 'create',    loadComponent: () => import('./pages/banker/create-application/banker-create-application.component').then(m => m.BankerCreateApplicationComponent) },
       { path: 'case/:appRef', loadComponent: () => import('./pages/banker/case-detail/banker-case-detail.component').then(m => m.BankerCaseDetailComponent) },
+      {
+        path: 'case/:appRef/apply',
+        loadComponent: () => import('./pages/banker/apply-shell/banker-apply-shell.component').then(m => m.BankerApplyShellComponent),
+        canActivate: [assistGuard],
+        resolve: { application: assistContextResolver },
+        children: [
+          { path: 'personal/loan-requirements',   loadComponent: () => import('./pages/portal/application/loan-requirements/loan-requirements.component').then(m => m.LoanRequirementsComponent) },
+          { path: 'personal/personal-details',    loadComponent: () => import('./pages/portal/application/personal-details/personal-details.component').then(m => m.PersonalDetailsComponent) },
+          { path: 'personal/guarantor-details',   loadComponent: () => import('./pages/portal/application/guarantor-details/guarantor-details.component').then(m => m.GuarantorDetailsComponent) },
+          { path: 'personal/connect-bank',        loadComponent: () => import('./pages/portal/application/connect-bank/connect-bank.component').then(m => m.ConnectBankComponent) },
+          { path: 'personal/income-employment',   loadComponent: () => import('./pages/portal/application/income-employment/income-employment.component').then(m => m.IncomeEmploymentComponent) },
+          { path: 'personal/outgoings',           loadComponent: () => import('./pages/portal/application/outgoings/outgoings.component').then(m => m.OutgoingsComponent) },
+          { path: 'personal/credit-declarations', loadComponent: () => import('./pages/portal/application/credit-declarations/credit-declarations.component').then(m => m.CreditDeclarationsComponent) },
+          { path: 'personal/verify-id',           loadComponent: () => import('./pages/portal/application/verify-id/verify-id.component').then(m => m.VerifyIdComponent) },
+          { path: 'personal/direct-debit',        loadComponent: () => import('./pages/portal/application/direct-debit/direct-debit.component').then(m => m.DirectDebitComponent) },
+          { path: 'business/company-details',      loadComponent: () => import('./pages/business/apply/company-details/company-details.component').then(m => m.CompanyDetailsComponent) },
+          { path: 'business/signatories',          loadComponent: () => import('./pages/business/apply/signatories/signatories.component').then(m => m.SignatoriesComponent) },
+          { path: 'business/guarantor-details',    loadComponent: () => import('./pages/business/apply/guarantor-details/business-guarantor-details.component').then(m => m.BusinessGuarantorDetailsComponent) },
+          { path: 'business/connect-bank',         loadComponent: () => import('./pages/business/apply/connect-bank/business-connect-bank.component').then(m => m.BusinessConnectBankComponent) },
+          { path: 'business/financials',           loadComponent: () => import('./pages/business/apply/financials/financials.component').then(m => m.FinancialsComponent) },
+          { path: 'business/outgoings',            loadComponent: () => import('./pages/business/apply/outgoings/business-outgoings.component').then(m => m.BusinessOutgoingsComponent) },
+          { path: 'business/credit-declarations',  loadComponent: () => import('./pages/business/apply/credit-declarations/business-credit-declarations.component').then(m => m.BusinessCreditDeclarationsComponent) },
+          { path: 'business/verify-id',            loadComponent: () => import('./pages/business/apply/verify-id/business-verify-id.component').then(m => m.BusinessVerifyIdComponent) },
+          { path: 'business/direct-debit',         loadComponent: () => import('./pages/business/apply/direct-debit/business-direct-debit.component').then(m => m.BusinessDirectDebitComponent) },
+        ]
+      },
     ]
   },
   {

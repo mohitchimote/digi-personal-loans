@@ -604,6 +604,8 @@ export const EN: Record<string, string> = {
   'banker.openAssist': 'Open & Assist',
   'banker.loadingCase': 'Loading application…',
   'banker.caseOverview': 'Application Summary',
+  'banker.assistingLabel': 'Assisting',
+  'banker.exitAssist': 'Exit',
   'banker.noDataYet': 'Not filled in yet.',
   'banker.complexFieldsNote': 'Also has',
   'banker.connectedLabel': 'Bank Connected',

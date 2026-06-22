@@ -604,6 +604,8 @@ export const HE: Record<string, string> = {
   'banker.openAssist': 'פתח/י וסייע/י',
   'banker.loadingCase': 'טוען בקשה…',
   'banker.caseOverview': 'סיכום בקשה',
+  'banker.assistingLabel': 'מסייע/ת ל',
+  'banker.exitAssist': 'יציאה',
   'banker.noDataYet': 'לא מולא עדיין.',
   'banker.complexFieldsNote': 'כולל גם',
   'banker.connectedLabel': 'בנק מקושר',

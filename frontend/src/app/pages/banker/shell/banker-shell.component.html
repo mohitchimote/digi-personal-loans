@@ -17,6 +17,12 @@
     </div>
   </header>
 
+  <div class="assisting-banner" *ngIf="assist.isActive">
+    <span class="material-icons mi-sm">support_agent</span>
+    {{ 'banker.assistingLabel' | translate }} <strong>{{ assist.current?.customerEmail }}</strong> · {{ assist.current?.appRef }}
+    <button class="db-btn db-btn--ghost db-btn--sm" (click)="exitAssist()">{{ 'banker.exitAssist' | translate }}</button>
+  </div>
+
   <div class="uw-content">
     <router-outlet />
   </div>

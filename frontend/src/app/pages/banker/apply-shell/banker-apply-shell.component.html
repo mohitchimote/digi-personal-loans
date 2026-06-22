@@ -1,0 +1,13 @@
+<div class="apply-shell-layout">
+  <app-case-section-nav
+    [topItems]="[{ key: 'overview', labelKey: 'banker.caseOverview' }]"
+    [groupItems]="navGroupItems"
+    [placeholderLabelKeys]="['caseNav.placeholderQuery', 'caseNav.placeholderWorklist']"
+    [activeKey]="activeKey()"
+    (selectItem)="onNavSelect($event)">
+  </app-case-section-nav>
+
+  <div class="apply-shell-content">
+    <router-outlet />
+  </div>
+</div>

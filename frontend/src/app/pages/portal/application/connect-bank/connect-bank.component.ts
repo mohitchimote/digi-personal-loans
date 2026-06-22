@@ -2,7 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -44,14 +44,14 @@ export class ConnectBankComponent implements OnInit {
 
   constructor(
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    private identity: EffectiveIdentityService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {
@@ -125,10 +125,10 @@ export class ConnectBankComponent implements OnInit {
     this.selectedBank2 = null;
   }
 
-  private save(payload: any, next: string): void {
+  private save(payload: any, next: any[]): void {
     this.saving.set(true);
-    this.appSvc.saveSection(this.appRef(), 'connectBank', payload, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate([next]); },
+    this.appSvc.saveSection(this.appRef(), 'connectBank', payload, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(next); },
       error: () => this.saving.set(false)
     });
   }
@@ -142,6 +142,6 @@ export class ConnectBankComponent implements OnInit {
           ? { connected: true, bankId: this.selectedBank2?.id, bankName: this.selectedBank2?.name, summary: this.connectionSummary2 }
           : { connected: false, skipped: true })
       : null;
-    this.save({ ...applicant1, applicant2 }, '/portal/apply/income-employment');
+    this.save({ ...applicant1, applicant2 }, this.identity.applyUrl('income-employment'));
   }
 }

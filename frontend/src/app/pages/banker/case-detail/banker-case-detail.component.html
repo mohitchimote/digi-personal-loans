@@ -10,21 +10,18 @@
   </div>
 
   <div class="db-alert db-alert--error mb-16" *ngIf="error()">{{ error() }}</div>
-  <div class="db-alert db-alert--error mb-16" *ngIf="complexError()">{{ complexError() }}</div>
 
   <div class="banker-case-layout">
     <app-case-section-nav
       [topItems]="navTopItems"
       [groupItems]="navGroupItems"
       [placeholderLabelKeys]="['caseNav.placeholderQuery', 'caseNav.placeholderWorklist']"
-      [activeKey]="activeSection()"
-      (selectItem)="setActiveSection($event)">
+      [activeKey]="'overview'"
+      (selectItem)="onNavSelect($event)">
     </app-case-section-nav>
 
     <div class="banker-case-content">
-
-      <!-- Application Summary -->
-      <div class="db-card mb-16" *ngIf="activeSection() === 'overview'">
+      <div class="db-card mb-16">
         <div class="card-header"><h3>{{ 'banker.caseOverview' | translate }}</h3></div>
         <div class="review-grid">
           <div class="review-item"><span>{{ 'dashboard.reference' | translate }}</span><strong>{{ app.applicationRef }}</strong></div>
@@ -34,7 +31,7 @@
         </div>
       </div>
 
-      <div class="db-card mb-16" *ngIf="activeSection() === 'overview'">
+      <div class="db-card mb-16">
         <div class="card-header"><h3>{{ 'banker.callNotesTitle' | translate }}</h3></div>
         <div class="uw-notes" *ngIf="notesFor('general').length">
           <div class="uw-note" *ngFor="let n of notesFor('general')">
@@ -49,96 +46,6 @@
         </div>
         <button class="db-btn db-btn--primary db-btn--sm mt-8" (click)="addNote()">{{ 'banker.addNote' | translate }}</button>
       </div>
-
-      <!-- Active section -->
-      <ng-container *ngFor="let s of sections">
-        <div class="db-card mb-16" *ngIf="activeSection() === s.key">
-          <div class="card-header">
-            <h3>{{ s.labelKey | translate }}</h3>
-            <button *ngIf="!isEditing(s.key)" class="db-btn db-btn--ghost db-btn--sm" (click)="startEdit(s.key)">
-              <span class="material-icons mi-sm">edit</span> {{ 'common.edit' | translate }}
-            </button>
-          </div>
-
-          <!-- Read mode -->
-          <ng-container *ngIf="!isEditing(s.key)">
-            <div class="review-grid">
-              <div class="review-item" *ngFor="let f of fieldsFor(s.key)">
-                <span>{{ f.labelKey | translate }}</span><strong>{{ displayValue(sectionData(s.key)[f.key]) }}</strong>
-              </div>
-            </div>
-            <div class="review-grid mt-16" *ngIf="hasAssistFields(s.key)">
-              <div class="review-item"><span>{{ 'personal.assistedByStaffQuestion' | translate }}</span><strong>{{ sectionData(s.key).assistedByStaff ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
-              <div class="review-item" *ngIf="sectionData(s.key).assistedByStaff"><span>{{ 'personal.preferredBranchLabel' | translate }}</span><strong>{{ sectionData(s.key).preferredBranch || '—' }}</strong></div>
-              <div class="review-item" *ngIf="sectionData(s.key).assistedByStaff"><span>{{ 'personal.staffNameLabel' | translate }}</span><strong>{{ sectionData(s.key).staffName || '—' }}</strong></div>
-            </div>
-            <div class="text-muted mt-8" style="font-size:0.8rem" *ngIf="complexKeys(s.key, sectionData(s.key)).length">
-              {{ 'banker.complexFieldsNote' | translate }}: {{ complexKeys(s.key, sectionData(s.key)).join(', ') }}
-            </div>
-          </ng-container>
-
-          <!-- Edit mode -->
-          <div *ngIf="isEditing(s.key)">
-            <div class="form-row" *ngIf="hasAssistFields(s.key)">
-              <div class="db-form-group">
-                <label>{{ 'personal.assistedByStaffQuestion' | translate }}</label>
-                <div class="declaration-toggle">
-                  <label class="toggle-label"><input type="radio" [(ngModel)]="editBuffer.assistedByStaff" [value]="false" /> {{ 'common.no' | translate }}</label>
-                  <label class="toggle-label"><input type="radio" [(ngModel)]="editBuffer.assistedByStaff" [value]="true" /> {{ 'common.yes' | translate }}</label>
-                </div>
-              </div>
-            </div>
-            <div class="form-row" *ngIf="hasAssistFields(s.key) && editBuffer.assistedByStaff === true">
-              <div class="db-form-group">
-                <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
-                <select class="db-select" [(ngModel)]="editBuffer.preferredBranch" (ngModelChange)="onAssistBranchChange()">
-                  <option value="">{{ 'common.select' | translate }}</option>
-                  <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
-                </select>
-              </div>
-              <div class="db-form-group">
-                <label>{{ 'personal.staffNameLabel' | translate }}</label>
-                <select class="db-select" [(ngModel)]="editBuffer.staffName" [disabled]="!editBuffer.preferredBranch">
-                  <option value="">{{ 'common.select' | translate }}</option>
-                  <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
-                </select>
-                <small class="text-muted">{{ 'personal.staffNameHint' | translate }}</small>
-              </div>
-            </div>
-
-            <div class="form-row" *ngFor="let pair of fieldPairs(s.key)">
-              <div class="db-form-group" *ngFor="let f of pair" [class.checkbox-field]="f.type === 'checkbox'">
-                <label *ngIf="f.type !== 'checkbox'">{{ f.labelKey | translate }}</label>
-                <input *ngIf="f.type === 'text'" class="db-input" [(ngModel)]="editBuffer[f.key]" />
-                <input *ngIf="f.type === 'number'" class="db-input" type="number" [(ngModel)]="editBuffer[f.key]" />
-                <input *ngIf="f.type === 'date'" class="db-input" type="date" [(ngModel)]="editBuffer[f.key]" />
-                <label *ngIf="f.type === 'checkbox'" class="db-checkbox">
-                  <input type="checkbox" [(ngModel)]="editBuffer[f.key]" />
-                  <span>{{ f.labelKey | translate }}</span>
-                </label>
-              </div>
-            </div>
-
-            <div *ngFor="let k of complexKeys(s.key, editBuffer)" class="db-form-group">
-              <label>{{ k }} <span class="text-muted">({{ 'banker.complexFieldHint' | translate }})</span></label>
-              <textarea class="db-input" rows="4" [(ngModel)]="complexBuffer[k]"></textarea>
-            </div>
-
-            <div class="uw-decision-actions">
-              <button class="db-btn db-btn--accent" (click)="saveEdit(s.key)" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
-              <button class="db-btn db-btn--ghost" (click)="cancelEdit()" [disabled]="savingEdit()">{{ 'common.cancel' | translate }}</button>
-            </div>
-          </div>
-
-          <div class="uw-notes" *ngIf="notesFor(s.key).length">
-            <div class="uw-note" *ngFor="let n of notesFor(s.key)">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
-              <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
-            </div>
-          </div>
-        </div>
-      </ng-container>
-
     </div>
   </div>
 </ng-container>

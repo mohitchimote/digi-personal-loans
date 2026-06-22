@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -19,7 +19,7 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private auth: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, private identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       hasLiquidationOrWindingUp: [false, Validators.required],
       hasCompanyDefaulted:       [false, Validators.required],
@@ -42,15 +42,15 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         const data = app.businessCreditDeclarationsJson ? JSON.parse(app.businessCreditDeclarationsJson) : null;
         this.form.patchValue({
           ...data,
-          directorCreditScore: data?.directorCreditScore ?? this.syntheticScore(this.auth.userNationalId || app.applicationRef),
+          directorCreditScore: data?.directorCreditScore ?? this.syntheticScore(this.identity.userNationalId || app.applicationRef),
         });
       }
     });
@@ -62,8 +62,8 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     const payload = this.form.value;
-    this.appSvc.saveSection(this.appRef(), 'businessCreditDeclarations', payload, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/business/apply/verify-id']); },
+    this.appSvc.saveSection(this.appRef(), 'businessCreditDeclarations', payload, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('verify-id', true)); },
       error: () => this.saving.set(false)
     });
   }

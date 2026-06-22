@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } fr
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -24,7 +24,7 @@ export class SignatoriesComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
-    private auth: AuthService,
+    private identity: EffectiveIdentityService,
     private router: Router
   ) {
     this.form = this.fb.group({ signatories: this.fb.array([]) });
@@ -51,9 +51,9 @@ export class SignatoriesComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.signatoriesJson) {
@@ -66,7 +66,7 @@ export class SignatoriesComponent implements OnInit {
         }
         if (this.signatories.length === 0) {
           const primary = this.newSignatory(true);
-          primary.patchValue({ fullName: this.auth.userFullName || '', nationalId: this.auth.userNationalId || '' });
+          primary.patchValue({ fullName: this.identity.userFullName || '', nationalId: this.identity.userNationalId || '' });
           this.signatories.push(primary);
         }
       }
@@ -76,8 +76,8 @@ export class SignatoriesComponent implements OnInit {
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
-    this.appSvc.saveSection(this.appRef(), 'signatories', this.form.value, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/business/apply/connect-bank']); },
+    this.appSvc.saveSection(this.appRef(), 'signatories', this.form.value, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('connect-bank', true)); },
       error: () => this.saving.set(false)
     });
   }

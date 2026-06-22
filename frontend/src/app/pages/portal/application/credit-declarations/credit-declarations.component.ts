@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -22,7 +22,7 @@ export class CreditDeclarationsComponent implements OnInit {
   numberOfApplicants = signal(1);
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              private auth: AuthService, private router: Router) {
+              private identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       hasDefaulted:   [false, Validators.required],
       hasBankruptcy:  [false, Validators.required],
@@ -53,9 +53,9 @@ export class CreditDeclarationsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const userId = this.auth.userId; const email = this.auth.userEmail;
+    const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
         if (app.loanRequirementsJson) {
@@ -65,7 +65,7 @@ export class CreditDeclarationsComponent implements OnInit {
         const data = app.creditDeclarationsJson ? JSON.parse(app.creditDeclarationsJson) : null;
         this.form.patchValue({
           ...data,
-          creditScore: data?.creditScore ?? this.syntheticScore(this.auth.userNationalId || app.applicationRef),
+          creditScore: data?.creditScore ?? this.syntheticScore(this.identity.userNationalId || app.applicationRef),
         });
         this.applicant2Form.patchValue({
           ...data?.applicant2,
@@ -84,8 +84,8 @@ export class CreditDeclarationsComponent implements OnInit {
     this.saving.set(true);
     const applicant2 = this.isJoint ? this.applicant2Form.value : null;
     const payload = { ...this.form.value, applicant2 };
-    this.appSvc.saveSection(this.appRef(), 'creditDeclarations', payload, this.auth.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(['/portal/apply/verify-id']); },
+    this.appSvc.saveSection(this.appRef(), 'creditDeclarations', payload, this.identity.userId!).subscribe({
+      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('verify-id')); },
       error: () => this.saving.set(false)
     });
   }

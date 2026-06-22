@@ -75,3 +75,24 @@
   padding: 32px;
   background: var(--off-white);
 }
+
+.assisting-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  background: var(--tcs-yellow, #F5A200);
+  color: var(--dark-text, #1A2B3C);
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex-shrink: 0;
+
+  strong { font-weight: 700; }
+
+  .db-btn--ghost {
+    margin-left: auto;
+    color: var(--dark-text, #1A2B3C);
+    border-color: rgba(0, 0, 0, 0.3);
+    &:hover { background: rgba(0, 0, 0, 0.08); }
+  }
+}
