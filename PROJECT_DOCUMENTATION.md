@@ -166,11 +166,24 @@ feature. This document (§1, §3, §5 below) stays the regularly-updated functio
 See **[`ARCHITECTURE.md` §8](./ARCHITECTURE.md#8-local-development)** for how to bring up the
 stack and seeded login credentials.
 
-**Known startup gotcha**: starting all 7 services simultaneously via `start-backend.ps1` can
-occasionally cause one service to fail its DB connection during the initial thundering-herd of
-Hikari pool startups against MySQL — it'll just sit idle in its window rather than retrying. If a
-service isn't responding after the others are up, restart that one service's window individually
-(`cd backend/<service>; mvnd spring-boot:run`) rather than re-running the whole script.
+**Single-command startup**: run `.\start-all.ps1` from the repo root. It starts all 7 backend
+services plus `ng serve` (bound to `0.0.0.0:4200` so the app is reachable from other machines on
+the network, not just `localhost`), gating each launch on the previous service's port actually
+being open before starting the next. Everything runs hidden in the background — no extra visible
+windows — with output redirected to `.\logs\<service>.log` (tail with
+`Get-Content .\logs\auth-service.log -Wait -Tail 30`). Stop everything with `.\stop-all.ps1`.
+
+**Startup gotcha (root-caused 2026-06-24, fixed by `start-all.ps1`)**: the old `start-backend.ps1`
+fired all 7 `mvnd spring-boot:run` builds within ~14 seconds of each other (a fixed 2s stagger).
+That's too tight — multiple `mvnd` builds resolving dependencies at once contend for the same
+artifact lock files under `C:\Users\<you>\.m2\repository\.locks`, and losing that race is a hard
+`BUILD FAILURE` ("Could not open file channel for ...lock after 5 attempts; giving up"), not just
+a slow start. It looks identical to the previously-suspected MySQL/Hikari thundering-herd issue
+from outside the window (port just never binds), but the actual cause is Maven, not the DB.
+`start-all.ps1` fixes this at the root by waiting for each service's port to bind before launching
+the next — no more fixed-delay guessing. It also auto-retries a service once in a fresh window if
+its port doesn't come up within 90s. If a service still fails twice, check that service's own
+PowerShell window for the real error.
 
 ---
 

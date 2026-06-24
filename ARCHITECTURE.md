@@ -279,12 +279,10 @@ rather than starting context from a component.
 ## 8. Local development
 
 ```powershell
-# Backend — one window per service, all via mvnd
-.\start-backend.ps1
-
-# Frontend
-cd frontend
-ng serve
+# Single command: backend (one window per service, all via mvnd) + frontend (ng serve, bound to
+# 0.0.0.0:4200 so it's reachable from other machines on the network). Starts services sequentially,
+# gated on each port actually binding, so concurrent mvnd builds don't fight over .m2 lock files.
+.\start-all.ps1
 ```
 
 Requires: JDK 21+, Maven Daemon (`mvnd`), Node.js, a running local MySQL instance (schemas are
