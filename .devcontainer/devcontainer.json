@@ -1,0 +1,19 @@
+{
+  "name": "DigiBank Personal Loans",
+  "image": "mcr.microsoft.com/devcontainers/java:1-21",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "forwardPorts": [4200, 8080, 8081, 8082, 8083, 8084, 8085, 8086],
+  "portsAttributes": {
+    "4200": { "label": "Frontend (Angular)", "visibility": "public" },
+    "8080": { "label": "API Gateway", "visibility": "public" },
+    "8081": { "label": "auth-service", "visibility": "private" },
+    "8082": { "label": "application-service", "visibility": "private" },
+    "8083": { "label": "affordability-service", "visibility": "private" },
+    "8084": { "label": "product-service", "visibility": "private" },
+    "8085": { "label": "document-service", "visibility": "private" },
+    "8086": { "label": "notification-service", "visibility": "private" }
+  }
+}

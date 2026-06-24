@@ -173,6 +173,36 @@ being open before starting the next. Everything runs hidden in the background �
 windows — with output redirected to `.\logs\<service>.log` (tail with
 `Get-Content .\logs\auth-service.log -Wait -Tail 30`). Stop everything with `.\stop-all.ps1`.
 
+**Free public hosting for demos (2026-06-24): GitHub Codespaces**, chosen after a registered
+domain (`tcsdigilend.com`) and Oracle Cloud's Always-Free VM both hit dead ends — Oracle requires
+a card for identity verification and the authorization hold kept failing. Codespaces needs no
+payment method at all; it's covered by the GitHub account's free monthly hours.
+
+- `.devcontainer/devcontainer.json` + `.devcontainer/postCreate.sh` provision Java 21, Node 22, and
+  MySQL (root/root, matching every service's `application.yml`) automatically on container
+  creation — no manual environment setup once the Codespace is created.
+- `start-all.sh` / `stop-all.sh` are the Linux equivalents of `start-all.ps1` / `stop-all.ps1` —
+  same sequential, port-gated startup logic (concurrent `mvn` builds racing on first-time `~/.m2`
+  downloads is the Linux analog of the mvnd lock-contention gotcha above), same hidden
+  background + log-file pattern, just using `setsid`/`kill -- -$pid` for process-group
+  start/stop instead of Windows job objects.
+- Only ports `4200` (frontend) and `8080` (api-gateway) are marked `public` in
+  `portsAttributes` — the browser never talks to the other 6 services directly, gateway routes to
+  them internally, so they stay `private`.
+- **Codespaces forwards each port under its own hostname** (`<codespace-name>-<port>.app.github.dev`),
+  not `host:port` like every other environment this app has run in. `api-base.ts` derives the
+  gateway's public URL by swapping the port segment of the *page's own* hostname when that pattern
+  is detected, falling back to today's `http://${hostname}:8080` everywhere else (local IP,
+  `localhost`) — so this doesn't change behavior outside Codespaces.
+- **Known limitation, not yet hit**: Codespaces' default machine size may be tight running 7 JVMs +
+  MySQL simultaneously, and a Codespace stops after a period of inactivity (session-based, not a
+  persistent server) — fine for a live demo, not a substitute for real hosting afterward.
+- To actually launch: push this branch, then either open the repo on github.com and click
+  **Code → Codespaces → Create codespace**, or `gh codespace create` from an authenticated `gh`
+  CLI (not available in this environment — needs the user's own GitHub login). Once it's up, run
+  `./start-all.sh` from the Codespace's terminal, then open the **Ports** tab and set/copy the
+  forwarded URL for port `4200`.
+
 **Startup gotcha (root-caused 2026-06-24, fixed by `start-all.ps1`)**: the old `start-backend.ps1`
 fired all 7 `mvnd spring-boot:run` builds within ~14 seconds of each other (a fixed 2s stagger).
 That's too tight — multiple `mvnd` builds resolving dependencies at once contend for the same
