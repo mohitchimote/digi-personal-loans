@@ -95,6 +95,20 @@ export class SidebarComponent implements OnInit {
     return this.i18n.t('status.' + status);
   }
 
+  /** The Review & Submit step reflects the application's actual outcome, not a generic section -
+   * once decided, that means the Approval page (see ApplicationService.getResumeRoute), not the
+   * plain read-only summary every other step links to. */
+  sectionLinkRoute(step: NavItem): string {
+    if (step.sectionKey === 'reviewSubmit' && this.application) {
+      return this.appSvc.getResumeRoute(this.application);
+    }
+    return `${this.basePath}/view-application/${this.application?.applicationRef}`;
+  }
+
+  sectionLinkFragment(step: NavItem): string | undefined {
+    return step.sectionKey === 'reviewSubmit' ? undefined : step.sectionKey;
+  }
+
   toggleSection(id: string): void {
     this.expandedSection.set(this.expandedSection() === id ? '' : id);
   }

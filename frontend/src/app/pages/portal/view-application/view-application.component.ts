@@ -39,13 +39,22 @@ export class ViewApplicationComponent implements OnInit {
     const appRef = this.route.snapshot.paramMap.get('appRef');
     if (!appRef) return;
     this.appSvc.getApplication(appRef).subscribe({
-      next: app => { this.application.set(app); this.loading.set(false); },
+      next: app => { this.application.set(app); this.loading.set(false); this.scrollToFragment(); },
       error: () => this.loading.set(false)
     });
     this.appSvc.getNotes(appRef).subscribe({
       next: notes => this.notes.set(notes.filter(n => n.noteType === 'CLARIFICATION_REQUEST' || n.noteType === 'DOCUMENT_REQUEST' || n.noteType === 'SEND_BACK' || n.noteType === 'DECISION_DECLINED')),
       error: () => {}
     });
+  }
+
+  /** Lets the sidebar's per-section links (shown once an application is no longer editable, see
+   * SidebarComponent.isEditableApplication) jump straight to that section on this read-only page,
+   * instead of only ever landing at the top. Deferred a tick since the page is behind *ngIf="!loading()". */
+  private scrollToFragment(): void {
+    const fragment = this.route.snapshot.fragment;
+    if (!fragment) return;
+    setTimeout(() => document.getElementById('section-' + fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   parseSection(json: string | null | undefined): any {

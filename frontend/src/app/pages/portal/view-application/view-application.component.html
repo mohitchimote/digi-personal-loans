@@ -1,5 +1,5 @@
 <div class="form-page" *ngIf="!loading() && application()">
-  <div class="form-section-header">
+  <div class="form-section-header" id="section-reviewSubmit">
     <div class="section-badge">{{ application()!.applicationRef }}</div>
     <h2 class="section-title">{{ 'viewApp.title' | translate }}</h2>
     <p class="section-subtitle">{{ 'viewApp.subtitle' | translate }}</p>
@@ -18,7 +18,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-loanRequirements">
     <div class="card-header"><h3>{{ 'steps.loanRequirements' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
@@ -27,7 +27,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-personalDetails">
     <div class="card-header"><h3>{{ 'steps.personalDetails' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'reviewSubmit.fullName' | translate }}</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
@@ -41,7 +41,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-connectBank">
     <div class="card-header"><h3>{{ 'steps.connectBank' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item" *ngIf="bankConnection.connected"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ bankConnection.bankName }} · {{ bankConnection.summary?.accountMasked }}</strong></div>
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-incomeEmployment">
     <div class="card-header"><h3>{{ 'steps.incomeEmployment' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus }}</strong></div>
@@ -64,7 +64,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-outgoings">
     <div class="card-header"><h3>{{ 'steps.outgoings' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'outgoings.rentLabel' | translate }}</span><strong>₪{{ outgoings.monthlyRent | number }}</strong></div>
@@ -74,7 +74,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-creditDeclarations">
     <div class="card-header"><h3>{{ 'steps.creditDeclarations' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'reviewSubmit.previousDefault' | translate }}</span><strong>{{ credit.hasDefaulted ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
@@ -84,14 +84,14 @@
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-verifyId">
     <div class="card-header"><h3>{{ 'steps.verifyId' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'docs.uploadedFiles' | translate:{ count: verifyId.files?.length || 0 } }}</span><strong>{{ verifyId.idVerified ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
     </div>
   </div>
 
-  <div class="db-card mb-16">
+  <div class="db-card mb-16" id="section-directDebit">
     <div class="card-header"><h3>{{ 'steps.directDebit' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'directDebit.accountHolderLabel' | translate }}</span><strong>{{ directDebit.accountHolderName }}</strong></div>
@@ -102,7 +102,7 @@
     </div>
   </div>
 
-  <div class="db-card mb-16" *ngIf="application()?.guarantorRequired">
+  <div class="db-card mb-16" id="section-guarantorDetails" *ngIf="application()?.guarantorRequired">
     <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName || ('guarantor.pending' | translate) }}</strong></div>

@@ -41,13 +41,22 @@ export class BusinessViewApplicationComponent implements OnInit {
     const appRef = this.route.snapshot.paramMap.get('appRef');
     if (!appRef) return;
     this.appSvc.getApplication(appRef).subscribe({
-      next: app => { this.application.set(app); this.loading.set(false); },
+      next: app => { this.application.set(app); this.loading.set(false); this.scrollToFragment(); },
       error: () => this.loading.set(false)
     });
     this.appSvc.getNotes(appRef).subscribe({
       next: notes => this.notes.set(notes.filter(n => n.noteType === 'CLARIFICATION_REQUEST' || n.noteType === 'DOCUMENT_REQUEST' || n.noteType === 'SEND_BACK' || n.noteType === 'DECISION_DECLINED')),
       error: () => {}
     });
+  }
+
+  /** Lets the sidebar's per-section links (shown once an application is no longer editable, see
+   * SidebarComponent.isEditableApplication) jump straight to that section on this read-only page,
+   * instead of only ever landing at the top. Deferred a tick since the page is behind *ngIf="!loading()". */
+  private scrollToFragment(): void {
+    const fragment = this.route.snapshot.fragment;
+    if (!fragment) return;
+    setTimeout(() => document.getElementById('section-' + fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   parseSection(json: string | null | undefined): any {
@@ -57,8 +66,11 @@ export class BusinessViewApplicationComponent implements OnInit {
 
   get company()     { return this.parseSection(this.application()?.companyDetailsJson); }
   get signatories()  { return this.parseSection(this.application()?.signatoriesJson).signatories || []; }
+  get bankConnection() { return this.parseSection(this.application()?.businessBankConnectionJson); }
   get financials()  { return this.parseSection(this.application()?.businessFinancialsJson); }
+  get outgoings()   { return this.parseSection(this.application()?.businessOutgoingsJson); }
   get credit()      { return this.parseSection(this.application()?.businessCreditDeclarationsJson); }
+  get verifyId()    { return this.parseSection(this.application()?.verifyIdJson); }
   get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
   get guarantorDetails() { return this.parseSection(this.application()?.guarantorDetailsJson); }
 

@@ -85,13 +85,15 @@
         </ng-container>
 
         <ng-container *ngIf="application && !isEditableApplication">
-          <div class="section-step section-step--readonly" *ngFor="let step of applicationSteps; let i = index">
+          <a class="section-step section-step--readonly" *ngFor="let step of applicationSteps; let i = index"
+             [routerLink]="sectionLinkRoute(step)"
+             [fragment]="sectionLinkFragment(step)">
             <span class="step-number">
               <ng-container *ngIf="isStepCompleted(step.sectionKey!); else stepNumRo"><span class="material-icons mi-sm">check</span></ng-container>
               <ng-template #stepNumRo>{{ i + 1 }}</ng-template>
             </span>
             <span class="step-label">{{ step.labelKey | translate }}</span>
-          </div>
+          </a>
           <a class="nav-app-view-link" [routerLink]="[basePath + '/view-application', application.applicationRef]">
             <span class="material-icons mi-sm">visibility</span> {{ 'sidebar.viewFullApplication' | translate }}
           </a>
