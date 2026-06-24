@@ -6,9 +6,10 @@
 # and pre-installs frontend deps so the first `npm start` is fast.
 set -euo pipefail
 
-echo "Installing MySQL..."
+echo "Installing Maven and MySQL..."
 sudo apt-get update -qq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mysql-server >/dev/null
+# The base devcontainers/java image only ships the JDK - Maven isn't included.
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq maven mysql-server >/dev/null
 
 sudo service mysql start
 sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; FLUSH PRIVILEGES;"
