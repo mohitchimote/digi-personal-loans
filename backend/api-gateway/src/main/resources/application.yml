@@ -12,6 +12,8 @@ spring:
             allowedOrigins:
               - "http://localhost:4200"
               - "http://10.73.91.21:4200"
+              - "https://exquisite-hasty-issuing.ngrok-free.dev"
+              - "https://ispersonalloans.tcsdigilend.com"
             allowedMethods:
               - GET
               - POST

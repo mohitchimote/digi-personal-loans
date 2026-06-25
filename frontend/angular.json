@@ -64,6 +64,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "allowedHosts": ["exquisite-hasty-issuing.ngrok-free.dev", "ispersonalloans.tcsdigilend.com"]
+          },
           "configurations": {
             "production": {
               "buildTarget": "frontend:build:production"

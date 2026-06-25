@@ -22,8 +22,8 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        seedUser("underwriter@digibank.com", "000000018", "DigiBank Underwriter", "UNDERWRITER");
-        seedUser("admin@digibank.com", "000000026", "DigiBank Admin", "ADMIN");
+        seedUser("underwriter@digibank.com", "000000014", "DigiBank Underwriter", "UNDERWRITER");
+        seedUser("admin@digibank.com", "000000015", "DigiBank Admin", "ADMIN");
         seedUser("banker@digibank.com", "000000027", "DigiBank Banker", "BANKER");
         seedUser("noa.levi@digibank.il", "000000050", "Noa Levi", "CUSTOMER");
         seedUser("avi.mizrahi@digibank.il", "000000051", "Avi Mizrahi", "CUSTOMER");
