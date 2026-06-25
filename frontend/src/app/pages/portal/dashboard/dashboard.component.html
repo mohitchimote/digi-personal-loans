@@ -133,6 +133,7 @@
       <button class="db-btn db-btn--primary mt-16" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.beginApplication' | translate }}</button>
     </div>
 
+    <div class="table-responsive">
     <table class="db-table" *ngIf="applications().length > 0">
       <thead>
         <tr>
@@ -171,6 +172,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     </ng-container>
   </div>
 
