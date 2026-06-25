@@ -279,3 +279,26 @@
 
   &:hover { background: rgba(255,255,255,0.08); color: #fff; }
 }
+
+// --- Mobile: sidebar slides in as a full overlay ---
+@media (max-width: 768px) {
+  .sidebar {
+    width: 280px !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: var(--shadow-lg);
+
+    &:not(.collapsed) { transform: translateX(0); }
+  }
+}
+
+:host-context(html[dir="rtl"]) {
+  @media (max-width: 768px) {
+    .sidebar {
+      left: auto;
+      right: 0;
+      transform: translateX(100%);
+      &:not(.collapsed) { transform: translateX(0); }
+    }
+  }
+}

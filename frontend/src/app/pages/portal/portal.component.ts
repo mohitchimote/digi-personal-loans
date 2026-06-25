@@ -19,13 +19,16 @@ import { LanguageSwitcherComponent } from '../../shared/language-switcher/langua
 })
 export class PortalComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
-  sidebarCollapsed = signal(false);
+  sidebarCollapsed = signal(typeof window !== 'undefined' && window.innerWidth <= 768);
 
   constructor(private appSvc: ApplicationService, public auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
     this.refreshApplication();
-    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.refreshApplication());
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => {
+      this.refreshApplication();
+      if (this.isMobile) this.closeSidebar();
+    });
   }
 
   private refreshApplication(): void {
@@ -50,6 +53,14 @@ export class PortalComponent implements OnInit {
 
   toggleSidebar(): void {
     this.sidebarCollapsed.set(!this.sidebarCollapsed());
+  }
+
+  closeSidebar(): void {
+    this.sidebarCollapsed.set(true);
+  }
+
+  get isMobile(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
   }
 
   /** Guarantor Details is only inserted when an underwriter has flagged guarantorRequired (see

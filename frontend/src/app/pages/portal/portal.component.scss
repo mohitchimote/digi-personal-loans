@@ -43,3 +43,13 @@
     .header-name { color: var(--dark-text); font-size: 0.875rem; font-weight: 500; }
   }
 }
+
+@media (max-width: 600px) {
+  .portal-header {
+    padding: 0 12px;
+    gap: 8px;
+
+    .app-ref    { display: none; }
+    .header-name { display: none; }
+  }
+}

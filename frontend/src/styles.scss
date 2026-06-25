@@ -473,3 +473,59 @@ html[dir="rtl"] {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--off-white); }
 ::-webkit-scrollbar-thumb { background: var(--mid-grey); border-radius: 3px; }
+
+// === RESPONSIVE ===
+
+// Sidebar overlay backdrop — hidden on desktop, activated on mobile
+.sidebar-overlay { display: none; }
+
+// Table horizontal scroll wrapper
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  .db-table { min-width: 560px; }
+}
+
+// --- Tablet (≤ 900px) ---
+@media (max-width: 900px) {
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.3rem; }
+  .page-content { padding: 20px 16px; }
+  .form-row      { grid-template-columns: 1fr; gap: 0; }
+  .form-row--3   { grid-template-columns: 1fr; }
+  .review-grid   { grid-template-columns: 1fr; }
+  .db-card       { padding: 16px; }
+  // Application wizard: let form fill available width instead of forcing 800px basis
+  .form-page     { flex: 1 1 auto !important; min-width: 0; }
+}
+
+// --- Mobile (≤ 600px) ---
+@media (max-width: 600px) {
+  h1 { font-size: 1.35rem; }
+  .page-content { padding: 12px; }
+  .db-btn--lg   { padding: 12px 20px; font-size: 0.9rem; }
+}
+
+// --- Sidebar mobile overlay (≤ 768px) ---
+@media (max-width: 768px) {
+  .main-content,
+  .main-content.sidebar-collapsed {
+    margin-left: 0 !important;
+  }
+  html[dir="rtl"] .main-content,
+  html[dir="rtl"] .main-content.sidebar-collapsed {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    &.visible { opacity: 1; pointer-events: auto; }
+  }
+}

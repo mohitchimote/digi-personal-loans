@@ -1,4 +1,5 @@
 <div class="app-shell">
+  <div class="sidebar-overlay" [class.visible]="!sidebarCollapsed()" (click)="closeSidebar()"></div>
   <app-sidebar [application]="application()" [collapsed]="sidebarCollapsed()"
                basePath="/business" [applicationSteps]="businessSteps" [sectionValues]="sectionValues" />
 

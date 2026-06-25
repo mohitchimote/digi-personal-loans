@@ -167,3 +167,18 @@
   strong { display: block; color: var(--dark-text); margin-bottom: 4px; font-size: 0.9rem; }
   p  { color: var(--mid-grey); font-size: 0.8rem; }
 }
+
+@media (max-width: 900px) {
+  .stats-row    { grid-template-columns: repeat(2, 1fr); }
+  .info-tiles   { grid-template-columns: repeat(2, 1fr); }
+  .welcome-banner { flex-direction: column; gap: 16px; padding: 20px; }
+  .feedback-banner { flex-wrap: wrap; .feedback-actions { width: 100%; } }
+}
+
+@media (max-width: 600px) {
+  .stats-row  { grid-template-columns: repeat(2, 1fr); }
+  .info-tiles { grid-template-columns: 1fr; }
+  .statement-modal-overlay { padding: 0; align-items: flex-end; }
+  .statement-modal { border-radius: 16px 16px 0 0; padding: 20px; }
+  .preapproved-banner { flex-wrap: wrap; }
+}
