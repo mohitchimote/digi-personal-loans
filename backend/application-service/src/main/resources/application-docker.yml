@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/digibank_app?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+
+app:
+  notification-service:
+    url: http://notification-service:8086
+  document-service:
+    url: http://document-service:8085
+  affordability-service:
+    url: http://affordability-service:8083
+  product-service:
+    url: http://product-service:8084

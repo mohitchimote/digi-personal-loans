@@ -1,0 +1,82 @@
+services:
+  mysql:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth-service:
+    build: ./backend/auth-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - branding-store:/app/branding-store
+
+  application-service:
+    build: ./backend/application-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  affordability-service:
+    build: ./backend/affordability-service
+    restart: unless-stopped
+
+  product-service:
+    build: ./backend/product-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  document-service:
+    build: ./backend/document-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - document-store:/app/document-store
+
+  notification-service:
+    build: ./backend/notification-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  api-gateway:
+    build: ./backend/api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - application-service
+      - affordability-service
+      - product-service
+      - document-service
+      - notification-service
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  mysql-data:
+  document-store:
+  branding-store:
