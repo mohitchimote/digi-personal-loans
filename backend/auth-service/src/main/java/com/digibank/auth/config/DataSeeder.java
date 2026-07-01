@@ -8,6 +8,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -46,7 +51,7 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedFaqs() {
-        if (faqRepository.count() > 0) return;
+        deduplicateFaqs();
 
         addFaq("Loan Eligibility", "Who is eligible to apply for a DigiBank personal loan?",
                 "To be eligible you must be an Israeli resident aged 18 or over, with a valid Teudat Zehut (National ID), a monthly gross income of at least ₪8,000, and a credit score of 580 or above. Additional criteria may apply based on the product selected.", null, 1);
@@ -86,7 +91,24 @@ public class DataSeeder implements CommandLineRunner {
                 "Only authorised DigiBank personnel directly involved in the processing of your application can access your data. Data is never sold or shared with third parties for marketing purposes.", null, 2);
     }
 
+    private void deduplicateFaqs() {
+        List<Faq> all = faqRepository.findAll();
+        Map<String, List<Faq>> byQuestion = new HashMap<>();
+        for (Faq f : all) {
+            byQuestion.computeIfAbsent(f.getQuestion(), k -> new ArrayList<>()).add(f);
+        }
+        for (List<Faq> dupes : byQuestion.values()) {
+            if (dupes.size() > 1) {
+                dupes.sort(Comparator.comparingLong(Faq::getId));
+                for (int i = 1; i < dupes.size(); i++) {
+                    faqRepository.deleteById(dupes.get(i).getId());
+                }
+            }
+        }
+    }
+
     private void addFaq(String category, String question, String answer, String videoId, int order) {
+        if (faqRepository.existsByQuestion(question)) return;
         Faq faq = new Faq();
         faq.setCategory(category);
         faq.setQuestion(question);
