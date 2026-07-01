@@ -50,6 +50,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./pages/business/dashboard/business-dashboard.component').then(m => m.BusinessDashboardComponent) },
       { path: 'apply/company-details',      loadComponent: () => import('./pages/business/apply/company-details/company-details.component').then(m => m.CompanyDetailsComponent) },
+      { path: 'apply/consent-management',   loadComponent: () => import('./pages/business/apply/consent-management/business-consent-management.component').then(m => m.BusinessConsentManagementComponent) },
       { path: 'apply/signatories',          loadComponent: () => import('./pages/business/apply/signatories/signatories.component').then(m => m.SignatoriesComponent) },
       { path: 'apply/guarantor-details',    loadComponent: () => import('./pages/business/apply/guarantor-details/business-guarantor-details.component').then(m => m.BusinessGuarantorDetailsComponent) },
       { path: 'apply/connect-bank',         loadComponent: () => import('./pages/business/apply/connect-bank/business-connect-bank.component').then(m => m.BusinessConnectBankComponent) },

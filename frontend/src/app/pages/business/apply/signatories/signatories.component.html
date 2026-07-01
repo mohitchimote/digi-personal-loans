@@ -103,3 +103,69 @@
     </form>
   </div>
 </div>
+
+<!-- Consent modal: shown from Save & Next if no valid consent (within 90 days) is on file -->
+<div class="consent-modal-overlay" *ngIf="showConsentModal()">
+  <div class="consent-modal" *ngIf="!consentRecorded()" [formGroup]="consentForm">
+    <h2>{{ 'consent.title' | translate }}</h2>
+    <p class="text-muted mb-16">{{ 'consent.subtitle' | translate }}</p>
+
+    <div class="db-alert db-alert--info mb-16">
+      <span class="material-icons mi-sm">info</span> {{ 'consent.intro' | translate }}
+    </div>
+
+    <div class="db-alert db-alert--info mb-8">
+      <span class="material-icons mi-sm">group</span> {{ 'consent.signatoryNote' | translate }}
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.creditBureauText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="creditBureauConsent" />
+        <span>{{ 'consent.creditBureauLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.pepText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="pepScreeningConsent" />
+        <span>{{ 'consent.pepLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.sanctionsText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="sanctionsScreeningConsent" />
+        <span>{{ 'consent.sanctionsLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="consent-item">
+      <p class="consent-text">{{ 'consent.dataProcessingText' | translate }}</p>
+      <label class="db-checkbox">
+        <input type="checkbox" formControlName="dataProcessingConsent" />
+        <span>{{ 'consent.dataProcessingLabel' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="db-alert db-alert--error mt-16" *ngIf="consentError()"><span class="material-icons mi-sm">warning</span> {{ consentError() }}</div>
+
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="button" class="db-btn db-btn--primary" (click)="confirmConsent()">{{ 'consent.confirm' | translate }}</button>
+    </div>
+  </div>
+
+  <div class="consent-modal" *ngIf="consentRecorded()">
+    <div class="db-alert db-alert--success mb-16">
+      <span class="material-icons mi-sm">check_circle</span>
+      {{ 'consent.recordedMessage' | translate:{ date: $any(consentValidUntil() | date:'dd MMM yyyy') } }}
+    </div>
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="button" class="db-btn db-btn--primary" (click)="continueAfterConsent()">{{ 'common.continue' | translate }}</button>
+    </div>
+  </div>
+</div>

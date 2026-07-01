@@ -857,6 +857,8 @@ export const EN: Record<string, string> = {
   'consent.recordedMessage': 'Thank you — your consent has been recorded and is valid until {{date}}.',
   'consent.notifyTitle': 'Consent Recorded',
   'consent.notifyMessage': 'We\'ve recorded your consent for credit, PEP, and sanctions checks. It\'s valid until {{date}}.',
+  'consent.signatoryNote': 'This consent applies to all directors and signatories listed on this business loan application.',
+  'viewApp.consentDate': 'Consent recorded',
 
   'dataVerification.title': 'Data Verification',
   'dataVerification.intro': 'Demo capability: cross-checks the customer\'s declared data against simulated document and 3rd-party (credit bureau / national registry) sources. No OCR or bureau integration is wired up yet — these comparisons are illustrative.',

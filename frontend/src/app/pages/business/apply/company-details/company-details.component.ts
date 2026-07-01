@@ -79,7 +79,14 @@ export class CompanyDetailsComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     this.appSvc.saveSection(this.appRef(), 'companyDetails', this.form.value, this.identity.userId!).subscribe({
-      next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('signatories', true)); },
+      next: () => {
+        this.saving.set(false);
+        if (this.identity.isAssisting) {
+          this.router.navigate(this.identity.applyUrl('signatories', true));
+        } else {
+          this.router.navigate(['/business/apply/consent-management']);
+        }
+      },
       error: () => this.saving.set(false)
     });
   }

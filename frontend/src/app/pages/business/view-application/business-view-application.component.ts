@@ -73,6 +73,7 @@ export class BusinessViewApplicationComponent implements OnInit {
   get verifyId()    { return this.parseSection(this.application()?.verifyIdJson); }
   get directDebit() { return this.parseSection(this.application()?.directDebitJson); }
   get guarantorDetails() { return this.parseSection(this.application()?.guarantorDetailsJson); }
+  get consent()          { return this.parseSection(this.application()?.consentManagementJson); }
 
   get canPullBack(): boolean {
     const status = this.application()?.status;

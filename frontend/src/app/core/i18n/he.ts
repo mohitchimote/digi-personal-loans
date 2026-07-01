@@ -857,6 +857,8 @@ export const HE: Record<string, string> = {
   'consent.recordedMessage': 'תודה — ההסכמה שלך נרשמה ותקפה עד {{date}}.',
   'consent.notifyTitle': 'ההסכמה נרשמה',
   'consent.notifyMessage': 'רשמנו את הסכמתך לבדיקות אשראי, PEP וסנקציות. ההסכמה תקפה עד {{date}}.',
+  'consent.signatoryNote': 'הסכמה זו חלה על כל הדירקטורים ומורשי החתימה הרשומים בבקשת ההלוואה העסקית.',
+  'viewApp.consentDate': 'הסכמה נרשמה',
 
   'dataVerification.title': 'אימות נתונים',
   'dataVerification.intro': 'יכולת הדגמה: השוואת הנתונים שהוצהרו על ידי הלקוח למקורות מסמכים וצד שלישי (לשכת אשראי / מרשם ארצי) מדומים. אין עדיין אינטגרציה אמיתית ל-OCR או ללשכת אשראי — ההשוואות הן להמחשה בלבד.',

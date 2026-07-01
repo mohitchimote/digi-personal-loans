@@ -35,6 +35,17 @@
     </div>
   </div>
 
+  <div class="db-card mb-16" id="section-consentManagement" *ngIf="application()?.consentManagementJson">
+    <div class="card-header"><h3>{{ 'consent.title' | translate }}</h3></div>
+    <div class="review-grid">
+      <div class="review-item"><span>{{ 'consent.creditBureauLabel' | translate }}</span><strong>{{ consent.creditBureauConsent ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'consent.pepLabel' | translate }}</span><strong>{{ consent.pepScreeningConsent ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'consent.sanctionsLabel' | translate }}</span><strong>{{ consent.sanctionsScreeningConsent ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item"><span>{{ 'consent.dataProcessingLabel' | translate }}</span><strong>{{ consent.dataProcessingConsent ? ('common.yes' | translate) : ('common.no' | translate) }}</strong></div>
+      <div class="review-item" *ngIf="consent.consentTimestamp"><span>{{ 'viewApp.consentDate' | translate }}</span><strong>{{ consent.consentTimestamp | date:'dd MMM yyyy' }}</strong></div>
+    </div>
+  </div>
+
   <div class="db-card mb-16" id="section-connectBusinessBank">
     <div class="card-header"><h3>{{ 'company.stepConnectBank' | translate }}</h3></div>
     <div class="review-grid">
