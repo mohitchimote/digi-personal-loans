@@ -1,47 +1,179 @@
 <div class="page-header mb-24">
-  <h2>{{ 'admin.users' | translate }}</h2>
-  <p class="page-sub">{{ 'admin.usersSubtitle' | translate }}</p>
+  <div>
+    <h2>{{ 'admin.users' | translate }}</h2>
+    <p class="page-sub">{{ 'admin.usersSubtitle' | translate }}</p>
+  </div>
 </div>
 
-<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
-
-<div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>{{ 'admin.loadingUsers' | translate }}</span>
+<div class="tab-bar mb-24">
+  <button class="tab-btn" [class.active]="activeTab() === 'staff'" (click)="setTab('staff')">
+    <span class="material-icons mi-sm">badge</span> {{ 'admin.tabStaff' | translate }}
+    <span class="tab-count">{{ staff().length }}</span>
+  </button>
+  <button class="tab-btn" [class.active]="activeTab() === 'customers'" (click)="setTab('customers')">
+    <span class="material-icons mi-sm">people</span> {{ 'admin.tabCustomers' | translate }}
+    <span class="tab-count">{{ customers().length }}</span>
+  </button>
 </div>
 
-<div class="db-card" *ngIf="!loading()">
-  <table class="db-table">
-    <thead>
-      <tr>
-        <th>{{ 'admin.name' | translate }}</th>
-        <th>{{ 'admin.email' | translate }}</th>
-        <th>{{ 'admin.nationalId' | translate }}</th>
-        <th>{{ 'admin.role' | translate }}</th>
-        <th>{{ 'dashboard.status' | translate }}</th>
-        <th>{{ 'admin.lastLogin' | translate }}</th>
-        <th>{{ 'admin.actions' | translate }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let u of users()">
-        <td>{{ u.fullName }}</td>
-        <td>{{ u.email }}</td>
-        <td>{{ u.nationalId }}</td>
-        <td>
-          <select class="db-input" style="width:auto" [ngModel]="u.role" (ngModelChange)="changeRole(u, $event)">
-            <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
-          </select>
-        </td>
-        <td>
-          <span class="db-badge" [class.db-badge--approved]="u.enabled" [class.db-badge--declined]="!u.enabled">
-            {{ u.enabled ? ('admin.active' | translate) : ('admin.disabled' | translate) }}
-          </span>
-        </td>
-        <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
-        <td>
-          <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u)">{{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+<div class="db-alert db-alert--error mb-16" *ngIf="error()">
+  <span class="material-icons mi-sm">warning</span> {{ error() }}
 </div>
+
+<!-- STAFF TAB -->
+<ng-container *ngIf="activeTab() === 'staff'">
+  <div class="tab-section-header mb-16">
+    <p class="text-muted">{{ 'admin.staffSubtitle' | translate }}</p>
+    <button class="db-btn db-btn--primary db-btn--sm" (click)="showCreateForm.set(true)" *ngIf="!showCreateForm()">
+      <span class="material-icons mi-sm">person_add</span> {{ 'admin.addStaff' | translate }}
+    </button>
+  </div>
+
+  <div class="db-card mb-16" *ngIf="showCreateForm()">
+    <div class="card-header">
+      <h3>{{ 'admin.createStaff' | translate }}</h3>
+    </div>
+    <div class="create-form-grid">
+      <div class="db-form-group">
+        <label>{{ 'register.fullNameLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" [(ngModel)]="newUser.fullName" [placeholder]="'register.fullNameLabel' | translate" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.email' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="email" [(ngModel)]="newUser.email" placeholder="staff@digibank.com" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.nationalId' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" inputmode="numeric" maxlength="9" [(ngModel)]="newUser.nationalId" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.phone' | translate }}</label>
+        <input class="db-input" type="tel" [(ngModel)]="newUser.phoneNumber" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.role' | translate }} <span class="required">*</span></label>
+        <select class="db-input" [(ngModel)]="newUser.role">
+          <option *ngFor="let r of staffRoles" [value]="r">{{ roleLabel(r) }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions mt-16">
+      <button class="db-btn db-btn--ghost" (click)="cancelCreate()">{{ 'common.cancel' | translate }}</button>
+      <button class="db-btn db-btn--primary" (click)="submitCreateStaff()" [disabled]="creating()">
+        {{ creating() ? ('wizard.saving' | translate) : ('admin.createStaff' | translate) }}
+      </button>
+    </div>
+  </div>
+
+  <div class="loading-row" *ngIf="loadingStaff()">
+    <div class="spinner"></div><span>{{ 'admin.loadingUsers' | translate }}</span>
+  </div>
+
+  <div class="db-card" *ngIf="!loadingStaff()">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>{{ 'admin.name' | translate }}</th>
+          <th>{{ 'admin.email' | translate }}</th>
+          <th>{{ 'admin.nationalId' | translate }}</th>
+          <th>{{ 'admin.role' | translate }}</th>
+          <th>{{ 'dashboard.status' | translate }}</th>
+          <th>{{ 'admin.lastLogin' | translate }}</th>
+          <th>{{ 'admin.actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="staff().length === 0">
+          <td colspan="7" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.noStaff' | translate }}</td>
+        </tr>
+        <tr *ngFor="let u of staff()">
+          <td>{{ u.fullName }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.nationalId }}</td>
+          <td>
+            <select class="db-input" style="width:auto" [ngModel]="u.role" (ngModelChange)="changeRole(u, $event)">
+              <option *ngFor="let r of staffRoles" [value]="r">{{ roleLabel(r) }}</option>
+            </select>
+          </td>
+          <td>
+            <span class="db-badge" [class.db-badge--approved]="u.enabled" [class.db-badge--declined]="!u.enabled">
+              {{ u.enabled ? ('admin.active' | translate) : ('admin.disabled' | translate) }}
+            </span>
+          </td>
+          <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
+          <td>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u, 'staff')">
+              {{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>
+
+<!-- CUSTOMERS TAB -->
+<ng-container *ngIf="activeTab() === 'customers'">
+  <div class="tab-section-header mb-16">
+    <p class="text-muted">{{ 'admin.customersSubtitle' | translate }}</p>
+  </div>
+
+  <div class="loading-row" *ngIf="loadingCustomers()">
+    <div class="spinner"></div><span>{{ 'admin.loadingUsers' | translate }}</span>
+  </div>
+
+  <div class="db-card" *ngIf="!loadingCustomers()">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>{{ 'admin.name' | translate }}</th>
+          <th>{{ 'admin.email' | translate }}</th>
+          <th>{{ 'admin.nationalId' | translate }}</th>
+          <th>{{ 'admin.type' | translate }}</th>
+          <th>{{ 'dashboard.status' | translate }}</th>
+          <th>{{ 'admin.joined' | translate }}</th>
+          <th>{{ 'admin.lastLogin' | translate }}</th>
+          <th>{{ 'admin.actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="customers().length === 0">
+          <td colspan="8" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.noCustomers' | translate }}</td>
+        </tr>
+        <tr *ngFor="let u of customers()">
+          <td>{{ u.fullName }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.nationalId }}</td>
+          <td>
+            <span class="db-badge db-badge--info">{{ roleLabel(u.role) }}</span>
+            <div *ngIf="u.companyName" class="text-muted" style="font-size:0.78rem; margin-top:2px">{{ u.companyName }}</div>
+          </td>
+          <td>
+            <span class="db-badge" [class.db-badge--approved]="u.enabled" [class.db-badge--declined]="!u.enabled">
+              {{ u.enabled ? ('admin.active' | translate) : ('admin.disabled' | translate) }}
+            </span>
+          </td>
+          <td class="text-muted" style="font-size:0.8rem">{{ u.createdAt | date:'dd MMM yyyy' }}</td>
+          <td class="text-muted" style="font-size:0.8rem">{{ u.lastLogin ? (u.lastLogin | date:'dd MMM yyyy HH:mm') : '—' }}</td>
+          <td>
+            <div class="action-group">
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u, 'customers')">
+                {{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}
+              </button>
+              <ng-container *ngIf="deleteConfirmId() === u.id; else deleteBtn">
+                <span class="delete-confirm-text">{{ 'admin.deleteConfirm' | translate }}</span>
+                <button class="db-btn db-btn--danger db-btn--sm" (click)="executeDelete(u.id)" [disabled]="deleting()">{{ 'admin.deleteRecord' | translate }}</button>
+                <button class="db-btn db-btn--ghost db-btn--sm" (click)="cancelDelete()">{{ 'common.cancel' | translate }}</button>
+              </ng-container>
+              <ng-template #deleteBtn>
+                <button class="db-btn db-btn--ghost db-btn--sm delete-btn" (click)="confirmDelete(u.id)">
+                  <span class="material-icons mi-sm">delete_outline</span>
+                </button>
+              </ng-template>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>

@@ -5,3 +5,92 @@
   padding: 40px;
   justify-content: center;
 }
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--body-text-muted, #6b7280);
+  transition: color 0.15s, border-color 0.15s;
+
+  &.active {
+    color: var(--tcs-blue);
+    border-bottom-color: var(--tcs-blue);
+  }
+
+  &:hover:not(.active) {
+    color: var(--body-text);
+  }
+}
+
+.tab-count {
+  background: var(--info-light, #eff6ff);
+  color: var(--tcs-blue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.tab-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.create-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.delete-confirm-text {
+  font-size: 0.78rem;
+  color: var(--error, #dc2626);
+}
+
+.delete-btn {
+  color: var(--body-text-muted, #9ca3af);
+  &:hover { color: var(--error, #dc2626); }
+}
+
+.db-btn--danger {
+  background: var(--error, #dc2626);
+  color: #fff;
+  border-color: var(--error, #dc2626);
+  &:hover { opacity: 0.85; }
+}
+
+.db-badge--info {
+  background: var(--info-light, #eff6ff);
+  color: var(--tcs-blue);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}

@@ -13,6 +13,15 @@ export interface UserSummary {
   enabled: boolean;
   createdAt: string;
   lastLogin?: string;
+  companyName?: string;
+}
+
+export interface CreateStaffRequest {
+  email: string;
+  fullName: string;
+  nationalId: string;
+  phoneNumber?: string;
+  role: string;
 }
 
 const API = `${API_BASE}/api/auth/admin`;
@@ -25,11 +34,27 @@ export class AdminService {
     return this.http.get<UserSummary[]>(`${API}/users`);
   }
 
+  getStaff(): Observable<UserSummary[]> {
+    return this.http.get<UserSummary[]>(`${API}/users?type=staff`);
+  }
+
+  getCustomers(): Observable<UserSummary[]> {
+    return this.http.get<UserSummary[]>(`${API}/users?type=customers`);
+  }
+
+  createStaffUser(req: CreateStaffRequest): Observable<any> {
+    return this.http.post<any>(`${API}/users`, req);
+  }
+
   updateRole(id: number, role: string): Observable<any> {
     return this.http.put<any>(`${API}/users/${id}/role`, { role });
   }
 
   setEnabled(id: number, enabled: boolean): Observable<any> {
     return this.http.put<any>(`${API}/users/${id}/enabled`, { enabled });
+  }
+
+  deleteUser(id: number): Observable<any> {
+    return this.http.delete<any>(`${API}/users/${id}`);
   }
 }

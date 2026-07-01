@@ -13,6 +13,7 @@ public class UserSummaryResponse {
     private boolean enabled;
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
+    private String companyName;
 
     public static UserSummaryResponse from(User u) {
         UserSummaryResponse r = new UserSummaryResponse();
@@ -25,6 +26,7 @@ public class UserSummaryResponse {
         r.enabled = u.isEnabled();
         r.createdAt = u.getCreatedAt();
         r.lastLogin = u.getLastLogin();
+        r.companyName = u.getCompanyName();
         return r;
     }
 
@@ -37,4 +39,5 @@ public class UserSummaryResponse {
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getLastLogin() { return lastLogin; }
+    public String getCompanyName() { return companyName; }
 }
