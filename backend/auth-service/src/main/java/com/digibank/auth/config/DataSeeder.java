@@ -27,13 +27,20 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        removeDemoCustomers();
         seedUser("underwriter@digibank.com", "000000018", "DigiBank Underwriter", "UNDERWRITER");
         seedUser("admin@digibank.com", "000000026", "DigiBank Admin", "ADMIN");
         seedUser("banker@digibank.com", "000000027", "DigiBank Banker", "BANKER");
-        seedUser("noa.levi@digibank.il", "000000050", "Noa Levi", "CUSTOMER");
-        seedUser("avi.mizrahi@digibank.il", "000000051", "Avi Mizrahi", "CUSTOMER");
-        seedUser("tamar.bendavid@digibank.il", "000000052", "Tamar Ben-David", "CUSTOMER");
         seedFaqs();
+    }
+
+    private static final List<String> DEMO_CUSTOMER_EMAILS = List.of(
+            "noa.levi@digibank.il", "avi.mizrahi@digibank.il", "tamar.bendavid@digibank.il");
+
+    private void removeDemoCustomers() {
+        for (String email : DEMO_CUSTOMER_EMAILS) {
+            userRepository.findByEmail(email).ifPresent(u -> userRepository.delete(u));
+        }
     }
 
     private void seedUser(String email, String nationalId, String fullName, String role) {
