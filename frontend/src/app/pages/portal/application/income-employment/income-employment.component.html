@@ -233,7 +233,7 @@
         <ng-container *ngFor="let emp of additionalEmployments.controls; let i = index" [formGroupName]="i">
           <div class="dense-section-label" style="display:flex; align-items:center; justify-content:space-between;">
             <span>{{ 'income.employmentHeader' | translate:{ n: i + 2 } }}</span>
-            <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="removeEmployment(i)">{{ 'common.delete' | translate }}</button>
+            <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="!readOnly()" (click)="removeEmployment(i)">{{ 'common.delete' | translate }}</button>
           </div>
           <div class="dense-grid">
             <div class="dense-field">
@@ -258,7 +258,7 @@
           </div>
         </ng-container>
       </ng-container>
-      <button type="button" class="db-btn db-btn--outline db-btn--sm mt-8" (click)="addEmployment()">{{ 'income.addEmployment' | translate }}</button>
+      <button type="button" class="db-btn db-btn--outline db-btn--sm mt-8" *ngIf="!readOnly()" (click)="addEmployment()">{{ 'income.addEmployment' | translate }}</button>
     </form>
 
     <ng-container *ngIf="isJoint">
@@ -293,10 +293,13 @@
       </form>
     </ng-container>
 
-    <div class="dense-form-actions">
+    <div class="dense-form-actions" *ngIf="!readOnly()">
       <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
+    </div>
+    <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+      <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
     </div>
   </div>
 </div>

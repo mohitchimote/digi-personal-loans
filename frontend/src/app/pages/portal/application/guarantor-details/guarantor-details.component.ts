@@ -22,6 +22,7 @@ export class GuarantorDetailsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   uploading = signal(false);
   uploadedFiles = signal<string[]>([]);
   uploadError = signal('');
@@ -45,14 +46,16 @@ export class GuarantorDetailsComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.guarantorDetailsJson) {
           const data = JSON.parse(app.guarantorDetailsJson);
           this.form.patchValue(data);
           this.uploadedFiles.set(data.files || []);
         }
+        if (this.readOnly()) this.form.disable();
       }
     });
   }

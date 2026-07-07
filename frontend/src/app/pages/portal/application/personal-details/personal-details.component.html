@@ -364,7 +364,7 @@
         <div class="previous-address-card" *ngFor="let pa of previousAddresses.controls; let i = index" [formGroupName]="i">
           <div class="card-header">
             <h4>{{ 'personal.previousAddressHeader' | translate:{ n: i + 1 } }}</h4>
-            <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="removePreviousAddress(i)">{{ 'common.delete' | translate }}</button>
+            <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="!readOnly()" (click)="removePreviousAddress(i)">{{ 'common.delete' | translate }}</button>
           </div>
           <div class="dense-grid">
             <div class="dense-field"><label>{{ 'personal.streetLabel' | translate }}</label><input class="db-input" type="text" formControlName="street" /></div>
@@ -375,7 +375,7 @@
           </div>
         </div>
       </div>
-      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="needsMoreAddressHistory" (click)="addPreviousAddress()">
+      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="needsMoreAddressHistory && !readOnly()" (click)="addPreviousAddress()">
         {{ 'personal.addPreviousAddress' | translate }}
       </button>
       <div class="db-alert db-alert--error mt-16" *ngIf="addressHistoryError()">{{ addressHistoryError() }}</div>
@@ -431,10 +431,13 @@
       </form>
     </ng-container>
 
-    <div class="dense-form-actions">
+    <div class="dense-form-actions" *ngIf="!readOnly()">
       <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
+    </div>
+    <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+      <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
     </div>
   </div>
 </div>

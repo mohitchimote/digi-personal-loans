@@ -21,6 +21,7 @@ export class CompanyDetailsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   purposes = BUSINESS_LOAN_PURPOSES;
   branches = DIGIBANK_BRANCHES;
 
@@ -61,14 +62,16 @@ export class CompanyDetailsComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.companyDetailsJson) {
           this.form.patchValue(JSON.parse(app.companyDetailsJson));
         } else if (this.identity.companyName) {
           this.form.patchValue({ companyName: this.identity.companyName });
         }
+        if (this.readOnly()) this.form.disable();
       }
     });
   }

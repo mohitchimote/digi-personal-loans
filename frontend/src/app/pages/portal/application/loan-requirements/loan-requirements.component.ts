@@ -19,6 +19,7 @@ export class LoanRequirementsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   purposes = LOAN_PURPOSES;
 
   constructor(
@@ -48,9 +49,11 @@ export class LoanRequirementsComponent implements OnInit {
     const email  = this.identity.userEmail;
     if (!userId || !email) return;
 
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
+        if (this.readOnly()) this.form.disable();
         if (app.loanRequirementsJson) {
           this.form.patchValue(JSON.parse(app.loanRequirementsJson));
         }

@@ -18,6 +18,7 @@ export class OutgoingsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router) {
@@ -34,9 +35,11 @@ export class OutgoingsComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
+        if (this.readOnly()) this.form.disable();
         if (app.outgoingsJson) this.form.patchValue(JSON.parse(app.outgoingsJson));
       }
     });

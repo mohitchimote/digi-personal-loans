@@ -22,6 +22,7 @@ export class SignatoriesComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
 
   readonly CONSENT_VALIDITY_DAYS = 90;
   consentForm: FormGroup;
@@ -72,9 +73,10 @@ export class SignatoriesComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         this.storedConsent = app.consentManagementJson ? JSON.parse(app.consentManagementJson) : null;
         if (app.signatoriesJson) {
           const data = JSON.parse(app.signatoriesJson);
@@ -89,6 +91,7 @@ export class SignatoriesComponent implements OnInit {
           primary.patchValue({ fullName: this.identity.userFullName || '', nationalId: this.identity.userNationalId || '' });
           this.signatories.push(primary);
         }
+        if (this.readOnly()) this.form.disable();
       }
     });
   }

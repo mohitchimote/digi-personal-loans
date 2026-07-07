@@ -60,10 +60,13 @@
         <div class="dense-field"><label>{{ 'company.employeeCountLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="number" min="0" formControlName="employeeCount" /></div>
       </div>
 
-      <div class="dense-form-actions">
+      <div class="dense-form-actions" *ngIf="!readOnly()">
         <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
           {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
         </button>
+      </div>
+      <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+        <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
       </div>
     </form>
   </div>

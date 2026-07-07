@@ -22,6 +22,7 @@ export class PersonalDetailsComponent implements OnInit {
   applicant2Form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   numberOfApplicants = signal(1);
   maritalStatuses = MARITAL_STATUSES;
   nationalities = NATIONALITIES;
@@ -200,9 +201,10 @@ export class PersonalDetailsComponent implements OnInit {
     const userId = this.identity.userId;
     const email  = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.loanRequirementsJson) {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
           this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);
@@ -224,6 +226,7 @@ export class PersonalDetailsComponent implements OnInit {
             idIssueDate: this.identity.userIdIssueDate,
           });
         }
+        if (this.readOnly()) { this.form.disable(); this.applicant2Form.disable(); }
       }
     });
   }

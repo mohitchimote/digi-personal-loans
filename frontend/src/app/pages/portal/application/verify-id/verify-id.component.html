@@ -51,7 +51,7 @@
   <div class="db-card">
     <div class="card-header"><h3>{{ 'verifyId.title' | translate }}</h3></div>
 
-    <div class="drop-zone" [class.drop-zone--active]="dragOver()"
+    <div class="drop-zone" *ngIf="!readOnly()" [class.drop-zone--active]="dragOver()"
          (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
       <div class="drop-icon material-icons">badge</div>
       <div class="drop-text">{{ 'docs.dropText' | translate }}</div>
@@ -74,10 +74,13 @@
       </div>
     </div>
 
-    <div class="dense-form-actions">
+    <div class="dense-form-actions" *ngIf="!readOnly()">
       <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="!canContinue || saving()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
+    </div>
+    <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+      <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
     </div>
   </div>
 </div>

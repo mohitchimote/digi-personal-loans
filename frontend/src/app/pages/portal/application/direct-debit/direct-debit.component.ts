@@ -19,6 +19,7 @@ export class DirectDebitComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   prefilledFromBank = signal(false);
   isJoint = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
@@ -64,9 +65,11 @@ export class DirectDebitComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
+        if (this.readOnly()) this.form.disable();
         if (app.loanRequirementsJson) {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
           this.isJoint.set((Number(loanReqs.numberOfApplicants) || 1) === 2);

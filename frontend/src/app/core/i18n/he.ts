@@ -18,6 +18,7 @@ export const HE: Record<string, string> = {
   'common.yes': 'כן',
   'common.no': 'לא',
   'common.continue': 'המשך',
+  'common.readOnlyNotice': 'הבקשה כבר הוכרעה ולא ניתן לערוך אותה כאן. מוצג לצפייה בלבד.',
 
   // Portal shell
   'portal.breadcrumb': 'פורטל הלוואות פרטיות',
@@ -926,7 +927,7 @@ export const HE: Record<string, string> = {
   'company.noApplicationsYet': 'אין עדיין בקשות',
   'company.startFirstApplication': 'התחל את בקשת ההלוואה העסקית הראשונה שלך.',
   'company.stepCompanyDetails': 'פרטי החברה',
-  'company.stepSignatories': 'מורשי חתימה',
+  'company.stepSignatories': 'דירקטור / מורשי חתימה',
   'company.stepConnectBank': 'חבר חשבון בנק',
   'company.stepFinancials': 'נתונים פיננסיים',
   'company.stepOutgoings': 'הוצאות',

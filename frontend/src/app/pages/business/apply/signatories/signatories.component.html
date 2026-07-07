@@ -65,7 +65,7 @@
       <ng-container *ngFor="let group of signatories.controls; let i = index" [formGroup]="$any(group)">
         <div class="dense-section-label" style="display:flex; align-items:center; justify-content:space-between;">
           <span>{{ 'company.signatoryHeader' | translate:{ n: i + 1 } }}</span>
-          <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="signatories.length > 1" (click)="removeSignatory(i)">{{ 'common.remove' | translate }}</button>
+          <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="signatories.length > 1 && !readOnly()" (click)="removeSignatory(i)">{{ 'common.remove' | translate }}</button>
         </div>
         <div class="dense-grid">
           <div class="dense-field">
@@ -93,12 +93,15 @@
         </div>
       </ng-container>
 
-      <button type="button" class="db-btn db-btn--outline db-btn--sm mt-8" (click)="addSignatory()">{{ 'company.addSignatory' | translate }}</button>
+      <button type="button" class="db-btn db-btn--outline db-btn--sm mt-8" *ngIf="!readOnly()" (click)="addSignatory()">{{ 'company.addSignatory' | translate }}</button>
 
-      <div class="dense-form-actions">
+      <div class="dense-form-actions" *ngIf="!readOnly()">
         <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
           {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
         </button>
+      </div>
+      <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+        <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
       </div>
     </form>
   </div>

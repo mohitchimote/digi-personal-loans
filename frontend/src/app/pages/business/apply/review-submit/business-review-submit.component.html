@@ -112,7 +112,7 @@
     </div>
   </div>
 
-  <div class="db-card">
+  <div class="db-card" *ngIf="!readOnly()">
     <div class="card-header"><h3>{{ 'reviewSubmit.declarationHeader' | translate }}</h3></div>
 
     <label class="db-checkbox mb-16">
@@ -140,7 +140,11 @@
     <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
   </div>
 
-  <div class="form-actions mt-24">
+  <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+    <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
+  </div>
+
+  <div class="form-actions mt-24" *ngIf="!readOnly()">
     <div></div>
     <button class="db-btn db-btn--accent db-btn--lg" (click)="submit()" [disabled]="!canSubmit || submitting()">
       {{ submitting() ? ('reviewSubmit.submitting' | translate) : ('reviewSubmit.submitApplication' | translate) }}

@@ -244,10 +244,13 @@
       </form>
     </ng-container>
 
-    <div class="dense-form-actions">
+    <div class="dense-form-actions" *ngIf="!readOnly()">
       <button type="button" class="db-btn db-btn--primary" [disabled]="saving()" (click)="saveAndNext()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
+    </div>
+    <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+      <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
     </div>
   </div>
 </div>

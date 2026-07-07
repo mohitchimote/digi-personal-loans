@@ -18,6 +18,7 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
@@ -44,14 +45,16 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         const data = app.businessCreditDeclarationsJson ? JSON.parse(app.businessCreditDeclarationsJson) : null;
         this.form.patchValue({
           ...data,
           directorCreditScore: data?.directorCreditScore ?? this.syntheticScore(this.identity.userNationalId || app.applicationRef),
         });
+        if (this.readOnly()) this.form.disable();
       }
     });
   }

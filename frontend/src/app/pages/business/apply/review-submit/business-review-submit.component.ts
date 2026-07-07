@@ -17,6 +17,7 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 })
 export class BusinessReviewSubmitComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
+  readOnly = signal(false);
   agreedToTerms   = false;
   agreedToPrivacy = false;
   agreedToCredit  = false;
@@ -29,8 +30,11 @@ export class BusinessReviewSubmitComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
-      next: app => this.application.set(app)
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
+      next: app => {
+        this.application.set(app);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
+      }
     });
   }
 

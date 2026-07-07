@@ -19,6 +19,7 @@ type BankConnectionSummary = { accountMasked: string; avgBalance: number; transa
 export class ConnectBankComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   numberOfApplicants = signal(1);
 
   // Applicant 1
@@ -51,9 +52,10 @@ export class ConnectBankComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.loanRequirementsJson) {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
           this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);

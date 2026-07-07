@@ -21,6 +21,7 @@ export class BusinessDirectDebitComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
   appRef = signal('');
+  readOnly = signal(false);
   prefilledFromBank = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
   banks: IsraeliBank[] = ISRAELI_BANKS;
@@ -57,9 +58,11 @@ export class BusinessDirectDebitComponent implements OnInit {
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
-    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting ? '/banker/case' : undefined).subscribe({
+    this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
+        if (this.readOnly()) this.form.disable();
         if (app.directDebitJson) {
           const data = JSON.parse(app.directDebitJson);
           this.form.patchValue(data);

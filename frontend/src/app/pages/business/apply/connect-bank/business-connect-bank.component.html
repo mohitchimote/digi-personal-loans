@@ -58,7 +58,7 @@
   <div class="db-card mb-16">
     <div class="card-header"><h3>{{ 'company.connectBankTitle' | translate }}</h3></div>
 
-    <div *ngIf="!connected() && !connecting()">
+    <div *ngIf="!connected() && !connecting() && !readOnly()">
       <div class="bank-grid">
         <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
           <span class="bank-icon material-icons">{{ b.icon }}</span>
@@ -77,14 +77,17 @@
         <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary.avgBalance | number }}</strong></div>
         <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary.transactions }}</strong></div>
       </div>
-      <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
+      <button class="db-btn db-btn--ghost db-btn--sm mt-16" *ngIf="!readOnly()" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
     </div>
 
-    <div class="dense-form-actions">
+    <div class="dense-form-actions" *ngIf="!readOnly()">
       <button class="db-btn db-btn--outline" (click)="continue()" [disabled]="saving() || connecting()" *ngIf="!connected()">{{ 'connectBank.skipForNow' | translate }}</button>
       <button class="db-btn db-btn--primary" (click)="continue()" [disabled]="saving() || connecting()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
+    </div>
+    <div class="db-alert db-alert--info mt-16" *ngIf="readOnly()">
+      <span class="material-icons mi-sm">lock</span> {{ 'common.readOnlyNotice' | translate }}
     </div>
   </div>
 </div>

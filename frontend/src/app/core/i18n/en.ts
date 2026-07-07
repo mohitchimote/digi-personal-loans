@@ -18,6 +18,7 @@ export const EN: Record<string, string> = {
   'common.yes': 'Yes',
   'common.no': 'No',
   'common.continue': 'Continue',
+  'common.readOnlyNotice': 'This application has already been decided and can no longer be edited here. Showing read-only.',
 
   // Portal shell
   'portal.breadcrumb': 'Personal Loans Portal',
@@ -926,7 +927,7 @@ export const EN: Record<string, string> = {
   'company.noApplicationsYet': 'No applications yet',
   'company.startFirstApplication': 'Start your first business loan application to get going.',
   'company.stepCompanyDetails': 'Company Details',
-  'company.stepSignatories': 'Signatories',
+  'company.stepSignatories': 'Director / Signatories',
   'company.stepConnectBank': 'Connect Bank',
   'company.stepFinancials': 'Financials',
   'company.stepOutgoings': 'Outgoings',

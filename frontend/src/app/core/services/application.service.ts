@@ -39,34 +39,43 @@ export class ApplicationService {
    *
    * When `appRef` is provided (a Banker assisting a specific customer), fetches that exact
    * application instead of "this customer's most recently updated one" — a customer with more
-   * than one application could otherwise land the Banker on the wrong one. `redirectBase` lets
-   * the Banker path redirect back into the Banker shell instead of the customer's read-only view.
+   * than one application could otherwise land the Banker on the wrong one. `isAssisting` skips the
+   * redirect-away-when-not-editable behaviour entirely: assisting staff still land on the wizard
+   * step for a decided application, just in read-only mode (see isEditableStatus()) — they never
+   * get bounced back to the case overview the way the pre-fix behaviour did.
    */
-  resolveEditable(customerId: number, customerEmail: string, appRef?: string, redirectBase = '/portal/view-application'): Observable<LoanApplication> {
+  resolveEditable(customerId: number, customerEmail: string, appRef?: string, isAssisting = false): Observable<LoanApplication> {
     const source = appRef
       ? this.getApplication(appRef)
       : this.getCurrent(customerId).pipe(catchError(() => this.startOrResume(customerId, customerEmail)));
     return source.pipe(
       switchMap(app => {
-        if (EDITABLE_STATUSES.includes(app.status)) return of(app);
-        this.router.navigate([redirectBase, app.applicationRef]);
+        if (isAssisting || EDITABLE_STATUSES.includes(app.status)) return of(app);
+        this.router.navigate(['/portal/view-application', app.applicationRef]);
         return EMPTY;
       })
     );
   }
 
   /** Business-loan equivalent of resolveEditable. */
-  resolveEditableBusiness(customerId: number, customerEmail: string, appRef?: string, redirectBase = '/business/view-application'): Observable<LoanApplication> {
+  resolveEditableBusiness(customerId: number, customerEmail: string, appRef?: string, isAssisting = false): Observable<LoanApplication> {
     const source = appRef
       ? this.getApplication(appRef)
       : this.getCurrent(customerId).pipe(catchError(() => this.startOrResumeBusiness(customerId, customerEmail)));
     return source.pipe(
       switchMap(app => {
-        if (EDITABLE_STATUSES.includes(app.status)) return of(app);
-        this.router.navigate([redirectBase, app.applicationRef]);
+        if (isAssisting || EDITABLE_STATUSES.includes(app.status)) return of(app);
+        this.router.navigate(['/business/view-application', app.applicationRef]);
         return EMPTY;
       })
     );
+  }
+
+  /** Whether a wizard step should render editable for this application status — used by staff-
+   * assisted wizard steps to decide whether to render read-only once resolveEditable(Business)
+   * has stopped redirecting them away for a decided application. */
+  isEditableStatus(status: string): boolean {
+    return EDITABLE_STATUSES.includes(status);
   }
 
   /** While a Banker is assisting, logs an audit note on every section save so there's a record
