@@ -20,7 +20,7 @@ import { LanguageSwitcherComponent } from '../../../shared/language-switcher/lan
 })
 export class BusinessPortalComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
-  sidebarCollapsed = signal(false);
+  sidebarCollapsed = signal(typeof window !== 'undefined' && window.innerWidth <= 768);
 
   constructor(private appSvc: ApplicationService, public auth: AuthService, private router: Router) {}
 
@@ -89,5 +89,13 @@ export class BusinessPortalComponent implements OnInit {
 
   toggleSidebar(): void {
     this.sidebarCollapsed.set(!this.sidebarCollapsed());
+  }
+
+  closeSidebar(): void {
+    this.sidebarCollapsed.set(true);
+  }
+
+  get isMobile(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
   }
 }

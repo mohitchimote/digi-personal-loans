@@ -53,3 +53,39 @@
 }
 
 .approval-footer { margin-top: 0; }
+
+@media (max-width: 768px) {
+  .approval-banner {
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .approval-grid {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    > * { min-width: 0; }
+  }
+
+  .approval-page {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 0;
+
+    span:first-child { font-size: 0.78rem; }
+    strong, .highlight-value { word-break: break-word; }
+  }
+
+  .doc-item {
+    flex-wrap: wrap;
+    .doc-info { min-width: 0; }
+  }
+
+  .step-item p { word-break: break-word; }
+}

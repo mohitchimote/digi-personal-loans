@@ -1,4 +1,5 @@
 <div class="app-shell">
+  <div class="sidebar-overlay" [class.visible]="!sidebarCollapsed()" (click)="closeSidebar()"></div>
   <app-sidebar [application]="application()" [collapsed]="sidebarCollapsed()" [applicationSteps]="applicationSteps" />
 
   <div class="main-content" [class.sidebar-collapsed]="sidebarCollapsed()">

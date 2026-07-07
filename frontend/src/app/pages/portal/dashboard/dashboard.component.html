@@ -133,7 +133,7 @@
       <button class="db-btn db-btn--primary mt-16" (click)="startOrResumeApplication()" [disabled]="startingApplication()">{{ 'dashboard.beginApplication' | translate }}</button>
     </div>
 
-    <table class="db-table" *ngIf="applications().length > 0">
+    <table class="db-table db-table--cards" *ngIf="applications().length > 0">
       <thead>
         <tr>
           <th>{{ 'dashboard.reference' | translate }}</th>
@@ -145,9 +145,9 @@
       </thead>
       <tbody>
         <tr *ngFor="let app of applications()">
-          <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
-          <td><span class="db-badge" [class]="getStatusClass(app.status)">{{ statusLabel(app.status) }}</span></td>
-          <td>
+          <td data-label="Reference"><strong class="text-primary">{{ app.applicationRef }}</strong></td>
+          <td data-label="Status"><span class="db-badge" [class]="getStatusClass(app.status)">{{ statusLabel(app.status) }}</span></td>
+          <td data-label="Progress">
             <div class="table-progress">
               <div class="progress-bar-container" style="width:120px">
                 <div class="progress-fill" [style.width.%]="app.completionPercentage"></div>
@@ -155,8 +155,8 @@
               <span class="text-muted" style="font-size:0.78rem">{{ app.completionPercentage }}%</span>
             </div>
           </td>
-          <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy' }}</td>
-          <td>
+          <td data-label="Updated" class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy' }}</td>
+          <td data-label="Action" class="td-actions">
             <a [routerLink]="getResumeRoute(app)" class="db-btn db-btn--outline db-btn--sm"
                *ngIf="app.status === 'DRAFT' || app.status === 'IN_PROGRESS'">{{ 'dashboard.resume' | translate }}</a>
             <a [routerLink]="['/portal/approval', app.applicationRef]" class="db-btn db-btn--ghost db-btn--sm"

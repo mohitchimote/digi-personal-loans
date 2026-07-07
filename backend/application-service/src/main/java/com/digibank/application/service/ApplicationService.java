@@ -50,6 +50,10 @@ public class ApplicationService {
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
 
+    private static final List<String> BANKER_QUEUE_STATUSES = List.of(
+            "DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW",
+            "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
+
     /** "guarantorDetails" sits right after personalDetails but is normally skipped — see
      * isSectionFilled(), which treats it as filled/skippable unless an underwriter has flagged
      * guarantorRequired via sendBackApplication(). */
@@ -427,10 +431,9 @@ public class ApplicationService {
         return repository.findByStatusInOrderBySubmittedAtAsc(PIPELINE_STATUSES);
     }
 
-    /** Queue for the Banker role — applications a customer has started but not yet submitted,
-     * i.e. everything not already in the Underwriter's pipeline (PIPELINE_STATUSES). */
+    /** Queue for the Banker role — all live applications from draft through to final approval. */
     public List<LoanApplication> getBankerQueue() {
-        return repository.findByStatusInOrderByUpdatedAtDesc(ACTIVE_STATUSES);
+        return repository.findByStatusInOrderByUpdatedAtDesc(BANKER_QUEUE_STATUSES);
     }
 
     private static final List<String> CANCELLABLE_STATUSES = List.of(
