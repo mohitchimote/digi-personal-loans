@@ -41,7 +41,10 @@ export class BankerQueueComponent implements OnInit {
         return c.companyName || app.customerEmail;
       }
       const p = JSON.parse(app.personalDetailsJson || '{}');
-      return `${p.firstName || ''} ${p.lastName || ''}`.trim() || app.customerEmail;
+      const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || app.customerEmail;
+      const a2 = p.applicant2;
+      const name2 = a2 ? `${a2.firstName || ''} ${a2.lastName || ''}`.trim() : '';
+      return name2 ? `${name} & ${name2}` : name;
     } catch { return app.customerEmail; }
   }
 }

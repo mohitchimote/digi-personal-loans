@@ -1,6 +1,6 @@
 <div *ngIf="!loading() && application()">
   <div class="page-header mb-24">
-    <h2 *ngIf="!isBusiness">{{ personal.firstName }} {{ personal.lastName }} · {{ application()!.applicationRef }}</h2>
+    <h2 *ngIf="!isBusiness">{{ applicantDisplayName }} · {{ application()!.applicationRef }}</h2>
     <h2 *ngIf="isBusiness">{{ company.companyName }} · {{ application()!.applicationRef }}</h2>
     <p class="page-sub">{{ statusLabel(application()!.status) }} · {{ 'uw.submitted' | translate }} {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</p>
   </div>

@@ -271,6 +271,15 @@ export class CaseDetailComponent implements OnInit {
   get loanReqs() { return this.parseSection(this.application()?.loanRequirementsJson); }
   get consent() { return this.parseSection(this.application()?.consentManagementJson); }
   get personal() { return this.parseSection(this.application()?.personalDetailsJson); }
+
+  /** Header/queue rows previously showed only the primary applicant's name, giving no indication
+   * a joint application had a second applicant at all — appends them when present. */
+  get applicantDisplayName(): string {
+    const name = `${this.personal.firstName || ''} ${this.personal.lastName || ''}`.trim();
+    const a2 = this.personal.applicant2;
+    const name2 = a2 ? `${a2.firstName || ''} ${a2.lastName || ''}`.trim() : '';
+    return name2 ? `${name} & ${name2}` : name;
+  }
   get bankConnection() { return this.parseSection(this.application()?.bankConnectionJson); }
   get income()   { return this.parseSection(this.application()?.incomeEmploymentJson); }
   get outgoings() { return this.parseSection(this.application()?.outgoingsJson); }

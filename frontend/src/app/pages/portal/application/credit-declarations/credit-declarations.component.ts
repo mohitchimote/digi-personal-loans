@@ -22,6 +22,14 @@ export class CreditDeclarationsComponent implements OnInit {
   readOnly = signal(false);
   numberOfApplicants = signal(1);
 
+  /** DEMO-ONLY: credit score is underwriter-only data a real bureau pull would populate. Customers
+   * were previously shown an editable slider for this, which confused SME demo audiences ("why can
+   * I set my own credit score?") — fixed in the background instead so every demo application lands
+   * in the same good-credit STP path (ficoToLenderGrade(770/750) both clear
+   * AffordabilityRules.minCreditScore comfortably), never surfaced to the customer at all. */
+  readonly PRIMARY_CREDIT_SCORE = 770;
+  readonly SECONDARY_CREDIT_SCORE = 750;
+
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
@@ -29,28 +37,15 @@ export class CreditDeclarationsComponent implements OnInit {
       hasBankruptcy:  [false, Validators.required],
       hasCCJ:         [false, Validators.required],
       hasPaymentPlan: [false, Validators.required],
-      creditScore:    [650, [Validators.required, Validators.min(300), Validators.max(850)]],
+      creditScore:    [this.PRIMARY_CREDIT_SCORE, [Validators.required, Validators.min(300), Validators.max(850)]],
     });
     this.applicant2Form = this.fb.group({
       hasDefaulted:   [false],
       hasBankruptcy:  [false],
       hasCCJ:         [false],
       hasPaymentPlan: [false],
-      creditScore:    [650, [Validators.min(300), Validators.max(850)]],
+      creditScore:    [this.SECONDARY_CREDIT_SCORE, [Validators.min(300), Validators.max(850)]],
     });
-  }
-
-  /** DEMO-ONLY: credit score is normally underwriter-only data (a simulated bureau score, seeded
-   * so it's stable across edits — same "fake it" pattern as DataVerificationService). For this demo
-   * we surface it as an editable input so a presenter can dial it up/down to show the
-   * approval/decline paths live. In a real deployment this input would be removed again and the
-   * synthetic default below would apply unconditionally. Scale is a FICO-style bureau score
-   * (300-850) — the internal 1-9 lender risk grade used by eligibility/affordability logic is
-   * derived from this via ficoToLenderGrade(), underwriter-only, never shown here. */
-  private syntheticScore(seed: string): number {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    return 300 + (h % 551); // 300-850, FICO-style range
   }
 
   ngOnInit(): void {
@@ -66,14 +61,8 @@ export class CreditDeclarationsComponent implements OnInit {
           this.numberOfApplicants.set(Number(loanReqs.numberOfApplicants) || 1);
         }
         const data = app.creditDeclarationsJson ? JSON.parse(app.creditDeclarationsJson) : null;
-        this.form.patchValue({
-          ...data,
-          creditScore: data?.creditScore ?? this.syntheticScore(this.identity.userNationalId || app.applicationRef),
-        });
-        this.applicant2Form.patchValue({
-          ...data?.applicant2,
-          creditScore: data?.applicant2?.creditScore ?? this.syntheticScore(app.applicationRef + '-a2'),
-        });
+        this.form.patchValue({ ...data, creditScore: this.PRIMARY_CREDIT_SCORE });
+        this.applicant2Form.patchValue({ ...data?.applicant2, creditScore: this.SECONDARY_CREDIT_SCORE });
       }
     });
   }

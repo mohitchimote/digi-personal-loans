@@ -42,6 +42,7 @@ export class PersonalDetailsComponent implements OnInit {
   consentValid = signal(false);
   consentValidUntil = signal<string | null>(null);
   showConsentModal = signal(false);
+  showRemoteConsentNotice = signal(false);
   consentRecorded = signal(false);
   consentError = signal('');
   private storedConsent: any = null;
@@ -164,6 +165,33 @@ export class PersonalDetailsComponent implements OnInit {
     this.proceedToSave();
   }
 
+  /** A Banker assisting a customer can't tick consent checkboxes on their behalf — that's the
+   * customer's own decision. Instead of the self-service modal, assisting staff see a notice that
+   * consent has been requested remotely and can carry on with the rest of the application.
+   * DEMO-ONLY: there's no real SMS/email gateway, so this records consent immediately rather than
+   * waiting for an actual customer confirmation — a real deployment would poll for that instead. */
+  acknowledgeRemoteConsent(): void {
+    this.consentError.set('');
+    const payload = {
+      creditBureauConsent: true,
+      pepScreeningConsent: true,
+      sanctionsScreeningConsent: true,
+      dataProcessingConsent: true,
+      consentTimestamp: new Date().toISOString(),
+      consentMethod: 'remote-notification',
+    };
+    this.appSvc.saveSection(this.appRef(), 'consentManagement', payload, this.identity.userId!).subscribe({
+      next: () => {
+        this.storedConsent = payload;
+        this.consentValid.set(true);
+        this.consentValidUntil.set(new Date(Date.now() + this.CONSENT_VALIDITY_DAYS * 86400000).toISOString());
+        this.showRemoteConsentNotice.set(false);
+        this.proceedToSave();
+      },
+      error: () => this.consentError.set(this.i18n.t('consent.requiredError'))
+    });
+  }
+
   get previousAddresses(): FormArray {
     return this.form.get('previousAddresses') as FormArray;
   }
@@ -266,6 +294,7 @@ export class PersonalDetailsComponent implements OnInit {
     // consent modal if not. Confirming consent there continues straight on to the actual save.
     this.refreshConsentValidity();
     if (!this.consentValid()) {
+      if (this.identity.isAssisting) { this.showRemoteConsentNotice.set(true); return; }
       this.showConsentModal.set(true);
       return;
     }

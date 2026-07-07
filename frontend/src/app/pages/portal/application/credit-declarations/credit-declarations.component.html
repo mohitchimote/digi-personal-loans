@@ -13,20 +13,6 @@
 
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
-      <div class="card-header"><h3>{{ 'credit.demoScoreHeader' | translate }}</h3></div>
-      <div class="declaration-item">
-        <div class="declaration-text">
-          <strong>{{ 'credit.demoScoreTitle' | translate }}</strong>
-          <p>{{ 'credit.demoScoreSubtitle' | translate }}</p>
-        </div>
-        <div class="declaration-toggle">
-          <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="width: 160px;" />
-          <strong style="min-width: 36px; text-align: center;">{{ f('creditScore')?.value }}</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="db-card mb-16">
       <div class="card-header"><h3>{{ 'credit.historyHeader' | translate }}</h3></div>
 
       <div class="declaration-item">
@@ -83,17 +69,6 @@
   <form [formGroup]="applicant2Form" *ngIf="isJoint">
     <div class="db-card mb-16 mt-16">
       <div class="card-header"><h3>{{ 'credit.applicant2Header' | translate }}</h3></div>
-
-      <div class="declaration-item">
-        <div class="declaration-text">
-          <strong>{{ 'credit.demoScoreTitle' | translate }}</strong>
-          <p>{{ 'credit.demoScoreSubtitle' | translate }}</p>
-        </div>
-        <div class="declaration-toggle">
-          <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="width: 160px;" />
-          <strong style="min-width: 36px; text-align: center;">{{ f2('creditScore')?.value }}</strong>
-        </div>
-      </div>
 
       <div class="declaration-item">
         <div class="declaration-text">
@@ -158,16 +133,6 @@
     <div class="card-header"><h3>{{ 'credit.title' | translate }}</h3></div>
 
     <form [formGroup]="form">
-      <div class="dense-grid">
-        <div class="dense-field">
-          <label>{{ 'credit.demoScoreTitle' | translate }}</label>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="flex:1" />
-            <strong style="min-width:36px; text-align:center;">{{ f('creditScore')?.value }}</strong>
-          </div>
-        </div>
-      </div>
-
       <div class="dense-section-label">{{ 'credit.historyHeader' | translate }}</div>
       <div class="dense-grid">
         <div class="dense-field">
@@ -205,13 +170,6 @@
       <form [formGroup]="applicant2Form">
         <div class="dense-section-label">{{ 'credit.applicant2Header' | translate }}</div>
         <div class="dense-grid">
-          <div class="dense-field">
-            <label>{{ 'credit.demoScoreTitle' | translate }}</label>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <input type="range" min="300" max="850" step="5" formControlName="creditScore" style="flex:1" />
-              <strong style="min-width:36px; text-align:center;">{{ f2('creditScore')?.value }}</strong>
-            </div>
-          </div>
           <div class="dense-field">
             <label>{{ 'credit.defaultTitle' | translate }}</label>
             <div class="declaration-toggle">

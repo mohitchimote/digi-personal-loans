@@ -172,3 +172,18 @@
     </div>
   </div>
 </div>
+
+<!-- Remote consent notice: shown instead of the checkbox modal when a Banker is assisting, since
+     staff can't tick consent on the customer's behalf -->
+<div class="consent-modal-overlay" *ngIf="showRemoteConsentNotice()">
+  <div class="consent-modal">
+    <div class="db-alert db-alert--info mb-16">
+      <span class="material-icons mi-sm">mark_email_read</span> {{ 'consent.remoteNoticeMessage' | translate:{ name: identity.companyName || identity.userFullName || '' } }}
+    </div>
+    <div class="db-alert db-alert--error mt-16" *ngIf="consentError()"><span class="material-icons mi-sm">warning</span> {{ consentError() }}</div>
+    <div class="form-actions mt-16">
+      <div></div>
+      <button type="button" class="db-btn db-btn--primary" (click)="acknowledgeRemoteConsent()">{{ 'common.continue' | translate }}</button>
+    </div>
+  </div>
+</div>

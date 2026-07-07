@@ -20,26 +20,20 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
   appRef = signal('');
   readOnly = signal(false);
 
+  /** DEMO-ONLY: director credit score is underwriter-only data a real D&B pull would populate.
+   * Previously shown to the customer as an editable slider, which confused SME demo audiences —
+   * fixed in the background instead so every demo application lands in the same good-credit STP
+   * path (dnbScoreToLenderGrade(85) clears AffordabilityRules.minCreditScore comfortably and maps
+   * to D&B Risk Class 1, the lowest-risk bracket), never surfaced to the customer at all. */
+  readonly DIRECTOR_CREDIT_SCORE = 85;
+
   constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
     this.form = this.fb.group({
       hasLiquidationOrWindingUp: [false, Validators.required],
       hasCompanyDefaulted:       [false, Validators.required],
       hasCCJ:                    [false, Validators.required],
-      directorCreditScore:       [65, [Validators.required, Validators.min(1), Validators.max(100)]],
+      directorCreditScore:       [this.DIRECTOR_CREDIT_SCORE, [Validators.required, Validators.min(1), Validators.max(100)]],
     });
-  }
-
-  /** DEMO-ONLY: director credit score is normally underwriter-only data (a simulated bureau score).
-   * Surfaced here as an editable input so a presenter can dial it up/down to show the
-   * approval/decline (and "no eligible products") paths live. Scale is a Dun & Bradstreet-style
-   * Commercial Delinquency Score (1-100, higher = lower risk) — the internal 1-9 lender risk grade
-   * and D&B Risk Class used by eligibility/affordability logic are derived from this via
-   * dnbScoreToLenderGrade()/dnbScoreToRiskClass(), underwriter-only, never shown here. In a real
-   * deployment this input would be removed again and the synthetic default would apply unconditionally. */
-  private syntheticScore(seed: string): number {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    return 1 + (h % 100); // 1-100, D&B Delinquency Score-style range
   }
 
   ngOnInit(): void {
@@ -50,10 +44,7 @@ export class BusinessCreditDeclarationsComponent implements OnInit {
         this.appRef.set(app.applicationRef);
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         const data = app.businessCreditDeclarationsJson ? JSON.parse(app.businessCreditDeclarationsJson) : null;
-        this.form.patchValue({
-          ...data,
-          directorCreditScore: data?.directorCreditScore ?? this.syntheticScore(this.identity.userNationalId || app.applicationRef),
-        });
+        this.form.patchValue({ ...data, directorCreditScore: this.DIRECTOR_CREDIT_SCORE });
         if (this.readOnly()) this.form.disable();
       }
     });
