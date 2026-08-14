@@ -93,7 +93,7 @@ Write-Host "Starting Angular dev server (bound to 0.0.0.0:4200)..." -ForegroundC
 $feLog = "$logDir\frontend.log"
 Remove-Item -Force -ErrorAction SilentlyContinue $feLog
 $feProc = Start-Process powershell -WindowStyle Hidden -PassThru -ArgumentList "-NoExit", "-Command",
-    "Set-Location '$frontendDir'; ng serve --host 0.0.0.0 --port 4200 *>> '$feLog'"
+    "Set-Location '$frontendDir'; ng serve --host 0.0.0.0 --port 4200 --proxy-config proxy.conf.json *>> '$feLog'"
 "frontend=$($feProc.Id)" | Add-Content -Path $pidFile
 
 if (Wait-ForPort -Port 4200 -TimeoutSeconds $serviceTimeoutSeconds) {
