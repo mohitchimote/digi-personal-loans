@@ -2,6 +2,7 @@ name = "digibank-personal-loans"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 [assets]
 directory = "../frontend/dist/frontend/browser"
@@ -17,6 +18,10 @@ database_id = "7e8a728a-f15b-4b38-9c3d-5cb64c031e46"
 [[r2_buckets]]
 binding = "DOCUMENTS"
 bucket_name = "digibank-documents"
+
+[[routes]]
+pattern = "is-personalloans.tcsdigilend.com"
+custom_domain = true
 
 [vars]
 DEMO_MODE = "true"
