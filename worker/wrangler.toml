@@ -20,7 +20,7 @@ binding = "DOCUMENTS"
 bucket_name = "digibank-documents"
 
 [[routes]]
-pattern = "is-personalloans.tcsdigilend.com"
+pattern = "is.personalloans.tcsdigilend.com"
 custom_domain = true
 
 [vars]
