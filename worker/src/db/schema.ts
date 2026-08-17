@@ -53,6 +53,7 @@ export const loanApplications = sqliteTable("loan_applications", {
   reviewSubmitJson: text("review_submit_json"),
 
   disbursementStatus: text("disbursement_status"),
+  approvedAmount: real("approved_amount"),
   selectedProductId: text("selected_product_id"),
   selectedProductJson: text("selected_product_json"),
   affordabilityResultJson: text("affordability_result_json"),

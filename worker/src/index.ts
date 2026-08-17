@@ -6,6 +6,7 @@ import { health } from "./routes/health";
 import { auth } from "./routes/auth";
 import { admin } from "./routes/admin";
 import { branding, brandingAdmin } from "./routes/branding";
+import { applications } from "./routes/applications";
 
 const app = new Hono<AppEnv>();
 
@@ -33,5 +34,6 @@ app.route("/api/auth", auth);
 app.route("/api/auth/admin", admin);
 app.route("/api/auth/admin/branding", brandingAdmin);
 app.route("/api/branding", branding);
+app.route("/api/applications", applications);
 
 export default app;
