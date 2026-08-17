@@ -743,8 +743,11 @@ applications.post("/:appRef/send-back", async (c) => {
 applications.post("/:appRef/approve-by-underwriter", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reviewedBy: string; approvedAmount?: string }>();
-  const approvedAmount = body.approvedAmount && body.approvedAmount.trim() !== "" ? Number(body.approvedAmount) : null;
+  const body = await c.req.json<{ reviewedBy: string; approvedAmount?: string | number | null }>();
+  // The Angular client sends this as a JS number (or omits it); ported from Java code that read
+  // it as a String, so accept either shape defensively rather than assuming one.
+  const approvedAmount =
+    body.approvedAmount != null && String(body.approvedAmount).trim() !== "" ? Number(body.approvedAmount) : null;
   const updated = await approveApplicationByUnderwriter(db, c.env, appRef, body.reviewedBy, approvedAmount);
   return c.json(updated);
 });
