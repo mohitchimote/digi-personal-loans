@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { AppEnv } from "../types";
+import type { AppEnv, Env } from "../types";
 import { getDb, type Db } from "../db/client";
-import { loanApplications, underwritingNotes, mandateRules } from "../db/schema";
-import { success, fail } from "../lib/api-response";
+import { loanApplications, underwritingNotes, mandateRules, generatedDocuments } from "../db/schema";
 import { AppError } from "../lib/errors";
 import {
   ALL_SECTIONS,
@@ -16,6 +15,9 @@ import {
 import { sendNotification } from "../lib/notifications";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
 import { getAutoApprovalThreshold } from "../lib/affordability-rules";
+import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
+import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
+import { generateApprovalLetterPdf } from "../lib/pdf/approval-letter";
 
 export const applications = new Hono<AppEnv>();
 
@@ -106,16 +108,54 @@ async function addNote(
   return saved;
 }
 
-// TODO(Day 4): generate the final approval letter/agreement PDF via R2 + pdf-lib once documents
-// are wired up. Java's equivalent call is wrapped in a swallow-all try/catch ("document generation
-// failure should never block an underwriting decision") so a no-op here is exact-parity behavior,
-// not a shortcut.
-async function generateFinalApprovalLetter(_db: Db, _appRef: string) {
-  /* deferred to Day 4 */
+// Mirrors ApplicationService.generateFinalApprovalLetter — wrapped in a swallow-all try/catch,
+// since document generation failure (including R2 not being enabled yet) should never block an
+// underwriting decision.
+async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
+  try {
+    if (!env.DOCUMENTS) return; // R2 not yet enabled on this account — degrade silently
+    const app = await getByRef(db, appRef);
+    if (!app.selectedProductJson || !app.loanRequirementsJson) return;
+
+    const product = JSON.parse(app.selectedProductJson);
+    const loan = JSON.parse(app.loanRequirementsJson);
+    const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null;
+    const customerName = personal ? `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() : app.customerEmail;
+    const approvedAmount = app.approvedAmount ?? loan.loanAmount ?? 0;
+
+    const pdfBytes = await generateApprovalLetterPdf(
+      {
+        applicationRef: app.applicationRef,
+        customerName,
+        loanAmount: approvedAmount,
+        productName: product.productName ?? "",
+        interestRate: product.interestRate ?? product.apr ?? 0,
+        termMonths: product.termMonths ?? 0,
+        monthlyRepayment: product.monthlyRepayment ?? 0,
+      },
+      true
+    );
+
+    const key = `generated/${app.applicationRef}/FINAL_APPROVAL_LETTER_${crypto.randomUUID()}.pdf`;
+    await env.DOCUMENTS.put(key, pdfBytes, { httpMetadata: { contentType: "application/pdf" } });
+    await db.insert(generatedDocuments).values({
+      applicationRef: app.applicationRef,
+      customerId: app.customerId,
+      documentType: "FINAL_APPROVAL_LETTER",
+      documentName: "Final Approval Letter",
+      filePath: key,
+      fileSize: pdfBytes.byteLength,
+      mimeType: "application/pdf",
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("generateFinalApprovalLetter failed (non-fatal):", e);
+  }
 }
 
 async function approveApplicationByUnderwriter(
   db: Db,
+  env: Env,
   appRef: string,
   reviewedBy: string,
   approvedAmount: number | null
@@ -138,11 +178,11 @@ async function approveApplicationByUnderwriter(
     "APPROVAL",
     appRef
   );
-  await generateFinalApprovalLetter(db, appRef);
+  await generateFinalApprovalLetter(db, env, appRef);
   return updated;
 }
 
-async function maybeAutoApprove(db: Db, app: typeof loanApplications.$inferSelect) {
+async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$inferSelect) {
   try {
     // Business loans always go to manual underwriter review for now — the auto-approval threshold
     // is sized for personal-loan amounts/risk and reads loanRequirementsJson, which business
@@ -162,7 +202,7 @@ async function maybeAutoApprove(db: Db, app: typeof loanApplications.$inferSelec
     const loanAmount = Number(loan?.loanAmount ?? 0);
     if (loanAmount > threshold) return;
 
-    await approveApplicationByUnderwriter(db, app.applicationRef, "System (Auto-Approval)", loanAmount);
+    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount);
   } catch (e) {
     // Auto-approval is a convenience; failures fall back to manual underwriter review.
     console.error("maybeAutoApprove failed (non-fatal):", e);
@@ -612,7 +652,7 @@ applications.post("/:appRef/select-product", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await maybeAutoApprove(db, updated);
+  await maybeAutoApprove(db, c.env, updated);
   const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
   return c.json(fresh);
 });
@@ -705,7 +745,7 @@ applications.post("/:appRef/approve-by-underwriter", async (c) => {
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reviewedBy: string; approvedAmount?: string }>();
   const approvedAmount = body.approvedAmount && body.approvedAmount.trim() !== "" ? Number(body.approvedAmount) : null;
-  const updated = await approveApplicationByUnderwriter(db, appRef, body.reviewedBy, approvedAmount);
+  const updated = await approveApplicationByUnderwriter(db, c.env, appRef, body.reviewedBy, approvedAmount);
   return c.json(updated);
 });
 
@@ -759,13 +799,48 @@ applications.post("/:appRef/disbursement/second-check", async (c) => {
   return c.json(updated);
 });
 
-// Deferred to Day 4 (the "fake it" showcase panels — Data Verification RAG checks and Business
-// Financials Intelligence). Stubbed so the frontend gets a clean, recognizable failure instead of
-// a raw 404 while these are unimplemented.
-applications.get("/:appRef/data-verification", (c) => fail(c, "Data Verification is not yet available (Day 4).", 501));
-applications.post("/:appRef/data-verification/resolve", (c) =>
-  fail(c, "Data Verification is not yet available (Day 4).", 501)
-);
-applications.get("/:appRef/business-financials-analysis", (c) =>
-  fail(c, "Business Financials Intelligence is not yet available (Day 4).", 501)
-);
+// generate-if-absent: computed once per application, persisted, never regenerated — stable
+// across reloads and survives the underwriter editing other sections later.
+applications.get("/:appRef/data-verification", async (c) => {
+  const db = getDb(c.env.DB);
+  const appRef = c.req.param("appRef");
+  const app = await getByRef(db, appRef);
+  if (app.dataVerificationJson) return c.json(JSON.parse(app.dataVerificationJson));
+
+  const summary = generateDataVerification(app);
+  await db
+    .update(loanApplications)
+    .set({ dataVerificationJson: JSON.stringify(summary), updatedAt: new Date().toISOString() })
+    .where(eq(loanApplications.applicationRef, appRef));
+  return c.json(summary);
+});
+
+applications.post("/:appRef/data-verification/resolve", async (c) => {
+  const db = getDb(c.env.DB);
+  const appRef = c.req.param("appRef");
+  const app = await getByRef(db, appRef);
+  const body = await c.req.json<{ ruleKey: string; action: string; note?: string; reviewedBy: string }>();
+
+  const summary = app.dataVerificationJson ? JSON.parse(app.dataVerificationJson) : generateDataVerification(app);
+  const resolved = resolveDataVerificationRule(summary, body);
+
+  await db
+    .update(loanApplications)
+    .set({ dataVerificationJson: JSON.stringify(resolved), updatedAt: new Date().toISOString() })
+    .where(eq(loanApplications.applicationRef, appRef));
+  return c.json(resolved);
+});
+
+applications.get("/:appRef/business-financials-analysis", async (c) => {
+  const db = getDb(c.env.DB);
+  const appRef = c.req.param("appRef");
+  const app = await getByRef(db, appRef);
+  if (app.businessFinancialsAnalysisJson) return c.json(JSON.parse(app.businessFinancialsAnalysisJson));
+
+  const analysis = generateBusinessFinancialsAnalysis(app);
+  await db
+    .update(loanApplications)
+    .set({ businessFinancialsAnalysisJson: JSON.stringify(analysis), updatedAt: new Date().toISOString() })
+    .where(eq(loanApplications.applicationRef, appRef));
+  return c.json(analysis);
+});

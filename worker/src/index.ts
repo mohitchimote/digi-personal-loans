@@ -9,6 +9,8 @@ import { branding, brandingAdmin } from "./routes/branding";
 import { applications } from "./routes/applications";
 import { affordability } from "./routes/affordability";
 import { products } from "./routes/products";
+import { notificationsRoute } from "./routes/notifications";
+import { documents } from "./routes/documents";
 
 const app = new Hono<AppEnv>();
 
@@ -39,5 +41,7 @@ app.route("/api/branding", branding);
 app.route("/api/applications", applications);
 app.route("/api/affordability", affordability);
 app.route("/api/products", products);
+app.route("/api/notifications", notificationsRoute);
+app.route("/api/documents", documents);
 
 export default app;
