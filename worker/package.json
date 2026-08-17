@@ -1,0 +1,31 @@
+{
+  "name": "digibank-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply digibank --local",
+    "db:migrate:remote": "wrangler d1 migrations apply digibank --remote",
+    "db:seed:generate": "tsx scripts/seed-generate.ts > seed.sql",
+    "db:seed:local": "wrangler d1 execute digibank --local --file=./seed.sql",
+    "db:seed:remote": "wrangler d1 execute digibank --remote --file=./seed.sql",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.14",
+    "@hono/zod-validator": "^0.4.2",
+    "drizzle-orm": "^0.36.4",
+    "zod": "^3.24.1",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260811.1",
+    "drizzle-kit": "^0.28.1",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0",
+    "tsx": "^4.19.2"
+  }
+}
