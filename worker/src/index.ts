@@ -25,6 +25,16 @@ app.use(
   })
 );
 
+// API responses carried no explicit caching directives at all, leaving the browser to fall back
+// on undefined heuristic caching for JSON calls. Real-world testing showed a repeat GET to the
+// same endpoint shortly after a prior successful fetch would sometimes hang indefinitely
+// (DevTools: stuck in "Stalled", never even reaching a connection) — a known class of browser
+// HTTP-cache/revalidation bug that explicit no-store headers eliminate outright.
+app.use("/api/*", async (c, next) => {
+  await next();
+  c.header("Cache-Control", "no-store");
+});
+
 app.onError((err, c) => {
   if (err instanceof AppError) {
     return c.json({ success: false, message: err.message, data: null }, err.status as any);

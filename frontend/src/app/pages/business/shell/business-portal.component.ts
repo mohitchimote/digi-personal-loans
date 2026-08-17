@@ -46,8 +46,10 @@ export class BusinessPortalComponent implements OnInit {
     return steps;
   }
 
+  /** See PortalComponent's identical ngOnInit for why the router-events subscription alone is
+   * sufficient (it fires for the very first navigation too) and a direct call here would
+   * double-fire refreshApplication() per page load. */
   ngOnInit(): void {
-    this.refreshApplication();
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.refreshApplication());
   }
 

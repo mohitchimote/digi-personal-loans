@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { BrandingService } from './core/services/branding.service';
+import { ConnectionWatchdogBannerComponent } from './shared/connection-watchdog-banner/connection-watchdog-banner.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  template: '<router-outlet />',
+  imports: [RouterOutlet, ConnectionWatchdogBannerComponent],
+  template: '<app-connection-watchdog-banner /><router-outlet />',
   styleUrl: './app.scss'
 })
 export class App implements OnInit {

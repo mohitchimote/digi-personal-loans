@@ -68,7 +68,7 @@
     <!-- Form actions -->
     <div class="form-actions">
       <div></div>
-      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving() || !ready()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
@@ -112,7 +112,7 @@
       </div>
 
       <div class="dense-form-actions" *ngIf="!readOnly()">
-        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving() || !ready()">
           {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
         </button>
       </div>
