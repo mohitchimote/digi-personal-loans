@@ -14,13 +14,9 @@ binding = "DB"
 database_name = "digibank"
 database_id = "7e8a728a-f15b-4b38-9c3d-5cb64c031e46"
 
-# R2 requires a one-time manual enable in the Cloudflare dashboard before the
-# API can create buckets (error code 10042). Re-enable this block once that's
-# done and `wrangler r2 bucket create digibank-documents` succeeds — not
-# needed until Day 4 (document storage).
-# [[r2_buckets]]
-# binding = "DOCUMENTS"
-# bucket_name = "digibank-documents"
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "digibank-documents"
 
 [vars]
 DEMO_MODE = "true"
