@@ -13,7 +13,7 @@ const RESPONSES: Record<string, string> = {
   'term':        'Loan terms range from 6 months to 84 months (7 years) depending on the product.',
   'repay':       'Repayments are collected monthly by direct debit on your chosen date.',
   'credit':      'A minimum credit score of 580 is required. Higher scores may unlock better rates.',
-  'hello':       'Hello! I\'m DigiBot, your DigiBank assistant. How can I help you today?',
+  'hello':       'Hello! I\'m DigiBot, your DigiLend assistant. How can I help you today?',
   'hi':          'Hi there! How can I assist you with your personal loan application?',
 };
 

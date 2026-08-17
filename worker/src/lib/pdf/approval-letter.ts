@@ -57,7 +57,7 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   let y = page.getHeight() - 50;
 
   // Header: brand left, reference/date right
-  page.drawText("DigiBank", { x: marginX, y, size: 22, font: bold, color: TCS_BLUE });
+  page.drawText("DigiLend", { x: marginX, y, size: 22, font: bold, color: TCS_BLUE });
   page.drawText("Personal Banking", { x: marginX, y: y - 16, size: 9, font: regular, color: TCS_BLUE });
 
   const refLabel = "Application Reference";
@@ -112,8 +112,8 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   y -= 20;
 
   const intro = isFinal
-    ? "We are pleased to confirm that your application for a personal loan with DigiBank has been fully reviewed and approved by our underwriting team. All verification checks have been satisfactorily completed. Please review the final details of your offer below."
-    : "We are pleased to confirm that your application for a personal loan with DigiBank has been conditionally approved, subject to satisfactory verification of the information and documents provided. Please review the details of your conditional offer below.";
+    ? "We are pleased to confirm that your application for a personal loan with DigiLend has been fully reviewed and approved by our underwriting team. All verification checks have been satisfactorily completed. Please review the final details of your offer below."
+    : "We are pleased to confirm that your application for a personal loan with DigiLend has been conditionally approved, subject to satisfactory verification of the information and documents provided. Please review the details of your conditional offer below.";
   for (const line of wrapText(intro, regular, 10, contentWidth)) {
     page.drawText(line, { x: marginX, y, size: 10, font: regular, color: BLACK });
     y -= 14;
@@ -161,7 +161,7 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
         "Receipt and verification of income documentation (payslips or Shuma).",
         "Receipt of three months' bank statements confirming income and outgoings.",
         "No material change in financial circumstances since the date of application.",
-        "Execution of the formal Loan Agreement in the form provided by DigiBank.",
+        "Execution of the formal Loan Agreement in the form provided by DigiLend.",
       ];
   conditions.forEach((c, i) => {
     for (const line of wrapText(`${i + 1}.  ${c}`, regular, 9, contentWidth)) {
@@ -174,8 +174,8 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   page.drawText("Next Steps", { x: marginX, y, size: 12, font: bold, color: TCS_BLUE });
   y -= 18;
   const nextSteps = isFinal
-    ? "Your DigiBank advisor will be in touch shortly to arrange execution of the Loan Agreement and drawdown of funds to your nominated account."
-    : "Please log in to your DigiBank portal and upload the required supporting documents in the Documents section. Once all documents have been received and verified, your assigned advisor will contact you to arrange execution of the Loan Agreement and drawdown of funds.";
+    ? "Your DigiLend advisor will be in touch shortly to arrange execution of the Loan Agreement and drawdown of funds to your nominated account."
+    : "Please log in to your DigiLend portal and upload the required supporting documents in the Documents section. Once all documents have been received and verified, your assigned advisor will contact you to arrange execution of the Loan Agreement and drawdown of funds.";
   for (const line of wrapText(nextSteps, regular, 10, contentWidth)) {
     page.drawText(line, { x: marginX, y, size: 10, font: regular, color: BLACK });
     y -= 14;
@@ -186,7 +186,7 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   y -= 15;
 
   const disclaimer =
-    "This is a conditional approval only. DigiBank reserves the right to withdraw or amend this offer prior to drawdown. This letter does not constitute a binding commitment to lend. DigiBank Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.";
+    "This is a conditional approval only. DigiLend reserves the right to withdraw or amend this offer prior to drawdown. This letter does not constitute a binding commitment to lend. DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.";
   for (const line of wrapText(disclaimer, regular, 7, contentWidth)) {
     page.drawText(line, { x: marginX, y, size: 7, font: regular, color: GREY });
     y -= 10;
