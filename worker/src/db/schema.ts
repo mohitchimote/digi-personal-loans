@@ -89,6 +89,7 @@ export const underwritingNotes = sqliteTable("underwriting_notes", {
 export const brandingSettings = sqliteTable("branding_settings", {
   id: integer("id").primaryKey(),
   primaryColor: text("primary_color").notNull().default("#003366"),
+  secondaryColor: text("secondary_color").notNull().default("#002244"),
   accentColor: text("accent_color").notNull().default("#FBB034"),
   logoUrl: text("logo_url"),
 });

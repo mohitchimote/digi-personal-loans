@@ -5,11 +5,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AssistContextService } from '../../../core/services/assist-context.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { LanguageSwitcherComponent } from '../../../shared/language-switcher/language-switcher.component';
+import { BrandLogoComponent } from '../../../shared/brand-logo/brand-logo.component';
 
 @Component({
   selector: 'app-banker-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, TranslatePipe, LanguageSwitcherComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, TranslatePipe, LanguageSwitcherComponent, BrandLogoComponent],
   templateUrl: './banker-shell.component.html',
   styleUrl: './banker-shell.component.scss'
 })

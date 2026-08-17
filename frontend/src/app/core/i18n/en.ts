@@ -675,6 +675,8 @@ export const EN: Record<string, string> = {
   'admin.colorsHeader': 'Colour Theme',
   'admin.primaryColor': 'Primary Colour',
   'admin.primaryColorHint': 'Used for headers, primary buttons, and links.',
+  'admin.secondaryColor': 'Secondary Colour',
+  'admin.secondaryColorHint': 'Used for the secondary button style and supporting UI accents.',
   'admin.accentColor': 'Accent Colour',
   'admin.accentColorHint': 'Used for call-to-action buttons and highlights.',
   'admin.saveBranding': 'Save Theme',

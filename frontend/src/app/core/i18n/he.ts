@@ -675,6 +675,8 @@ export const HE: Record<string, string> = {
   'admin.colorsHeader': 'ערכת צבעים',
   'admin.primaryColor': 'צבע ראשי',
   'admin.primaryColorHint': 'משמש לכותרות, כפתורים ראשיים וקישורים.',
+  'admin.secondaryColor': 'צבע משני',
+  'admin.secondaryColorHint': 'משמש לסגנון הכפתור המשני ולהדגשות עיצוב נוספות.',
   'admin.accentColor': 'צבע הדגשה',
   'admin.accentColorHint': 'משמש לכפתורי קריאה לפעולה והדגשות.',
   'admin.saveBranding': 'שמור ערכת נושא',

@@ -8,6 +8,7 @@ import { LoanApplication } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { LanguageSwitcherComponent } from '../../../shared/language-switcher/language-switcher.component';
+import { BrandLogoComponent } from '../../../shared/brand-logo/brand-logo.component';
 
 const MIN_SEARCH_CHARS = 3;
 const MAX_RESULTS = 8;
@@ -15,7 +16,7 @@ const MAX_RESULTS = 8;
 @Component({
   selector: 'app-uw-shell',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterOutlet, TranslatePipe, LanguageSwitcherComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterOutlet, TranslatePipe, LanguageSwitcherComponent, BrandLogoComponent],
   templateUrl: './uw-shell.component.html',
   styleUrl: './uw-shell.component.scss'
 })

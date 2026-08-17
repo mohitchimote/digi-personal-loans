@@ -6,6 +6,9 @@
   --tcs-blue-dark:   #002244;
   --tcs-blue-light:  #1A5276;
   --tcs-blue-rgb:    0, 51, 102;
+  --tcs-secondary:       #002244;
+  --tcs-secondary-dark:  #001A33;
+  --tcs-secondary-light: #405973;
   --tcs-yellow:      #FBB034;
   --tcs-yellow-dark: #D4901C;
   --tcs-yellow-rgb:  251, 176, 52;
@@ -134,14 +137,19 @@ html[dir="rtl"] {
   letter-spacing: 0.3px;
 
   &--primary {
-    background: var(--tcs-blue);
+    background: linear-gradient(135deg, var(--tcs-blue-light), var(--tcs-blue-dark));
     color: var(--white);
-    &:hover { background: var(--tcs-blue-dark); box-shadow: var(--shadow-md); }
+    &:hover { background: linear-gradient(135deg, var(--tcs-blue-dark), var(--tcs-blue-light)); box-shadow: var(--shadow-md); }
   }
   &--accent {
-    background: var(--tcs-yellow);
+    background: linear-gradient(135deg, var(--tcs-yellow), var(--tcs-yellow-dark));
     color: var(--dark-text);
-    &:hover { background: var(--tcs-yellow-dark); }
+    &:hover { background: linear-gradient(135deg, var(--tcs-yellow-dark), var(--tcs-yellow)); }
+  }
+  &--secondary {
+    background: linear-gradient(135deg, var(--tcs-secondary-light), var(--tcs-secondary-dark));
+    color: var(--white);
+    &:hover { background: linear-gradient(135deg, var(--tcs-secondary-dark), var(--tcs-secondary-light)); box-shadow: var(--shadow-md); }
   }
   &--outline {
     background: transparent;
