@@ -6,8 +6,11 @@ import { loanProducts, productSelections } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { calculateMonthlyRepayment } from "../lib/repayment";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
+import { requireAuth, requireRole } from "../middleware/auth";
 
 export const products = new Hono<AppEnv>();
+products.use("*", requireAuth);
+products.use("/admin/*", requireRole("ADMIN"));
 
 interface EligibilityRequest {
   applicationRef?: string;

@@ -3,8 +3,10 @@ import { and, count, desc, eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { notifications } from "../db/schema";
+import { requireAuth } from "../middleware/auth";
 
 export const notificationsRoute = new Hono<AppEnv>();
+notificationsRoute.use("*", requireAuth);
 
 notificationsRoute.get("/customer/:customerId", async (c) => {
   const db = getDb(c.env.DB);

@@ -43,3 +43,15 @@ export function requireRole(...roles: string[]) {
     await next();
   };
 }
+
+// Same check as requireRole, called as a plain guard at the top of a handler body instead of as
+// route middleware. Needed on routes with path params (e.g. "/:appRef/decline") — chaining
+// requireRole as a second handler argument there widens Hono's inferred c.req.param() type to
+// `string | undefined` (a known Hono generics quirk when a non-path-specific middleware sits
+// between a typed path and its handler), which cascades into type errors through the handler body.
+export function assertRole(c: Context<AppEnv>, ...roles: string[]) {
+  const user = c.get("authUser");
+  if (!user || !roles.includes(user.role)) {
+    throw new AppError("Forbidden.", 403);
+  }
+}

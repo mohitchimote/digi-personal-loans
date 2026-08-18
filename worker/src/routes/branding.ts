@@ -11,6 +11,7 @@ const ALLOWED_LOGO_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/svg+xml": "svg",
 };
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
 function requireBucket(c: any) {
   if (!c.env.DOCUMENTS) {
@@ -76,6 +77,7 @@ brandingAdmin.post("/logo", async (c) => {
   if (!(file instanceof File)) throw new AppError("A logo file is required.");
   const ext = ALLOWED_LOGO_TYPES[file.type];
   if (!ext) throw new AppError("Logo must be a PNG, JPEG, or SVG image.");
+  if (file.size > MAX_LOGO_BYTES) throw new AppError("Logo is too large. Maximum size is 5MB.", 413);
 
   const filename = `logo_${crypto.randomUUID()}.${ext}`;
   const bytes = await file.arrayBuffer();

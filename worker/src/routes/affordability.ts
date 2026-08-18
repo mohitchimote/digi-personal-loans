@@ -5,8 +5,10 @@ import { getDb } from "../db/client";
 import { affordabilityRules } from "../db/schema";
 import { assessPersonalAffordability, assessBusinessAffordability } from "../lib/affordability-calc";
 import type { AffordabilityRequest, BusinessAffordabilityRequest } from "../lib/affordability-calc";
+import { requireAuth, requireRole } from "../middleware/auth";
 
 export const affordability = new Hono<AppEnv>();
+affordability.use("*", requireAuth);
 
 affordability.post("/check", async (c) => {
   const db = getDb(c.env.DB);
@@ -28,7 +30,7 @@ affordability.get("/rules", async (c) => {
   return c.json(rules);
 });
 
-affordability.put("/rules", async (c) => {
+affordability.put("/rules", requireRole("ADMIN"), async (c) => {
   const db = getDb(c.env.DB);
   const body = await c.req.json<Record<string, number>>();
   const [updated] = await db

@@ -20,8 +20,12 @@ import { getAutoApprovalThreshold } from "../lib/affordability-rules";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
 import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
 import { generateApprovalLetterPdf } from "../lib/pdf/approval-letter";
+import { requireAuth, assertRole } from "../middleware/auth";
 
 export const applications = new Hono<AppEnv>();
+applications.use("*", requireAuth);
+
+const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
 
 const ACTIVE_STATUSES = ["DRAFT", "IN_PROGRESS"];
 const PIPELINE_STATUSES = ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"];
@@ -453,6 +457,7 @@ applications.put("/:appRef/section", async (c) => {
 });
 
 applications.put("/:appRef/section-by-underwriter", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const editedBy = c.req.query("editedBy") ?? "Staff";
@@ -473,6 +478,7 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
 });
 
 applications.get("/pipeline", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const rows = await db
     .select()
@@ -483,6 +489,7 @@ applications.get("/pipeline", async (c) => {
 });
 
 applications.get("/banker-queue", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const rows = await db
     .select()
@@ -493,12 +500,14 @@ applications.get("/banker-queue", async (c) => {
 });
 
 applications.get("/mandate-rules", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const [rules] = await db.select().from(mandateRules).where(eq(mandateRules.id, 1)).limit(1);
   return c.json(rules);
 });
 
 applications.put("/mandate-rules", async (c) => {
+  assertRole(c, "ADMIN");
   const db = getDb(c.env.DB);
   const body = await c.req.json<Record<string, number>>();
   const [updated] = await db
@@ -551,6 +560,7 @@ applications.get("/:appRef/notes", async (c) => {
 });
 
 applications.post("/:appRef/notes", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ section: string; note: string; noteType?: string; createdBy: string }>();
@@ -646,6 +656,7 @@ applications.post("/:appRef/select-product", async (c) => {
 });
 
 applications.post("/:appRef/approve", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const app = await getByRef(db, appRef);
@@ -661,6 +672,7 @@ applications.post("/:appRef/approve", async (c) => {
 });
 
 applications.post("/:appRef/decline", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; reviewedBy: string }>();
@@ -691,6 +703,7 @@ applications.post("/:appRef/decline", async (c) => {
 });
 
 applications.post("/:appRef/send-back", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; reviewedBy: string; requireGuarantor?: string }>();
@@ -738,6 +751,7 @@ applications.post("/:appRef/send-back", async (c) => {
 });
 
 applications.post("/:appRef/approve-by-underwriter", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reviewedBy: string; approvedAmount?: string | number | null }>();
@@ -750,6 +764,7 @@ applications.post("/:appRef/approve-by-underwriter", async (c) => {
 });
 
 applications.post("/:appRef/refer-to-senior", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; reviewedBy: string }>();
@@ -764,6 +779,7 @@ applications.post("/:appRef/refer-to-senior", async (c) => {
 });
 
 applications.post("/:appRef/disbursement/authorise", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reviewedBy: string }>();
@@ -787,6 +803,7 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
 });
 
 applications.post("/:appRef/disbursement/second-check", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reviewedBy: string }>();
@@ -817,6 +834,7 @@ applications.get("/:appRef/data-verification", async (c) => {
 });
 
 applications.post("/:appRef/data-verification/resolve", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const app = await getByRef(db, appRef);

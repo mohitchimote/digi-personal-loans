@@ -5,8 +5,14 @@ import { getDb } from "../db/client";
 import { generatedDocuments, uploadedDocuments } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { generateApprovalLetterPdf, friendlyDocumentName } from "../lib/pdf/approval-letter";
+import { requireAuth } from "../middleware/auth";
 
 export const documents = new Hono<AppEnv>();
+documents.use("*", requireAuth);
+
+// Enough for a scanned payslip/ID photo or a multi-page PDF, small enough to keep a single
+// upload from being a disproportionate R2 storage cost.
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 // R2 needs a one-time manual enable in the Cloudflare dashboard (blocked since Day 1 — error code
 // 10042 from the API). Every route below checks for the binding and fails clearly rather than
@@ -107,6 +113,7 @@ documents.post("/upload", async (c) => {
 
   const file = body["file"];
   if (!(file instanceof File)) throw new AppError("A file is required.");
+  if (file.size > MAX_UPLOAD_BYTES) throw new AppError("File is too large. Maximum size is 5MB.", 413);
   const appRef = String(body["applicationRef"] ?? "");
   const customerId = Number(body["customerId"]);
   const docType = String(body["documentType"] ?? "SUPPORTING");
