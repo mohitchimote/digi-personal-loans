@@ -797,6 +797,8 @@ export const HE: Record<string, string> = {
   // Login
   'login.welcomeBack': 'ברוכים השבים',
   'login.subtitle': 'התחברו כדי להמשיך בבקשת ההלוואה שלכם',
+  'login.panelTitle': 'המשיכו בדיוק מהמקום שבו עצרתם.',
+  'login.panelSubtitle': 'נהלו את הבקשה שלכם בביטחון, עקבו אחר הסטטוס שלה וקבלו החלטות תוך דקות.',
   'login.nationalIdLabel': 'תעודת זהות',
   'login.nationalIdPlaceholder': 'תעודת זהות בת 9 ספרות',
   'login.nationalIdError': 'אנא הזינו תעודת זהות תקינה בת 9 ספרות.',

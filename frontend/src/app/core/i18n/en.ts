@@ -797,6 +797,8 @@ export const EN: Record<string, string> = {
   // Login
   'login.welcomeBack': 'Welcome Back',
   'login.subtitle': 'Sign in to continue your loan application',
+  'login.panelTitle': 'Pick up right where you left off.',
+  'login.panelSubtitle': 'Securely manage your application, track its status, and get decisions in minutes.',
   'login.nationalIdLabel': 'National ID (Teudat Zehut)',
   'login.nationalIdPlaceholder': '9-digit National ID',
   'login.nationalIdError': 'Please enter a valid 9-digit National ID.',

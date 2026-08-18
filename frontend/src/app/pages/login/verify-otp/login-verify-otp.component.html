@@ -1,5 +1,5 @@
-<div class="auth-shell">
-  <div class="auth-brand">
+<div class="login-shell">
+  <div class="login-panel">
     <a routerLink="/" class="brand-link">
       <app-brand-logo iconClass="brand-icon" />
       <div>
@@ -7,33 +7,71 @@
         <div class="brand-sub">{{ 'common.brandSub' | translate }}</div>
       </div>
     </a>
-    <app-language-switcher />
+
+    <div class="panel-body">
+      <h1>{{ 'login.panelTitle' | translate }}</h1>
+      <p class="panel-sub">{{ 'login.panelSubtitle' | translate }}</p>
+
+      <div class="panel-features">
+        <div class="panel-feature">
+          <span class="material-icons">bolt</span>
+          <div>
+            <strong>{{ 'landing.feature1Title' | translate }}</strong>
+            <span>{{ 'landing.feature1Desc' | translate }}</span>
+          </div>
+        </div>
+        <div class="panel-feature">
+          <span class="material-icons">support_agent</span>
+          <div>
+            <strong>{{ 'landing.feature4Title' | translate }}</strong>
+            <span>{{ 'landing.feature4Desc' | translate }}</span>
+          </div>
+        </div>
+        <div class="panel-feature">
+          <span class="material-icons">phone_android</span>
+          <div>
+            <strong>{{ 'landing.feature3Title' | translate }}</strong>
+            <span>{{ 'landing.feature3Desc' | translate }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="auth-card">
-    <h2>{{ 'login.otpTitle' | translate }}</h2>
-    <p class="auth-subtitle">{{ 'login.otpSubtitle' | translate:{ nationalId } }}</p>
-
-    <div class="db-alert db-alert--info mb-16">
-      <span class="material-icons mi-sm">info</span>
-      {{ 'otp.demoNotice' | translate }} <strong>{{ demoOtp() }}</strong>
+  <div class="login-form-side">
+    <div class="form-header-row">
+      <a routerLink="/" class="brand-link brand-link--mobile">
+        <app-brand-logo iconClass="brand-icon" />
+        <span class="brand-name">{{ 'common.brandName' | translate }}</span>
+      </a>
+      <app-language-switcher />
     </div>
 
-    <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+    <div class="login-form-wrap">
+      <h2>{{ 'login.otpTitle' | translate }}</h2>
+      <p class="auth-subtitle">{{ 'login.otpSubtitle' | translate:{ nationalId } }}</p>
 
-    <div class="db-form-group">
-      <label>{{ 'otp.codeLabel' | translate }} <span class="required">*</span></label>
-      <input class="db-input" type="text" inputmode="numeric" maxlength="6" [(ngModel)]="otp"
-             placeholder="123456" autocomplete="one-time-code" />
-    </div>
+      <div class="db-alert db-alert--info mb-16">
+        <span class="material-icons mi-sm">info</span>
+        {{ 'otp.demoNotice' | translate }} <strong>{{ demoOtp() }}</strong>
+      </div>
 
-    <button type="button" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()" (click)="verify()">
-      {{ loading() ? ('otp.verifying' | translate) : ('otp.verify' | translate) }}
-    </button>
+      <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
-    <div class="auth-switch">
-      {{ 'otp.didntGetCode' | translate }}
-      <button type="button" class="link-btn" [disabled]="resending()" (click)="resend()">{{ resending() ? ('otp.resending' | translate) : ('otp.resend' | translate) }}</button>
+      <div class="db-form-group">
+        <label>{{ 'otp.codeLabel' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" inputmode="numeric" maxlength="6" [(ngModel)]="otp"
+               placeholder="123456" autocomplete="one-time-code" />
+      </div>
+
+      <button type="button" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()" (click)="verify()">
+        {{ loading() ? ('otp.verifying' | translate) : ('otp.verify' | translate) }}
+      </button>
+
+      <div class="auth-switch">
+        {{ 'otp.didntGetCode' | translate }}
+        <button type="button" class="link-btn" [disabled]="resending()" (click)="resend()">{{ resending() ? ('otp.resending' | translate) : ('otp.resend' | translate) }}</button>
+      </div>
     </div>
   </div>
 </div>
