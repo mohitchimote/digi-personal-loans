@@ -135,6 +135,7 @@ own MySQL schema. Still present in `backend/` on this branch as a reference/roll
 | Auth | `jose` (JWT, HS256, 24h expiry) — National ID + OTP, no passwords anywhere in the system |
 | File storage | R2 (generated PDFs, uploaded documents) |
 | PDF generation | `pdf-lib` |
+| Outbound email | Resend HTTP API (`worker/src/lib/email.ts`) — event notification emails only, not OTP |
 | Frontend | Angular 22, standalone components (no NgModules), signals for local state |
 | Frontend styling | Plain CSS custom properties for theming, Material Icons, self-hosted Inter font |
 | Deployment | `wrangler deploy` — one Worker serves the Angular build (Static Assets binding) and `/api/*` (Hono) from the same origin |
@@ -164,6 +165,7 @@ deployable. No gateway, no inter-service network calls.
 | `products.ts` | `/api/products/**` | `loan_products`, `pre_approved_offers`, `product_selections` | Loan product catalog, eligibility filtering, pre-approved-offer lookup, admin CRUD. |
 | `documents.ts` | `/api/documents/**` | `generated_documents`, `uploaded_documents` (blobs in R2) | Generated PDFs (approval letters) + customer-uploaded supporting documents. |
 | `notifications.ts` | `/api/notifications/**` | `notifications` | In-app customer notification feed. |
+| `admin-email-templates.ts` | `/api/auth/admin/email-templates/**` | `email_templates` | Admin CRUD over per-event email templates; rendering + Resend delivery lives in `lib/email.ts`, called from `applications.ts`'s lifecycle handlers, not from this router. |
 
 No routing table is needed the way the old API gateway had one — Hono's router dispatches
 directly based on the path, all within the single Worker.

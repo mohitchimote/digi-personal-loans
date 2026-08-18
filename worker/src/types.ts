@@ -6,6 +6,8 @@ export interface Env {
   ASSETS: Fetcher;
   DEMO_MODE: string;
   JWT_SECRET: string;
+  RESEND_API_KEY: string;
+  RESEND_FROM_EMAIL: string;
 }
 
 export type AuthUser = typeof users.$inferSelect;

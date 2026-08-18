@@ -136,6 +136,7 @@ export const routes: Routes = [
       { path: 'mandates', loadComponent: () => import('./pages/admin/mandates/admin-mandates.component').then(m => m.AdminMandatesComponent) },
       { path: 'products', loadComponent: () => import('./pages/admin/products/admin-products.component').then(m => m.AdminProductsComponent) },
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
+      { path: 'email-templates', loadComponent: () => import('./pages/admin/email-templates/admin-email-templates.component').then(m => m.AdminEmailTemplatesComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

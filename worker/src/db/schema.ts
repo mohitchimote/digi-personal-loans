@@ -209,3 +209,21 @@ export const mandateRules = sqliteTable("mandate_rules", {
   cooLimit: real("coo_limit").notNull().default(2000000),
   ceoLimit: real("ceo_limit").notNull().default(999999999),
 });
+
+// One row per lifecycle event key (see lib/email-events.ts's EVENT_REGISTRY for the fixed list of
+// valid keys). Rows are lazily seeded on first read rather than pre-populated by a migration, so
+// the event list can grow later without a schema change — see lib/email.ts's getOrSeedTemplate.
+export const emailTemplates = sqliteTable("email_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventKey: text("event_key").notNull().unique(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  toAddress: text("to_address"),
+  ccAddress: text("cc_address"),
+  subject: text("subject").notNull().default(""),
+  headerContent: text("header_content"),
+  bodyContent: text("body_content").notNull().default(""),
+  signature: text("signature"),
+  footer: text("footer"),
+  updatedAt: text("updated_at"),
+  updatedBy: text("updated_by"),
+});

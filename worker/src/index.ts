@@ -11,6 +11,7 @@ import { affordability } from "./routes/affordability";
 import { products } from "./routes/products";
 import { notificationsRoute } from "./routes/notifications";
 import { documents } from "./routes/documents";
+import { emailTemplatesAdmin } from "./routes/admin-email-templates";
 
 const app = new Hono<AppEnv>();
 
@@ -47,6 +48,7 @@ app.route("/api/health", health);
 app.route("/api/auth", auth);
 app.route("/api/auth/admin", admin);
 app.route("/api/auth/admin/branding", brandingAdmin);
+app.route("/api/auth/admin/email-templates", emailTemplatesAdmin);
 app.route("/api/branding", branding);
 app.route("/api/applications", applications);
 app.route("/api/affordability", affordability);

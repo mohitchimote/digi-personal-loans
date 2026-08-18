@@ -13,6 +13,8 @@ import {
   generateApplicationRef,
 } from "../lib/sections";
 import { sendNotification } from "../lib/notifications";
+import { sendTemplatedEmail } from "../lib/email";
+import { greeting, loanPurpose } from "../lib/app-format";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
 import { getAutoApprovalThreshold } from "../lib/affordability-rules";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
@@ -40,32 +42,9 @@ async function getByRef(db: Db, appRef: string) {
   return app;
 }
 
-function greeting(app: { personalDetailsJson: string | null }): string {
-  try {
-    if (app.personalDetailsJson) {
-      const parsed = JSON.parse(app.personalDetailsJson);
-      if (parsed.firstName?.trim()) return `Dear ${parsed.firstName},`;
-    }
-  } catch {
-    /* ignore */
-  }
-  return "Dear Customer,";
-}
-
-function loanPurpose(app: { loanRequirementsJson: string | null }): string {
-  try {
-    if (app.loanRequirementsJson) {
-      const parsed = JSON.parse(app.loanRequirementsJson);
-      if (parsed.loanPurpose?.trim()) return parsed.loanPurpose;
-    }
-  } catch {
-    /* ignore */
-  }
-  return "your requested purpose";
-}
-
 async function addNote(
   db: Db,
+  env: Env,
   appRef: string,
   section: string,
   note: string,
@@ -103,6 +82,10 @@ async function addNote(
       "APPLICATION_UPDATE",
       appRef
     );
+    await sendTemplatedEmail(db, env, noteType, app, {
+      underwriterNote: note,
+      sectionName: sectionLabel(section),
+    });
   }
 
   return saved;
@@ -167,7 +150,7 @@ async function approveApplicationByUnderwriter(
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
+  await addNote(db, env, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
   await sendNotification(
     db,
     app.customerId,
@@ -178,6 +161,10 @@ async function approveApplicationByUnderwriter(
     "APPROVAL",
     appRef
   );
+  await sendTemplatedEmail(db, env, "DECISION_APPROVED", app, {
+    approvedAmount: approvedAmount != null ? String(approvedAmount) : "",
+    reviewedBy,
+  });
   await generateFinalApprovalLetter(db, env, appRef);
   return updated;
 }
@@ -481,7 +468,7 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, appRef, section, "Section edited by staff member.", "EDIT", editedBy);
+  await addNote(db, c.env, appRef, section, "Section edited by staff member.", "EDIT", editedBy);
   return c.json(updated);
 });
 
@@ -567,7 +554,7 @@ applications.post("/:appRef/notes", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ section: string; note: string; noteType?: string; createdBy: string }>();
-  const saved = await addNote(db, appRef, body.section, body.note, body.noteType ?? "NOTE", body.createdBy);
+  const saved = await addNote(db, c.env, appRef, body.section, body.note, body.noteType ?? "NOTE", body.createdBy);
   return c.json(saved);
 });
 
@@ -632,6 +619,7 @@ applications.post("/:appRef/submit", async (c) => {
     .set({ status: "SUBMITTED", submittedAt: now, completionPercentage: 100, updatedAt: now })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
+  await sendTemplatedEmail(db, c.env, "SUBMITTED", updated, {});
   return c.json(updated);
 });
 
@@ -683,7 +671,7 @@ applications.post("/:appRef/decline", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, appRef, "general", body.reason, "DECISION_DECLINED", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "DECISION_DECLINED", body.reviewedBy);
   await sendNotification(
     db,
     app.customerId,
@@ -695,6 +683,10 @@ applications.post("/:appRef/decline", async (c) => {
     "APPLICATION_UPDATE",
     appRef
   );
+  await sendTemplatedEmail(db, c.env, "DECISION_DECLINED", app, {
+    declineReason: body.reason,
+    reviewedBy: body.reviewedBy,
+  });
   return c.json(updated);
 });
 
@@ -718,7 +710,7 @@ applications.post("/:appRef/send-back", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, appRef, "general", body.reason, "SEND_BACK", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "SEND_BACK", body.reviewedBy);
 
   const guarantorNote = guarantorNewlyNeeded
     ? " A guarantor is now required for this application — please complete the new Guarantor Details section, " +
@@ -737,6 +729,11 @@ applications.post("/:appRef/send-back", async (c) => {
     "APPLICATION_UPDATE",
     appRef
   );
+  await sendTemplatedEmail(db, c.env, "SEND_BACK", app, {
+    sendBackReason: body.reason,
+    reviewedBy: body.reviewedBy,
+    guarantorRequiredNote: guarantorNote,
+  });
   return c.json(updated);
 });
 
@@ -762,7 +759,7 @@ applications.post("/:appRef/refer-to-senior", async (c) => {
     .set({ status: "REFERRED_TO_SENIOR", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, appRef, "general", body.reason, "REFERRED_TO_SENIOR", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "REFERRED_TO_SENIOR", body.reviewedBy);
   return c.json(updated);
 });
 
@@ -776,7 +773,7 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
     .set({ disbursementStatus: "FUNDS_RELEASED", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", body.reviewedBy);
+  await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", body.reviewedBy);
   await sendNotification(
     db,
     app.customerId,
@@ -785,6 +782,7 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
     "APPROVAL",
     appRef
   );
+  await sendTemplatedEmail(db, c.env, "DISBURSEMENT_AUTHORISED", app, { reviewedBy: body.reviewedBy });
   return c.json(updated);
 });
 
@@ -798,7 +796,7 @@ applications.post("/:appRef/disbursement/second-check", async (c) => {
     .set({ disbursementStatus: "SECOND_CHECK_PENDING", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", body.reviewedBy);
+  await addNote(db, c.env, appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", body.reviewedBy);
   return c.json(updated);
 });
 
