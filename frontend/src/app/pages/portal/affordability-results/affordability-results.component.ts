@@ -19,6 +19,10 @@ export class AffordabilityResultsComponent implements OnInit {
   result  = signal<AffordabilityResult | null>(null);
   loading = signal(true);
   appRef  = signal('');
+  isJoint = signal(false);
+  withdrawing = signal(false);
+  requestedAmount = signal(0);
+  requestedTerm = signal(0);
 
   constructor(
     private affordability: AffordabilityService,
@@ -44,6 +48,9 @@ export class AffordabilityResultsComponent implements OnInit {
         // credit position (lower score, either applicant's adverse history) since liability is joint.
         const a2Income = income.applicant2;
         const a2Credit = credit.applicant2;
+        this.isJoint.set((loan.numberOfApplicants || 1) >= 2 || !!a2Income);
+        this.requestedAmount.set(loan.loanAmount || 50000);
+        this.requestedTerm.set(loan.loanTerm || 36);
 
         const request = {
           monthlyGrossIncome:      (income.monthlyGrossIncome || 0) + (a2Income?.monthlyGrossIncome || 0),
@@ -66,9 +73,6 @@ export class AffordabilityResultsComponent implements OnInit {
             this.result.set(res);
             this.loading.set(false);
             this.appSvc.saveAffordabilityResult(app.applicationRef, res).subscribe({ error: () => {} });
-            if (res.passed) {
-              this.router.navigate(this.identity.stepUrl('products', false, '/portal'));
-            }
           },
           error: () => this.loading.set(false)
         });
@@ -78,5 +82,18 @@ export class AffordabilityResultsComponent implements OnInit {
 
   proceed(): void {
     this.router.navigate(this.identity.stepUrl('products', false, '/portal'));
+  }
+
+  modifyApplication(): void {
+    if (!this.appRef()) return;
+    this.withdrawing.set(true);
+    this.appSvc.withdraw(this.appRef()).subscribe({
+      next: () => this.router.navigate(this.identity.applyUrl('loan-requirements')),
+      error: () => this.withdrawing.set(false)
+    });
+  }
+
+  formatAmount(n: number | null | undefined): string {
+    return '₪' + Math.round(n || 0).toLocaleString('en-US');
   }
 }

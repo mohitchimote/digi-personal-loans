@@ -311,6 +311,8 @@ export interface BusinessCreditDeclarations {
   directorCreditScore: number;
 }
 
+export type AffordabilityFailureType = 'CAPACITY' | 'STRUCTURAL' | 'TERMINAL' | null;
+
 export interface BusinessAffordabilityResult {
   passed: boolean;
   dscr: number;
@@ -318,6 +320,9 @@ export interface BusinessAffordabilityResult {
   monthlyRepaymentCapacity: number;
   calculatedMonthlyRepayment: number;
   failureReasons: string[];
+  failureType: AffordabilityFailureType;
+  maxAffordableAmount: number | null;
+  minAffordableTermMonths: number | null;
   riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
   creditScoreCategory: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 }
@@ -330,6 +335,9 @@ export interface AffordabilityResult {
   monthlyRepaymentCapacity: number;
   calculatedMonthlyRepayment: number;
   failureReasons: string[];
+  failureType: AffordabilityFailureType;
+  maxAffordableAmount: number | null;
+  minAffordableTermMonths: number | null;
   riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
   creditScoreCategory: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 }

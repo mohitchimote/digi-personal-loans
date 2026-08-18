@@ -14,6 +14,8 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
   { path: 'register/verify-otp', loadComponent: () => import('./pages/register/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent) },
   { path: 'intro',    loadComponent: () => import('./pages/intro/intro.component').then(m => m.IntroComponent) },
+  { path: 'legal/terms',   loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { type: 'terms' } },
+  { path: 'legal/privacy', loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { type: 'privacy' } },
   {
     path: 'portal',
     loadComponent: () => import('./pages/portal/portal.component').then(m => m.PortalComponent),

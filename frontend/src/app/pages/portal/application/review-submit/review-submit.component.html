@@ -147,7 +147,7 @@
 
     <label class="db-checkbox mb-16">
       <input type="checkbox" [(ngModel)]="agreedToPrivacy" />
-      <span>{{ 'reviewSubmit.agreeTermsPrefix' | translate }} <a href="#">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="#">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</span>
+      <span>{{ 'reviewSubmit.agreeTermsPrefix' | translate }} <a href="/legal/terms" target="_blank" rel="noopener">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="/legal/privacy" target="_blank" rel="noopener">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</span>
     </label>
 
     <label class="db-checkbox mb-24">

@@ -1,6 +1,6 @@
 <div class="results-page">
-  <!-- Loading / running state (also shown briefly while we auto-redirect on pass) -->
-  <div class="loading-state" *ngIf="loading() || (result() && result()!.passed)">
+  <!-- Loading / running state -->
+  <div class="loading-state" *ngIf="loading()">
     <div class="loading-spinner material-icons">autorenew</div>
     <h2>{{ 'afford.runningTitle' | translate }}</h2>
     <p>{{ 'afford.runningSub' | translate }}</p>
@@ -11,27 +11,126 @@
     </div>
   </div>
 
-  <!-- Failure: generic message only, no internal scoring details exposed to customers -->
-  <div *ngIf="!loading() && result() && !result()!.passed">
-    <div class="result-header result-header--fail">
-      <div class="result-icon material-icons">cancel</div>
-      <div>
-        <h2>{{ 'afford.failTitle' | translate }}</h2>
-        <p>{{ 'afford.failBody' | translate }}</p>
+  <ng-container *ngIf="!loading() && result() as r">
+
+    <!-- PASS: confirmed terms, not raw jargon -->
+    <div *ngIf="r.passed">
+      <div class="result-header result-header--pass">
+        <div class="result-icon material-icons">check</div>
+        <div>
+          <h2>{{ 'afford.passTitle' | translate }}</h2>
+          <p>{{ 'afford.passBody' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-label">{{ 'afford.loanAmountLabel' | translate }}</div>
+          <div class="metric-value good">{{ formatAmount(requestedAmount()) }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">{{ 'afford.loanTermLabel' | translate }}</div>
+          <div class="metric-value good">{{ requestedTerm() }} {{ 'reviewSubmit.months' | translate }}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">{{ 'products.monthlyRepayment' | translate }}</div>
+          <div class="metric-value good">{{ formatAmount(r.calculatedMonthlyRepayment) }}</div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+        <button type="button" class="db-btn db-btn--primary" (click)="proceed()">{{ 'afford.viewProducts' | translate }}</button>
       </div>
     </div>
 
-    <div class="db-card db-card--raised mb-16">
-      <div class="db-alert db-alert--info">
-        <span class="material-icons mi-sm">chat_bubble</span> {{ 'afford.contactAdvisorNote' | translate }}
+    <!-- CAPACITY: everything else checks out, just this amount/term combination is too much -->
+    <div *ngIf="!r.passed && r.failureType === 'CAPACITY'">
+      <div class="result-header result-header--warning">
+        <div class="result-icon material-icons">tune</div>
+        <div>
+          <h2>{{ 'afford.shortfallTitle' | translate }}</h2>
+          <p>{{ 'afford.shortfallSub' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="suggestion-list">
+        <div class="suggestion-card" *ngIf="r.maxAffordableAmount">
+          <span class="material-icons suggestion-icon">payments</span>
+          <span class="suggestion-text">{{ 'afford.optionAtYourTerm' | translate:{ amount: formatAmount(r.maxAffordableAmount), term: requestedTerm() } }}</span>
+        </div>
+        <div class="suggestion-card" *ngIf="r.minAffordableTermMonths">
+          <span class="material-icons suggestion-icon">calendar_month</span>
+          <span class="suggestion-text">{{ 'afford.optionAtYourAmount' | translate:{ amount: formatAmount(requestedAmount()), term: r.minAffordableTermMonths } }}</span>
+        </div>
+        <div class="db-alert db-alert--info" *ngIf="!r.minAffordableTermMonths">
+          <span class="material-icons mi-sm">info</span> {{ 'afford.noTermFits' | translate }}
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <a href="tel:+97231234567" class="db-btn db-btn--ghost">
+          <span class="material-icons mi-sm">call</span> {{ 'afford.speakAdvisor' | translate }}
+        </a>
+        <button type="button" class="db-btn db-btn--primary" [disabled]="withdrawing()" (click)="modifyApplication()">
+          {{ withdrawing() ? ('afford.modifying' | translate) : ('afford.modifyApplication' | translate) }}
+        </button>
       </div>
     </div>
 
-    <div class="result-actions">
-      <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
-      <a href="tel:+97231234567" class="db-btn db-btn--primary">
-        <span class="material-icons mi-sm">call</span> {{ 'afford.speakAdvisor' | translate }}
-      </a>
+    <!-- STRUCTURAL: income/DTI/HTI/credit score — amount/term won't fix this -->
+    <div *ngIf="!r.passed && r.failureType === 'STRUCTURAL'">
+      <div class="result-header result-header--fail">
+        <div class="result-icon material-icons">cancel</div>
+        <div>
+          <h2>{{ 'afford.reviewTitle' | translate }}</h2>
+          <p>{{ 'afford.reviewSub' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="failure-list mb-16">
+        <div class="failure-item" *ngFor="let reason of r.failureReasons">
+          <span class="failure-icon material-icons mi-sm">error_outline</span> {{ reason }}
+        </div>
+      </div>
+
+      <div class="joint-hint" *ngIf="!isJoint()">
+        <span class="material-icons mi-sm">group_add</span> {{ 'afford.jointApplicantHint' | translate }}
+      </div>
+
+      <div class="result-actions">
+        <a href="tel:+97231234567" class="db-btn db-btn--ghost">
+          <span class="material-icons mi-sm">call</span> {{ 'afford.speakAdvisor' | translate }}
+        </a>
+        <button type="button" class="db-btn db-btn--primary" [disabled]="withdrawing()" (click)="modifyApplication()">
+          {{ withdrawing() ? ('afford.modifying' | translate) : ('afford.modifyApplication' | translate) }}
+        </button>
+      </div>
     </div>
-  </div>
+
+    <!-- TERMINAL: bankruptcy/default — no self-service option -->
+    <div *ngIf="!r.passed && r.failureType === 'TERMINAL'">
+      <div class="result-header result-header--fail">
+        <div class="result-icon material-icons">cancel</div>
+        <div>
+          <h2>{{ 'afford.cannotProceedTitle' | translate }}</h2>
+          <p>{{ 'afford.cannotProceedSub' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="failure-list mb-16">
+        <div class="failure-item" *ngFor="let reason of r.failureReasons">
+          <span class="failure-icon material-icons mi-sm">error_outline</span> {{ reason }}
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <a routerLink="/portal/dashboard" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
+        <a href="tel:+97231234567" class="db-btn db-btn--primary">
+          <span class="material-icons mi-sm">call</span> {{ 'afford.speakAdvisor' | translate }}
+        </a>
+      </div>
+    </div>
+
+  </ng-container>
 </div>
