@@ -1,13 +1,11 @@
-<div class="page-header mb-16">
-  <h2>{{ 'staffHome.homeTab' | translate }}</h2>
-</div>
-
-<div class="db-alert db-alert--info mb-16" *ngIf="auth.previousLogin">
-  {{ 'staffHome.lastAccessed' | translate:{ date: $any(auth.previousLogin | date:'d MMM, y, HH:mm') } }}
+<div class="staff-toast" *ngIf="showLastAccessedToast()">
+  <span class="material-icons mi-sm">schedule</span>
+  <span>{{ 'staffHome.lastAccessed' | translate:{ date: $any(auth.previousLogin | date:'d MMM, y, HH:mm') } }}</span>
+  <button type="button" class="staff-toast-close" (click)="showLastAccessedToast.set(false)"><span class="material-icons mi-sm">close</span></button>
 </div>
 
 <div class="staff-worklist-header mb-16">
-  <h3>{{ 'staffHome.myWorklist' | translate }}</h3>
+  <h3><span class="material-icons mi-sm">work_outline</span> {{ 'staffHome.myWorklist' | translate }}</h3>
   <a class="db-btn db-btn--primary" *ngIf="createCaseRoute" [routerLink]="createCaseRoute">{{ 'staffHome.createCase' | translate }}</a>
 </div>
 
@@ -30,9 +28,10 @@
 </div>
 
 <div class="staff-dashboard-grid" *ngIf="!loading()">
-  <div class="db-card" id="action-items-panel">
-    <div class="card-header"><h3>{{ 'staffHome.actionItemsTitle' | translate }}</h3></div>
-    <div class="empty-state" *ngIf="actionItems().length === 0">
+  <div class="db-card staff-panel" id="action-items-panel">
+    <div class="card-header"><h3><span class="material-icons mi-sm">pending_actions</span> {{ 'staffHome.actionItemsTitle' | translate }}</h3></div>
+    <div class="empty-state staff-panel-empty" *ngIf="actionItems().length === 0">
+      <span class="material-icons staff-panel-empty-icon">task_alt</span>
       <p>{{ 'staffHome.actionItemsEmpty' | translate }}</p>
     </div>
     <table class="db-table" *ngIf="actionItems().length > 0">
@@ -55,9 +54,10 @@
     </table>
   </div>
 
-  <div class="db-card">
-    <div class="card-header"><h3>{{ 'staffHome.recentActivityTitle' | translate }}</h3></div>
-    <div class="empty-state" *ngIf="recentActivity().length === 0">
+  <div class="db-card staff-panel">
+    <div class="card-header"><h3><span class="material-icons mi-sm">notifications</span> {{ 'staffHome.recentActivityTitle' | translate }}</h3></div>
+    <div class="empty-state staff-panel-empty" *ngIf="recentActivity().length === 0">
+      <span class="material-icons staff-panel-empty-icon">notifications_none</span>
       <p>{{ 'staffHome.recentActivityEmpty' | translate }}</p>
     </div>
     <div class="staff-activity-feed" *ngIf="recentActivity().length > 0">

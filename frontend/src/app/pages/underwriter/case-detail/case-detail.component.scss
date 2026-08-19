@@ -7,7 +7,9 @@
 
 app-case-section-nav {
   position: sticky;
-  top: 0;
+  // Offset below the case info strip above it, which is independently sticky at top: 0 — without
+  // this the two would overlap once both are pinned during scroll.
+  top: 88px;
 }
 
 .uw-case-content {
@@ -26,24 +28,50 @@ app-case-section-nav {
   app-case-section-nav { position: static; }
 }
 
+// Same label/value scale as .review-item (styles.scss) — the convention already used everywhere
+// else in the case content — so the strip doesn't read as a visually distinct system.
+.uw-case-strip {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--white, #fff);
+  border: 1px solid var(--light-grey, #e0e0e0);
+  border-radius: 10px;
+  padding: 12px 20px;
+  margin-bottom: 8px !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.uw-case-strip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+
+  span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--mid-grey, #8a94a6); }
+  strong { font-size: 0.9rem; color: var(--dark-text, #1A2B3C); font-weight: 600; }
+}
+
 .uw-summary-strip {
   display: flex;
   gap: 16px;
   background: var(--white, #fff);
   border: 1px solid var(--light-grey, #e0e0e0);
   border-radius: 10px;
-  padding: 16px 20px;
+  padding: 12px 20px;
   flex-wrap: wrap;
 }
 
 .uw-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 110px;
 
-  span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
-  strong { font-size: 1.05rem; color: var(--tcs-blue, #003F79); }
+  span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--mid-grey, #8a94a6); }
+  strong { font-size: 0.9rem; color: var(--dark-text, #1A2B3C); font-weight: 600; }
 }
 
 .risk-low    { color: #2e7d32 !important; }

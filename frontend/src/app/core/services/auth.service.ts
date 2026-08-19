@@ -14,6 +14,13 @@ const USER_KEY  = 'db_user';
 export class AuthService {
   currentUser = signal<AuthResponse | null>(this.loadUser());
 
+  /** Tracks whether the Home dashboard's "last accessed" toast has already been shown this login
+   * session — set true the first time it's displayed, reset on every new login. Lives here
+   * (rather than on the dashboard component itself) because the component is destroyed and
+   * recreated on every navigation to/from Home, so its own state can't survive a round trip to a
+   * case and back the way this singleton service can. */
+  lastAccessedToastShown = false;
+
   constructor(private http: HttpClient, private router: Router) {}
 
   register(req: RegisterRequest): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
@@ -141,6 +148,7 @@ export class AuthService {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));
     this.currentUser.set(auth);
+    this.lastAccessedToastShown = false;
   }
 
   private loadUser(): AuthResponse | null {

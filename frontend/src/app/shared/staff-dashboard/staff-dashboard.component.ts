@@ -39,6 +39,9 @@ export class StaffDashboardComponent implements OnInit {
   loadedAt = signal(new Date());
   apps = signal<LoanApplication[]>([]);
   activity = signal<StaffActivityItem[]>([]);
+  showLastAccessedToast = signal(false);
+
+  private static readonly TOAST_DURATION_MS = 6000;
 
   constructor(public auth: AuthService, private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute, private router: Router) {}
 
@@ -62,6 +65,11 @@ export class StaffDashboardComponent implements OnInit {
     const data = this.route.snapshot.data;
     if (data['caseDetailBasePath']) this.caseDetailBasePath = data['caseDetailBasePath'];
     if (data['createCaseRoute']) this.createCaseRoute = data['createCaseRoute'];
+    if (this.auth.previousLogin && !this.auth.lastAccessedToastShown) {
+      this.auth.lastAccessedToastShown = true;
+      this.showLastAccessedToast.set(true);
+      setTimeout(() => this.showLastAccessedToast.set(false), StaffDashboardComponent.TOAST_DURATION_MS);
+    }
     this.refresh();
   }
 

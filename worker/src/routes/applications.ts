@@ -516,7 +516,10 @@ applications.get("/home-stats", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const role = c.get("authUser").role;
-  const statuses = role === "BANKER" ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED"];
+  // IN_PROGRESS included for every role (not just banker) so the "Pending Action Items" tile's
+  // count/amount — cross-referenced against these rows — can actually include a sent-back
+  // application, matching what /staff-activity already surfaces for the same tile.
+  const statuses = role === "BANKER" ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED", "IN_PROGRESS"];
   const rows = await db
     .select()
     .from(loanApplications)

@@ -70,17 +70,44 @@ export class CaseDetailComponent implements OnInit {
    * remaining section tabs, and a flat bottom item (Decision) — mirrors the staff-tool reference
    * the user supplied, reusing the same navTabs/setTab() the old top-tab bar used. */
   get navTopItems() {
-    return this.navTabs.filter(t => t.key === 'overview').map(t => ({ key: t.key, labelKey: t.labelKey }));
+    return this.navTabs.filter(t => t.key === 'overview').map(t => ({ key: t.key, labelKey: t.labelKey, status: this.sectionStatus(t.key) }));
   }
 
   get navGroupItems() {
-    return this.navTabs.filter(t => t.key !== 'overview' && t.key !== 'decision').map(t => ({ key: t.key, labelKey: t.labelKey }));
+    return this.navTabs.filter(t => t.key !== 'overview' && t.key !== 'decision').map(t => ({ key: t.key, labelKey: t.labelKey, status: this.sectionStatus(t.key) }));
   }
 
   get navBottomItems() {
-    const items = this.navTabs.filter(t => t.key === 'decision').map(t => ({ key: t.key, labelKey: t.labelKey }));
-    if (this.isApproved) items.push({ key: 'disbursement', labelKey: 'uw.tabDisbursement' });
+    const items = this.navTabs.filter(t => t.key === 'decision').map(t => ({ key: t.key, labelKey: t.labelKey, status: this.sectionStatus(t.key) }));
+    if (this.isApproved) items.push({ key: 'disbursement', labelKey: 'uw.tabDisbursement', status: this.sectionStatus('disbursement') });
     return items;
+  }
+
+  /** Drives the checkmark/warning icon next to each left-nav item — tied to real data (has the
+   * underlying section been filled in / does data verification have unresolved red flags /
+   * has a decision been recorded), not decorative. 'pending' renders no icon at all. */
+  sectionStatus(key: TabKey | 'disbursement'): 'complete' | 'warning' | 'pending' {
+    const app = this.application();
+    if (!app) return 'pending';
+    switch (key) {
+      case 'overview':
+        return 'complete';
+      case 'identity':
+        return (this.isBusiness ? app.companyDetailsJson : app.personalDetailsJson) ? 'complete' : 'pending';
+      case 'affordability':
+        return app.affordabilityResultJson ? 'complete' : 'pending';
+      case 'creditRisk':
+        return (this.isBusiness ? app.businessCreditDeclarationsJson : app.creditDeclarationsJson) ? 'complete' : 'pending';
+      case 'dataVerification':
+        if (!this.dataVerification()) return 'pending';
+        return this.hasUnresolvedRed() ? 'warning' : 'complete';
+      case 'decision':
+        return ['APPROVED', 'CONDITIONALLY_APPROVED', 'DECLINED'].includes(app.status) ? 'complete' : 'pending';
+      case 'disbursement':
+        return app.disbursementStatus === 'FUNDS_RELEASED' ? 'complete' : 'pending';
+      default:
+        return 'pending';
+    }
   }
 
   get isBusiness(): boolean {
@@ -315,6 +342,15 @@ export class CaseDetailComponent implements OnInit {
     return score != null ? dnbScoreToRiskClass(score) : 5;
   }
   get affordability() { return this.parseSection(this.application()?.affordabilityResultJson); }
+
+  /** Guards the secondary "Quick-scan" strip — without this it renders as an empty padded bar
+   * whenever an application hasn't been through affordability assessment yet (all of dti/hti/
+   * dscr/riskCategory undefined). */
+  get hasSecondaryAffordabilityMetrics(): boolean {
+    const a = this.affordability;
+    if (this.isBusiness) return a.dscr !== undefined || !!a.riskCategory;
+    return a.dti !== undefined || a.hti !== undefined || !!a.riskCategory;
+  }
   get product()  { return this.parseSection(this.application()?.selectedProductJson); }
 
   downloadDoc(doc: GeneratedDocument): void {
