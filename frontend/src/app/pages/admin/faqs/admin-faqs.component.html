@@ -16,12 +16,20 @@
     <input class="db-input" [(ngModel)]="form.category" [placeholder]="'admin.categoryPlaceholder' | translate" />
   </div>
   <div class="db-form-group">
-    <label>{{ 'admin.question' | translate }}</label>
+    <label>{{ 'admin.question' | translate }} (EN)</label>
     <input class="db-input" [(ngModel)]="form.question" />
   </div>
   <div class="db-form-group">
-    <label>{{ 'admin.answer' | translate }}</label>
+    <label>{{ 'admin.answer' | translate }} (EN)</label>
     <textarea class="db-input" rows="3" [(ngModel)]="form.answer"></textarea>
+  </div>
+  <div class="db-form-group">
+    <label>{{ 'admin.question' | translate }} (HE)</label>
+    <input class="db-input" dir="rtl" [(ngModel)]="form.questionHe" />
+  </div>
+  <div class="db-form-group">
+    <label>{{ 'admin.answer' | translate }} (HE)</label>
+    <textarea class="db-input" dir="rtl" rows="3" [(ngModel)]="form.answerHe"></textarea>
   </div>
   <div class="db-form-group">
     <label>{{ 'admin.displayOrder' | translate }}</label>

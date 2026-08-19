@@ -12,7 +12,7 @@ import {
   sectionLabel,
   generateApplicationRef,
 } from "../lib/sections";
-import { sendNotification } from "../lib/notifications";
+import { sendNotification, getPreferredLanguage } from "../lib/notifications";
 import { sendTemplatedEmail } from "../lib/email";
 import { greeting, loanPurpose } from "../lib/app-format";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
@@ -70,11 +70,21 @@ async function addNote(
 
   if (noteType === "CLARIFICATION_REQUEST" || noteType === "DOCUMENT_REQUEST") {
     const isDocRequest = noteType === "DOCUMENT_REQUEST";
-    await sendNotification(
-      db,
-      app.customerId,
-      isDocRequest ? "Document Required for Your Loan Application" : "Clarification Needed on Your Loan Application",
-      `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
+    const lang = await getPreferredLanguage(db, app.customerId);
+    const title = lang === "he"
+      ? (isDocRequest ? "נדרש מסמך עבור בקשת ההלוואה שלך" : "נדרש הבהרה בנוגע לבקשת ההלוואה שלך")
+      : (isDocRequest ? "Document Required for Your Loan Application" : "Clarification Needed on Your Loan Application");
+    const message = lang === "he"
+      ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
+        `צוות החיתום שלנו בודק את פרטי ${sectionLabel(section, lang)} שלך וזקוק ל` +
+        `${isDocRequest ? "מסמך נוסף" : "הבהרה מסוימת"} לפני שנוכל להמשיך.\n\n` +
+        `הערת החתם: ${note}\n\n` +
+        `השלבים הבאים: ${
+          isDocRequest
+            ? "אנא התחבר/י לפורטל דיגילנד והעלה/י את המסמך הנדרש בעמוד המסמכים."
+            : "אנא התחבר/י לפורטל דיגילנד, בדוק/י את הבקשה שלך, ועדכן/י את הפרק הרלוונטי."
+        } לאחר מכן, הבקשה שלך תחזור לתור החיתום.`
+      : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
         `Our underwriting team is reviewing your ${sectionLabel(section)} details and needs ` +
         `${isDocRequest ? "an additional document" : "some clarification"} before we can proceed.\n\n` +
         `Underwriter's note: ${note}\n\n` +
@@ -82,10 +92,8 @@ async function addNote(
           isDocRequest
             ? "Please log in to your DigiBank portal and upload the requested document from the Documents section."
             : "Please log in to your DigiBank portal, review your application, and update the relevant section."
-        } Once done, your application will be back in the underwriting queue.`,
-      "APPLICATION_UPDATE",
-      appRef
-    );
+        } Once done, your application will be back in the underwriting queue.`;
+    await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
     await sendTemplatedEmail(db, env, noteType, app, {
       underwriterNote: note,
       sectionName: sectionLabel(section),
@@ -155,16 +163,18 @@ async function approveApplicationByUnderwriter(
     .returning();
 
   await addNote(db, env, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
-  await sendNotification(
-    db,
-    app.customerId,
-    "Your Loan Application Has Been Approved!",
-    `${greeting(app)} Congratulations! Your personal loan application for ${loanPurpose(app)} ` +
-      "has been reviewed and approved by our underwriting team.\n\n" +
-      "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement documents in the Documents section.",
-    "APPROVAL",
-    appRef
-  );
+  {
+    const lang = await getPreferredLanguage(db, app.customerId);
+    const title = lang === "he" ? "בקשת ההלוואה שלך אושרה!" : "Your Loan Application Has Been Approved!";
+    const message = lang === "he"
+      ? `${greeting(app, lang)} מזל טוב! בקשתך להלוואה פרטית עבור ${loanPurpose(app, lang)} ` +
+        "נבדקה ואושרה על ידי צוות החיתום שלנו.\n\n" +
+        "השלבים הבאים: אנא התחבר/י לפורטל דיגילנד לצפייה במכתב האישור ובמסמכי הסכם ההלוואה בעמוד המסמכים."
+      : `${greeting(app)} Congratulations! Your personal loan application for ${loanPurpose(app)} ` +
+        "has been reviewed and approved by our underwriting team.\n\n" +
+        "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement documents in the Documents section.";
+    await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
+  }
   await sendTemplatedEmail(db, env, "DECISION_APPROVED", app, {
     approvedAmount: approvedAmount != null ? String(approvedAmount) : "",
     reviewedBy,
@@ -684,17 +694,20 @@ applications.post("/:appRef/decline", async (c) => {
     .returning();
 
   await addNote(db, c.env, appRef, "general", body.reason, "DECISION_DECLINED", body.reviewedBy);
-  await sendNotification(
-    db,
-    app.customerId,
-    "Update on Your Loan Application",
-    `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
-      "After careful review, we are unable to approve your application at this time.\n\n" +
-      `Reason: ${body.reason}\n\n` +
-      "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future if your circumstances change.",
-    "APPLICATION_UPDATE",
-    appRef
-  );
+  {
+    const lang = await getPreferredLanguage(db, app.customerId);
+    const title = lang === "he" ? "עדכון לגבי בקשת ההלוואה שלך" : "Update on Your Loan Application";
+    const message = lang === "he"
+      ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
+        "לאחר בדיקה מעמיקה, לא נוכל לאשר את בקשתך בשלב זה.\n\n" +
+        `סיבה: ${body.reason}\n\n` +
+        "השלבים הבאים: מוזמן/ת ליצור קשר עם יועץ דיגילנד שלך לפרטים נוספים, או להגיש בקשה חדשה בעתיד אם הנסיבות ישתנו."
+      : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
+        "After careful review, we are unable to approve your application at this time.\n\n" +
+        `Reason: ${body.reason}\n\n` +
+        "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future if your circumstances change.";
+    await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
+  }
   await sendTemplatedEmail(db, c.env, "DECISION_DECLINED", app, {
     declineReason: body.reason,
     reviewedBy: body.reviewedBy,
@@ -725,23 +738,28 @@ applications.post("/:appRef/send-back", async (c) => {
 
   await addNote(db, c.env, appRef, "general", body.reason, "SEND_BACK", body.reviewedBy);
 
+  const lang = await getPreferredLanguage(db, app.customerId);
   const guarantorNote = guarantorNewlyNeeded
-    ? " A guarantor is now required for this application — please complete the new Guarantor Details section, " +
-      "including a supporting document for your guarantor, before resubmitting."
+    ? (lang === "he"
+        ? " כעת נדרש ערב עבור בקשה זו — אנא מלא/י את פרק פרטי הערב החדש, כולל מסמך תומך עבור הערב, לפני ההגשה מחדש."
+        : " A guarantor is now required for this application — please complete the new Guarantor Details section, " +
+          "including a supporting document for your guarantor, before resubmitting.")
     : "";
-  await sendNotification(
-    db,
-    app.customerId,
-    "Action Needed on Your Loan Application",
-    `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
+  const title = lang === "he" ? "נדרשת פעולה בבקשת ההלוואה שלך" : "Action Needed on Your Loan Application";
+  const message = lang === "he"
+    ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
+      "צוות החיתום שלנו בדק את בקשתך והחזיר אותה לצורך פרטים נוספים לפני שנוכל להמשיך.\n\n" +
+      `הערת החתם: ${body.reason}\n\n` +
+      "השלבים הבאים: אנא התחבר/י לפורטל דיגילנד, עיין/י במשוב על בקשתך, עדכן/י את הפרק/ים הרלוונטיים, " +
+      "העלה/י מסמכים תומכים אם התבקש, והגש/י מחדש לבדיקה." +
+      guarantorNote
+    : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
       "Our underwriting team has reviewed your application and sent it back for a few additional details before we can proceed.\n\n" +
       `Underwriter's note: ${body.reason}\n\n` +
       "Next steps: Please log in to your DigiBank portal, review the feedback on your application, update the relevant section(s), " +
       "upload any supporting documents if requested, and resubmit for review." +
-      guarantorNote,
-    "APPLICATION_UPDATE",
-    appRef
-  );
+      guarantorNote;
+  await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
   await sendTemplatedEmail(db, c.env, "SEND_BACK", app, {
     sendBackReason: body.reason,
     reviewedBy: body.reviewedBy,
@@ -790,14 +808,14 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
   await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", body.reviewedBy);
-  await sendNotification(
-    db,
-    app.customerId,
-    "Your Loan Funds Have Been Released",
-    `${greeting(app)} Great news — your loan funds for ${loanPurpose(app)} have been authorised for release and will be transferred to your nominated account shortly.`,
-    "APPROVAL",
-    appRef
-  );
+  {
+    const lang = await getPreferredLanguage(db, app.customerId);
+    const title = lang === "he" ? "כספי ההלוואה שלך שוחררו" : "Your Loan Funds Have Been Released";
+    const message = lang === "he"
+      ? `${greeting(app, lang)} בשורה טובה — כספי ההלוואה שלך עבור ${loanPurpose(app, lang)} אושרו לשחרור ויועברו לחשבון שציינת בקרוב.`
+      : `${greeting(app)} Great news — your loan funds for ${loanPurpose(app)} have been authorised for release and will be transferred to your nominated account shortly.`;
+    await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
+  }
   await sendTemplatedEmail(db, c.env, "DISBURSEMENT_AUTHORISED", app, { reviewedBy: body.reviewedBy });
   return c.json(updated);
 });

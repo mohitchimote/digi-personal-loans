@@ -121,6 +121,18 @@ export class AuthService {
     return this.currentUser()?.companyName ?? null;
   }
 
+  get companyRegistrationNumber(): string | null {
+    return this.currentUser()?.companyRegistrationNumber ?? null;
+  }
+
+  get companyIndustry(): string | null {
+    return this.currentUser()?.companyIndustry ?? null;
+  }
+
+  get companyFoundedYear(): number | null {
+    return this.currentUser()?.companyFoundedYear ?? null;
+  }
+
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));

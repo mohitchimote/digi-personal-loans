@@ -27,8 +27,9 @@
       <div class="form-row">
         <div class="db-form-group">
           <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="date" formControlName="dateOfBirth" autocomplete="bday" />
-          <div class="db-error-msg" *ngIf="f('dateOfBirth')?.invalid && f('dateOfBirth')?.touched">{{ 'common.required' | translate }}</div>
+          <input class="db-input" type="date" formControlName="dateOfBirth" autocomplete="bday" min="1900-01-01" [max]="todayIso" />
+          <div class="db-error-msg" *ngIf="f('dateOfBirth')?.hasError('required') && f('dateOfBirth')?.touched">{{ 'common.required' | translate }}</div>
+          <div class="db-error-msg" *ngIf="f('dateOfBirth')?.hasError('invalidYear') && f('dateOfBirth')?.touched">{{ 'personal.invalidYearError' | translate }}</div>
         </div>
         <div class="db-form-group input-with-action">
           <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
@@ -45,8 +46,10 @@
       <div class="form-row">
         <div class="db-form-group">
           <label>{{ 'personal.idIssueDateLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="date" formControlName="idIssueDate" />
-          <div class="db-error-msg" *ngIf="f('idIssueDate')?.invalid && f('idIssueDate')?.touched">{{ 'common.required' | translate }}</div>
+          <input class="db-input" type="date" formControlName="idIssueDate" min="1900-01-01" [max]="todayIso" />
+          <div class="db-error-msg" *ngIf="f('idIssueDate')?.hasError('required') && f('idIssueDate')?.touched">{{ 'common.required' | translate }}</div>
+          <div class="db-error-msg" *ngIf="f('idIssueDate')?.hasError('invalidYear') && f('idIssueDate')?.touched">{{ 'personal.invalidYearError' | translate }}</div>
+          <div class="db-error-msg" *ngIf="form.hasError('idIssueBeforeDob') && f('idIssueDate')?.touched">{{ 'personal.idIssueBeforeDobError' | translate }}</div>
         </div>
       </div>
 
@@ -58,14 +61,14 @@
         <div class="db-form-group">
           <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
+            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
           </select>
         </div>
         <div class="db-form-group">
           <label>{{ 'personal.maritalStatusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('maritalStatus')?.invalid && f('maritalStatus')?.touched">{{ 'common.required' | translate }}</div>
         </div>
@@ -75,6 +78,7 @@
         <div class="db-form-group" style="max-width:200px">
           <label>{{ 'personal.dependentsLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="dependents" min="0" max="20" />
+          <div class="db-hint">{{ 'personal.dependentsHint' | translate }}</div>
         </div>
       </div>
 
@@ -118,9 +122,8 @@
       </div>
 
       <div class="db-form-group" style="max-width:260px">
-        <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+        <label>{{ 'personal.monthsAtAddressLabel' | translate }}</label>
         <input class="db-input" type="number" formControlName="monthsAtCurrentAddress" min="0" placeholder="e.g. 24" />
-        <div class="db-error-msg" *ngIf="f('monthsAtCurrentAddress')?.invalid && f('monthsAtCurrentAddress')?.touched">{{ 'common.required' | translate }}</div>
       </div>
 
       <div class="address-history-progress">
@@ -152,7 +155,7 @@
             </div>
           </div>
           <div class="db-form-group" style="max-width:260px">
-            <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+            <label>{{ 'personal.monthsAtAddressLabel' | translate }}</label>
             <input class="db-input" type="number" formControlName="monthsAtAddress" min="0" />
           </div>
         </div>
@@ -216,7 +219,8 @@
       <div class="form-row">
         <div class="db-form-group">
           <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="date" formControlName="dateOfBirth" />
+          <input class="db-input" type="date" formControlName="dateOfBirth" min="1900-01-01" [max]="todayIso" />
+          <div class="db-error-msg" *ngIf="f2('dateOfBirth')?.hasError('invalidYear') && f2('dateOfBirth')?.touched">{{ 'personal.invalidYearError' | translate }}</div>
         </div>
         <div class="db-form-group input-with-action">
           <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
@@ -231,7 +235,9 @@
       <div class="form-row">
         <div class="db-form-group">
           <label>{{ 'personal.idIssueDateLabel' | translate }}</label>
-          <input class="db-input" type="date" formControlName="idIssueDate" />
+          <input class="db-input" type="date" formControlName="idIssueDate" min="1900-01-01" [max]="todayIso" />
+          <div class="db-error-msg" *ngIf="f2('idIssueDate')?.hasError('invalidYear') && f2('idIssueDate')?.touched">{{ 'personal.invalidYearError' | translate }}</div>
+          <div class="db-error-msg" *ngIf="applicant2Form.hasError('idIssueBeforeDob') && f2('idIssueDate')?.touched">{{ 'personal.idIssueBeforeDobError' | translate }}</div>
         </div>
       </div>
 
@@ -250,14 +256,14 @@
         <div class="db-form-group">
           <label>{{ 'personal.nationalityLabel' | translate }}</label>
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
+            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
           </select>
         </div>
         <div class="db-form-group">
           <label>{{ 'personal.maritalStatusLabel' | translate }}</label>
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
           </select>
         </div>
       </div>
@@ -299,7 +305,7 @@
         </div>
         <div class="dense-field">
           <label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="date" formControlName="dateOfBirth" />
+          <input class="db-input" type="date" formControlName="dateOfBirth" min="1900-01-01" [max]="todayIso" />
         </div>
         <div class="dense-field">
           <label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label>
@@ -307,19 +313,19 @@
         </div>
         <div class="dense-field">
           <label>{{ 'personal.idIssueDateLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="date" formControlName="idIssueDate" />
+          <input class="db-input" type="date" formControlName="idIssueDate" min="1900-01-01" [max]="todayIso" />
         </div>
         <div class="dense-field">
           <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ n }}</option>
+            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
           </select>
         </div>
         <div class="dense-field">
           <label>{{ 'personal.maritalStatusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
           </select>
         </div>
         <div class="dense-field">
@@ -355,7 +361,7 @@
           <input class="db-input" type="text" formControlName="country" />
         </div>
         <div class="dense-field">
-          <label>{{ 'personal.monthsAtAddressLabel' | translate }} <span class="required">*</span></label>
+          <label>{{ 'personal.monthsAtAddressLabel' | translate }}</label>
           <input class="db-input" type="number" formControlName="monthsAtCurrentAddress" min="0" />
         </div>
       </div>
@@ -414,14 +420,14 @@
         <div class="dense-grid">
           <div class="dense-field"><label>{{ 'personal.firstNameLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="firstName" /></div>
           <div class="dense-field"><label>{{ 'personal.lastNameLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="lastName" /></div>
-          <div class="dense-field"><label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="date" formControlName="dateOfBirth" /></div>
+          <div class="dense-field"><label>{{ 'personal.dobLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="date" formControlName="dateOfBirth" min="1900-01-01" [max]="todayIso" /></div>
           <div class="dense-field"><label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="nationalId" /></div>
-          <div class="dense-field"><label>{{ 'personal.idIssueDateLabel' | translate }}</label><input class="db-input" type="date" formControlName="idIssueDate" /></div>
+          <div class="dense-field"><label>{{ 'personal.idIssueDateLabel' | translate }}</label><input class="db-input" type="date" formControlName="idIssueDate" min="1900-01-01" [max]="todayIso" /></div>
           <div class="dense-field"><label>{{ 'personal.nationalityLabel' | translate }}</label>
-            <select class="db-select" formControlName="nationality"><option *ngFor="let n of nationalities" [value]="n">{{ n }}</option></select>
+            <select class="db-select" formControlName="nationality"><option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option></select>
           </div>
           <div class="dense-field"><label>{{ 'personal.maritalStatusLabel' | translate }}</label>
-            <select class="db-select" formControlName="maritalStatus"><option value="">{{ 'common.select' | translate }}</option><option *ngFor="let s of maritalStatuses" [value]="s">{{ s }}</option></select>
+            <select class="db-select" formControlName="maritalStatus"><option value="">{{ 'common.select' | translate }}</option><option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option></select>
           </div>
           <div class="dense-field"><label>{{ 'personal.phoneLabel' | translate }}</label><input class="db-input" type="tel" formControlName="phoneNumber" /></div>
           <div class="dense-field"><label>{{ 'personal.emailLabel' | translate }}</label><input class="db-input" type="email" formControlName="email" /></div>

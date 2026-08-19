@@ -28,6 +28,10 @@ export const users = sqliteTable("users", {
   companyRegistrationNumber: text("company_registration_number").unique(),
   companyIndustry: text("company_industry"),
   companyFoundedYear: integer("company_founded_year"),
+  // Drives which language server-generated content (notifications, etc.) is written in — synced
+  // from the frontend's language toggle, which is otherwise purely a client-side localStorage
+  // setting the server has no visibility into.
+  preferredLanguage: text("preferred_language").notNull().default("en"),
 });
 
 export const loanApplications = sqliteTable("loan_applications", {
@@ -99,6 +103,10 @@ export const faqs = sqliteTable("faqs", {
   category: text("category").notNull(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
+  // Hebrew translations — nullable so existing/new rows without a translation just fall back to
+  // the English text on the frontend instead of the row failing to save.
+  questionHe: text("question_he"),
+  answerHe: text("answer_he"),
   videoId: text("video_id"),
   displayOrder: integer("display_order").notNull().default(0),
 });

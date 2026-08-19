@@ -107,6 +107,8 @@ const faqSchema = z.object({
   category: z.string(),
   question: z.string(),
   answer: z.string(),
+  questionHe: z.string().optional().nullable(),
+  answerHe: z.string().optional().nullable(),
   videoId: z.string().optional().nullable(),
   displayOrder: z.number().int().default(0),
 });

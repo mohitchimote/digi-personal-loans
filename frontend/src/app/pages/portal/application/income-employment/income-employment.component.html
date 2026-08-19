@@ -21,7 +21,7 @@
           <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="employmentStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('employmentStatus')?.invalid && f('employmentStatus')?.touched">{{ 'common.required' | translate }}</div>
         </div>
@@ -62,7 +62,7 @@
             <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
             <select class="db-select" formControlName="employmentStatus">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+              <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
             </select>
           </div>
           <div class="db-form-group" *ngIf="isEmployedAt(emp)">
@@ -103,6 +103,7 @@
           <input class="db-input" type="number" formControlName="monthlyNetIncome" placeholder="e.g. 14000" min="0" />
           <div class="db-hint">{{ 'income.netIncomeHint' | translate }}</div>
           <div class="db-error-msg" *ngIf="f('monthlyNetIncome')?.invalid && f('monthlyNetIncome')?.touched">{{ 'common.required' | translate }}</div>
+          <div class="db-error-msg" *ngIf="form.hasError('netExceedsGross') && f('monthlyNetIncome')?.touched">{{ 'income.netExceedsGrossError' | translate }}</div>
         </div>
       </div>
 
@@ -129,7 +130,7 @@
           <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="employmentStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
           </select>
         </div>
         <div class="db-form-group" *ngIf="isEmployed2()">
@@ -164,6 +165,7 @@
         <div class="db-form-group">
           <label>{{ 'income.netIncomeLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="monthlyNetIncome" placeholder="e.g. 14000" min="0" />
+          <div class="db-error-msg" *ngIf="applicant2Form.hasError('netExceedsGross') && f2('monthlyNetIncome')?.touched">{{ 'income.netExceedsGrossError' | translate }}</div>
         </div>
       </div>
 
@@ -193,7 +195,7 @@
           <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="employmentStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+            <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
           </select>
         </div>
         <div class="dense-field" *ngIf="isEmployed()">
@@ -222,6 +224,7 @@
         <div class="dense-field">
           <label>{{ 'income.netIncomeLabel' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="number" formControlName="monthlyNetIncome" min="0" />
+          <div class="db-error-msg" *ngIf="form.hasError('netExceedsGross') && f('monthlyNetIncome')?.touched">{{ 'income.netExceedsGrossError' | translate }}</div>
         </div>
         <div class="dense-field">
           <label>{{ 'income.otherIncomeLabel' | translate }}</label>
@@ -240,7 +243,7 @@
               <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
               <select class="db-select" formControlName="employmentStatus">
                 <option value="">{{ 'common.select' | translate }}</option>
-                <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+                <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
               </select>
             </div>
             <div class="dense-field" *ngIf="isEmployedAt(emp)">
@@ -269,7 +272,7 @@
             <label>{{ 'income.statusLabel' | translate }} <span class="required">*</span></label>
             <select class="db-select" formControlName="employmentStatus">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let s of statuses" [value]="s">{{ s }}</option>
+              <option *ngFor="let s of statuses" [value]="s">{{ optLabel('employmentStatus', s) }}</option>
             </select>
           </div>
           <div class="dense-field" *ngIf="isEmployed2()">

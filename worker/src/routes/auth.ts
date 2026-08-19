@@ -194,3 +194,18 @@ auth.get("/validate", requireAuth, async (c) => {
   const user = c.get("authUser");
   return success(c, "Token is valid.", user.uuid);
 });
+
+// The frontend's language toggle is otherwise purely client-side (localStorage) — this is what
+// lets server-generated content (notifications, etc.) know which language to write in.
+auth.put(
+  "/language",
+  requireAuth,
+  zValidator("json", z.object({ preferredLanguage: z.enum(["en", "he"]) })),
+  async (c) => {
+    const db = getDb(c.env.DB);
+    const user = c.get("authUser");
+    const { preferredLanguage } = c.req.valid("json");
+    await db.update(users).set({ preferredLanguage }).where(eq(users.id, user.id));
+    return success(c, "Language preference updated.", { preferredLanguage });
+  }
+);

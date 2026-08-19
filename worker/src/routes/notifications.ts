@@ -64,33 +64,57 @@ notificationsRoute.post("/create", async (c) => {
   return c.json(created);
 });
 
-const WELCOME_MESSAGES = [
-  {
-    title: "Welcome to DigiBank Personal Loans",
-    message:
-      "Thank you for choosing DigiBank. We're here to help you find the right personal loan for your needs. Our application process is quick, transparent, and entirely digital.",
-    type: "SUCCESS",
-  },
-  {
-    title: "Documents You'll Need",
-    message:
-      "To complete your application you will need: recent payslips (last 3 months), bank statements (last 6 months), a valid ID document, and proof of address dated within 3 months.",
-    type: "INFO",
-  },
-  {
-    title: "Your Application is Auto-Saved",
-    message:
-      "Don't worry about losing progress — your application is automatically saved after each section. You can return at any time to complete it from where you left off.",
-    type: "INFO",
-  },
-];
+const WELCOME_MESSAGES = {
+  en: [
+    {
+      title: "Welcome to DigiBank Personal Loans",
+      message:
+        "Thank you for choosing DigiBank. We're here to help you find the right personal loan for your needs. Our application process is quick, transparent, and entirely digital.",
+      type: "SUCCESS",
+    },
+    {
+      title: "Documents You'll Need",
+      message:
+        "To complete your application you will need: recent payslips (last 3 months), bank statements (last 6 months), a valid ID document, and proof of address dated within 3 months.",
+      type: "INFO",
+    },
+    {
+      title: "Your Application is Auto-Saved",
+      message:
+        "Don't worry about losing progress — your application is automatically saved after each section. You can return at any time to complete it from where you left off.",
+      type: "INFO",
+    },
+  ],
+  he: [
+    {
+      title: "ברוכים הבאים להלוואות פרטיות מדיגילנד",
+      message:
+        "תודה שבחרת בדיגילנד. אנחנו כאן כדי לעזור לך למצוא את ההלוואה הפרטית המתאימה לצרכים שלך. תהליך הבקשה שלנו מהיר, שקוף ודיגיטלי לחלוטין.",
+      type: "SUCCESS",
+    },
+    {
+      title: "המסמכים שתצטרך/י",
+      message:
+        "כדי להשלים את הבקשה תזדקק/י ל: תלושי שכר אחרונים (3 חודשים אחרונים), דפי חשבון בנק (6 חודשים אחרונים), תעודה מזהה בתוקף, ואישור כתובת מהשלושה חודשים האחרונים.",
+      type: "INFO",
+    },
+    {
+      title: "הבקשה שלך נשמרת אוטומטית",
+      message:
+        "אל דאגה מאובדן התקדמות — הבקשה שלך נשמרת אוטומטית לאחר כל פרק. ניתן לחזור בכל עת ולהמשיך מהמקום שבו הפסקת.",
+      type: "INFO",
+    },
+  ],
+};
 
 notificationsRoute.post("/customer/:customerId/seed-welcome", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  const body = await c.req.json<{ lang?: string }>().catch(() => ({ lang: undefined }));
+  const lang = body.lang === "he" ? "he" : "en";
   const now = new Date().toISOString();
   await db.insert(notifications).values(
-    WELCOME_MESSAGES.map((m) => ({
+    WELCOME_MESSAGES[lang].map((m) => ({
       customerId,
       title: m.title,
       message: m.message,

@@ -46,10 +46,9 @@
     <div class="db-card">
       <div class="card-header"><h3>{{ 'outgoings.livingHeader' | translate }}</h3></div>
       <div class="db-form-group" style="max-width:360px">
-        <label>{{ 'outgoings.livingLabel' | translate }} <span class="required">*</span></label>
+        <label>{{ 'outgoings.livingLabel' | translate }}</label>
         <input class="db-input" type="number" formControlName="monthlyLivingExpenses" placeholder="e.g. 5000" min="0" />
         <div class="db-hint">{{ 'outgoings.livingHint' | translate }}</div>
-        <div class="db-error-msg" *ngIf="f('monthlyLivingExpenses')?.invalid && f('monthlyLivingExpenses')?.touched">{{ 'common.required' | translate }}</div>
       </div>
 
       <!-- Outgoings total -->
@@ -92,9 +91,8 @@
       <div class="dense-section-label">{{ 'outgoings.livingHeader' | translate }}</div>
       <div class="dense-grid">
         <div class="dense-field">
-          <label>{{ 'outgoings.livingLabel' | translate }} <span class="required">*</span></label>
+          <label>{{ 'outgoings.livingLabel' | translate }}</label>
           <input class="db-input" type="number" formControlName="monthlyLivingExpenses" min="0" />
-          <div class="db-error-msg" *ngIf="f('monthlyLivingExpenses')?.invalid && f('monthlyLivingExpenses')?.touched">{{ 'common.required' | translate }}</div>
         </div>
       </div>
       <div class="outgoings-total" *ngIf="totalOutgoings > 0">

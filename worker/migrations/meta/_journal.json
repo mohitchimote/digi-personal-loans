@@ -29,6 +29,13 @@
       "when": 1787048434744,
       "tag": "0003_brave_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787132065180,
+      "tag": "0004_breezy_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

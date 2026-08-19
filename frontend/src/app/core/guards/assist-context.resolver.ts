@@ -40,6 +40,9 @@ export const assistContextResolver: ResolveFn<LoanApplication> = (route) => {
           customerNationalId: profile?.nationalId ?? null,
           customerIdIssueDate: profile?.idIssueDate ?? null,
           customerCompanyName: profile?.companyName ?? null,
+          customerCompanyRegistrationNumber: profile?.companyRegistrationNumber ?? null,
+          customerCompanyIndustry: profile?.companyIndustry ?? null,
+          customerCompanyFoundedYear: profile?.companyFoundedYear ?? null,
         });
         return app;
       })

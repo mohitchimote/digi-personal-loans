@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { Notification } from '../models';
 import { API_BASE } from './api-base';
+import { I18nService } from '../i18n/i18n.service';
 
 const API = `${API_BASE}/api/notifications`;
 
@@ -10,7 +11,7 @@ const API = `${API_BASE}/api/notifications`;
 export class NotificationService {
   unreadCount = signal<number>(0);
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private i18n: I18nService) {}
 
   getAll(customerId: number): Observable<Notification[]> {
     return this.http.get<Notification[]>(`${API}/customer/${customerId}`);
@@ -32,7 +33,7 @@ export class NotificationService {
   }
 
   seedWelcome(customerId: number): Observable<void> {
-    return this.http.post<void>(`${API}/customer/${customerId}/seed-welcome`, {});
+    return this.http.post<void>(`${API}/customer/${customerId}/seed-welcome`, { lang: this.i18n.lang() });
   }
 
   create(customerId: number, title: string, message: string, type: string, applicationRef?: string): Observable<Notification> {

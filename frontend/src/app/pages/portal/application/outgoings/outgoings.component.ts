@@ -28,7 +28,7 @@ export class OutgoingsComponent implements OnInit {
       monthlyLoans:              [0, [Validators.required, Validators.min(0)]],
       creditCardPayments:        [0, [Validators.required, Validators.min(0)]],
       otherMonthlyCommitments:   [0, [Validators.required, Validators.min(0)]],
-      monthlyLivingExpenses:     [null, [Validators.required, Validators.min(0)]],
+      monthlyLivingExpenses:     [null, [Validators.min(0)]],
     });
   }
 

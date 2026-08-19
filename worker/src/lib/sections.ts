@@ -102,7 +102,22 @@ export function nextSection(currentSection: string, app: App): string {
   return sections[sections.length - 1];
 }
 
-export function sectionLabel(section: string): string {
+export function sectionLabel(section: string, lang: "en" | "he" = "en"): string {
+  if (lang === "he") {
+    switch (section) {
+      case "loanRequirements": return "פרטי ההלוואה";
+      case "consentManagement": return "ניהול הסכמות";
+      case "personalDetails": return "פרטים אישיים";
+      case "connectBank": return "חיבור לבנק";
+      case "incomeEmployment": return "הכנסה ותעסוקה";
+      case "outgoings": return "הוצאות";
+      case "creditDeclarations": return "הצהרות אשראי";
+      case "verifyId": return "אימות זהות";
+      case "directDebit": return "פרטי הוראת קבע";
+      case "guarantorDetails": return "פרטי ערב";
+      default: return "הבקשה";
+    }
+  }
   switch (section) {
     case "loanRequirements":
       return "Loan Requirements";

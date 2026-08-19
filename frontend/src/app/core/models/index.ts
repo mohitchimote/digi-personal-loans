@@ -10,6 +10,9 @@ export interface AuthResponse {
   role: string;
   expiresIn: number;
   companyName?: string;
+  companyRegistrationNumber?: string;
+  companyIndustry?: string;
+  companyFoundedYear?: number;
 }
 
 export interface RegisterRequest {
@@ -33,6 +36,9 @@ export interface CustomerProfileResponse {
   fullName: string;
   phoneNumber?: string;
   companyName?: string;
+  companyRegistrationNumber?: string;
+  companyIndustry?: string;
+  companyFoundedYear?: number;
 }
 
 export interface RegisterInitiatedResponse {

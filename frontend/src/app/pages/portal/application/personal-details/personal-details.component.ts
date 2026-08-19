@@ -9,6 +9,7 @@ import { MARITAL_STATUSES, NATIONALITIES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STA
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
+import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
 
 @Component({
   selector: 'app-personal-details',
@@ -53,9 +54,9 @@ export class PersonalDetailsComponent implements OnInit {
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
       lastName:     ['', Validators.required],
-      dateOfBirth:  ['', Validators.required],
+      dateOfBirth:  ['', [Validators.required, yearRangeValidator()]],
       nationalId:   ['', Validators.required],
-      idIssueDate:  ['', Validators.required],
+      idIssueDate:  ['', [Validators.required, yearRangeValidator()]],
       nationality:  ['Israeli', Validators.required],
       maritalStatus:['', Validators.required],
       dependents:   [0, [Validators.required, Validators.min(0)]],
@@ -65,24 +66,24 @@ export class PersonalDetailsComponent implements OnInit {
       city:         ['', Validators.required],
       postCode:     ['', Validators.required],
       country:      ['Israel', Validators.required],
-      monthsAtCurrentAddress: [null, [Validators.required, Validators.min(0)]],
+      monthsAtCurrentAddress: [null, [Validators.min(0)]],
       previousAddresses: this.fb.array([]),
       assistedByStaff: [false],
       preferredBranch: [''],
       staffName: [''],
-    });
+    }, { validators: idIssueNotBeforeDobValidator() });
     this.applicant2Form = this.fb.group({
       firstName:    [''],
       lastName:     [''],
-      dateOfBirth:  [''],
+      dateOfBirth:  ['', yearRangeValidator()],
       nationalId:   [''],
-      idIssueDate:  [''],
+      idIssueDate:  ['', yearRangeValidator()],
       nationality:  ['Israeli'],
       maritalStatus:[''],
       relationshipToApplicant1: [''],
       phoneNumber:  [''],
       email:        ['', Validators.email],
-    });
+    }, { validators: idIssueNotBeforeDobValidator() });
     this.consentForm = this.fb.group({
       creditBureauConsent:       [false, Validators.requiredTrue],
       pepScreeningConsent:       [false, Validators.requiredTrue],
@@ -202,7 +203,7 @@ export class PersonalDetailsComponent implements OnInit {
       city:            [data?.city || '', Validators.required],
       postCode:        [data?.postCode || '', Validators.required],
       country:         [data?.country || 'Israel', Validators.required],
-      monthsAtAddress: [data?.monthsAtAddress ?? null, [Validators.required, Validators.min(0)]],
+      monthsAtAddress: [data?.monthsAtAddress ?? null, [Validators.min(0)]],
     });
   }
 
@@ -313,4 +314,12 @@ export class PersonalDetailsComponent implements OnInit {
   f(name: string) { return this.form.get(name); }
   f2(name: string) { return this.applicant2Form.get(name); }
   fc(name: string) { return this.consentForm.get(name); }
+
+  optLabel(namespace: string, value: string): string {
+    return this.i18n.t(`${namespace}.${value}`);
+  }
+
+  get todayIso(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
 }

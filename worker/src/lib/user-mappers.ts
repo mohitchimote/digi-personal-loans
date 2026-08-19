@@ -15,6 +15,9 @@ export async function buildAuthResponse(user: AuthUser, jwtSecret: string) {
     role: user.role,
     expiresIn: JWT_EXPIRES_IN_MS,
     companyName: user.companyName,
+    companyRegistrationNumber: user.companyRegistrationNumber,
+    companyIndustry: user.companyIndustry,
+    companyFoundedYear: user.companyFoundedYear,
   };
 }
 
@@ -27,6 +30,9 @@ export function toCustomerProfile(user: AuthUser) {
     fullName: user.fullName,
     phoneNumber: user.phoneNumber,
     companyName: user.companyName,
+    companyRegistrationNumber: user.companyRegistrationNumber,
+    companyIndustry: user.companyIndustry,
+    companyFoundedYear: user.companyFoundedYear,
   };
 }
 

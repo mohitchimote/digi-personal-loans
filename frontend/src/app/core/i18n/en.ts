@@ -61,6 +61,51 @@ export const EN: Record<string, string> = {
   'status.DECLINED': 'Declined',
   'status.WITHDRAWN': 'Withdrawn',
 
+  // Dropdown option labels (values themselves stay canonical English on the wire; these are
+  // display-only translations looked up via `'namespace.' + value`, same pattern as status.*)
+  'maritalStatus.Single': 'Single',
+  'maritalStatus.Married': 'Married',
+  'maritalStatus.Divorced': 'Divorced',
+  'maritalStatus.Widowed': 'Widowed',
+  'maritalStatus.Civil Partnership': 'Civil Partnership',
+  'maritalStatus.Separated': 'Separated',
+
+  'nationality.Israeli': 'Israeli',
+  'nationality.American': 'American',
+  'nationality.British': 'British',
+  'nationality.French': 'French',
+  'nationality.German': 'German',
+  'nationality.Russian': 'Russian',
+  'nationality.Ethiopian': 'Ethiopian',
+  'nationality.Indian': 'Indian',
+  'nationality.Other': 'Other',
+
+  'employmentStatus.Full-Time Employed': 'Full-Time Employed',
+  'employmentStatus.Part-Time Employed': 'Part-Time Employed',
+  'employmentStatus.Self-Employed': 'Self-Employed',
+  'employmentStatus.Contract': 'Contract',
+  'employmentStatus.Retired': 'Retired',
+  'employmentStatus.Student': 'Student',
+  'employmentStatus.Unemployed': 'Unemployed',
+
+  'loanPurpose.Home Improvement': 'Home Improvement',
+  'loanPurpose.Debt Consolidation': 'Debt Consolidation',
+  'loanPurpose.Vehicle Purchase': 'Vehicle Purchase',
+  'loanPurpose.Education': 'Education',
+  'loanPurpose.Medical Expenses': 'Medical Expenses',
+  'loanPurpose.Wedding': 'Wedding',
+  'loanPurpose.Travel': 'Travel',
+  'loanPurpose.Business': 'Business',
+  'loanPurpose.Other': 'Other',
+
+  'businessLoanPurpose.Working Capital': 'Working Capital',
+  'businessLoanPurpose.Equipment Purchase': 'Equipment Purchase',
+  'businessLoanPurpose.Business Expansion': 'Business Expansion',
+  'businessLoanPurpose.Inventory Financing': 'Inventory Financing',
+  'businessLoanPurpose.Debt Refinancing': 'Debt Refinancing',
+  'businessLoanPurpose.Commercial Property': 'Commercial Property',
+  'businessLoanPurpose.Other': 'Other',
+
   // Dashboard
   'dashboard.welcomeBack': 'Welcome back, {{name}}',
   'dashboard.overview': "Here's an overview of your loan application.",
@@ -210,6 +255,9 @@ export const EN: Record<string, string> = {
   'personal.applicant2Required': 'Please complete Applicant 2 details.',
   'personal.relationshipLabel': 'Relationship to Applicant 1',
   'personal.relationshipPlaceholder': 'e.g. Spouse, Partner, Sibling',
+  'personal.invalidYearError': 'Please enter a valid year.',
+  'personal.idIssueBeforeDobError': 'ID issue date cannot be earlier than the date of birth.',
+  'personal.dependentsHint': 'Children up to age 18',
 
   // Step 3: Income & Employment
   'income.title': 'Income & Employment',
@@ -234,6 +282,7 @@ export const EN: Record<string, string> = {
   'income.grossIncomeHint': 'Before tax and deductions',
   'income.netIncomeLabel': 'Monthly Net Income (₪)',
   'income.netIncomeHint': 'Take-home pay after all deductions',
+  'income.netExceedsGrossError': 'Net income cannot be greater than gross income.',
   'income.otherIncomeLabel': 'Other Monthly Income (₪)',
   'income.otherIncomeHint': 'Rental income, freelance, benefits, etc.',
   'income.applicant2Header': "Applicant 2 — Income & Employment",
@@ -458,6 +507,11 @@ export const EN: Record<string, string> = {
   'viewApp.pullBackError': 'Could not pull back the application. Please try again.',
 
   // FAQ
+  'faq.category.Loan Eligibility': 'Loan Eligibility',
+  'faq.category.Application Process': 'Application Process',
+  'faq.category.Interest Rates & Repayments': 'Interest Rates & Repayments',
+  'faq.category.Credit & Affordability': 'Credit & Affordability',
+  'faq.category.Security & Privacy': 'Security & Privacy',
   'faq.title': 'Frequently Asked Questions',
   'faq.subtitle': "Find answers to common questions about DigiLend personal loans. Can't find what you're looking for? Speak to your advisor.",
   'faq.loading': 'Loading FAQs…',
@@ -774,6 +828,19 @@ export const EN: Record<string, string> = {
   'connectBank.transactionsPulled': 'Transactions Retrieved',
   'connectBank.disconnect': 'Disconnect',
   'connectBank.skipForNow': 'Skip for now',
+  'connectBank.linkedAccounts': 'Linked accounts',
+  'connectBank.primaryBadge': 'Repayment account',
+  'connectBank.setAsPrimary': 'Set as repayment account',
+  'connectBank.remove': 'Remove',
+  'connectBank.manualBadge': 'Entered manually',
+  'connectBank.addAnotherAccount': '+ Add another account',
+  'connectBank.enterManually': 'Enter details manually instead',
+  'connectBank.manualIntro': "Don't want to use Open Banking? Enter your account details directly.",
+  'connectBank.manualBankLabel': 'Bank',
+  'connectBank.manualBranchLabel': 'Branch',
+  'connectBank.manualAccountNumberLabel': 'Account Number',
+  'connectBank.addAccount': 'Add Account',
+  'connectBank.cancel': 'Cancel',
   'aside.tip.connectBank': "Connecting your bank is optional but can speed up your application by automatically verifying income and outgoings — you can always skip and continue.",
 
   // Verify ID
