@@ -1,0 +1,112 @@
+.staff-worklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h3 { margin: 0; }
+}
+
+.staff-tiles-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--mid-grey);
+}
+
+.staff-refresh-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--tcs-blue);
+  display: flex;
+  align-items: center;
+}
+
+.staff-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.staff-tile {
+  background: #fff;
+  border: 1px solid var(--light-grey);
+  border-radius: var(--border-radius);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  font: inherit;
+  transition: all 0.15s ease;
+
+  &:hover { border-color: var(--tcs-blue); box-shadow: var(--shadow-sm); }
+}
+
+.staff-tile-count {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--tcs-blue);
+}
+
+.staff-tile-label {
+  font-size: 0.78rem;
+  color: var(--dark-text);
+  margin-top: 4px;
+}
+
+.staff-tile-amount {
+  font-size: 0.72rem;
+  color: var(--mid-grey);
+  margin-top: 6px;
+}
+
+.staff-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.staff-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.staff-activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--dark-text);
+
+  &:hover { background: var(--off-white); }
+
+  .user-avatar-sm {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: var(--tcs-blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.82rem;
+  }
+}
+
+.staff-activity-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+}
+
+.staff-activity-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.staff-activity-item-note { color: var(--dark-text); }
+.staff-activity-item-time { color: var(--mid-grey); font-size: 0.72rem; }

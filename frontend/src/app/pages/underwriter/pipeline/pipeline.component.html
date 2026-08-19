@@ -3,40 +3,30 @@
   <p class="page-sub">{{ 'uw.pipelineSubtitle' | translate }}</p>
 </div>
 
-<!-- Status tiles -->
-<div class="uw-tiles mb-24">
-  <button class="uw-tile" [class.active]="activeFilter() === 'ALL'" (click)="setFilter('ALL')">
-    <div class="uw-tile-count">{{ countFor('ALL') }}</div>
-    <div class="uw-tile-label">{{ 'uw.tileAll' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'SUBMITTED'" (click)="setFilter('SUBMITTED')">
-    <div class="uw-tile-count">{{ countFor('SUBMITTED') }}</div>
-    <div class="uw-tile-label">{{ 'status.SUBMITTED' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'UNDER_REVIEW'" (click)="setFilter('UNDER_REVIEW')">
-    <div class="uw-tile-count">{{ countFor('UNDER_REVIEW') }}</div>
-    <div class="uw-tile-label">{{ 'status.UNDER_REVIEW' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'CONDITIONALLY_APPROVED'" (click)="setFilter('CONDITIONALLY_APPROVED')">
-    <div class="uw-tile-count">{{ countFor('CONDITIONALLY_APPROVED') }}</div>
-    <div class="uw-tile-label">{{ 'status.CONDITIONALLY_APPROVED' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'REFERRED_TO_SENIOR'" (click)="setFilter('REFERRED_TO_SENIOR')">
-    <div class="uw-tile-count">{{ countFor('REFERRED_TO_SENIOR') }}</div>
-    <div class="uw-tile-label">{{ 'status.REFERRED_TO_SENIOR' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'APPROVED'" (click)="setFilter('APPROVED')">
-    <div class="uw-tile-count">{{ countFor('APPROVED') }}</div>
-    <div class="uw-tile-label">{{ 'status.APPROVED' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'PENDING_DISBURSEMENT'" (click)="setFilter('PENDING_DISBURSEMENT')">
-    <div class="uw-tile-count">{{ countFor('PENDING_DISBURSEMENT') }}</div>
-    <div class="uw-tile-label">{{ 'uw.pendingDisbursement' | translate }}</div>
-  </button>
-  <button class="uw-tile" [class.active]="activeFilter() === 'DISBURSED'" (click)="setFilter('DISBURSED')">
-    <div class="uw-tile-count">{{ countFor('DISBURSED') }}</div>
-    <div class="uw-tile-label">{{ 'uw.disbursed' | translate }}</div>
-  </button>
+<div class="db-card filter-panel mb-24">
+  <div class="db-form-group">
+    <input class="db-input" type="text" [(ngModel)]="searchText" [placeholder]="'uw.searchPlaceholder' | translate" />
+  </div>
+  <div class="filter-panel-row">
+    <div class="db-form-group">
+      <label>{{ 'dashboard.status' | translate }}</label>
+      <select class="db-select" [ngModel]="activeFilter()" (ngModelChange)="setFilter($event)">
+        <option value="ALL">{{ 'uw.tileAll' | translate }}</option>
+        <option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</option>
+        <option value="PENDING_DISBURSEMENT">{{ 'uw.pendingDisbursement' | translate }}</option>
+        <option value="DISBURSED">{{ 'uw.disbursed' | translate }}</option>
+      </select>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'common.startDate' | translate }}</label>
+      <input class="db-input" type="date" [(ngModel)]="startDate" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'common.endDate' | translate }}</label>
+      <input class="db-input" type="date" [(ngModel)]="endDate" />
+    </div>
+    <button type="button" class="db-btn db-btn--ghost" (click)="resetFilters()">{{ 'common.resetFilters' | translate }}</button>
+  </div>
 </div>
 
 <div class="loading-row" *ngIf="loading()">

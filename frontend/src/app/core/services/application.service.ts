@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, finalize, shareReplay, switchMap, tap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../models';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis, StaffActivityItem } from '../models';
 import { API_BASE } from './api-base';
 import { AssistContextService } from './assist-context.service';
 import { AuthService } from './auth.service';
@@ -159,6 +159,14 @@ export class ApplicationService {
 
   getBankerQueue(): Observable<LoanApplication[]> {
     return this.http.get<LoanApplication[]>(`${API}/banker-queue`);
+  }
+
+  getHomeStats(): Observable<LoanApplication[]> {
+    return this.http.get<LoanApplication[]>(`${API}/home-stats`);
+  }
+
+  getStaffActivity(): Observable<StaffActivityItem[]> {
+    return this.http.get<StaffActivityItem[]>(`${API}/staff-activity`);
   }
 
   decline(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {

@@ -133,6 +133,10 @@ export class AuthService {
     return this.currentUser()?.companyFoundedYear ?? null;
   }
 
+  get previousLogin(): string | null {
+    return this.currentUser()?.previousLogin ?? null;
+  }
+
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));

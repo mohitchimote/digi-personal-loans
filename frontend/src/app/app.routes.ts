@@ -76,7 +76,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/underwriter/shell/uw-shell.component').then(m => m.UwShellComponent),
     canActivate: [underwriterGuard],
     children: [
-      { path: '', redirectTo: 'pipeline', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      {
+        path: 'home', loadComponent: () => import('../app/shared/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
+        data: { caseDetailBasePath: '/underwriter/case' }
+      },
       { path: 'pipeline',      loadComponent: () => import('./pages/underwriter/pipeline/pipeline.component').then(m => m.PipelineComponent) },
       { path: 'case/:appRef',  loadComponent: () => import('./pages/underwriter/case-detail/case-detail.component').then(m => m.CaseDetailComponent) },
     ]
@@ -86,7 +90,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/banker/shell/banker-shell.component').then(m => m.BankerShellComponent),
     canActivate: [bankerGuard],
     children: [
-      { path: '', redirectTo: 'queue', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      {
+        path: 'home', loadComponent: () => import('../app/shared/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
+        data: { caseDetailBasePath: '/banker/case', createCaseRoute: '/banker/create' }
+      },
       { path: 'queue',     loadComponent: () => import('./pages/banker/queue/banker-queue.component').then(m => m.BankerQueueComponent) },
       { path: 'create',    loadComponent: () => import('./pages/banker/create-application/banker-create-application.component').then(m => m.BankerCreateApplicationComponent) },
       { path: 'case/:appRef', loadComponent: () => import('./pages/banker/case-detail/banker-case-detail.component').then(m => m.BankerCaseDetailComponent) },

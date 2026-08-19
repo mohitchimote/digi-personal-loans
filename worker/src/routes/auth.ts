@@ -165,13 +165,14 @@ auth.post(
       if (!user.enabled) throw new AppError("This account is disabled. Please contact DigiBank support.");
 
       const verified = await verifyOtpForUser(db, user, otp);
+      const previousLogin = verified.lastLogin; // captured before this login overwrites it below
       const [updated] = await db
         .update(users)
         .set({ lastLogin: new Date().toISOString() })
         .where(eq(users.id, verified.id))
         .returning();
 
-      const response = await buildAuthResponse(updated, c.env.JWT_SECRET);
+      const response = { ...(await buildAuthResponse(updated, c.env.JWT_SECRET)), previousLogin };
       return success(c, "Login successful.", response);
     } catch (e) {
       const message = e instanceof AppError ? e.message : "Login failed.";

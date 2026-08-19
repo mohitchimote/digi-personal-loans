@@ -35,7 +35,7 @@
         <div class="card-header"><h3>{{ 'banker.callNotesTitle' | translate }}</h3></div>
         <div class="uw-notes" *ngIf="notesFor('general').length">
           <div class="uw-note" *ngFor="let n of notesFor('general')">
-            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
             <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
           </div>
         </div>

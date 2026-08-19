@@ -13,6 +13,7 @@ export interface AuthResponse {
   companyRegistrationNumber?: string;
   companyIndustry?: string;
   companyFoundedYear?: number;
+  previousLogin?: string | null;
 }
 
 export interface RegisterRequest {
@@ -174,6 +175,24 @@ export interface UnderwritingNote {
   section: string;
   note: string;
   noteType: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** Backs the staff Home dashboard's Action Items / Recent Notifications panels — an
+ * underwriting note enriched with just enough of its parent application to display and link to
+ * it, without shipping the full application JSON blobs over the wire. */
+export interface StaffActivityItem {
+  id: number;
+  applicationRef: string;
+  applicationType: string;
+  customerEmail: string;
+  personalDetailsJson: string | null;
+  companyDetailsJson: string | null;
+  applicationStatus: string;
+  section: string;
+  noteType: string;
+  note: string;
   createdBy: string;
   createdAt: string;
 }

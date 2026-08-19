@@ -1,0 +1,77 @@
+<div class="page-header mb-16">
+  <h2>{{ 'staffHome.homeTab' | translate }}</h2>
+</div>
+
+<div class="db-alert db-alert--info mb-16" *ngIf="auth.previousLogin">
+  {{ 'staffHome.lastAccessed' | translate:{ date: $any(auth.previousLogin | date:'d MMM, y, HH:mm') } }}
+</div>
+
+<div class="staff-worklist-header mb-16">
+  <h3>{{ 'staffHome.myWorklist' | translate }}</h3>
+  <a class="db-btn db-btn--primary" *ngIf="createCaseRoute" [routerLink]="createCaseRoute">{{ 'staffHome.createCase' | translate }}</a>
+</div>
+
+<div class="staff-tiles-meta mb-8" *ngIf="!loading()">
+  <span class="material-icons mi-sm">description</span>
+  {{ 'staffHome.dataAsOf' | translate:{ time: $any(loadedAt() | date:'HH:mm') } }}
+  <button type="button" class="staff-refresh-btn" (click)="refresh()"><span class="material-icons mi-sm">refresh</span></button>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'uw.loadingPipeline' | translate }}</span>
+</div>
+
+<div class="staff-tiles mb-24" *ngIf="!loading()">
+  <button type="button" class="staff-tile" *ngFor="let t of tiles()" (click)="goToTile(t)">
+    <div class="staff-tile-count">{{ t.count }}</div>
+    <div class="staff-tile-label">{{ t.labelKey | translate }}</div>
+    <div class="staff-tile-amount">₪{{ (t.amount / 1000000) | number:'1.0-2' }} Mn</div>
+  </button>
+</div>
+
+<div class="staff-dashboard-grid" *ngIf="!loading()">
+  <div class="db-card" id="action-items-panel">
+    <div class="card-header"><h3>{{ 'staffHome.actionItemsTitle' | translate }}</h3></div>
+    <div class="empty-state" *ngIf="actionItems().length === 0">
+      <p>{{ 'staffHome.actionItemsEmpty' | translate }}</p>
+    </div>
+    <table class="db-table" *ngIf="actionItems().length > 0">
+      <thead>
+        <tr>
+          <th>{{ 'staffHome.colCase' | translate }}</th>
+          <th>{{ 'staffHome.colRequestType' | translate }}</th>
+          <th>{{ 'staffHome.colRequestDate' | translate }}</th>
+          <th>{{ 'staffHome.colDescription' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of actionItems()">
+          <td><a [routerLink]="[caseDetailBasePath, item.applicationRef]" class="text-primary"><strong>{{ item.applicationRef }}</strong></a></td>
+          <td>{{ noteTypeLabel(item.noteType) }}</td>
+          <td class="text-muted" style="font-size:0.82rem">{{ item.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td>{{ item.note }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="db-card">
+    <div class="card-header"><h3>{{ 'staffHome.recentActivityTitle' | translate }}</h3></div>
+    <div class="empty-state" *ngIf="recentActivity().length === 0">
+      <p>{{ 'staffHome.recentActivityEmpty' | translate }}</p>
+    </div>
+    <div class="staff-activity-feed" *ngIf="recentActivity().length > 0">
+      <a class="staff-activity-item" *ngFor="let item of recentActivity()" [routerLink]="[caseDetailBasePath, item.applicationRef]">
+        <span class="user-avatar-sm">{{ item.createdBy[0] }}</span>
+        <div class="staff-activity-item-body">
+          <div class="staff-activity-item-top">
+            <strong>{{ item.createdBy }}</strong>
+            <span class="db-badge">{{ item.applicationRef }}</span>
+          </div>
+          <span class="staff-activity-item-note">{{ noteTypeLabel(item.noteType) }} — {{ applicantName(item) }}</span>
+          <span class="staff-activity-item-time">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>

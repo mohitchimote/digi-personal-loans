@@ -1,17 +1,22 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { LoanApplication } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { applicantDisplayName } from '../../../core/utils/application-display';
 
-const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR', 'APPROVED'];
+// Broader than the underwriter's day-to-day working set (which excludes closed-out outcomes) —
+// this page also needs to show Declined cases when filtered/deep-linked to from the Home
+// dashboard's tiles, so it fetches the same home-stats scope rather than /pipeline.
+const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR', 'APPROVED', 'DECLINED'];
 
 @Component({
   selector: 'app-uw-pipeline',
   standalone: true,
-  imports: [CommonModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './pipeline.component.html',
   styleUrl: './pipeline.component.scss'
 })
@@ -20,6 +25,10 @@ export class PipelineComponent implements OnInit {
   loading = signal(true);
   activeFilter = signal<string>('ALL');
   sortDir = signal<'asc' | 'desc'>('desc');
+
+  searchText = signal('');
+  startDate = signal('');
+  endDate = signal('');
 
   statuses = PIPELINE_STATUSES;
 
@@ -37,6 +46,24 @@ export class PipelineComponent implements OnInit {
       result = this.applications().filter(a => a.status === filter);
     }
 
+    const q = this.searchText().trim().toLowerCase();
+    if (q) {
+      result = result.filter(a =>
+        a.applicationRef.toLowerCase().includes(q) ||
+        a.customerEmail?.toLowerCase().includes(q) ||
+        this.applicantName(a).toLowerCase().includes(q)
+      );
+    }
+
+    const start = this.startDate() ? new Date(this.startDate()).getTime() : null;
+    const end = this.endDate() ? new Date(this.endDate()).getTime() + 86_400_000 : null;
+    if (start !== null || end !== null) {
+      result = result.filter(a => {
+        const t = new Date(a.submittedAt || a.createdAt).getTime();
+        return (start === null || t >= start) && (end === null || t < end);
+      });
+    }
+
     const dir = this.sortDir() === 'asc' ? 1 : -1;
     return [...result].sort((a, b) => {
       const dateA = new Date(a.submittedAt || a.createdAt).getTime();
@@ -49,25 +76,27 @@ export class PipelineComponent implements OnInit {
     this.sortDir.update(d => (d === 'asc' ? 'desc' : 'asc'));
   }
 
-  constructor(private appSvc: ApplicationService, public i18n: I18nService) {}
+  resetFilters(): void {
+    this.activeFilter.set('ALL');
+    this.searchText.set('');
+    this.startDate.set('');
+    this.endDate.set('');
+  }
+
+  constructor(private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute) {}
 
   statusLabel(status: string): string {
     return this.i18n.t('status.' + status);
   }
 
   ngOnInit(): void {
-    this.appSvc.getPipeline().subscribe({
+    const initialStatus = this.route.snapshot.queryParamMap.get('status');
+    if (initialStatus) this.activeFilter.set(initialStatus);
+
+    this.appSvc.getHomeStats().subscribe({
       next: apps => { this.applications.set(apps); this.loading.set(false); },
       error: () => this.loading.set(false)
     });
-  }
-
-  countFor(status: string): number {
-    if (status === 'ALL') return this.applications().length;
-    if (status === 'APPROVED') return this.applications().filter(a => a.status === 'APPROVED' && !a.disbursementStatus).length;
-    if (status === 'PENDING_DISBURSEMENT') return this.applications().filter(a => a.status === 'APPROVED' && a.disbursementStatus === 'SECOND_CHECK_PENDING').length;
-    if (status === 'DISBURSED') return this.applications().filter(a => a.disbursementStatus === 'FUNDS_RELEASED').length;
-    return this.applications().filter(a => a.status === status).length;
   }
 
   setFilter(status: string): void {
@@ -102,16 +131,6 @@ export class PipelineComponent implements OnInit {
   }
 
   applicantName(app: LoanApplication): string {
-    try {
-      if (this.isBusiness(app)) {
-        const c = JSON.parse(app.companyDetailsJson || '{}');
-        return c.companyName || app.customerEmail;
-      }
-      const p = JSON.parse(app.personalDetailsJson || '{}');
-      const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || app.customerEmail;
-      const a2 = p.applicant2;
-      const name2 = a2 ? `${a2.firstName || ''} ${a2.lastName || ''}`.trim() : '';
-      return name2 ? `${name} & ${name2}` : name;
-    } catch { return app.customerEmail; }
+    return applicantDisplayName(app);
   }
 }

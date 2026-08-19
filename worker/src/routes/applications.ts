@@ -509,6 +509,73 @@ applications.get("/banker-queue", async (c) => {
   return c.json(rows);
 });
 
+// Broader than /pipeline and /banker-queue (which drive their respective list pages and
+// deliberately exclude closed-out statuses) — the Home dashboard's stat tiles want a "Declined"
+// count too, so this is a dedicated fetch rather than reusing either.
+applications.get("/home-stats", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
+  const db = getDb(c.env.DB);
+  const role = c.get("authUser").role;
+  const statuses = role === "BANKER" ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED"];
+  const rows = await db
+    .select()
+    .from(loanApplications)
+    .where(inArray(loanApplications.status, statuses))
+    .orderBy(desc(loanApplications.updatedAt));
+  return c.json(rows);
+});
+
+// Backs the Home dashboard's "Action Items" and "Recent Notifications" panels. There's no
+// resolved/unresolved flag on underwriting_notes (it's an append-only log), so "action items" is
+// approximated as document/clarification/send-back notes on applications still sitting in
+// IN_PROGRESS — i.e. bounced back to the customer and not yet resubmitted.
+applications.get("/staff-activity", async (c) => {
+  assertRole(c, ...STAFF_ROLES);
+  const db = getDb(c.env.DB);
+  const role = c.get("authUser").role;
+  // IN_PROGRESS is explicitly included even for non-banker roles (PIPELINE_STATUSES normally
+  // excludes it) — a sent-back/document-requested application moves to IN_PROGRESS while it
+  // waits on the customer, which is exactly the case "action items" needs to surface. Leaving it
+  // out here would make every action item invisible the moment it's created.
+  const statuses = role === "BANKER" ? BANKER_QUEUE_STATUSES : [...PIPELINE_STATUSES, "IN_PROGRESS"];
+  const apps = await db
+    .select()
+    .from(loanApplications)
+    .where(inArray(loanApplications.status, statuses));
+  const appByRef = new Map(apps.map((a) => [a.applicationRef, a]));
+  if (apps.length === 0) return c.json([]);
+
+  const notes = await db
+    .select()
+    .from(underwritingNotes)
+    .where(inArray(underwritingNotes.applicationRef, apps.map((a) => a.applicationRef)))
+    .orderBy(desc(underwritingNotes.createdAt))
+    .limit(50);
+
+  const enriched = notes
+    .map((n) => {
+      const app = appByRef.get(n.applicationRef);
+      if (!app) return null;
+      return {
+        id: n.id,
+        applicationRef: n.applicationRef,
+        applicationType: app.applicationType,
+        customerEmail: app.customerEmail,
+        personalDetailsJson: app.personalDetailsJson,
+        companyDetailsJson: app.companyDetailsJson,
+        applicationStatus: app.status,
+        section: n.section,
+        noteType: n.noteType,
+        note: n.note,
+        createdBy: n.createdBy,
+        createdAt: n.createdAt,
+      };
+    })
+    .filter((n): n is NonNullable<typeof n> => n !== null);
+
+  return c.json(enriched);
+});
+
 applications.get("/mandate-rules", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
