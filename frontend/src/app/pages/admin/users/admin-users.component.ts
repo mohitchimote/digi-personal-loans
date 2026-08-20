@@ -123,6 +123,6 @@ export class AdminUsersComponent implements OnInit {
   }
 
   roleLabel(role: string): string {
-    return role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return this.i18n.t('role.' + role);
   }
 }

@@ -108,7 +108,7 @@ export function assessPersonalAffordability(req: AffordabilityRequest, rules: Af
   const totalDebt = (req.monthlyLoans ?? 0) + (req.creditCardPayments ?? 0) + (req.otherMonthlyCommitments ?? 0);
   const dti = grossIncome > 0 ? round2((totalDebt / grossIncome) * 100) : 100;
   if (dti > rules.maxDti) {
-    failures.push(`Debt-to-income ratio of ${dti}% exceeds the maximum permitted ${rules.maxDti}%.`);
+    failures.push(`Payment-to-income ratio of ${dti}% exceeds the maximum permitted ${rules.maxDti}%.`);
     hasStructuralFailure = true;
   }
 

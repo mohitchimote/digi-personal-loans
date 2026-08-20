@@ -22,7 +22,7 @@
     <div class="card-header"><h3>{{ 'steps.loanRequirements' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
-      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ ('loanPurpose.' + loanReqs.loanPurpose) | translate }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ loanReqs.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
     </div>
   </div>

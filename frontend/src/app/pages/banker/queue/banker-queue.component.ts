@@ -63,7 +63,9 @@ export class BankerQueueComponent implements OnInit {
       });
     }
 
-    return result;
+    return [...result].sort((a, b) =>
+      new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+    );
   });
 
   constructor(private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute) {}

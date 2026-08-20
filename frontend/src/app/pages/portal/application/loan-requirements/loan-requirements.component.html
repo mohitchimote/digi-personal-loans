@@ -27,7 +27,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ ('loanPurpose.' + p) | translate }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('loanPurpose')?.invalid && f('loanPurpose')?.touched">
             {{ 'loanReq.purposeError' | translate }}
@@ -93,7 +93,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ ('loanPurpose.' + p) | translate }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('loanPurpose')?.invalid && f('loanPurpose')?.touched">{{ 'loanReq.purposeError' | translate }}</div>
         </div>
