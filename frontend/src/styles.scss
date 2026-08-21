@@ -270,6 +270,7 @@ html[dir="rtl"] {
   &--approved    { background: var(--success-light); color: var(--success); }
   &--declined    { background: var(--error-light); color: var(--error); }
   &--review      { background: var(--warning-light); color: var(--warning); }
+  &--stp         { background: rgba(var(--tcs-yellow-rgb), 0.18); color: var(--tcs-yellow-dark); margin-left: 6px; }
 }
 
 // === PROGRESS BAR ===

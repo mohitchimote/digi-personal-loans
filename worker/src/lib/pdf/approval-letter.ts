@@ -174,7 +174,7 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   page.drawText("Next Steps", { x: marginX, y, size: 12, font: bold, color: TCS_BLUE });
   y -= 18;
   const nextSteps = isFinal
-    ? "Your DigiLend advisor will be in touch shortly to arrange execution of the Loan Agreement and drawdown of funds to your nominated account."
+    ? "Your loan has been fully approved and no further action is required from you. Your DigiLend advisor will be in touch shortly to arrange execution of the Loan Agreement and drawdown of funds to your nominated account."
     : "Please log in to your DigiLend portal and upload the required supporting documents in the Documents section. Once all documents have been received and verified, your assigned advisor will contact you to arrange execution of the Loan Agreement and drawdown of funds.";
   for (const line of wrapText(nextSteps, regular, 10, contentWidth)) {
     page.drawText(line, { x: marginX, y, size: 10, font: regular, color: BLACK });
@@ -185,8 +185,9 @@ export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFina
   page.drawRectangle({ x: marginX, y, width: contentWidth, height: 2, color: TCS_YELLOW });
   y -= 15;
 
-  const disclaimer =
-    "This is a conditional approval only. DigiLend reserves the right to withdraw or amend this offer prior to drawdown. This letter does not constitute a binding commitment to lend. DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.";
+  const disclaimer = isFinal
+    ? "This is a final approval. All verification checks referenced above have been satisfactorily completed. DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8."
+    : "This is a conditional approval only. DigiLend reserves the right to withdraw or amend this offer prior to drawdown. This letter does not constitute a binding commitment to lend. DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.";
   for (const line of wrapText(disclaimer, regular, 7, contentWidth)) {
     page.drawText(line, { x: marginX, y, size: 7, font: regular, color: GREY });
     y -= 10;

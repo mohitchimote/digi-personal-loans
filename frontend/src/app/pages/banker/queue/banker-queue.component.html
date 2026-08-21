@@ -60,7 +60,10 @@
           <span class="material-icons mi-sm" [title]="isBusiness(app) ? ('uw.business' | translate) : ('uw.personal' | translate)">{{ isBusiness(app) ? 'apartment' : 'person' }}</span>
         </td>
         <td>{{ applicantName(app) }}</td>
-        <td><span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span></td>
+        <td>
+          <span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span>
+          <span class="db-badge db-badge--stp" *ngIf="app.autoApproved" [title]="'uw.autoApprovedTitle' | translate">{{ 'uw.autoApprovedBadge' | translate }}</span>
+        </td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>
           <a [routerLink]="['/banker/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'banker.openAssist' | translate }}</a>

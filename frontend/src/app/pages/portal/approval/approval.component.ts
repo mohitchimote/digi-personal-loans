@@ -71,6 +71,29 @@ export class ApprovalComponent implements OnInit {
     return this.application()?.status === 'APPROVED';
   }
 
+  // Every CONDITIONALLY_APPROVED application, by construction, missed straight-through processing
+  // (maybeAutoApprove on the worker jumps straight to APPROVED — it never leaves an app sitting at
+  // CONDITIONALLY_APPROVED). The SME asked for a plain-language reason here without exposing exact
+  // policy thresholds/numbers, so this maps the affordability result's failure category — or the
+  // absence of a failure, meaning it simply exceeded the auto-approval amount — to a generic,
+  // customer-safe explanation key.
+  nonStpReasonKey(): string | null {
+    const app = this.application();
+    if (!app || this.isFinal()) return null;
+    let result: { passed?: boolean; failureType?: string | null } | null = null;
+    try { result = app.affordabilityResultJson ? JSON.parse(app.affordabilityResultJson) : null; } catch { result = null; }
+
+    if (result?.passed === false) {
+      switch (result.failureType) {
+        case 'CAPACITY': return 'approval.nonStpReason.capacity';
+        case 'STRUCTURAL': return 'approval.nonStpReason.structural';
+        case 'TERMINAL': return 'approval.nonStpReason.eligibility';
+        default: return 'approval.nonStpReason.generic';
+      }
+    }
+    return 'approval.nonStpReason.amount';
+  }
+
   letterStepDone(): boolean {
     return this.isFinal() || this.generated();
   }

@@ -58,6 +58,10 @@ export const loanApplications = sqliteTable("loan_applications", {
 
   disbursementStatus: text("disbursement_status"),
   approvedAmount: real("approved_amount"),
+  // True only when maybeAutoApprove's STP path approved this application without staff review —
+  // set once at approval time and never touched afterwards, so it stays accurate even if the
+  // application is later re-reviewed. Powers the staff-facing STP vs staff-worked indicator.
+  autoApproved: integer("auto_approved", { mode: "boolean" }).notNull().default(false),
   selectedProductId: text("selected_product_id"),
   selectedProductJson: text("selected_product_json"),
   affordabilityResultJson: text("affordability_result_json"),

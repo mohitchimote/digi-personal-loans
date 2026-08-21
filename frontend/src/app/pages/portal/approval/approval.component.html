@@ -12,6 +12,22 @@
     </div>
   </div>
 
+  <div class="db-alert db-alert--success final-next-steps mb-16" *ngIf="isFinal()">
+    <span class="material-icons mi-sm">verified</span>
+    <div>
+      <strong>{{ 'approval.finalNextStepsTitle' | translate }}</strong>
+      <p>{{ 'approval.finalNextStepsBody' | translate }}</p>
+    </div>
+  </div>
+
+  <div class="db-alert db-alert--info non-stp-reason mb-16" *ngIf="!isFinal() && nonStpReasonKey() as reasonKey">
+    <span class="material-icons mi-sm">info</span>
+    <div>
+      <strong>{{ 'approval.whyConditional' | translate }}</strong>
+      <p>{{ reasonKey | translate }}</p>
+    </div>
+  </div>
+
   <div class="approval-grid">
     <!-- Approval details -->
     <div class="db-card">
@@ -136,7 +152,10 @@
     </div>
   </div>
 
-  <div class="db-alert db-alert--info approval-footer">
-    ℹ {{ 'approval.footerDisclaimer' | translate }}
+  <div class="db-alert db-alert--success approval-footer" *ngIf="isFinal()">
+    ✅ {{ 'approval.finalFooterDisclaimer' | translate }}
+  </div>
+  <div class="db-alert db-alert--info approval-footer" *ngIf="!isFinal()">
+    ℹ {{ 'approval.conditionalFooterDisclaimer' | translate }}
   </div>
 </div>

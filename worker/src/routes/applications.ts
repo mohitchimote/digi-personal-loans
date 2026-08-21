@@ -153,12 +153,13 @@ async function approveApplicationByUnderwriter(
   env: Env,
   appRef: string,
   reviewedBy: string,
-  approvedAmount: number | null
+  approvedAmount: number | null,
+  autoApproved = false
 ) {
   const app = await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "APPROVED", approvedAmount, updatedAt: new Date().toISOString() })
+    .set({ status: "APPROVED", approvedAmount, autoApproved, updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
@@ -203,7 +204,7 @@ async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$
     const loanAmount = Number(loan?.loanAmount ?? 0);
     if (loanAmount > threshold) return;
 
-    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount);
+    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount, true);
   } catch (e) {
     // Auto-approval is a convenience; failures fall back to manual underwriter review.
     console.error("maybeAutoApprove failed (non-fatal):", e);

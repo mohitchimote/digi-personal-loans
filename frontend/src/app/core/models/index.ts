@@ -103,6 +103,7 @@ export interface LoanApplication {
   guarantorDetailsJson?: string;
   disbursementStatus?: DisbursementStatus;
   approvedAmount?: number;
+  autoApproved?: boolean;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;

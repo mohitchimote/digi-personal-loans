@@ -63,7 +63,10 @@
         <td>₪{{ loanAmount(app) | number }}</td>
         <td>{{ loanPurpose(app) || '—' }}</td>
         <td>{{ loanTerm(app) ? (loanTerm(app) + ' ' + ('reviewSubmit.months' | translate)) : '—' }}</td>
-        <td><span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span></td>
+        <td>
+          <span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span>
+          <span class="db-badge db-badge--stp" *ngIf="app.autoApproved" [title]="'uw.autoApprovedTitle' | translate">{{ 'uw.autoApprovedBadge' | translate }}</span>
+        </td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.submittedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>
           <a [routerLink]="['/underwriter/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'uw.review' | translate }}</a>

@@ -1,0 +1,1 @@
+ALTER TABLE `loan_applications` ADD `auto_approved` integer DEFAULT false NOT NULL;
