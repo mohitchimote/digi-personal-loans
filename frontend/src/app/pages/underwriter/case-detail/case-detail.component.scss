@@ -7,9 +7,7 @@
 
 app-case-section-nav {
   position: sticky;
-  // Offset below the case info strip above it, which is independently sticky at top: 0 — without
-  // this the two would overlap once both are pinned during scroll.
-  top: 88px;
+  top: 0;
 }
 
 .uw-case-content {
@@ -39,9 +37,6 @@ app-case-section-nav {
   border-radius: 10px;
   padding: 12px 20px;
   margin-bottom: 8px !important;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .uw-case-strip-item {
