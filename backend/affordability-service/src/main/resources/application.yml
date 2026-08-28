@@ -5,6 +5,12 @@ spring:
   application:
     name: affordability-service
 
+app:
+  jwt:
+    # No default — required. Must match every other service's app.jwt.secret (and auth-service's,
+    # which issues the token) — see PRODUCTION_READINESS.md §4/§5.
+    secret: ${JWT_SECRET}
+
 logging:
   level:
     com.digibank: INFO

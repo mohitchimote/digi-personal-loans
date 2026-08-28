@@ -939,6 +939,7 @@ export const EN: Record<string, string> = {
   'login.nationalIdLabel': 'National ID (Teudat Zehut)',
   'login.nationalIdPlaceholder': '9-digit National ID',
   'login.nationalIdError': 'Please enter a valid 9-digit National ID.',
+  'login.sessionExpired': 'Your session has expired. Please log in again.',
   'login.sendCode': 'Send Login Code',
   'login.sendingCode': 'Sending code…',
   'login.signingIn': 'Signing in…',

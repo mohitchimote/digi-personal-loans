@@ -9,10 +9,17 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
+            # Dev-only origins (localhost, a dev LAN IP) belong here for local `mvnd spring-boot:run`
+            # convenience. A production deploy should replace this whole list with only real
+            # customer domain(s), sourced from environment-specific config rather than this
+            # checked-in file — see PRODUCTION_READINESS.md §3/§4. An ephemeral ngrok tunnel URL
+            # used to be listed here too; removed — free-tier ngrok subdomains are reassignable, so
+            # leaving one in a shared config with allowCredentials:true is a standing credential-
+            # leak risk once that subdomain is claimed by someone else (PRODUCTION_READINESS.md §5,
+            # finding 6).
             allowedOrigins:
               - "http://localhost:4200"
               - "http://10.73.91.21:4200"
-              - "https://exquisite-hasty-issuing.ngrok-free.dev"
               - "https://ispersonalloans.tcsdigilend.com"
             allowedMethods:
               - GET

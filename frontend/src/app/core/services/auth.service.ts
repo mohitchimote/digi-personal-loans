@@ -62,11 +62,13 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  /** @param sessionExpiredMessage set only by the 401 interceptor (session-expired.interceptor.ts)
+   * — a manual "Log out" click never passes this, so the login screen stays silent for that case. */
+  logout(sessionExpiredMessage?: string): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.currentUser.set(null);
-    this.router.navigate(['/login']);
+    this.router.navigate(['/login'], sessionExpiredMessage ? { state: { message: sessionExpiredMessage } } : undefined);
   }
 
   get token(): string | null {

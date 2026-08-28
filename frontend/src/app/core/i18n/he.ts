@@ -939,6 +939,7 @@ export const HE: Record<string, string> = {
   'login.nationalIdLabel': 'תעודת זהות',
   'login.nationalIdPlaceholder': 'תעודת זהות בת 9 ספרות',
   'login.nationalIdError': 'אנא הזינו תעודת זהות תקינה בת 9 ספרות.',
+  'login.sessionExpired': 'פג תוקף החיבור שלכם. אנא התחברו מחדש.',
   'login.sendCode': 'שלח קוד התחברות',
   'login.sendingCode': 'שולח קוד…',
   'login.signingIn': 'מתחבר…',
