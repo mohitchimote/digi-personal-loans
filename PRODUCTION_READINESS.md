@@ -327,12 +327,22 @@ compared every Worker route/lib against the Java codebase. Summary, in priority 
 1. **Done (2026-08-28)**: the auth/role-gating fix described in §5 has been ported into all 5
    previously-unprotected Java services and runtime-verified. This was the one item that was an
    actual regression, not missing polish — it's no longer open.
-2. **This week, cheap and high-value**: diff `business-financials.ts`/`data-verification.ts`/
-   mandate-rule thresholds against their existing Java equivalents (`BusinessFinancialsAnalysisService`,
-   `DataVerificationService`, `MandateRules.java` — these already exist in Java, built
-   pre-migration, so this is a drift check, not a build). Confirms to the architect that the
-   Java codebase isn't just old — it's substantively still correct in the areas that matter most
-   for underwriting decisions.
+2. **Done (2026-08-28) — zero drift found.** Diffed `worker/src/lib/business-financials.ts` and
+   `data-verification.ts` line-by-line against `businessfinancials.SimulatedBusinessFinancialsAdapter`
+   and `dataverification.SimulatedDataVerificationAdapter` (§10): every formula, threshold, pool
+   list (surname/city/employer), and AMBER/RED mutation rule is algorithmically identical between
+   the two — the Worker's own header comments even say "Ports BusinessFinancialsAnalysisService.java" /
+   "Ports DataVerificationService.java", confirmed true by inspection, not just by comment. The only
+   difference is the underlying PRNG (`mulberry32` vs `java.util.Random`) — already documented as a
+   deliberate, accepted difference in `ARCHITECTURE.md` §6.3 (same determinism contract per
+   `applicationRef`, never a bit-identical-output requirement), not new drift.
+   Also checked `mandate_rules` and `affordability_rules` default thresholds
+   (`worker/src/db/schema.ts`) against `decisioning.MandateRules` / `rules.AffordabilityRules`
+   (§10): every single value matches exactly —
+   underwriter/senior-underwriter/head-of-lending/COO/CEO limits (100k/300k/750k/2M/~unlimited) and
+   DTI/HTI/min-income/base-rate/repayment-capacity/min-credit-score/auto-approval thresholds are
+   byte-for-byte identical in both codebases. Confirms to the architect that the Java codebase isn't
+   just old — it's substantively still correct in every area that drives an underwriting decision.
 3. **Post-review roadmap, not a blocker**: three net-new subsystems have no Java equivalent at
    all and are all additive features, not security-shaped —
    - PDF document-pack (Key Facts Statement, Repayment Schedule, Terms & Conditions,
