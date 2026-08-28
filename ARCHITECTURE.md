@@ -609,7 +609,7 @@ role-gated correctly, pre-approved offer lookup, product selection + read-back).
 
 | Context | Owns | Key classes (post-repackage) | Extraction trigger |
 |---|---|---|---|
-| Document generation | Server-generated PDFs (approval letters, and the KFS/repayment-schedule/T&Cs pack once ported from the Worker — §6 parity backlog) | `generation.PdfGeneratorService`, `generation.GenerationService`, `generation.GeneratedDocument` | If PDF generation becomes CPU/latency-heavy enough to want independent scaling from upload/download traffic. |
+| Document generation | Server-generated PDFs — approval letters, plus the full offer pack (Key Facts Statement, Repayment Schedule, Terms & Conditions), ported from the Worker 2026-08-28 | `generation.PdfGeneratorService`, `generation.GenerationService`, `generation.GeneratedDocument` | If PDF generation becomes CPU/latency-heavy enough to want independent scaling from upload/download traffic. |
 | Document storage & retrieval | Customer-uploaded supporting documents | `storage.StorageService`, `storage.UploadedDocument` | If storage moves off local disk to an object store (S3/Azure Blob/GCS) — that's naturally a different lifecycle from generation. |
 
 `PathSafety` (top-level) is the shared path-traversal-prevention helper both contexts need

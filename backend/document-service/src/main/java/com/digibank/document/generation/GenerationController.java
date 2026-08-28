@@ -21,9 +21,18 @@ public class GenerationController {
         this.generationService = generationService;
     }
 
+    /** Generates the full offer pack (cover letter + Key Facts Statement + Repayment Schedule,
+     * plus Terms & Conditions for a conditional offer) in one call, matching
+     * worker/src/routes/documents.ts's /generate handler — the response is every document
+     * created, cover letter first, not a single document. isFinal is derived from documentType
+     * exactly as the Worker does (FINAL_APPROVAL_LETTER vs APPROVAL_LETTER). */
     @PostMapping("/generate")
-    public ResponseEntity<GeneratedDocument> generate(@RequestBody DocumentGenerationRequest req) throws IOException {
-        return ResponseEntity.ok(generationService.generateAndStore(req));
+    public ResponseEntity<List<GeneratedDocument>> generate(@RequestBody DocumentGenerationRequest req) throws IOException {
+        if (!"APPROVAL_LETTER".equals(req.getDocumentType()) && !"FINAL_APPROVAL_LETTER".equals(req.getDocumentType())) {
+            throw new IllegalArgumentException("Unknown document type: " + req.getDocumentType());
+        }
+        boolean isFinal = "FINAL_APPROVAL_LETTER".equals(req.getDocumentType());
+        return ResponseEntity.ok(generationService.generateOfferPack(req, isFinal));
     }
 
     @GetMapping("/customer/{customerId}")

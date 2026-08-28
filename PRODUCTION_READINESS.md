@@ -343,11 +343,27 @@ compared every Worker route/lib against the Java codebase. Summary, in priority 
    DTI/HTI/min-income/base-rate/repayment-capacity/min-credit-score/auto-approval thresholds are
    byte-for-byte identical in both codebases. Confirms to the architect that the Java codebase isn't
    just old — it's substantively still correct in every area that drives an underwriting decision.
-3. **Post-review roadmap, not a blocker**: three net-new subsystems have no Java equivalent at
-   all and are all additive features, not security-shaped —
-   - PDF document-pack (Key Facts Statement, Repayment Schedule, Terms & Conditions,
-     pack orchestration) — Large. Belongs in `document-service`, which already has iText and an
-     approval-letter generator to extend.
+3. **PDF document-pack — done (2026-08-28).** Ported `worker/src/lib/document-pack.ts` and its
+   three new PDF generators (`key-facts-statement.ts`, `repayment-schedule.ts`,
+   `terms-and-conditions.ts`) into `document-service`'s `generation` context
+   (`PdfGeneratorService.generateKeyFactsStatement/generateRepaymentSchedule/
+   generateTermsAndConditions`, orchestrated by `GenerationService.generateOfferPack()`). Content,
+   section structure, and copy match the Worker verbatim (including the `ILLUSTRATIVE_NOTICE`
+   placeholder disclaimer carried over unchanged); the repeating per-page letterhead (`pdf-common.ts`'s
+   `newPage()`/`ensureSpace()`) is reimplemented as an iText `IEventHandler` fired on every page,
+   since iText's higher-level `Document` API auto-paginates rather than needing manual cursor
+   tracking like `pdf-lib` does — same visual result, idiomatic to the library actually in use.
+   `POST /api/documents/generate` now returns the full pack (an array, cover letter first) instead
+   of a single letter, matching `worker/src/routes/documents.ts` exactly — this also matches what
+   the frontend (`document.service.ts`, already updated ahead of this port) expects. **Runtime
+   -verified**: generated a conditional pack (confirmed all 4 documents — letter, Key Facts
+   Statement, Repayment Schedule, Terms & Conditions), a final pack (confirmed exactly 3, T&Cs
+   correctly omitted per the Worker's rule), and downloaded every generated PDF to confirm each is
+   a valid, well-formed multi-page document (`file` reports "PDF document, version 1.7, 2 page(s)"
+   for the 36-month schedule, confirming the repeating-letterhead pagination works). `mvnd compile`
+   clean.
+4. **Post-review roadmap, not a blocker** — two remaining net-new subsystems, both additive
+   features, not security-shaped:
    - Admin-configurable email templates + Resend delivery — Medium–Large. New capability,
      belongs in `auth-service` or `notification-service`.
    - Branding polish (secondary color, gradients, logo upload) — Small–Medium. `auth-service`
