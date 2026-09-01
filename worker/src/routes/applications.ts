@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { AppEnv, Env } from "../types";
 import { getDb, type Db } from "../db/client";
-import { loanApplications, underwritingNotes, mandateRules, generatedDocuments } from "../db/schema";
+import { loanApplications, underwritingNotes, mandateRules } from "../db/schema";
 import { AppError } from "../lib/errors";
 import {
   ALL_SECTIONS,
@@ -19,13 +19,74 @@ import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approve
 import { getAutoApprovalThreshold } from "../lib/affordability-rules";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
 import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
-import { generateApprovalLetterPdf } from "../lib/pdf/approval-letter";
+import { generateOfferPack } from "../lib/document-pack";
 import { requireAuth, assertRole } from "../middleware/auth";
+import { cached, invalidate } from "../lib/cache";
+
+const MANDATE_RULES_CACHE_KEY = "mandate-rules";
+const MANDATE_RULES_TTL_MS = 30_000;
+
+// Notification emails go through Resend (a real outbound network call — see lib/email.ts) and
+// have no bearing on the correctness of the state change they're attached to, so every call site
+// below defers them via the request's ExecutionContext.waitUntil rather than awaiting them
+// inline: the customer/staff response returns as soon as the DB write is done, and the email
+// send completes in the background instead of adding its latency (and failure modes) to the
+// request path.
+type WaitUntil = (promise: Promise<unknown>) => void;
 
 export const applications = new Hono<AppEnv>();
 applications.use("*", requireAuth);
 
 const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
+
+// The five-tier underwriting hierarchy's approval mandate limits, enforced server-side at the
+// point of decision per DigiLend_Production_Architecture.docx §5.2 ("there is no override; the
+// case must instead be referred to a senior tier"). BANKER and ADMIN are staff roles for other
+// purposes (assisted origination, back-office config) but hold no approval mandate of their own,
+// so they're absent here and fall back to a limit of 0 — they can never approve a loan through
+// this endpoint, matching the Feature Catalogue's UW->SrUW->HeadOfLending->COO->CEO hierarchy.
+const MANDATE_LIMIT_FIELD_BY_ROLE: Partial<Record<string, keyof typeof mandateRules.$inferSelect>> = {
+  UNDERWRITER: "underwriterLimit",
+  SENIOR_UNDERWRITER: "seniorUnderwriterLimit",
+  HEAD_OF_LENDING: "headOfLendingLimit",
+  COO: "cooLimit",
+  CEO: "ceoLimit",
+};
+
+// Every staff action that changes application state (approve, decline, refer, send-back,
+// disburse, edit, resolve) must record the AUTHENTICATED caller's identity, never a
+// client-supplied field — otherwise a direct API call could write an arbitrary name into the
+// audit trail, notes, and outbound emails regardless of who actually holds the session. The
+// Angular client already only ever sends the logged-in user's own name here (see
+// case-detail.component.ts / banker-case-detail.component.ts), so this is a pure hardening change
+// with no behavior difference for legitimate use through the UI.
+function actorName(c: Context<AppEnv>): string {
+  const user = c.get("authUser");
+  return user.fullName?.trim() || user.email || user.role;
+}
+
+async function getMandateRules(db: Db) {
+  return cached(MANDATE_RULES_CACHE_KEY, MANDATE_RULES_TTL_MS, async () => {
+    const [row] = await db.select().from(mandateRules).where(eq(mandateRules.id, 1)).limit(1);
+    return row ?? null;
+  });
+}
+
+// Was previously enforced client-side only (a known, flagged gap) — the button was disabled, but
+// nothing stopped a direct API call with a role that had no business approving that amount. This
+// re-derives the limit from the AUTHENTICATED user's role (never a client-supplied field), so the
+// audit trail's approval action can't be spoofed into exceeding a mandate.
+async function assertWithinMandate(db: Db, role: string, approvedAmount: number): Promise<void> {
+  const field = MANDATE_LIMIT_FIELD_BY_ROLE[role];
+  const rules = await getMandateRules(db);
+  const limit = field && rules ? rules[field] : 0;
+  if (approvedAmount > limit) {
+    throw new AppError(
+      `Approved amount (${approvedAmount}) exceeds the ${role} mandate limit (${limit}). Refer this case to a senior tier — there is no override.`,
+      403
+    );
+  }
+}
 
 const ACTIVE_STATUSES = ["DRAFT", "IN_PROGRESS"];
 const PIPELINE_STATUSES = ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"];
@@ -53,7 +114,8 @@ async function addNote(
   section: string,
   note: string,
   noteType: string,
-  createdBy: string
+  createdBy: string,
+  waitUntil: WaitUntil
 ) {
   const app = await getByRef(db, appRef);
   const [saved] = await db
@@ -94,33 +156,46 @@ async function addNote(
             : "Please log in to your DigiBank portal, review your application, and update the relevant section."
         } Once done, your application will be back in the underwriting queue.`;
     await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
-    await sendTemplatedEmail(db, env, noteType, app, {
-      underwriterNote: note,
-      sectionName: sectionLabel(section),
-    });
+    waitUntil(
+      sendTemplatedEmail(db, env, noteType, app, {
+        underwriterNote: note,
+        sectionName: sectionLabel(section),
+      })
+    );
   }
 
   return saved;
 }
 
-// Mirrors ApplicationService.generateFinalApprovalLetter — wrapped in a swallow-all try/catch,
+// Generates the full final-approval offer pack (cover letter + Key Facts Statement + Repayment
+// Schedule, re-run against the actually-approved amount) — wrapped in a swallow-all try/catch,
 // since document generation failure (including R2 not being enabled yet) should never block an
 // underwriting decision.
 async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
   try {
-    if (!env.DOCUMENTS) return; // R2 not yet enabled on this account — degrade silently
     const app = await getByRef(db, appRef);
-    if (!app.selectedProductJson || !app.loanRequirementsJson) return;
+    const isBusiness = app.applicationType === "BUSINESS";
+    // Business applications never populate loanRequirementsJson — the loan amount for a business
+    // loan lives in companyDetailsJson instead (see BusinessApprovalComponent / banker-queue's
+    // loanRequirementsSource for the same personal-vs-business source split).
+    const loanSource = isBusiness ? app.companyDetailsJson : app.loanRequirementsJson;
+    if (!app.selectedProductJson || !loanSource) return;
 
     const product = JSON.parse(app.selectedProductJson);
-    const loan = JSON.parse(app.loanRequirementsJson);
+    const loan = JSON.parse(loanSource);
     const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null;
-    const customerName = personal ? `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() : app.customerEmail;
+    const company = app.companyDetailsJson ? JSON.parse(app.companyDetailsJson) : null;
+    const customerName = isBusiness
+      ? (company?.companyName ?? app.customerEmail)
+      : (personal ? `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() : app.customerEmail);
     const approvedAmount = app.approvedAmount ?? loan.loanAmount ?? 0;
 
-    const pdfBytes = await generateApprovalLetterPdf(
+    await generateOfferPack(
+      db,
+      env,
       {
         applicationRef: app.applicationRef,
+        customerId: app.customerId,
         customerName,
         loanAmount: approvedAmount,
         productName: product.productName ?? "",
@@ -130,19 +205,6 @@ async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
       },
       true
     );
-
-    const key = `generated/${app.applicationRef}/FINAL_APPROVAL_LETTER_${crypto.randomUUID()}.pdf`;
-    await env.DOCUMENTS.put(key, pdfBytes, { httpMetadata: { contentType: "application/pdf" } });
-    await db.insert(generatedDocuments).values({
-      applicationRef: app.applicationRef,
-      customerId: app.customerId,
-      documentType: "FINAL_APPROVAL_LETTER",
-      documentName: "Final Approval Letter",
-      filePath: key,
-      fileSize: pdfBytes.byteLength,
-      mimeType: "application/pdf",
-      generatedAt: new Date().toISOString(),
-    });
   } catch (e) {
     console.error("generateFinalApprovalLetter failed (non-fatal):", e);
   }
@@ -154,7 +216,8 @@ async function approveApplicationByUnderwriter(
   appRef: string,
   reviewedBy: string,
   approvedAmount: number | null,
-  autoApproved = false
+  autoApproved: boolean,
+  waitUntil: WaitUntil
 ) {
   const app = await getByRef(db, appRef);
   const [updated] = await db
@@ -163,7 +226,7 @@ async function approveApplicationByUnderwriter(
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, env, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy);
+  await addNote(db, env, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy, waitUntil);
   {
     const lang = await getPreferredLanguage(db, app.customerId);
     const title = lang === "he" ? "בקשת ההלוואה שלך אושרה!" : "Your Loan Application Has Been Approved!";
@@ -176,15 +239,17 @@ async function approveApplicationByUnderwriter(
         "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement documents in the Documents section.";
     await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
   }
-  await sendTemplatedEmail(db, env, "DECISION_APPROVED", app, {
-    approvedAmount: approvedAmount != null ? String(approvedAmount) : "",
-    reviewedBy,
-  });
+  waitUntil(
+    sendTemplatedEmail(db, env, "DECISION_APPROVED", app, {
+      approvedAmount: approvedAmount != null ? String(approvedAmount) : "",
+      reviewedBy,
+    })
+  );
   await generateFinalApprovalLetter(db, env, appRef);
   return updated;
 }
 
-async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$inferSelect) {
+async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$inferSelect, waitUntil: WaitUntil) {
   try {
     // Business loans always go to manual underwriter review for now — the auto-approval threshold
     // is sized for personal-loan amounts/risk and reads loanRequirementsJson, which business
@@ -204,7 +269,7 @@ async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$
     const loanAmount = Number(loan?.loanAmount ?? 0);
     if (loanAmount > threshold) return;
 
-    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount, true);
+    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount, true, waitUntil);
   } catch (e) {
     // Auto-approval is a convenience; failures fall back to manual underwriter review.
     console.error("maybeAutoApprove failed (non-fatal):", e);
@@ -471,7 +536,7 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const editedBy = c.req.query("editedBy") ?? "Staff";
+  const editedBy = actorName(c);
   const { section, data } = await c.req.json<{ section: string; data: Record<string, unknown> }>();
 
   await getByRef(db, appRef);
@@ -484,7 +549,7 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, c.env, appRef, section, "Section edited by staff member.", "EDIT", editedBy);
+  await addNote(db, c.env, appRef, section, "Section edited by staff member.", "EDIT", editedBy, (p) => c.executionCtx.waitUntil(p));
   return c.json(updated);
 });
 
@@ -583,7 +648,7 @@ applications.get("/staff-activity", async (c) => {
 applications.get("/mandate-rules", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
-  const [rules] = await db.select().from(mandateRules).where(eq(mandateRules.id, 1)).limit(1);
+  const rules = await getMandateRules(db);
   return c.json(rules);
 });
 
@@ -602,6 +667,7 @@ applications.put("/mandate-rules", async (c) => {
     })
     .where(eq(mandateRules.id, 1))
     .returning();
+  invalidate(MANDATE_RULES_CACHE_KEY);
   return c.json(updated);
 });
 
@@ -644,8 +710,8 @@ applications.post("/:appRef/notes", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ section: string; note: string; noteType?: string; createdBy: string }>();
-  const saved = await addNote(db, c.env, appRef, body.section, body.note, body.noteType ?? "NOTE", body.createdBy);
+  const body = await c.req.json<{ section: string; note: string; noteType?: string }>();
+  const saved = await addNote(db, c.env, appRef, body.section, body.note, body.noteType ?? "NOTE", actorName(c), (p) => c.executionCtx.waitUntil(p));
   return c.json(saved);
 });
 
@@ -710,7 +776,7 @@ applications.post("/:appRef/submit", async (c) => {
     .set({ status: "SUBMITTED", submittedAt: now, completionPercentage: 100, updatedAt: now })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await sendTemplatedEmail(db, c.env, "SUBMITTED", updated, {});
+  c.executionCtx.waitUntil(sendTemplatedEmail(db, c.env, "SUBMITTED", updated, {}));
   return c.json(updated);
 });
 
@@ -731,7 +797,7 @@ applications.post("/:appRef/select-product", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await maybeAutoApprove(db, c.env, updated);
+  await maybeAutoApprove(db, c.env, updated, (p) => c.executionCtx.waitUntil(p));
   const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
   return c.json(fresh);
 });
@@ -756,7 +822,8 @@ applications.post("/:appRef/decline", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reason: string; reviewedBy: string }>();
+  const body = await c.req.json<{ reason: string }>();
+  const reviewedBy = actorName(c);
   const app = await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
@@ -764,7 +831,7 @@ applications.post("/:appRef/decline", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, c.env, appRef, "general", body.reason, "DECISION_DECLINED", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "DECISION_DECLINED", reviewedBy, (p) => c.executionCtx.waitUntil(p));
   {
     const lang = await getPreferredLanguage(db, app.customerId);
     const title = lang === "he" ? "עדכון לגבי בקשת ההלוואה שלך" : "Update on Your Loan Application";
@@ -779,10 +846,12 @@ applications.post("/:appRef/decline", async (c) => {
         "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future if your circumstances change.";
     await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
   }
-  await sendTemplatedEmail(db, c.env, "DECISION_DECLINED", app, {
-    declineReason: body.reason,
-    reviewedBy: body.reviewedBy,
-  });
+  c.executionCtx.waitUntil(
+    sendTemplatedEmail(db, c.env, "DECISION_DECLINED", app, {
+      declineReason: body.reason,
+      reviewedBy,
+    })
+  );
   return c.json(updated);
 });
 
@@ -790,7 +859,8 @@ applications.post("/:appRef/send-back", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reason: string; reviewedBy: string; requireGuarantor?: string }>();
+  const body = await c.req.json<{ reason: string; requireGuarantor?: string }>();
+  const reviewedBy = actorName(c);
   const requireGuarantor = String(body.requireGuarantor).toLowerCase() === "true";
 
   const app = await getByRef(db, appRef);
@@ -807,7 +877,7 @@ applications.post("/:appRef/send-back", async (c) => {
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
-  await addNote(db, c.env, appRef, "general", body.reason, "SEND_BACK", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "SEND_BACK", reviewedBy, (p) => c.executionCtx.waitUntil(p));
 
   const lang = await getPreferredLanguage(db, app.customerId);
   const guarantorNote = guarantorNewlyNeeded
@@ -831,11 +901,13 @@ applications.post("/:appRef/send-back", async (c) => {
       "upload any supporting documents if requested, and resubmit for review." +
       guarantorNote;
   await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
-  await sendTemplatedEmail(db, c.env, "SEND_BACK", app, {
-    sendBackReason: body.reason,
-    reviewedBy: body.reviewedBy,
-    guarantorRequiredNote: guarantorNote,
-  });
+  c.executionCtx.waitUntil(
+    sendTemplatedEmail(db, c.env, "SEND_BACK", app, {
+      sendBackReason: body.reason,
+      reviewedBy,
+      guarantorRequiredNote: guarantorNote,
+    })
+  );
   return c.json(updated);
 });
 
@@ -843,12 +915,31 @@ applications.post("/:appRef/approve-by-underwriter", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reviewedBy: string; approvedAmount?: string | number | null }>();
+  const body = await c.req.json<{ approvedAmount?: string | number | null }>();
   // The Angular client sends this as a JS number (or omits it); ported from Java code that read
   // it as a String, so accept either shape defensively rather than assuming one.
   const approvedAmount =
     body.approvedAmount != null && String(body.approvedAmount).trim() !== "" ? Number(body.approvedAmount) : null;
-  const updated = await approveApplicationByUnderwriter(db, c.env, appRef, body.reviewedBy, approvedAmount);
+  // Mirrors the client's own validation (an approved amount must be entered), but this is the
+  // enforcement of record, not the client's.
+  if (approvedAmount == null || !(approvedAmount > 0)) {
+    throw new AppError("Approved amount must be greater than zero.", 400);
+  }
+  // The mandate check uses the AUTHENTICATED caller's role (from the verified JWT) and the
+  // recorded reviewer is the AUTHENTICATED caller's own name — neither is ever taken from a
+  // client-supplied field, so this can't be spoofed into exceeding a mandate or misattributing
+  // who made the decision.
+  const authUser = c.get("authUser");
+  await assertWithinMandate(db, authUser.role, approvedAmount);
+  const updated = await approveApplicationByUnderwriter(
+    db,
+    c.env,
+    appRef,
+    actorName(c),
+    approvedAmount,
+    false,
+    (p) => c.executionCtx.waitUntil(p)
+  );
   return c.json(updated);
 });
 
@@ -856,14 +947,14 @@ applications.post("/:appRef/refer-to-senior", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reason: string; reviewedBy: string }>();
+  const body = await c.req.json<{ reason: string }>();
   await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
     .set({ status: "REFERRED_TO_SENIOR", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, c.env, appRef, "general", body.reason, "REFERRED_TO_SENIOR", body.reviewedBy);
+  await addNote(db, c.env, appRef, "general", body.reason, "REFERRED_TO_SENIOR", actorName(c), (p) => c.executionCtx.waitUntil(p));
   return c.json(updated);
 });
 
@@ -871,14 +962,14 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reviewedBy: string }>();
+  const reviewedBy = actorName(c);
   const app = await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
     .set({ disbursementStatus: "FUNDS_RELEASED", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", body.reviewedBy);
+  await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", reviewedBy, (p) => c.executionCtx.waitUntil(p));
   {
     const lang = await getPreferredLanguage(db, app.customerId);
     const title = lang === "he" ? "כספי ההלוואה שלך שוחררו" : "Your Loan Funds Have Been Released";
@@ -887,7 +978,7 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
       : `${greeting(app)} Great news — your loan funds for ${loanPurpose(app)} have been authorised for release and will be transferred to your nominated account shortly.`;
     await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
   }
-  await sendTemplatedEmail(db, c.env, "DISBURSEMENT_AUTHORISED", app, { reviewedBy: body.reviewedBy });
+  c.executionCtx.waitUntil(sendTemplatedEmail(db, c.env, "DISBURSEMENT_AUTHORISED", app, { reviewedBy }));
   return c.json(updated);
 });
 
@@ -895,14 +986,13 @@ applications.post("/:appRef/disbursement/second-check", async (c) => {
   assertRole(c, ...STAFF_ROLES);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reviewedBy: string }>();
   await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
     .set({ disbursementStatus: "SECOND_CHECK_PENDING", updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, c.env, appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", body.reviewedBy);
+  await addNote(db, c.env, appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", actorName(c), (p) => c.executionCtx.waitUntil(p));
   return c.json(updated);
 });
 
@@ -927,10 +1017,10 @@ applications.post("/:appRef/data-verification/resolve", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const app = await getByRef(db, appRef);
-  const body = await c.req.json<{ ruleKey: string; action: string; note?: string; reviewedBy: string }>();
+  const body = await c.req.json<{ ruleKey: string; action: string; note?: string }>();
 
   const summary = app.dataVerificationJson ? JSON.parse(app.dataVerificationJson) : generateDataVerification(app);
-  const resolved = resolveDataVerificationRule(summary, body);
+  const resolved = resolveDataVerificationRule(summary, { ...body, reviewedBy: actorName(c) });
 
   await db
     .update(loanApplications)

@@ -5,6 +5,7 @@ import { getDb } from "../db/client";
 import { affordabilityRules } from "../db/schema";
 import { assessPersonalAffordability, assessBusinessAffordability } from "../lib/affordability-calc";
 import type { AffordabilityRequest, BusinessAffordabilityRequest } from "../lib/affordability-calc";
+import { getAffordabilityRules, invalidateAffordabilityRulesCache } from "../lib/affordability-rules";
 import { requireAuth, requireRole } from "../middleware/auth";
 
 export const affordability = new Hono<AppEnv>();
@@ -12,7 +13,7 @@ affordability.use("*", requireAuth);
 
 affordability.post("/check", async (c) => {
   const db = getDb(c.env.DB);
-  const [rules] = await db.select().from(affordabilityRules).where(eq(affordabilityRules.id, 1)).limit(1);
+  const rules = await getAffordabilityRules(db);
   const req = await c.req.json<AffordabilityRequest>();
   const result = assessPersonalAffordability(req, rules);
   return c.json(result);
@@ -26,7 +27,7 @@ affordability.post("/check-business", async (c) => {
 
 affordability.get("/rules", async (c) => {
   const db = getDb(c.env.DB);
-  const [rules] = await db.select().from(affordabilityRules).where(eq(affordabilityRules.id, 1)).limit(1);
+  const rules = await getAffordabilityRules(db);
   return c.json(rules);
 });
 
@@ -47,5 +48,6 @@ affordability.put("/rules", requireRole("ADMIN"), async (c) => {
     })
     .where(eq(affordabilityRules.id, 1))
     .returning();
+  invalidateAffordabilityRulesCache();
   return c.json(updated);
 });

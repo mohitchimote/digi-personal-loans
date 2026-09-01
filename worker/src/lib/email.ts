@@ -3,6 +3,7 @@ import type { Db } from "../db/client";
 import type { Env } from "../types";
 import { emailTemplates, brandingSettings, type loanApplications } from "../db/schema";
 import { applicantFirstName, loanPurpose } from "./app-format";
+import { withTimeout, withRetry, CircuitBreaker, TimeoutError } from "./resilience";
 
 type TemplateFields = {
   subject: string;
@@ -106,18 +107,22 @@ export async function getBrandingForEmail(db: Db): Promise<BrandingInfo> {
 
 type DeliverResult = { ok: true } | { ok: false; error: string };
 
-// Thin wrapper around Resend's HTTP API — the first outbound third-party integration in this
-// Worker. Callers decide whether a failure should be swallowed (production sends, via
-// sendTemplatedEmail below) or surfaced (the admin "send test" action).
-export async function deliverEmail(
-  env: Env,
-  payload: { to: string; cc?: string[]; subject: string; html: string; text: string }
-): Promise<DeliverResult> {
-  if (!env.RESEND_API_KEY) {
-    return { ok: false, error: "RESEND_API_KEY is not configured on this Worker yet." };
+// A 5xx or a network/timeout error is plausibly transient (Resend having a bad moment); a 4xx
+// (bad request, invalid key, rate-limited) will not be fixed by retrying with the same payload.
+class ResendHttpError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
   }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
+}
+
+// Module-scope so it persists across requests within the same warm isolate: 5 consecutive
+// failures trips it open for 30s, giving Resend room to recover and sparing callers the cost of
+// a doomed request during an outage.
+const resendBreaker = new CircuitBreaker(5, 30_000);
+
+async function deliverEmailOnce(env: Env, payload: { to: string; cc?: string[]; subject: string; html: string; text: string }) {
+  const res = await withTimeout(
+    fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.RESEND_API_KEY}`,
@@ -131,13 +136,39 @@ export async function deliverEmail(
         html: payload.html,
         text: payload.text,
       }),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      return { ok: false, error: `Resend responded ${res.status}: ${detail || res.statusText}` };
-    }
+    }),
+    8_000
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new ResendHttpError(res.status, `Resend responded ${res.status}: ${detail || res.statusText}`);
+  }
+}
+
+// Thin wrapper around Resend's HTTP API — the first outbound third-party integration in this
+// Worker. Wrapped with a timeout + bounded retry + circuit breaker so a slow or unavailable
+// Resend never turns into a hung request or a cascade of doomed retries; callers still decide
+// whether a failure should be swallowed (production sends, via sendTemplatedEmail below) or
+// surfaced (the admin "send test" action).
+export async function deliverEmail(
+  env: Env,
+  payload: { to: string; cc?: string[]; subject: string; html: string; text: string }
+): Promise<DeliverResult> {
+  if (!env.RESEND_API_KEY) {
+    return { ok: false, error: "RESEND_API_KEY is not configured on this Worker yet." };
+  }
+  try {
+    await resendBreaker.run(() =>
+      withRetry(() => deliverEmailOnce(env, payload), {
+        retries: 2,
+        baseDelayMs: 500,
+        retryable: (e) => e instanceof TimeoutError || (e instanceof ResendHttpError && e.status >= 500),
+      })
+    );
     return { ok: true };
   } catch (e) {
+    if (e instanceof TimeoutError) return { ok: false, error: `Resend call timed out: ${e.message}` };
+    if (e instanceof ResendHttpError) return { ok: false, error: e.message };
     return { ok: false, error: e instanceof Error ? e.message : "Unknown error calling Resend." };
   }
 }

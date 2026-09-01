@@ -7,10 +7,21 @@ import { AppError } from "../lib/errors";
 import { calculateMonthlyRepayment } from "../lib/repayment";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { cached, invalidatePrefix } from "../lib/cache";
 
 export const products = new Hono<AppEnv>();
 products.use("*", requireAuth);
 products.use("/admin/*", requireRole("ADMIN"));
+
+const PRODUCTS_CACHE_PREFIX = "products:active:";
+const PRODUCTS_TTL_MS = 30_000;
+
+// Every admin mutation below (create/update/delete) invalidates this prefix so a change — e.g.
+// toggling a product inactive — is reflected on the customer's very next Product Selection call,
+// not after the TTL expires.
+function invalidateProductsCache() {
+  invalidatePrefix(PRODUCTS_CACHE_PREFIX);
+}
 
 interface EligibilityRequest {
   applicationRef?: string;
@@ -67,10 +78,12 @@ products.post("/eligible", async (c) => {
   const req = await c.req.json<EligibilityRequest>();
   const productType = req.productType ?? "PERSONAL";
 
-  const all = await db
-    .select()
-    .from(loanProducts)
-    .where(and(eq(loanProducts.active, true), eq(loanProducts.productType, productType)));
+  const all = await cached(`${PRODUCTS_CACHE_PREFIX}${productType}`, PRODUCTS_TTL_MS, () =>
+    db
+      .select()
+      .from(loanProducts)
+      .where(and(eq(loanProducts.active, true), eq(loanProducts.productType, productType)))
+  );
 
   const eligible = all
     .filter((p) => isEligible(p, req))
@@ -161,6 +174,7 @@ products.post("/admin", async (c) => {
     .insert(loanProducts)
     .values({ ...body, productCode: body.productCode, productType: body.productType?.trim() || "PERSONAL" } as any)
     .returning();
+  invalidateProductsCache();
   return c.json(created, 201);
 });
 
@@ -196,6 +210,7 @@ products.put("/admin/:id", async (c) => {
     })
     .where(eq(loanProducts.id, id))
     .returning();
+  invalidateProductsCache();
   return c.json(updated);
 });
 
@@ -205,5 +220,6 @@ products.delete("/admin/:id", async (c) => {
   const [existing] = await db.select().from(loanProducts).where(eq(loanProducts.id, id)).limit(1);
   if (!existing) throw new AppError(`Product not found: ${id}`);
   await db.delete(loanProducts).where(eq(loanProducts.id, id));
+  invalidateProductsCache();
   return c.body(null, 204);
 });
