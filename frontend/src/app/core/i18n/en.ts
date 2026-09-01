@@ -451,7 +451,8 @@ export const EN: Record<string, string> = {
   'approval.step6Title': 'Final Verification & Drawdown',
   'approval.step6Body': 'Your underwriter will perform final verification and arrange funds transfer.',
   'approval.yourDocuments': 'Your Documents',
-  'approval.generateIntro': 'Generate your conditional approval letter to confirm the terms of your offer.',
+  'approval.generateIntro': 'Generate your full offer pack — approval letter, Key Facts Statement, Terms & Conditions and Repayment Schedule — to confirm the terms of your offer.',
+  'approval.offerPackTitle': 'Your Offer Pack',
   'approval.generatingPdf': 'Generating PDF…',
   'approval.generateLetter': 'Generate Approval Letter',
   'approval.letterReady': 'Your approval letter has been generated successfully.',
@@ -498,6 +499,8 @@ export const EN: Record<string, string> = {
   'docs.finalLetter': 'Final Approval Letter',
   'docs.loanAgreement': 'Loan Agreement',
   'docs.repaymentSchedule': 'Repayment Schedule',
+  'docs.keyFactsStatement': 'Key Facts Statement',
+  'docs.termsAndConditions': 'Terms & Conditions',
 
   // Notifications
   'notif.unreadCount': 'You have {{count}} unread notification(s).',

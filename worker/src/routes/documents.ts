@@ -4,7 +4,7 @@ import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { generatedDocuments, uploadedDocuments } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { generateApprovalLetterPdf, friendlyDocumentName } from "../lib/pdf/approval-letter";
+import { generateOfferPack } from "../lib/document-pack";
 import { requireAuth } from "../middleware/auth";
 
 export const documents = new Hono<AppEnv>();
@@ -36,8 +36,13 @@ interface GenerateRequest {
   monthlyRepayment: number;
 }
 
+// Client-triggered from the customer's "Generate Approval Letter" button — produces the full
+// offer pack (cover letter + Key Facts Statement + Repayment Schedule + T&Cs, see
+// lib/document-pack.ts) in one call rather than just the single cover letter this used to return.
+// Returns every document created, cover letter first, so the frontend can pick that one out for
+// its existing "letter ready" state while also listing the rest.
 documents.post("/generate", async (c) => {
-  const bucket = requireBucket(c);
+  requireBucket(c);
   const db = getDb(c.env.DB);
   const req = await c.req.json<GenerateRequest>();
 
@@ -45,24 +50,8 @@ documents.post("/generate", async (c) => {
     throw new AppError(`Unknown document type: ${req.documentType}`);
   }
 
-  const pdfBytes = await generateApprovalLetterPdf(req, req.documentType === "FINAL_APPROVAL_LETTER");
-  const key = `generated/${req.applicationRef}/${req.documentType}_${crypto.randomUUID()}.pdf`;
-  await bucket.put(key, pdfBytes, { httpMetadata: { contentType: "application/pdf" } });
-
-  const [saved] = await db
-    .insert(generatedDocuments)
-    .values({
-      applicationRef: req.applicationRef,
-      customerId: req.customerId,
-      documentType: req.documentType,
-      documentName: friendlyDocumentName(req.documentType),
-      filePath: key,
-      fileSize: pdfBytes.byteLength,
-      mimeType: "application/pdf",
-      generatedAt: new Date().toISOString(),
-    })
-    .returning();
-  return c.json(saved);
+  const pack = await generateOfferPack(db, c.env, req, req.documentType === "FINAL_APPROVAL_LETTER");
+  return c.json(pack);
 });
 
 documents.get("/customer/:customerId", async (c) => {

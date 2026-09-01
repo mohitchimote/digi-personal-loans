@@ -451,7 +451,8 @@ export const HE: Record<string, string> = {
   'approval.step6Title': 'אימות סופי והעברת כספים',
   'approval.step6Body': 'החתם שלך יבצע אימות סופי ויסדיר העברת הכספים.',
   'approval.yourDocuments': 'המסמכים שלך',
-  'approval.generateIntro': 'צור את מכתב האישור בתנאי שלך כדי לאשר את תנאי ההצעה.',
+  'approval.generateIntro': 'צור את חבילת ההצעה המלאה שלך — מכתב אישור, גיליון עובדות מפתח, תנאים והגבלות ולוח סילוקין — כדי לאשר את תנאי ההצעה.',
+  'approval.offerPackTitle': 'חבילת ההצעה שלך',
   'approval.generatingPdf': 'יוצר PDF…',
   'approval.generateLetter': 'יצירת מכתב אישור',
   'approval.letterReady': 'מכתב האישור שלך נוצר בהצלחה.',
@@ -498,6 +499,8 @@ export const HE: Record<string, string> = {
   'docs.finalLetter': 'מכתב אישור סופי',
   'docs.loanAgreement': 'הסכם הלוואה',
   'docs.repaymentSchedule': 'לוח סילוקין',
+  'docs.keyFactsStatement': 'גיליון עובדות מפתח',
+  'docs.termsAndConditions': 'תנאים והגבלות',
 
   // Notifications
   'notif.unreadCount': 'יש לך {{count}} התראות שלא נקראו.',

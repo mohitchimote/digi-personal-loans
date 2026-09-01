@@ -145,6 +145,21 @@
           </div>
         </div>
 
+        <div class="doc-pack" *ngIf="packDocuments().length > 0">
+          <div class="doc-pack-title">{{ 'approval.offerPackTitle' | translate }}</div>
+          <div class="doc-item" *ngFor="let doc of packDocuments()">
+            <div class="doc-icon material-icons">{{ packDocIcon(doc.documentType) }}</div>
+            <div class="doc-info">
+              <div class="doc-name">{{ packDocLabelKey(doc.documentType) | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ doc.generatedAt | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <div class="doc-actions">
+              <button class="db-btn db-btn--outline db-btn--sm" (click)="viewPackDoc(doc)"><span class="material-icons mi-sm">visibility</span> {{ 'docs.view' | translate }}</button>
+              <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadPackDoc(doc)">{{ 'common.download' | translate }}</button>
+            </div>
+          </div>
+        </div>
+
         <a routerLink="/portal/documents" class="db-btn db-btn--ghost mt-8" style="display:block; text-align:center; margin-top:12px;">
           {{ 'approval.viewAllDocs' | translate }}
         </a>

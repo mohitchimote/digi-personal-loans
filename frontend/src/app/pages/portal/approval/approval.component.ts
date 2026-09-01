@@ -21,7 +21,12 @@ export class ApprovalComponent implements OnInit {
   docId = signal<number | null>(null);
   finalLetter = signal<GeneratedDocument | null>(null);
   documentsUploaded = signal(false);
+  allDocs = signal<GeneratedDocument[]>([]);
   today = new Date();
+
+  // Display order for the rest of the offer pack (cover/final letter has its own dedicated card
+  // above, so isn't repeated here).
+  private static readonly PACK_TYPES = ['KEY_FACTS_STATEMENT', 'TERMS_AND_CONDITIONS', 'REPAYMENT_SCHEDULE'];
 
   constructor(
     private appSvc: ApplicationService,
@@ -44,6 +49,7 @@ export class ApprovalComponent implements OnInit {
 
         this.docSvc.getByApplication(app.applicationRef).subscribe({
           next: docs => {
+            this.allDocs.set(docs);
             const letter = docs.find(d => d.documentType === 'APPROVAL_LETTER');
             if (letter) {
               this.docId.set(letter.id);
@@ -114,8 +120,10 @@ export class ApprovalComponent implements OnInit {
       termMonths: this.product.termMonths,
       monthlyRepayment: this.product.monthlyRepayment
     }).subscribe({
-      next: doc => {
-        this.docId.set(doc.id);
+      next: pack => {
+        const letter = pack.find(d => d.documentType === 'APPROVAL_LETTER');
+        if (letter) this.docId.set(letter.id);
+        this.allDocs.update(existing => [...existing, ...pack]);
         this.generated.set(true);
         this.generating.set(false);
       },
@@ -131,5 +139,45 @@ export class ApprovalComponent implements OnInit {
   downloadFinalLetter(): void {
     const doc = this.finalLetter();
     if (doc) this.docSvc.download(doc.id);
+  }
+
+  // Key Facts Statement / Repayment Schedule get regenerated at final approval (see
+  // lib/document-pack.ts) since the approved amount can differ from what was requested — this
+  // keeps only the latest of each so the pack doesn't show a stale conditional-stage copy
+  // alongside its final replacement. T&Cs are only ever generated once, at the conditional stage.
+  packDocuments(): GeneratedDocument[] {
+    const latestByType = new Map<string, GeneratedDocument>();
+    for (const doc of this.allDocs()) {
+      if (!ApprovalComponent.PACK_TYPES.includes(doc.documentType)) continue;
+      const existing = latestByType.get(doc.documentType);
+      if (!existing || doc.generatedAt > existing.generatedAt) latestByType.set(doc.documentType, doc);
+    }
+    return ApprovalComponent.PACK_TYPES.map(t => latestByType.get(t)).filter((d): d is GeneratedDocument => !!d);
+  }
+
+  packDocLabelKey(type: string): string {
+    switch (type) {
+      case 'KEY_FACTS_STATEMENT': return 'docs.keyFactsStatement';
+      case 'TERMS_AND_CONDITIONS': return 'docs.termsAndConditions';
+      case 'REPAYMENT_SCHEDULE': return 'docs.repaymentSchedule';
+      default: return type;
+    }
+  }
+
+  packDocIcon(type: string): string {
+    switch (type) {
+      case 'KEY_FACTS_STATEMENT': return 'fact_check';
+      case 'TERMS_AND_CONDITIONS': return 'gavel';
+      case 'REPAYMENT_SCHEDULE': return 'calendar_month';
+      default: return 'description';
+    }
+  }
+
+  viewPackDoc(doc: GeneratedDocument): void {
+    this.docSvc.view(doc.id);
+  }
+
+  downloadPackDoc(doc: GeneratedDocument): void {
+    this.docSvc.download(doc.id);
   }
 }

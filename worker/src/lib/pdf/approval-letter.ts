@@ -1,14 +1,10 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
+import { TCS_BLUE, TCS_YELLOW, GREY, BLACK, wrapText, money } from "./pdf-common";
 
 // Ports PdfGeneratorService.java's single-page approval letter. Simplified visually (plain label:
 // value rows instead of a shaded table) but matches the same content, section order, and copy —
 // generated server-side via pdf-lib rather than iText, cheap enough (a handful of text draws on
 // one page) to stay well within the Workers Free plan's per-request CPU budget.
-
-const TCS_BLUE = rgb(0 / 255, 51 / 255, 102 / 255);
-const TCS_YELLOW = rgb(251 / 255, 176 / 255, 52 / 255);
-const GREY = rgb(120 / 255, 120 / 255, 120 / 255);
-const BLACK = rgb(0, 0, 0);
 
 export interface ApprovalLetterData {
   applicationRef: string;
@@ -18,31 +14,6 @@ export interface ApprovalLetterData {
   interestRate: number;
   termMonths: number;
   monthlyRepayment: number;
-}
-
-function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-// pdf-lib's standard Helvetica font uses WinAnsi encoding, which has no glyph for ₪ (U+20AA) —
-// embedding a custom Unicode font just for one currency symbol isn't worth the bundle-size cost
-// for a demo letter, so the PDF specifically uses the ISO fallback. The JSON API and Angular UI
-// keep using ₪ everywhere else, unaffected.
-function money(n: number): string {
-  return `NIS ${Math.round(n).toLocaleString("en-US")}`;
 }
 
 export async function generateApprovalLetterPdf(data: ApprovalLetterData, isFinal: boolean): Promise<Uint8Array> {
@@ -206,6 +177,10 @@ export function friendlyDocumentName(type: string): string {
       return "Loan Agreement";
     case "REPAYMENT_SCHEDULE":
       return "Repayment Schedule";
+    case "KEY_FACTS_STATEMENT":
+      return "Key Facts Statement";
+    case "TERMS_AND_CONDITIONS":
+      return "Terms & Conditions";
     default:
       return type;
   }

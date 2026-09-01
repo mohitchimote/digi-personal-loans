@@ -50,7 +50,10 @@
   display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--off-white); border-radius: 8px; margin-top: 12px;
   .doc-icon { font-size: 1.8rem; }
   .doc-info { flex: 1; .doc-name { font-weight: 600; font-size: 0.875rem; } .doc-meta { font-size: 0.75rem; color: var(--mid-grey); } }
+  .doc-actions { display: flex; gap: 8px; flex-shrink: 0; }
 }
+
+.doc-pack-title { font-weight: 600; font-size: 0.8rem; color: var(--dark-text); margin-top: 20px; }
 
 .approval-footer { margin-top: 0; }
 
