@@ -1,14 +1,12 @@
 package com.digibank.application.decisioning;
 
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 
 /**
- * Mutable, runtime-editable approval mandates — the maximum loan amount each role may approve
- * without referring the case up the chain. Admin-managed via /api/applications/mandate-rules.
- * Resets to defaults on service restart (same demo-only limitation as AffordabilityRules) — to
- * be backed by persistent storage post-selection.
+ * Wire shape for rule-service's GET/PUT /internal/rules/mandates — the maximum loan amount each
+ * role may approve without referring the case up the chain. Fetched/updated via
+ * client.RuleServiceClient (ARCHITECTURE_REVIEW_GAPS.md, G4); no longer a Spring-managed bean
+ * holding state itself — rule-service persists it now (G6), this is just the deserialized value.
  *
  * Hierarchy: UNDERWRITER -> SENIOR_UNDERWRITER -> HEAD_OF_LENDING -> COO -> CEO. CEO has no
  * practical ceiling (a very high default), since there is no one further to refer to.
@@ -17,7 +15,6 @@ import java.math.BigDecimal;
  * used to be advisory-only (client-side UI gating), which let a valid-but-junior token approve
  * any amount directly against the API (PRODUCTION_READINESS.md §5, fixed 2026-08-28).
  */
-@Component
 public class MandateRules {
 
     private BigDecimal underwriterLimit = new BigDecimal("100000");

@@ -58,9 +58,70 @@ foundation work has a firm deadline it didn't have before.
 | G1 | **Containerize all services** — no Dockerfile exists anywhere in `backend/` (`PRODUCTION_READINESS.md` §2). This is delivery team's responsibility, not client infra's — flagged explicitly as such in that doc. | P0 | M | — | In progress — see note below |
 | G2 | **Stand up a CI/CD pipeline** — no `.github/workflows`, no Jenkinsfile, nothing (`PRODUCTION_READINESS.md` §2). Needed before any extraction, since more deployables with no pipeline is strictly worse. | P0 | M | G1 | In progress — see note below |
 | G3 | **Introduce service discovery** — `api-gateway` hard-codes `localhost:8081`–`8086` (`PRODUCTION_READINESS.md` §3). Either externalize routes to environment-specific config plus a load balancer, or bring in Eureka/Consul — an architecture decision, not a lift-and-shift. | P0 | M | — | Done — runtime-verified, see note below |
-| G4 | **Extract `rule-service`** — new Spring Boot module; move `MandateRules`, `AffordabilityRules` (currently in-memory in `application-service`/`affordability-service`) behind it; every current caller becomes a real internal REST call instead of a local method call. Resolves doc Open Point 3 along the way (does it need a persistent schema?). | P1 | L | G1–G3 | Not started |
-| G5 | **Extract `integration-service`** — new Spring Boot module; move the OTP/OCR/credit-bureau/Open-Banking adapter seams (today: `DataVerificationPort`/`BusinessFinancialsPort` in `application-service`, OTP delivery in `auth-service`) behind it. | P1 | L | G1–G3 | Not started |
-| G6 | **Persist `MandateRules`/`AffordabilityRules` in Java** regardless of G4's timing — both are still plain in-memory `@Component` singletons that reset on every restart. The Worker side already fixed the equivalent gap during its own migration (`ARCHITECTURE.md` §9 — now persisted D1 tables); Java hasn't caught up. This can and should happen before or independently of the full `rule-service` extraction. | P0 | S | — | Not started |
+| G4 | **Extract `rule-service`** — new Spring Boot module; move `MandateRules`, `AffordabilityRules` (currently in-memory in `application-service`/`affordability-service`) behind it; every current caller becomes a real internal REST call instead of a local method call. Resolves doc Open Point 3 along the way (does it need a persistent schema?). | P1 | L | G1–G3 | Done — runtime-verified, see note below |
+| G5 | **Extract `integration-service`** — new Spring Boot module; move the OTP/OCR/credit-bureau/Open-Banking adapter seams (today: `DataVerificationPort`/`BusinessFinancialsPort` in `application-service`, OTP delivery in `auth-service`) behind it. | P1 | L | G1–G3 | Not started — scope narrowed during G4's investigation, see note below |
+| G6 | **Persist `MandateRules`/`AffordabilityRules` in Java** regardless of G4's timing — both are still plain in-memory `@Component` singletons that reset on every restart. The Worker side already fixed the equivalent gap during its own migration (`ARCHITECTURE.md` §9 — now persisted D1 tables); Java hasn't caught up. This can and should happen before or independently of the full `rule-service` extraction. | P0 | S | — | Done — resolved as a side effect of G4, see note below |
+
+**G4/G6 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
+new `rule-service` module (port 8087, matches the doc's service catalog), no gateway route — every
+consideration in §2 above about sequencing (containerization/CI/CD/service discovery first) is now
+satisfied by G1–G3, which is exactly the trigger `PRODUCTION_READINESS.md` §7 said to wait for
+before physically splitting further. Two contexts, `mandates` and `affordability`, each with a real
+JPA entity (`digibank_rules` schema — `mandate_limits` one row per role; `affordability_rule_settings`
+a single settings row) seeded with the exact defaults the old in-memory beans shipped with. This
+resolves G6 as a side effect, as planned — both rule sets now survive a restart, which they never
+did before.
+
+Every existing caller was rewired to a real internal REST call instead of a local bean, with the
+public contract preserved as a thin proxy so nothing calling through the gateway changed:
+- `application-service.decisioning.DecisioningController`/`DecisioningService` — `MandateRules` is
+  now a plain DTO (no more `@Component`), fetched/written via new `client.RuleServiceClient`
+  (10s-TTL cache, so an admin edit lands without a restart but a compromised/hung rule-service can't
+  add unbounded latency to every approval). `/api/applications/mandate-rules` GET/PUT unchanged;
+  ADMIN-only write gating unchanged (enforced in `SecurityConfig`, untouched by this refactor).
+- `affordability-service.rules.RulesController` — same pattern, new
+  `client.RuleServiceClient`/`rules.CachedAffordabilityRulesView` (the latter is now the sole bean
+  satisfying `AffordabilityRulesView`, so `assessment.AffordabilityService` needed no code change at
+  all — exactly the payoff the interface split was designed for in `PRODUCTION_READINESS.md` §7).
+  `/api/affordability/rules` GET/PUT unchanged.
+- `product-service`'s per-product eligibility filter (`CatalogService.isEligible`) was investigated
+  and deliberately left alone — the doc's "Product Eligibility Criteria" pillar is product-level
+  data (min credit score/income/DTI stored on each `LoanProduct` row), not a shared threshold that
+  belongs in a central rules store, so there's nothing to extract there.
+
+**Runtime-verified, not just compiled**: booted `rule-service`, `affordability-service`, and
+`application-service` as plain jars against the real local MySQL (no Docker — same constraint as
+G1/G3) and drove the full chain with real tokens: `GET`/`PUT /internal/rules/mandates` and
+`/internal/rules/affordability` directly against `rule-service` (seeded defaults correct, edits
+persisted independently of the caller); `GET`/`PUT /api/applications/mandate-rules` through
+application-service's proxy (ADMIN token → 200 and change visible directly on `rule-service` without
+going through it again; UNDERWRITER token on the PUT → 403, rule-service left untouched); `GET
+/api/affordability/rules` through affordability-service's proxy (200, correct live values); `POST
+/api/affordability/check` end-to-end (used `rule-service`'s live `maxDti`/`baseAnnualRate` to
+correctly compute `dti`/`calculatedMonthlyRepayment`, not a stale/default value). `mvnd compile`
+clean on `rule-service`, `application-service`, `affordability-service`.
+
+**G5 note (2026-09-01) — scope narrowed, not started**: investigated every seam G5 named before
+touching code. Two findings change what "extract integration-service" actually means:
+1. `PRODUCTION_READINESS.md` §7 already recorded a deliberate decision, 2026-08-28: rather than a
+   physical `integration-service` with nothing real to integrate with yet, `DataVerificationPort`/
+   `BusinessFinancialsPort` got the port/adapter treatment instead, so a real OCR/credit-bureau
+   integration is a drop-in second implementation later, not a rewrite. That reasoning explicitly
+   named the same blocker G4's note above just cleared (no containerization/CI/CD/service discovery)
+   — so the trigger to revisit it has now arrived, this doesn't reverse a decision, it fulfills the
+   condition that decision was waiting on.
+2. OTP delivery and personal credit-score assignment have **no existing seam at all** to move —
+   `auth-service.identity.OtpService` only generates/validates the code against the `User` entity
+   (delivery is "echo the code back in the API response," same as `worker/lib/otp.ts`, both
+   comment-flagged as demo-only); `application-service.wizard.WizardService` hardcodes
+   `creditScore: 780` as a fixed FICO-style persona value with no bureau call anywhere. Extracting
+   these means introducing a new port/adapter, not relocating one — same shape as
+   `DataVerificationPort` but net-new interfaces, not a move.
+National ID Registry and Open Banking still look frontend-only per `ARCHITECTURE.md` §6/§9 (not
+re-confirmed this session). Next session doing G5: stand up `integration-service` with four fresh
+ports (`OtpDeliveryPort`, `DataVerificationPort`, `BusinessFinancialsPort`, `CreditScorePort`), move
+the two existing simulated adapters over unchanged, and add new simulated adapters for the two that
+don't exist yet — same "second implementation later, not a rewrite" shape throughout.
 
 **G3 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
 chose Netflix Eureka (Spring Cloud) over Consul — `api-gateway` already pulls the compatible

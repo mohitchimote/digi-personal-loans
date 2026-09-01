@@ -38,6 +38,7 @@ jobs:
           - product-service
           - document-service
           - notification-service
+          - rule-service
     defaults:
       run:
         working-directory: backend/${{ matrix.service }}

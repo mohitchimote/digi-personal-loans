@@ -6,6 +6,7 @@ import com.digibank.application.client.DocumentClient;
 import com.digibank.application.client.EmailClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.client.NotificationText;
+import com.digibank.application.client.RuleServiceClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.repository.LoanApplicationRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,7 +34,7 @@ public class DecisioningService {
     private final AffordabilityClient affordabilityClient;
     private final AuditTrailService auditTrailService;
     private final NotificationText text;
-    private final MandateRules mandateRules;
+    private final RuleServiceClient ruleServiceClient;
     private final EmailClient emailClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of(
@@ -46,7 +47,7 @@ public class DecisioningService {
     public DecisioningService(LoanApplicationRepository repository, ObjectMapper objectMapper,
                                NotificationClient notificationClient, DocumentClient documentClient,
                                AffordabilityClient affordabilityClient, AuditTrailService auditTrailService,
-                               NotificationText text, MandateRules mandateRules, EmailClient emailClient) {
+                               NotificationText text, RuleServiceClient ruleServiceClient, EmailClient emailClient) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
@@ -54,7 +55,7 @@ public class DecisioningService {
         this.affordabilityClient = affordabilityClient;
         this.auditTrailService = auditTrailService;
         this.text = text;
-        this.mandateRules = mandateRules;
+        this.ruleServiceClient = ruleServiceClient;
         this.emailClient = emailClient;
     }
 
@@ -128,7 +129,7 @@ public class DecisioningService {
      * which is bounded by AffordabilityClient's own threshold instead — see maybeAutoApprove). */
     @Transactional
     public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy, BigDecimal approvedAmount, String callerRole) {
-        if (callerRole != null && approvedAmount != null && approvedAmount.compareTo(mandateRules.limitFor(callerRole)) > 0) {
+        if (callerRole != null && approvedAmount != null && approvedAmount.compareTo(ruleServiceClient.getMandateRules().limitFor(callerRole)) > 0) {
             // Server-side mandate enforcement — the frontend already blocks a role from entering an
             // amount above its limit, but that's advisory UI only (ARCHITECTURE.md §5/§9); a valid
             // token replayed directly against this endpoint (e.g. via Postman) previously had

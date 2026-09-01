@@ -20,6 +20,8 @@ app:
     # No default — required. Must match every other service's app.jwt.secret (and auth-service's,
     # which issues the token) — see PRODUCTION_READINESS.md §4/§5.
     secret: ${JWT_SECRET}
+  rule-service:
+    url: ${RULE_SERVICE_URL:http://localhost:8087}
 
 management:
   endpoints:

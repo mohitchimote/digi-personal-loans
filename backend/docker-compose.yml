@@ -72,6 +72,31 @@ services:
       retries: 5
       start_period: 30s
 
+  # ARCHITECTURE_REVIEW_GAPS.md, G4/G6 — lending-policy service (mandate limits, affordability
+  # thresholds), extracted out of application-service's/affordability-service's old in-memory
+  # beans. No gateway route — called service-to-service only, per DigiLend_Production_Architecture
+  # .docx's service catalog.
+  rule-service:
+    build: ./rule-service
+    ports:
+      - "8087:8087"
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      EUREKA_SERVER_URL: http://service-registry:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   affordability-service:
     build: ./affordability-service
     ports:
@@ -79,8 +104,13 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET:?set this in .env}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
+      # Its own outbound call to rule-service stays on this static URL, same reasoning as
+      # application-service's inter-service URLs below (G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      RULE_SERVICE_URL: http://rule-service:8087
     depends_on:
       service-registry:
+        condition: service_healthy
+      rule-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
@@ -180,6 +210,7 @@ services:
       DOCUMENT_SERVICE_URL: http://document-service:8085
       AFFORDABILITY_SERVICE_URL: http://affordability-service:8083
       PRODUCT_SERVICE_URL: http://product-service:8084
+      RULE_SERVICE_URL: http://rule-service:8087
     depends_on:
       mysql:
         condition: service_healthy
@@ -192,6 +223,8 @@ services:
       affordability-service:
         condition: service_healthy
       product-service:
+        condition: service_healthy
+      rule-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]

@@ -1,5 +1,6 @@
 package com.digibank.application.decisioning;
 
+import com.digibank.application.client.RuleServiceClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.security.AuthenticatedUser;
 import com.digibank.application.security.CurrentUser;
@@ -20,11 +21,11 @@ import java.util.Map;
 public class DecisioningController {
 
     private final DecisioningService decisioningService;
-    private final MandateRules mandateRules;
+    private final RuleServiceClient ruleServiceClient;
 
-    public DecisioningController(DecisioningService decisioningService, MandateRules mandateRules) {
+    public DecisioningController(DecisioningService decisioningService, RuleServiceClient ruleServiceClient) {
         this.decisioningService = decisioningService;
-        this.mandateRules = mandateRules;
+        this.ruleServiceClient = ruleServiceClient;
     }
 
     @GetMapping("/pipeline")
@@ -79,16 +80,11 @@ public class DecisioningController {
 
     @GetMapping("/mandate-rules")
     public ResponseEntity<MandateRules> getMandateRules() {
-        return ResponseEntity.ok(mandateRules);
+        return ResponseEntity.ok(ruleServiceClient.getMandateRules());
     }
 
     @PutMapping("/mandate-rules")
     public ResponseEntity<MandateRules> updateMandateRules(@RequestBody MandateRules update) {
-        mandateRules.setUnderwriterLimit(update.getUnderwriterLimit());
-        mandateRules.setSeniorUnderwriterLimit(update.getSeniorUnderwriterLimit());
-        mandateRules.setHeadOfLendingLimit(update.getHeadOfLendingLimit());
-        mandateRules.setCooLimit(update.getCooLimit());
-        mandateRules.setCeoLimit(update.getCeoLimit());
-        return ResponseEntity.ok(mandateRules);
+        return ResponseEntity.ok(ruleServiceClient.updateMandateRules(update));
     }
 }
