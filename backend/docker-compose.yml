@@ -48,6 +48,26 @@ services:
       retries: 10
       start_period: 20s
 
+  # ARCHITECTURE_REVIEW_GAPS.md, G5 — the single outbound boundary to the outside world (OTP/SMS/
+  # Email delivery, data/document verification, business financials). No gateway route — called
+  # service-to-service only, per DigiLend_Production_Architecture.docx's service catalog. Holds no
+  # state of its own, so no datasource here (unlike rule-service).
+  integration-service:
+    build: ./integration-service
+    ports:
+      - "8088:8088"
+    environment:
+      EUREKA_SERVER_URL: http://service-registry:8761/eureka/
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8088/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   auth-service:
     build: ./auth-service
     ports:
@@ -58,12 +78,17 @@ services:
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
+      # Its own outbound call to integration-service (OTP delivery) stays on this static URL, same
+      # reasoning as application-service's inter-service URLs below (G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      INTEGRATION_SERVICE_URL: http://integration-service:8088
     volumes:
       - auth-branding:/app/branding-store
     depends_on:
       mysql:
         condition: service_healthy
       service-registry:
+        condition: service_healthy
+      integration-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
@@ -211,6 +236,7 @@ services:
       AFFORDABILITY_SERVICE_URL: http://affordability-service:8083
       PRODUCT_SERVICE_URL: http://product-service:8084
       RULE_SERVICE_URL: http://rule-service:8087
+      INTEGRATION_SERVICE_URL: http://integration-service:8088
     depends_on:
       mysql:
         condition: service_healthy
@@ -225,6 +251,8 @@ services:
       product-service:
         condition: service_healthy
       rule-service:
+        condition: service_healthy
+      integration-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]

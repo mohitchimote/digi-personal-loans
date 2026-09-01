@@ -1,7 +1,7 @@
-package com.digibank.application.businessfinancials;
+package com.digibank.integration.businessfinancials;
 
-import com.digibank.application.businessfinancials.dto.BusinessFinancialsAnalysis;
-import com.digibank.application.model.LoanApplication;
+import com.digibank.integration.businessfinancials.dto.BusinessFinancialsAnalysis;
+import com.digibank.integration.businessfinancials.dto.BusinessFinancialsGenerateRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,27 +13,27 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 /**
- * Only implementation of BusinessFinancialsPort today. No OCR/document-extraction integration
- * exists — uploaded financial statements/bank statements are never read; figures are synthetic,
- * seeded by applicationRef so they're stable across reloads (same "fake it" pattern as
- * SimulatedDataVerificationAdapter).
+ * Ported from application-service's SimulatedBusinessFinancialsAdapter (ARCHITECTURE_REVIEW_GAPS.md,
+ * G5) — the actual generation logic is unchanged, only where it runs. No OCR/document-extraction or
+ * Open Banking integration exists — uploaded financial statements/bank statements are never read;
+ * figures are synthetic, seeded by applicationRef so they're stable across reloads (same "fake it"
+ * pattern as DataVerificationGenerator).
  */
 @Component
-public class SimulatedBusinessFinancialsAdapter implements BusinessFinancialsPort {
+public class BusinessFinancialsGenerator {
 
     private final ObjectMapper objectMapper;
 
-    public SimulatedBusinessFinancialsAdapter(ObjectMapper objectMapper) {
+    public BusinessFinancialsGenerator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    @Override
-    public BusinessFinancialsAnalysis generate(LoanApplication app) {
-        JsonNode financials = readTree(app.getBusinessFinancialsJson());
-        JsonNode credit = readTree(app.getBusinessCreditDeclarationsJson());
-        JsonNode afford = readTree(app.getAffordabilityResultJson());
+    public BusinessFinancialsAnalysis generate(BusinessFinancialsGenerateRequest request) {
+        JsonNode financials = readTree(request.getBusinessFinancialsJson());
+        JsonNode credit = readTree(request.getBusinessCreditDeclarationsJson());
+        JsonNode afford = readTree(request.getAffordabilityResultJson());
 
-        long seed = app.getApplicationRef().hashCode();
+        long seed = request.getApplicationRef().hashCode();
         Random rng = new Random(seed);
 
         double monthlyRevenue = financials.path("monthlyRevenue").asDouble(0);
@@ -88,7 +88,7 @@ public class SimulatedBusinessFinancialsAdapter implements BusinessFinancialsPor
 
         BusinessFinancialsAnalysis analysis = new BusinessFinancialsAnalysis();
         analysis.setGeneratedAt(LocalDateTime.now().toString());
-        analysis.setSeed(app.getApplicationRef());
+        analysis.setSeed(request.getApplicationRef());
         analysis.setDscr(dscr);
         analysis.setRiskGrade(riskGrade);
         analysis.setProfitAndLoss(pnl);

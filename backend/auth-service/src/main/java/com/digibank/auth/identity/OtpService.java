@@ -1,6 +1,7 @@
 package com.digibank.auth.identity;
 
 import com.digibank.auth.model.User;
+import com.digibank.auth.otpdelivery.OtpDeliveryPort;
 import com.digibank.auth.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +16,11 @@ public class OtpService {
     private final SecureRandom random = new SecureRandom();
 
     private final UserRepository userRepository;
+    private final OtpDeliveryPort otpDeliveryPort;
 
-    public OtpService(UserRepository userRepository) {
+    public OtpService(UserRepository userRepository, OtpDeliveryPort otpDeliveryPort) {
         this.userRepository = userRepository;
+        this.otpDeliveryPort = otpDeliveryPort;
     }
 
     public String generateAndAssign(User user) {
@@ -26,6 +29,15 @@ public class OtpService {
         user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(OTP_VALIDITY_MINUTES));
         user.setOtpAttempts(0);
         userRepository.save(user);
+
+        // ARCHITECTURE_REVIEW_GAPS.md, G5 — real delivery attempt via integration-service,
+        // alongside (not instead of) the demoOtp the caller still returns directly for on-screen
+        // display, since no real SMS/email provider exists to actually deliver this to the user.
+        boolean hasPhone = user.getPhoneNumber() != null && !user.getPhoneNumber().isBlank();
+        String destination = hasPhone ? user.getPhoneNumber() : user.getEmail();
+        String channel = hasPhone ? "SMS" : "EMAIL";
+        otpDeliveryPort.deliver(destination, channel, code);
+
         return code;
     }
 

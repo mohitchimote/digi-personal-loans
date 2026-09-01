@@ -59,7 +59,7 @@ foundation work has a firm deadline it didn't have before.
 | G2 | **Stand up a CI/CD pipeline** — no `.github/workflows`, no Jenkinsfile, nothing (`PRODUCTION_READINESS.md` §2). Needed before any extraction, since more deployables with no pipeline is strictly worse. | P0 | M | G1 | In progress — see note below |
 | G3 | **Introduce service discovery** — `api-gateway` hard-codes `localhost:8081`–`8086` (`PRODUCTION_READINESS.md` §3). Either externalize routes to environment-specific config plus a load balancer, or bring in Eureka/Consul — an architecture decision, not a lift-and-shift. | P0 | M | — | Done — runtime-verified, see note below |
 | G4 | **Extract `rule-service`** — new Spring Boot module; move `MandateRules`, `AffordabilityRules` (currently in-memory in `application-service`/`affordability-service`) behind it; every current caller becomes a real internal REST call instead of a local method call. Resolves doc Open Point 3 along the way (does it need a persistent schema?). | P1 | L | G1–G3 | Done — runtime-verified, see note below |
-| G5 | **Extract `integration-service`** — new Spring Boot module; move the OTP/OCR/credit-bureau/Open-Banking adapter seams (today: `DataVerificationPort`/`BusinessFinancialsPort` in `application-service`, OTP delivery in `auth-service`) behind it. | P1 | L | G1–G3 | Not started — scope narrowed during G4's investigation, see note below |
+| G5 | **Extract `integration-service`** — new Spring Boot module; move the OTP/OCR/credit-bureau/Open-Banking adapter seams (today: `DataVerificationPort`/`BusinessFinancialsPort` in `application-service`, OTP delivery in `auth-service`) behind it. | P1 | L | G1–G3 | Done — runtime-verified, see note below |
 | G6 | **Persist `MandateRules`/`AffordabilityRules` in Java** regardless of G4's timing — both are still plain in-memory `@Component` singletons that reset on every restart. The Worker side already fixed the equivalent gap during its own migration (`ARCHITECTURE.md` §9 — now persisted D1 tables); Java hasn't caught up. This can and should happen before or independently of the full `rule-service` extraction. | P0 | S | — | Done — resolved as a side effect of G4, see note below |
 
 **G4/G6 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
@@ -101,27 +101,54 @@ going through it again; UNDERWRITER token on the PUT → 403, rule-service left 
 correctly compute `dti`/`calculatedMonthlyRepayment`, not a stale/default value). `mvnd compile`
 clean on `rule-service`, `application-service`, `affordability-service`.
 
-**G5 note (2026-09-01) — scope narrowed, not started**: investigated every seam G5 named before
-touching code. Two findings change what "extract integration-service" actually means:
-1. `PRODUCTION_READINESS.md` §7 already recorded a deliberate decision, 2026-08-28: rather than a
-   physical `integration-service` with nothing real to integrate with yet, `DataVerificationPort`/
-   `BusinessFinancialsPort` got the port/adapter treatment instead, so a real OCR/credit-bureau
-   integration is a drop-in second implementation later, not a rewrite. That reasoning explicitly
-   named the same blocker G4's note above just cleared (no containerization/CI/CD/service discovery)
-   — so the trigger to revisit it has now arrived, this doesn't reverse a decision, it fulfills the
-   condition that decision was waiting on.
-2. OTP delivery and personal credit-score assignment have **no existing seam at all** to move —
-   `auth-service.identity.OtpService` only generates/validates the code against the `User` entity
-   (delivery is "echo the code back in the API response," same as `worker/lib/otp.ts`, both
-   comment-flagged as demo-only); `application-service.wizard.WizardService` hardcodes
-   `creditScore: 780` as a fixed FICO-style persona value with no bureau call anywhere. Extracting
-   these means introducing a new port/adapter, not relocating one — same shape as
-   `DataVerificationPort` but net-new interfaces, not a move.
-National ID Registry and Open Banking still look frontend-only per `ARCHITECTURE.md` §6/§9 (not
-re-confirmed this session). Next session doing G5: stand up `integration-service` with four fresh
-ports (`OtpDeliveryPort`, `DataVerificationPort`, `BusinessFinancialsPort`, `CreditScorePort`), move
-the two existing simulated adapters over unchanged, and add new simulated adapters for the two that
-don't exist yet — same "second implementation later, not a rewrite" shape throughout.
+**G5 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
+scope was narrowed from the original four-port plan during investigation, once two things became
+clear. First, `PRODUCTION_READINESS.md` §7 had already recorded a deliberate 2026-08-28 decision to
+hold off on a physical `integration-service` until containerization/CI/CD/service discovery
+existed — G1–G3 cleared that this session, so this isn't reversing that decision, it's fulfilling
+the condition it was waiting on. Second, re-checked every doc pillar against the actual code:
+`WizardService`'s `creditScore: 780` turned out to be hardcoded seed data for the pre-approved-offer
+demo shortcut, not a bureau call — the doc's own table (`ARCHITECTURE.md` §9) already lists the
+customer-declared credit score, Open Banking connection, and National ID registry tick as
+frontend-only simulations with no backend counterpart at all, now confirmed directly rather than
+just believed. So there is no fourth port and no `CreditScorePort` — three seams covered it:
+
+New `integration-service` module (port 8088, no gateway route, no datasource — it holds no state of
+its own, unlike `rule-service`):
+- **`dataverification`/`businessfinancials`** — `SimulatedDataVerificationAdapter`'s and
+  `SimulatedBusinessFinancialsAdapter`'s generation logic moved here **unchanged**, exposed via
+  `POST /internal/integration/data-verification/generate` and `.../business-financials/generate`.
+  In `application-service`, the two `Simulated*Adapter` classes were deleted and replaced with
+  `IntegrationServiceDataVerificationAdapter`/`IntegrationServiceBusinessFinancialsAdapter` — thin
+  REST clients implementing the same unchanged `DataVerificationPort`/`BusinessFinancialsPort`
+  interfaces. `DataVerificationService`/`BusinessFinancialsAnalysisService` (the orchestrators that
+  persist results) needed **zero code changes** — exactly the payoff `PRODUCTION_READINESS.md` §7
+  designed these ports for.
+- **`otp`** — genuinely new (no prior seam existed to move). New `OtpDeliveryPort` in `auth-service`
+  + `IntegrationServiceOtpDeliveryAdapter`, wired into `OtpService.generateAndAssign` after the code
+  is persisted. Fire-and-forget by design: wrapped in try/catch so a hung/unreachable
+  integration-service can never block registration or login — `demoOtp` is still returned to the
+  caller for on-screen display exactly as before, completely independent of whether the simulated
+  "delivery" call succeeds.
+
+**Runtime-verified, not just compiled**: booted `integration-service`, `auth-service`, and
+`application-service` as plain jars (no Docker — same constraint as G1/G3/G4) and drove real
+traffic: all three `internal/integration/*` endpoints directly (data-verification and
+business-financials produced correct seeded discrepancies/financials from realistic payloads; OTP
+deliver returned a synthetic provider ack); a full registration through `auth-service` still
+returned the unchanged `demoOtp` contract; **killed `integration-service` and registered again** —
+registration succeeded in 150ms with no visible degradation, proving the delivery call is truly
+non-blocking; restarted `integration-service` and drove a real application end-to-end through
+`application-service` (`start` → save `personalDetails`/`incomeEmployment`/`creditDeclarations` →
+`GET /data-verification` returned live, correctly-seeded discrepancies; `start-business` → save
+`businessFinancials`/`businessCreditDeclarations` → `GET /business-financials-analysis` returned a
+live P&L/cashflow/ratios analysis) — both through the unchanged public endpoints, proving the
+adapter swap is invisible to every existing caller. `mvnd compile` clean on `integration-service`,
+`application-service`, `auth-service`.
+
+With G4 and G5 both done, `backend/` now has all nine components the architecture review package
+describes — `rule-service` and `integration-service` match the doc's service catalog on port,
+gateway-route status, and scope.
 
 **G3 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
 chose Netflix Eureka (Spring Cloud) over Consul — `api-gateway` already pulls the compatible
@@ -268,8 +295,8 @@ their detail:
 
 ## 7. Suggested build sequence
 
-1. **Now, in parallel, no dependencies**: Q1 (naming), G6 (rules persistence in Java), S1 (document IDOR), C3/C1/C2 (fix the three deck/doc inaccuracies so the review package is accurate while the rest of this executes).
-2. **Foundation, next**: G1 → G2 → G3 (containers, CI/CD, service discovery) — everything else in §2 is blocked on this by design, not by convenience.
-3. **Once the foundation exists**: G4 and G5 (the actual `rule-service`/`integration-service` extraction) become close to mechanical, per `ARCHITECTURE.md` §10's own description of why the internal seams were built this way.
-4. **In parallel with 2–3, needs an owner not a sprint**: the decisions in §6 — particularly the sandbox-to-production estimate and the case-allocation ownership question, since both block downstream work if left open too long.
+1. **Now, in parallel, no dependencies**: Q1 (naming), S1 (document IDOR), C3/C1/C2 (fix the three deck/doc inaccuracies so the review package is accurate while the rest of this executes).
+2. **Foundation** — done: G1 → G2 → G3 (containers, CI/CD, service discovery).
+3. **Extraction** — done: G4 (`rule-service`, resolved G6 as a side effect) and G5 (`integration-service`), both runtime-verified. `backend/` now matches the doc's nine-component service catalog.
+4. **In parallel with 1, needs an owner not a sprint**: the decisions in §6 — particularly the sandbox-to-production estimate and the case-allocation ownership question, since both block downstream work if left open too long.
 5. **After a spec exists, not before**: N1–N3 (card payments, core banking, reporting warehouse) — none of these are engineering-ready yet regardless of how much delivery capacity is available.
