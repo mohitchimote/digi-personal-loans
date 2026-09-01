@@ -1,6 +1,17 @@
 server:
   port: 8081
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev. prefer-ip-address avoids relying on OS hostname resolution, which isn't always
+# reliable across containers/hosts.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: auth-service

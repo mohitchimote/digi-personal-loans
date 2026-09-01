@@ -1,7 +1,14 @@
 # DigiBank Backend Startup Script
 # Starts all microservices in separate PowerShell windows
 
+# service-registry (Eureka) goes first and gets a longer head start — ARCHITECTURE_REVIEW_GAPS.md
+# G3: api-gateway's routes are now lb://<service> (resolved dynamically via the registry) instead
+# of hardcoded host:port, so it can only route once the registry is up and the target service has
+# registered. Every other service still starts fine without it (they only register themselves,
+# they don't depend on it to find anything), but the gateway will 500 on every route until the
+# registry is reachable and at least the target service has checked in.
 $services = @(
+    @{ name = "service-registry";      port = 8761 },
     @{ name = "api-gateway";           port = 8080 },
     @{ name = "auth-service";          port = 8081 },
     @{ name = "application-service";   port = 8082 },
@@ -23,7 +30,11 @@ foreach ($svc in $services) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command",
         "`$env:Path = 'C:\Program Files\Java\jdk-26.0.1\bin;C:\tools\maven-mvnd-1.0.6-windows-amd64\bin;' + `$env:Path; Set-Location '$svcPath'; Write-Host 'Starting $($svc.name)...' -ForegroundColor Green; mvnd spring-boot:run"
 
-    Start-Sleep -Seconds 2
+    if ($svc.name -eq "service-registry") {
+        Start-Sleep -Seconds 8
+    } else {
+        Start-Sleep -Seconds 2
+    }
 }
 
 Write-Host ""

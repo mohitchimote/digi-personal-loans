@@ -1,6 +1,16 @@
 server:
   port: 8080
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: api-gateway
@@ -34,51 +44,57 @@ spring:
             maxAge: 3600
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
+      # ARCHITECTURE_REVIEW_GAPS.md, G3 — every uri below is now `lb://<eureka-service-id>` instead
+      # of a hardcoded/env-var host:port. Spring Cloud LoadBalancer resolves the service-id against
+      # whatever the service-registry currently has registered (see eureka: block below), so a
+      # route survives an instance restarting on a different port/host without a gateway config
+      # change or redeploy — the actual point of doing this, not just a cosmetic rename. This does
+      # mean the gateway can only route once service-registry is reachable and the target service
+      # has registered; every other service in backend/ keeps working fine without the registry
+      # (they only use it to be found, not to find anything themselves — see each service's own
+      # application.yml comment).
       routes:
         # Must come before the auth-service catch-all below (Spring Cloud Gateway matches routes in
         # definition order) — /api/auth/admin/email-templates/** is served by notification-service,
         # not auth-service, even though the URL still lives under /api/auth for frontend backwards
         # compatibility (frontend/src/app/core/services/email-template.service.ts is unchanged).
-        # Each uri below defaults to localhost for `mvnd spring-boot:run` — Docker Compose
-        # overrides these via env vars to the compose service names (see backend/docker-compose.yml),
-        # so nothing here changes for local dev.
         - id: email-templates-admin
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          uri: lb://notification-service
           predicates:
             - Path=/api/auth/admin/email-templates/**
 
         - id: auth-service
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: lb://auth-service
           predicates:
             - Path=/api/auth/**
 
         - id: branding
-          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          uri: lb://auth-service
           predicates:
             - Path=/api/branding/**
 
         - id: application-service
-          uri: ${APPLICATION_SERVICE_URL:http://localhost:8082}
+          uri: lb://application-service
           predicates:
             - Path=/api/applications/**
 
         - id: affordability-service
-          uri: ${AFFORDABILITY_SERVICE_URL:http://localhost:8083}
+          uri: lb://affordability-service
           predicates:
             - Path=/api/affordability/**
 
         - id: product-service
-          uri: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+          uri: lb://product-service
           predicates:
             - Path=/api/products/**
 
         - id: document-service
-          uri: ${DOCUMENT_SERVICE_URL:http://localhost:8085}
+          uri: lb://document-service
           predicates:
             - Path=/api/documents/**
 
         - id: notification-service
-          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          uri: lb://notification-service
           predicates:
             - Path=/api/notifications/**
 

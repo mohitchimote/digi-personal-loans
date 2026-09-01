@@ -57,10 +57,40 @@ foundation work has a firm deadline it didn't have before.
 |---|---|---|---|---|---|
 | G1 | **Containerize all services** — no Dockerfile exists anywhere in `backend/` (`PRODUCTION_READINESS.md` §2). This is delivery team's responsibility, not client infra's — flagged explicitly as such in that doc. | P0 | M | — | In progress — see note below |
 | G2 | **Stand up a CI/CD pipeline** — no `.github/workflows`, no Jenkinsfile, nothing (`PRODUCTION_READINESS.md` §2). Needed before any extraction, since more deployables with no pipeline is strictly worse. | P0 | M | G1 | In progress — see note below |
-| G3 | **Introduce service discovery** — `api-gateway` hard-codes `localhost:8081`–`8086` (`PRODUCTION_READINESS.md` §3). Either externalize routes to environment-specific config plus a load balancer, or bring in Eureka/Consul — an architecture decision, not a lift-and-shift. | P0 | M | — | Not started |
+| G3 | **Introduce service discovery** — `api-gateway` hard-codes `localhost:8081`–`8086` (`PRODUCTION_READINESS.md` §3). Either externalize routes to environment-specific config plus a load balancer, or bring in Eureka/Consul — an architecture decision, not a lift-and-shift. | P0 | M | — | Done — runtime-verified, see note below |
 | G4 | **Extract `rule-service`** — new Spring Boot module; move `MandateRules`, `AffordabilityRules` (currently in-memory in `application-service`/`affordability-service`) behind it; every current caller becomes a real internal REST call instead of a local method call. Resolves doc Open Point 3 along the way (does it need a persistent schema?). | P1 | L | G1–G3 | Not started |
 | G5 | **Extract `integration-service`** — new Spring Boot module; move the OTP/OCR/credit-bureau/Open-Banking adapter seams (today: `DataVerificationPort`/`BusinessFinancialsPort` in `application-service`, OTP delivery in `auth-service`) behind it. | P1 | L | G1–G3 | Not started |
 | G6 | **Persist `MandateRules`/`AffordabilityRules` in Java** regardless of G4's timing — both are still plain in-memory `@Component` singletons that reset on every restart. The Worker side already fixed the equivalent gap during its own migration (`ARCHITECTURE.md` §9 — now persisted D1 tables); Java hasn't caught up. This can and should happen before or independently of the full `rule-service` extraction. | P0 | S | — | Not started |
+
+**G3 note (2026-09-01) — Done, and actually runtime-verified end-to-end, not just compiled**:
+chose Netflix Eureka (Spring Cloud) over Consul — `api-gateway` already pulls the compatible
+Spring Cloud 2023.0.1 BOM, and it keeps every component in the same Java/Spring stack rather than
+introducing a non-JVM dependency. New `service-registry` module (single instance — nine components
+in one region doesn't need a peer-replicated cluster). All 7 existing services now register with
+it (`@EnableDiscoveryClient` + `spring.application.name` as the service id).
+
+**Scope was deliberately narrowed from "every static URL" to "just the gateway's routes"**, which
+is the literal problem this gap names. `api-gateway`'s routes are now `lb://<service>`, resolved
+dynamically via Eureka + Spring Cloud LoadBalancer. The internal RestTemplate calls
+(`application-service` → notification/document/affordability/product-service,
+`notification-service` → `auth-service`) deliberately stay on G1's static, env-var-parameterized
+URLs — converting those too would mean local dev (`mvnd spring-boot:run` on an individual service)
+*requires* the registry running for any inter-service call to work at all, which is a bigger
+behavior change than "add service discovery" should quietly carry, and wasn't what was asked.
+Every service still works completely fine on its own without the registry running — only
+`api-gateway`'s routing genuinely depends on it now, which is the intended, named fix.
+
+**Actually proven working, not assumed**: booted the registry, `auth-service`, and `api-gateway` as
+plain jars (no Docker — same constraint as G1) and routed a real request through the gateway —
+`POST http://localhost:8080/api/auth/login/request-otp` resolved `lb://auth-service` via Eureka to
+the live instance's real IP and returned a correct response. Along the way, hit and fixed a real
+issue rather than assuming the happy path: Eureka's self-preservation mode (correct default for
+large fleets, a liability for a 9-service dev/Compose deployment) kept a hard-killed test
+instance's stale registration alive past its lease, causing the load balancer to route to a dead
+address — disabled it on `service-registry` (`enable-self-preservation: false`), confirmed clean
+single-instance registration and a correct routed response afterward. `start-backend.ps1` updated
+to start `service-registry` first; `docker-compose.yml` updated with the new service and
+`EUREKA_SERVER_URL` wired into all 7 clients (still not Docker-engine-verified, same caveat as G1).
 
 **G1 progress note (2026-09-01)**: a Dockerfile + `.dockerignore` now exists for all 7 services
 (multi-stage `maven:3.9-eclipse-temurin-21` build → `eclipse-temurin:21-jre-alpine` runtime,

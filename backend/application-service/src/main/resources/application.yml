@@ -7,6 +7,18 @@ server:
     include-message: ${ERROR_INCLUDE_MESSAGE:never}
     include-binding-errors: ${ERROR_INCLUDE_BINDING_ERRORS:never}
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev. This service only registers itself here (so api-gateway can find it via lb://) —
+# it does not resolve its own outbound calls to notification/document/affordability/product-service
+# through Eureka; those stay on the static, env-var-parameterized URLs from G1 (unaffected).
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: application-service

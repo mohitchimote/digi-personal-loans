@@ -1,6 +1,17 @@
 server:
   port: 8086
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev. Registers itself here (so api-gateway can find it via lb://); its own outbound
+# call to auth-service for branding stays on the static, env-var-parameterized URL from G1.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: notification-service

@@ -30,6 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         service:
+          - service-registry
           - api-gateway
           - auth-service
           - application-service
