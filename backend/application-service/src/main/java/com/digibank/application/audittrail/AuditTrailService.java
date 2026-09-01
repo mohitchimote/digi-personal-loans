@@ -1,5 +1,6 @@
 package com.digibank.application.audittrail;
 
+import com.digibank.application.client.EmailClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.client.NotificationText;
 import com.digibank.application.model.LoanApplication;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Audit-trail context (ARCHITECTURE.md §10) — the record of who did what, when. Called from both
@@ -24,13 +26,15 @@ public class AuditTrailService {
     private final UnderwritingNoteRepository noteRepository;
     private final NotificationClient notificationClient;
     private final NotificationText text;
+    private final EmailClient emailClient;
 
     public AuditTrailService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
-                              NotificationClient notificationClient, NotificationText text) {
+                              NotificationClient notificationClient, NotificationText text, EmailClient emailClient) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.notificationClient = notificationClient;
         this.text = text;
+        this.emailClient = emailClient;
     }
 
     @Transactional
@@ -57,6 +61,14 @@ public class AuditTrailService {
                                 : "Please log in to your DigiBank portal, review your application, and update the relevant section.")
                             + " Once done, your application will be back in the underwriting queue.",
                     "APPLICATION_UPDATE", appRef);
+
+            Map<String, String> variables = text.commonEmailVariables(app);
+            variables.put("underwriterNote", note);
+            variables.put("sectionName", text.sectionLabel(section));
+            // eventKey === noteType here, matching worker's dynamic sendTemplatedEmail(db, env,
+            // noteType, ...) call — CLARIFICATION_REQUEST/DOCUMENT_REQUEST are both valid eventKeys
+            // in EVENT_REGISTRY.
+            emailClient.send(noteType, app.getCustomerEmail(), variables);
         }
 
         return saved;

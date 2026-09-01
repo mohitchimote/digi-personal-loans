@@ -12,7 +12,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Mirrors worker/src/routes/notifications.ts exactly: blanket requireAuth, no extra role
- * gating anywhere (see PRODUCTION_READINESS.md §5/§6).
+ * gating anywhere (see PRODUCTION_READINESS.md §5/§6) — except the email-templates admin
+ * routes added for the admin email templates feature, which mirror
+ * worker/src/routes/admin-email-templates.ts's own requireRole("ADMIN") gate.
  */
 @Configuration
 @EnableWebSecurity
@@ -39,6 +41,8 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/auth/admin/email-templates/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

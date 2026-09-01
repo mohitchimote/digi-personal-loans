@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/affordability/rules").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

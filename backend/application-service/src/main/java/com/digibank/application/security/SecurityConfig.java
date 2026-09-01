@@ -44,6 +44,7 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/applications/mandate-rules").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/applications/mandate-rules").hasAnyRole(STAFF_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/applications/*/section-by-underwriter").hasAnyRole(STAFF_ROLES)

@@ -1,6 +1,8 @@
 package com.digibank.application.wizard;
 
 import com.digibank.application.audittrail.AuditTrailService;
+import com.digibank.application.client.EmailClient;
+import com.digibank.application.client.NotificationText;
 import com.digibank.application.client.ProductClient;
 import com.digibank.application.decisioning.DecisioningService;
 import com.digibank.application.model.LoanApplication;
@@ -32,6 +34,8 @@ public class WizardService {
     private final ProductClient productClient;
     private final DecisioningService decisioningService;
     private final AuditTrailService auditTrailService;
+    private final NotificationText text;
+    private final EmailClient emailClient;
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
 
@@ -61,12 +65,15 @@ public class WizardService {
     private static final Set<String> MANDATORY_STOPS = Set.of("personalDetails", "connectBank", "reviewSubmit");
 
     public WizardService(LoanApplicationRepository repository, ObjectMapper objectMapper, ProductClient productClient,
-                          DecisioningService decisioningService, AuditTrailService auditTrailService) {
+                          DecisioningService decisioningService, AuditTrailService auditTrailService,
+                          NotificationText text, EmailClient emailClient) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.productClient = productClient;
         this.decisioningService = decisioningService;
         this.auditTrailService = auditTrailService;
+        this.text = text;
+        this.emailClient = emailClient;
     }
 
     @Transactional
@@ -330,7 +337,9 @@ public class WizardService {
         app.setStatus("SUBMITTED");
         app.setSubmittedAt(LocalDateTime.now());
         app.setCompletionPercentage(100);
-        return repository.save(app);
+        LoanApplication saved = repository.save(app);
+        emailClient.send("SUBMITTED", saved.getCustomerEmail(), text.commonEmailVariables(saved));
+        return saved;
     }
 
     @Transactional

@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/auth/register", "/api/auth/register/verify-otp", "/api/auth/register/resend-otp",
                         "/api/auth/login/request-otp", "/api/auth/login/verify-otp", "/api/auth/faqs").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/logo/**").permitAll()

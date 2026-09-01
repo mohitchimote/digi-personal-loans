@@ -3,6 +3,7 @@ package com.digibank.application.decisioning;
 import com.digibank.application.audittrail.AuditTrailService;
 import com.digibank.application.client.AffordabilityClient;
 import com.digibank.application.client.DocumentClient;
+import com.digibank.application.client.EmailClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.client.NotificationText;
 import com.digibank.application.model.LoanApplication;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Decisioning & mandates context (ARCHITECTURE.md §10) — approve/decline/refer/disbursement, plus
@@ -32,6 +34,7 @@ public class DecisioningService {
     private final AuditTrailService auditTrailService;
     private final NotificationText text;
     private final MandateRules mandateRules;
+    private final EmailClient emailClient;
 
     private static final List<String> PIPELINE_STATUSES = List.of(
             "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
@@ -43,7 +46,7 @@ public class DecisioningService {
     public DecisioningService(LoanApplicationRepository repository, ObjectMapper objectMapper,
                                NotificationClient notificationClient, DocumentClient documentClient,
                                AffordabilityClient affordabilityClient, AuditTrailService auditTrailService,
-                               NotificationText text, MandateRules mandateRules) {
+                               NotificationText text, MandateRules mandateRules, EmailClient emailClient) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
@@ -52,6 +55,7 @@ public class DecisioningService {
         this.auditTrailService = auditTrailService;
         this.text = text;
         this.mandateRules = mandateRules;
+        this.emailClient = emailClient;
     }
 
     public List<LoanApplication> getPipeline() {
@@ -77,6 +81,11 @@ public class DecisioningService {
                         + "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future "
                         + "if your circumstances change.",
                 "APPLICATION_UPDATE", appRef);
+
+        Map<String, String> variables = text.commonEmailVariables(app);
+        variables.put("declineReason", reason);
+        variables.put("reviewedBy", reviewedBy);
+        emailClient.send("DECISION_DECLINED", app.getCustomerEmail(), variables);
         return app;
     }
 
@@ -106,6 +115,12 @@ public class DecisioningService {
                         + "update the relevant section(s), upload any supporting documents if requested, and resubmit "
                         + "for review." + guarantorNote,
                 "APPLICATION_UPDATE", appRef);
+
+        Map<String, String> variables = text.commonEmailVariables(app);
+        variables.put("sendBackReason", reason);
+        variables.put("reviewedBy", reviewedBy);
+        variables.put("guarantorRequiredNote", guarantorNote);
+        emailClient.send("SEND_BACK", app.getCustomerEmail(), variables);
         return app;
     }
 
@@ -136,6 +151,11 @@ public class DecisioningService {
                         + "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement "
                         + "documents in the Documents section.",
                 "APPROVAL", appRef);
+
+        Map<String, String> variables = text.commonEmailVariables(app);
+        variables.put("approvedAmount", approvedAmount != null ? approvedAmount.toString() : "");
+        variables.put("reviewedBy", reviewedBy);
+        emailClient.send("DECISION_APPROVED", app.getCustomerEmail(), variables);
 
         generateFinalApprovalLetter(app);
         return app;
@@ -171,6 +191,10 @@ public class DecisioningService {
                 text.greeting(app) + " Great news — your loan funds for " + text.loanPurpose(app)
                         + " have been authorised for release and will be transferred to your nominated account shortly.",
                 "APPROVAL", appRef);
+
+        Map<String, String> variables = text.commonEmailVariables(app);
+        variables.put("reviewedBy", reviewedBy);
+        emailClient.send("DISBURSEMENT_AUTHORISED", app.getCustomerEmail(), variables);
         return app;
     }
 

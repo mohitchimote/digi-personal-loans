@@ -41,16 +41,20 @@ public class MandateRules {
     public BigDecimal getCeoLimit() { return ceoLimit; }
     public void setCeoLimit(BigDecimal ceoLimit) { this.ceoLimit = ceoLimit; }
 
-    /** Looks up the limit for a role string (matches auth-service's User.role values). Unknown
-     * roles get the most conservative (underwriter) limit rather than throwing. */
+    /** Looks up the limit for a role string (matches auth-service's User.role values). BANKER and
+     * ADMIN are staff roles for other purposes (assisted origination, back-office config) but
+     * hold no approval mandate of their own — falling back to underwriterLimit here used to let
+     * either one approve up to that amount, which is wrong: only the five-tier underwriting
+     * hierarchy can approve at all. Any unrecognized role, including null, gets zero. */
     public BigDecimal limitFor(String role) {
-        if (role == null) return underwriterLimit;
+        if (role == null) return BigDecimal.ZERO;
         return switch (role) {
+            case "UNDERWRITER"        -> underwriterLimit;
             case "SENIOR_UNDERWRITER" -> seniorUnderwriterLimit;
             case "HEAD_OF_LENDING"    -> headOfLendingLimit;
             case "COO"                -> cooLimit;
             case "CEO"                -> ceoLimit;
-            default                   -> underwriterLimit;
+            default                   -> BigDecimal.ZERO;
         };
     }
 }

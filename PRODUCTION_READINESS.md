@@ -86,7 +86,7 @@ application code is written to be hosted, not to self-host these concerns.
 | **Load balancer** (L7, health-check aware) | `api-gateway` and every downstream service run as a single instance with no clustering/failover built in. | Nothing — one process per service, no redundancy. |
 | **TLS termination + certificate management** | Every service listens on plain HTTP (`server.port`, no `server.ssl.*` config in any `application.yml`). | Nothing — TLS must be terminated upstream (LB/ingress) or added per-service. |
 | **API rate limiting / DDoS protection** | No Resilience4j/Bucket4j/Gateway `RequestRateLimiter` configured (would need Redis, which also isn't present). | Nothing — an unthrottled client can call any endpoint as fast as it can open connections. |
-| **Secrets management** (Vault / AWS Secrets Manager / Azure Key Vault) | JWT signing secret and DB credentials are now required env vars (`JWT_SECRET`/`DB_USERNAME`/`DB_PASSWORD`) with no fallback anywhere in the codebase (§5 finding 4, fixed 2026-08-28) — but nothing sets those env vars from a real secrets store yet. | Each service fails to start without these three env vars set — no default, no checked-in literal to fall back to. Infra needs to inject real values from a secrets manager (developers set them locally via their own shell/IDE run config for `mvnd spring-boot:run`). |
+| **Secrets management** (Vault / AWS Secrets Manager / Azure Key Vault) | JWT signing secret and DB credentials are now required env vars (`JWT_SECRET`/`DB_USERNAME`/`DB_PASSWORD`) with no fallback anywhere in the codebase (§5 finding 4, fixed 2026-08-28) — but nothing sets those env vars from a real secrets store yet. `RESEND_API_KEY`/`RESEND_FROM_EMAIL` (§6 item 4, notification-service) are optional at startup but required for the admin email-templates feature to actually deliver mail — same "inject via secrets manager, no checked-in literal" treatment. | Each service fails to start without the three JWT/DB env vars set — no default, no checked-in literal to fall back to. `RESEND_API_KEY`/`RESEND_FROM_EMAIL` default to blank (service still starts; email delivery reports a clear "not configured" error instead). Infra needs to inject real values from a secrets manager (developers set them locally via their own shell/IDE run config for `mvnd spring-boot:run`). |
 | **Managed database + backup/DR** | Each service points at `localhost:3306`; no managed MySQL instance, no backup schedule, no point-in-time recovery configured anywhere in the repo. | Nothing — this is entirely an infra decision (RDS/Azure Database for MySQL/Cloud SQL, or self-managed with a backup policy). |
 | **Centralized logging / SIEM** (ELK, Splunk, CloudWatch Logs, etc.) | Only console/file logging via Spring Boot defaults, no shipping configured, no structured JSON output. | `System.out`-equivalent console logs only, per-process. |
 | **APM / metrics / alerting** (Prometheus + Grafana, Datadog, New Relic, etc.) | Only `api-gateway` exposes Actuator `health`/`info`; no `/actuator/prometheus`, no service exposes Actuator at all on the other 6. No alerting exists anywhere. | Manual health checks against `api-gateway:8080/actuator/health` only. |
@@ -362,10 +362,34 @@ compared every Worker route/lib against the Java codebase. Summary, in priority 
    a valid, well-formed multi-page document (`file` reports "PDF document, version 1.7, 2 page(s)"
    for the 36-month schedule, confirming the repeating-letterhead pagination works). `mvnd compile`
    clean.
-4. **Post-review roadmap, not a blocker** — two remaining net-new subsystems, both additive
-   features, not security-shaped:
-   - Admin-configurable email templates + Resend delivery — Medium–Large. New capability,
-     belongs in `auth-service` or `notification-service`.
+4. **Admin email templates + Resend delivery — done (2026-08-28).** Ported
+   `worker/src/routes/admin-email-templates.ts`, `lib/email.ts`, and `lib/email-events.ts` into a
+   new `email` bounded context inside `notification-service` (`EmailTemplate`/
+   `EmailTemplateRepository`, `EventRegistry` — the 7-event registry with common+per-event
+   variables, `EmailRenderer` — variable substitution/escaping + the branded HTML shell,
+   `BrandingClient` — calls auth-service's `GET /api/branding` since notification-service has no
+   branding table of its own, `ResendClient`, `EmailTemplateAdminService`/`Controller` — the 5
+   ADMIN-only admin endpoints, and `EmailDeliveryService`/`Controller` — the internal
+   best-effort/non-throwing `POST /api/notifications/email/send` production entry point). The
+   frontend's existing `/api/auth/admin/email-templates/**` URL contract
+   (`email-template.service.ts`) is preserved unchanged via a gateway route override placed before
+   the general `auth-service` catch-all, even though notification-service now serves it.
+   Application-service computes the variable map itself (mirrors `NotificationClient`'s existing
+   "caller builds the message, notification-service just delivers" pattern) via a new
+   `EmailClient`, wired into all 6 trigger points: `WizardService.submitApplication` (SUBMITTED),
+   `AuditTrailService.addNote` (CLARIFICATION_REQUEST/DOCUMENT_REQUEST), and
+   `DecisioningService.declineApplication/sendBackApplication/approveApplicationByUnderwriter/
+   authoriseFundRelease` (DECISION_DECLINED/SEND_BACK/DECISION_APPROVED/DISBURSEMENT_AUTHORISED).
+   One small, deliberate addition beyond a pure port: the JWT now also carries an `email` claim
+   (auth-service `AuthService.buildAuthResponse`) — needed so notification-service's admin
+   endpoints know the acting admin's real address (for `updatedBy` and the "send test" recipient)
+   without a database lookup, consistent with how `role`/`userId`/`fullName` already travel in the
+   token. Hebrew localization was **not** ported (Java's `NotificationText` is English-only
+   already, a pre-existing gap outside this feature's scope). Not yet runtime-verified against a
+   live Resend account — needs `RESEND_API_KEY`/`RESEND_FROM_EMAIL` set before a "send test" will
+   actually deliver (falls back to a clear "not configured" error otherwise, same as the Worker).
+   `mvnd compile` still to be run.
+5. **Post-review roadmap, not a blocker**:
    - Branding polish (secondary color, gradients, logo upload) — Small–Medium. `auth-service`
      already has a basic `BrandingController`/`BrandingSettings` to extend.
 

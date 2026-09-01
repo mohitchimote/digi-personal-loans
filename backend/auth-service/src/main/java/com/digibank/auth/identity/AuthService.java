@@ -210,6 +210,10 @@ public class AuthService implements UserDetailsService {
         extraClaims.put("role", user.getRole());
         extraClaims.put("userId", user.getId());
         extraClaims.put("fullName", user.getFullName());
+        // Added for the admin email-templates feature (notification-service needs to know which
+        // address to send a "test" email to, and to attribute a template edit to a real address
+        // rather than a free-text field) — same trust model as role/userId/fullName above.
+        extraClaims.put("email", user.getEmail());
         String token = jwtTokenProvider.generateToken(extraClaims, userDetails);
 
         return AuthResponse.builder()

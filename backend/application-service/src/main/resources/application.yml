@@ -11,7 +11,9 @@ spring:
   application:
     name: application-service
   datasource:
-    url: jdbc:mysql://localhost:3306/digibank_app?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    # DB_HOST defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it to the
+    # `mysql` service name (see backend/docker-compose.yml), so nothing here changes for local dev.
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/digibank_app?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     # No default — required. Missing env var fails startup immediately rather than falling back to
     # a guessable value. Set locally via your shell/IDE run config, never in this file.
     username: ${DB_USERNAME}
@@ -31,13 +33,19 @@ app:
     # which issues the token) — see PRODUCTION_READINESS.md §4/§5.
     secret: ${JWT_SECRET}
   notification-service:
-    url: http://localhost:8086
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
   document-service:
-    url: http://localhost:8085
+    url: ${DOCUMENT_SERVICE_URL:http://localhost:8085}
   affordability-service:
-    url: http://localhost:8083
+    url: ${AFFORDABILITY_SERVICE_URL:http://localhost:8083}
   product-service:
-    url: http://localhost:8084
+    url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
 
 logging:
   level:

@@ -1,6 +1,7 @@
 package com.digibank.product.catalog;
 
 import com.digibank.product.RepaymentCalculator;
+import com.digibank.product.cache.SimpleCache;
 import com.digibank.product.catalog.dto.EligibleProduct;
 import com.digibank.product.catalog.dto.ProductEligibilityRequest;
 import com.digibank.product.model.LoanProduct;
@@ -24,10 +25,15 @@ import java.util.stream.Collectors;
 @Service
 public class CatalogService {
 
-    private final LoanProductRepository productRepository;
+    private static final String PRODUCTS_CACHE_PREFIX = "products:active:";
+    private static final long PRODUCTS_TTL_MS = 30_000;
 
-    public CatalogService(LoanProductRepository productRepository) {
+    private final LoanProductRepository productRepository;
+    private final SimpleCache cache;
+
+    public CatalogService(LoanProductRepository productRepository, SimpleCache cache) {
         this.productRepository = productRepository;
+        this.cache = cache;
     }
 
     @PostConstruct
@@ -167,7 +173,9 @@ public class CatalogService {
         if (product.getProductType() == null || product.getProductType().isBlank()) {
             product.setProductType("PERSONAL");
         }
-        return productRepository.save(product);
+        LoanProduct saved = productRepository.save(product);
+        cache.evictPrefix(PRODUCTS_CACHE_PREFIX);
+        return saved;
     }
 
     public LoanProduct updateProduct(Long id, LoanProduct update) {
@@ -190,7 +198,9 @@ public class CatalogService {
         product.setRiskCategories(update.getRiskCategories());
         product.setActive(update.isActive());
         product.setProductType(update.getProductType());
-        return productRepository.save(product);
+        LoanProduct saved = productRepository.save(product);
+        cache.evictPrefix(PRODUCTS_CACHE_PREFIX);
+        return saved;
     }
 
     public void deleteProduct(Long id) {
@@ -198,11 +208,13 @@ public class CatalogService {
             throw new IllegalArgumentException("Product not found: " + id);
         }
         productRepository.deleteById(id);
+        cache.evictPrefix(PRODUCTS_CACHE_PREFIX);
     }
 
     public List<EligibleProduct> getEligibleProducts(ProductEligibilityRequest req) {
         String productType = req.getProductType() != null ? req.getProductType() : "PERSONAL";
-        List<LoanProduct> allProducts = productRepository.findByActiveTrueAndProductType(productType);
+        List<LoanProduct> allProducts = cache.get(PRODUCTS_CACHE_PREFIX + productType, PRODUCTS_TTL_MS,
+                () -> productRepository.findByActiveTrueAndProductType(productType));
 
         List<EligibleProduct> eligible = allProducts.stream()
                 .filter(p -> isEligible(p, req))
