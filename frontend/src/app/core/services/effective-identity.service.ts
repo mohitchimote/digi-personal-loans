@@ -51,6 +51,18 @@ export class EffectiveIdentityService {
     return this.isAssisting ? (this.assist.current?.customerCompanyName ?? null) : this.auth.companyName;
   }
 
+  get companyRegistrationNumber(): string | null {
+    return this.isAssisting ? (this.assist.current?.customerCompanyRegistrationNumber ?? null) : this.auth.companyRegistrationNumber;
+  }
+
+  get companyIndustry(): string | null {
+    return this.isAssisting ? (this.assist.current?.customerCompanyIndustry ?? null) : this.auth.companyIndustry;
+  }
+
+  get companyFoundedYear(): number | null {
+    return this.isAssisting ? (this.assist.current?.customerCompanyFoundedYear ?? null) : this.auth.companyFoundedYear;
+  }
+
   /** "Save & Next" route for a wizard step — every step hardcodes its own next-step slug. While
    * assisting, that needs to land back inside the Banker shell instead of the customer's /portal
    * or /business routes (wrong shell entirely, and the Banker isn't logged in as that customer). */

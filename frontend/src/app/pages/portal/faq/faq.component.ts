@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FaqService, Faq } from '../../../core/services/faq.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 interface FaqItem { q: string; a: string; videoId?: string; open: boolean; }
 interface FaqCategory { title: string; icon: string; items: FaqItem[]; }
@@ -25,7 +26,7 @@ export class FaqComponent implements OnInit {
   categories = signal<FaqCategory[]>([]);
   loading = signal(true);
 
-  constructor(private faqSvc: FaqService) {}
+  constructor(private faqSvc: FaqService, private i18n: I18nService) {}
 
   ngOnInit(): void {
     this.faqSvc.getFaqs().subscribe({
@@ -35,13 +36,20 @@ export class FaqComponent implements OnInit {
   }
 
   private groupByCategory(faqs: Faq[]): FaqCategory[] {
+    const isHe = this.i18n.lang() === 'he';
     const map = new Map<string, FaqItem[]>();
     for (const f of faqs) {
       if (!map.has(f.category)) map.set(f.category, []);
-      map.get(f.category)!.push({ q: f.question, a: f.answer, videoId: f.videoId, open: false });
+      map.get(f.category)!.push({
+        q: (isHe && f.questionHe) ? f.questionHe : f.question,
+        a: (isHe && f.answerHe) ? f.answerHe : f.answer,
+        videoId: f.videoId,
+        open: false,
+      });
     }
     return Array.from(map.entries()).map(([title, items]) => ({
-      title, icon: CATEGORY_ICONS[title] || 'help_outline', items
+      title: this.i18n.t(`faq.category.${title}`),
+      icon: CATEGORY_ICONS[title] || 'help_outline', items
     }));
   }
 

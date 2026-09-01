@@ -23,8 +23,14 @@ export class PortalComponent implements OnInit {
 
   constructor(private appSvc: ApplicationService, public auth: AuthService, private router: Router) {}
 
+  /** Subscribing to router events (rather than also calling refreshApplication() directly here)
+   * is sufficient even for the very first navigation into the portal shell: this subscription is
+   * set up synchronously during activation, before that navigation's own NavigationEnd fires, so
+   * it always fires exactly once per navigation. Calling refreshApplication() directly here too
+   * used to double-fire it for every navigation — two genuinely separate, non-overlapping
+   * getCurrent() calls (the direct one, then NavigationEnd's ~seconds later once guards/resolvers
+   * settle) — which real-world DevTools testing showed the browser occasionally hanging on. */
   ngOnInit(): void {
-    this.refreshApplication();
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => {
       this.refreshApplication();
       if (this.isMobile) this.closeSidebar();

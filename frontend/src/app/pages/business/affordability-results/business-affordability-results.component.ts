@@ -19,6 +19,9 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
   result  = signal<BusinessAffordabilityResult | null>(null);
   loading = signal(true);
   appRef  = signal('');
+  withdrawing = signal(false);
+  requestedAmount = signal(0);
+  requestedTerm = signal(0);
 
   constructor(
     private affordability: AffordabilityService,
@@ -39,6 +42,8 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
         const outgoings   = JSON.parse(app.businessOutgoingsJson || '{}');
         const credit      = JSON.parse(app.businessCreditDeclarationsJson || '{}');
         const company     = JSON.parse(app.companyDetailsJson || '{}');
+        this.requestedAmount.set(company.loanAmount || 100000);
+        this.requestedTerm.set(company.loanTerm || 36);
 
         const request = {
           annualTurnover:              financials.annualTurnover || 0,
@@ -57,9 +62,6 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
             this.result.set(res);
             this.loading.set(false);
             this.appSvc.saveAffordabilityResult(app.applicationRef, res).subscribe({ error: () => {} });
-            if (res.passed) {
-              this.router.navigate(this.identity.stepUrl('products', true, '/business'));
-            }
           },
           error: () => this.loading.set(false)
         });
@@ -69,5 +71,18 @@ export class BusinessAffordabilityResultsComponent implements OnInit {
 
   proceed(): void {
     this.router.navigate(this.identity.stepUrl('products', true, '/business'));
+  }
+
+  modifyApplication(): void {
+    if (!this.appRef()) return;
+    this.withdrawing.set(true);
+    this.appSvc.withdraw(this.appRef()).subscribe({
+      next: () => this.router.navigate(this.identity.applyUrl('company-details', true)),
+      error: () => this.withdrawing.set(false)
+    });
+  }
+
+  formatAmount(n: number | null | undefined): string {
+    return '₪' + Math.round(n || 0).toLocaleString('en-US');
   }
 }

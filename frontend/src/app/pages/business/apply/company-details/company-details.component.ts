@@ -7,6 +7,7 @@ import { EffectiveIdentityService } from '../../../../core/services/effective-id
 import { BUSINESS_LOAN_PURPOSES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
+import { I18nService } from '../../../../core/i18n/i18n.service';
 
 /** First business wizard step — company identity doubles as "loan requirements" the same way
  * loanRequirements does for the personal journey (amount/purpose/term captured alongside identity). */
@@ -29,7 +30,8 @@ export class CompanyDetailsComponent implements OnInit {
     private fb: FormBuilder,
     private appSvc: ApplicationService,
     public identity: EffectiveIdentityService,
-    private router: Router
+    private router: Router,
+    private i18n: I18nService
   ) {
     this.form = this.fb.group({
       companyName:               ['', Validators.required],
@@ -68,8 +70,15 @@ export class CompanyDetailsComponent implements OnInit {
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.companyDetailsJson) {
           this.form.patchValue(JSON.parse(app.companyDetailsJson));
-        } else if (this.identity.companyName) {
-          this.form.patchValue({ companyName: this.identity.companyName });
+        } else {
+          // Registration already collects these for a business account — prefill rather than
+          // making the customer retype what they just gave us.
+          this.form.patchValue({
+            companyName: this.identity.companyName || '',
+            companyRegistrationNumber: this.identity.companyRegistrationNumber || '',
+            industry: this.identity.companyIndustry || '',
+            yearFounded: this.identity.companyFoundedYear ?? null,
+          });
         }
         if (this.readOnly()) this.form.disable();
       }
@@ -77,6 +86,10 @@ export class CompanyDetailsComponent implements OnInit {
   }
 
   f(name: string) { return this.form.get(name); }
+
+  optLabel(namespace: string, value: string): string {
+    return this.i18n.t(`${namespace}.${value}`);
+  }
 
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }

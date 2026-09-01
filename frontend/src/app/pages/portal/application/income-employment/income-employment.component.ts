@@ -8,6 +8,7 @@ import { EMPLOYMENT_STATUSES } from '../../../../core/models';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
+import { netNotGreaterThanGrossValidator } from '../../../../core/validators/income-validators';
 
 @Component({
   selector: 'app-income-employment',
@@ -37,7 +38,7 @@ export class IncomeEmploymentComponent implements OnInit {
       monthlyNetIncome:   [null, [Validators.required, Validators.min(0)]],
       otherIncome:        [0],
       additionalEmployments: this.fb.array([]),
-    });
+    }, { validators: netNotGreaterThanGrossValidator() });
     this.applicant2Form = this.fb.group({
       employmentStatus:   [''],
       employer:           [''],
@@ -46,7 +47,7 @@ export class IncomeEmploymentComponent implements OnInit {
       monthlyGrossIncome: [null],
       monthlyNetIncome:   [null],
       otherIncome:        [0],
-    });
+    }, { validators: netNotGreaterThanGrossValidator() });
   }
 
   ngOnInit(): void {
@@ -95,7 +96,7 @@ export class IncomeEmploymentComponent implements OnInit {
       monthlyGrossIncome: [data?.monthlyGrossIncome ?? null, [Validators.required, Validators.min(0)]],
       monthlyNetIncome:   [data?.monthlyNetIncome ?? null, [Validators.required, Validators.min(0)]],
       otherIncome:        [data?.otherIncome ?? 0],
-    });
+    }, { validators: netNotGreaterThanGrossValidator() });
   }
 
   addEmployment(): void {
@@ -154,4 +155,8 @@ export class IncomeEmploymentComponent implements OnInit {
   f2(name: string) { return this.applicant2Form.get(name); }
   isEmployed(): boolean { const s = this.f('employmentStatus')?.value; return s && !['Retired','Unemployed','Student'].includes(s); }
   isEmployed2(): boolean { const s = this.f2('employmentStatus')?.value; return s && !['Retired','Unemployed','Student'].includes(s); }
+
+  optLabel(namespace: string, value: string): string {
+    return this.i18n.t(`${namespace}.${value}`);
+  }
 }

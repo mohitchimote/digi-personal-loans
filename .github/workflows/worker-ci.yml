@@ -1,0 +1,42 @@
+name: Worker CI
+
+# worker/ is the currently-live Cloudflare Worker deployment (ARCHITECTURE.md), out of scope for
+# PRODUCTION_READINESS.md's Java handover but very much real, running production code — it gets a
+# CI check too. No test suite exists here either (no "test" script in package.json), so this runs
+# the same `npm run typecheck` (tsc --noEmit) that's been the verification method used by hand
+# throughout this project's own session history — wiring it into CI just makes that automatic on
+# every push/PR instead of relying on someone remembering to run it.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "worker/**"
+      - ".github/workflows/worker-ci.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "worker/**"
+      - ".github/workflows/worker-ci.yml"
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck

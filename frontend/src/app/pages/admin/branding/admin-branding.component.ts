@@ -40,7 +40,7 @@ export class AdminBrandingComponent implements OnInit {
     this.saving.set(true);
     this.saved.set(false);
     this.error.set('');
-    this.brandingSvc.updateColors(settings.primaryColor, settings.accentColor).subscribe({
+    this.brandingSvc.updateColors(settings.primaryColor, settings.secondaryColor, settings.accentColor).subscribe({
       next: updated => { this.settings.set(updated); this.saving.set(false); this.saved.set(true); },
       error: () => { this.saving.set(false); this.error.set(this.i18n.t('admin.errSaveBranding')); }
     });

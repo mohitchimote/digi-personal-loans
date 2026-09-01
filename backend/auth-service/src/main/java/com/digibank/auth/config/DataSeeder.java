@@ -1,8 +1,8 @@
 package com.digibank.auth.config;
 
-import com.digibank.auth.model.Faq;
+import com.digibank.auth.faqs.Faq;
+import com.digibank.auth.faqs.FaqRepository;
 import com.digibank.auth.model.User;
-import com.digibank.auth.repository.FaqRepository;
 import com.digibank.auth.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

@@ -58,6 +58,23 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "unoptimized-prod": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2MB",
+                  "maximumError": "3MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kB",
+                  "maximumError": "16kB"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": false,
+              "sourceMap": false
             }
           },
           "defaultConfiguration": "production"

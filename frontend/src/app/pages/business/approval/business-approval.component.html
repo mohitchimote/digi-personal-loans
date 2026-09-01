@@ -12,6 +12,14 @@
     </div>
   </div>
 
+  <div class="db-alert db-alert--success final-next-steps mb-16" *ngIf="isFinal()">
+    <span class="material-icons mi-sm">verified</span>
+    <div>
+      <strong>{{ 'approval.finalNextStepsTitle' | translate }}</strong>
+      <p>{{ 'approval.finalNextStepsBody' | translate }}</p>
+    </div>
+  </div>
+
   <div class="approval-grid">
     <!-- Approval details -->
     <div class="db-card">
@@ -129,6 +137,21 @@
           </div>
         </div>
 
+        <div class="doc-pack" *ngIf="packDocuments().length > 0">
+          <div class="doc-pack-title">{{ 'approval.offerPackTitle' | translate }}</div>
+          <div class="doc-item" *ngFor="let doc of packDocuments()">
+            <div class="doc-icon material-icons">{{ packDocIcon(doc.documentType) }}</div>
+            <div class="doc-info">
+              <div class="doc-name">{{ packDocLabelKey(doc.documentType) | translate }}</div>
+              <div class="doc-meta">{{ 'docs.generated' | translate }} {{ doc.generatedAt | date:'dd MMM yyyy' }} · PDF</div>
+            </div>
+            <div class="doc-actions">
+              <button class="db-btn db-btn--outline db-btn--sm" (click)="viewPackDoc(doc)"><span class="material-icons mi-sm">visibility</span> {{ 'docs.view' | translate }}</button>
+              <button class="db-btn db-btn--primary db-btn--sm" (click)="downloadPackDoc(doc)">{{ 'common.download' | translate }}</button>
+            </div>
+          </div>
+        </div>
+
         <a routerLink="/business/documents" class="db-btn db-btn--ghost mt-8" style="display:block; text-align:center; margin-top:12px;">
           {{ 'approval.viewAllDocs' | translate }}
         </a>
@@ -136,7 +159,10 @@
     </div>
   </div>
 
-  <div class="db-alert db-alert--info approval-footer">
-    ℹ {{ 'approval.footerDisclaimer' | translate }}
+  <div class="db-alert db-alert--success approval-footer" *ngIf="isFinal()">
+    ✅ {{ 'approval.finalFooterDisclaimer' | translate }}
+  </div>
+  <div class="db-alert db-alert--info approval-footer" *ngIf="!isFinal()">
+    ℹ {{ 'approval.conditionalFooterDisclaimer' | translate }}
   </div>
 </div>

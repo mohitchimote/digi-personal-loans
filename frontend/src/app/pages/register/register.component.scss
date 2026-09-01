@@ -1,25 +1,113 @@
-.auth-shell {
+.register-shell {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--tcs-blue-dark) 0%, var(--tcs-blue) 100%);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 32px 16px; gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(380px, 40%) 1fr;
 }
 
-.auth-brand {
-  .brand-link { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-  .brand-icon { font-size: 2.4rem; }
-  .brand-name { color: #fff; font-size: 1.4rem; font-weight: 700; }
-  .brand-sub  { color: var(--tcs-yellow); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+// === LEFT: branded panel — gradient runs primary -> secondary so it stays admin-configurable.
+.register-panel {
+  background: linear-gradient(160deg, var(--tcs-blue-dark) 0%, var(--tcs-blue) 45%, var(--tcs-secondary) 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 48px 56px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 340px; height: 340px;
+    border-radius: 50%;
+    background: rgba(var(--tcs-yellow-rgb), 0.08);
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -160px; left: -100px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .brand-link { display: flex; align-items: center; gap: 12px; text-decoration: none; position: relative; z-index: 1; }
+  .brand-icon { font-size: 2.2rem; color: #fff; }
+  .brand-name { color: #fff; font-size: 1.15rem; font-weight: 700; }
+  .brand-sub  { color: var(--tcs-yellow); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 }
 
-::ng-deep .lang-switcher {
-  color: rgba(255, 255, 255, 0.85);
-  button.active { color: #fff; }
+.panel-body {
+  position: relative; z-index: 1;
+  max-width: 420px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  h1 { font-size: 2.1rem; font-weight: 800; color: #fff; line-height: 1.2; margin: 0 0 12px 0; }
+  .panel-sub { color: rgba(255,255,255,0.75); font-size: 0.95rem; line-height: 1.6; margin: 0 0 32px 0; }
 }
 
-.auth-card {
-  background: #fff; border-radius: 16px; padding: 40px;
-  width: 100%; max-width: 540px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+.panel-stats {
+  display: flex; align-items: center; gap: 20px;
+  margin-bottom: 40px;
+  .stat { text-align: center; }
+  .stat-num { display: block; font-size: 1.35rem; font-weight: 800; color: var(--tcs-yellow); }
+  .stat-label { color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+  .stat-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); }
+}
+
+.panel-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  .panel-step {
+    display: flex; align-items: flex-start; gap: 14px;
+
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(var(--tcs-yellow-rgb), 0.15); border: 1px solid rgba(var(--tcs-yellow-rgb), 0.4);
+      color: var(--tcs-yellow); font-size: 0.8rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    strong { display: block; color: #fff; font-size: 0.92rem; font-weight: 600; margin-bottom: 2px; }
+    span   { display: block; color: rgba(255,255,255,0.65); font-size: 0.82rem; line-height: 1.5; }
+  }
+}
+
+// === RIGHT: the form ===
+.register-form-side {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  padding: 32px 40px;
+}
+
+.form-header-row {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+
+  .brand-link--mobile { display: none; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
+  .brand-link--mobile .brand-icon { font-size: 1.8rem; }
+  .brand-link--mobile .brand-name { color: var(--tcs-blue); font-size: 1.05rem; font-weight: 700; }
+
+  // app-brand-logo's fallback glyph is hardcoded white for its usual dark-header placements;
+  // this instance sits on the white form panel, so it needs the opposite color here.
+  ::ng-deep .brand-link--mobile .material-icons { color: var(--tcs-blue); }
+}
+
+.register-form-wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  margin: auto;
+  padding: 40px 44px;
+  border: 1px solid var(--light-grey);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+
   h2 { color: var(--tcs-blue); margin-bottom: 6px; }
   .auth-subtitle { color: var(--mid-grey); margin-bottom: 24px; font-size: 0.9rem; }
 }
@@ -37,11 +125,6 @@
 .auth-switch {
   margin-top: 20px; text-align: center; font-size: 0.875rem; color: var(--body-text);
   a { color: var(--tcs-blue); font-weight: 600; text-decoration: none; &:hover { text-decoration: underline; } }
-}
-
-.auth-trust {
-  display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
-  span { color: rgba(255,255,255,0.6); font-size: 0.78rem; }
 }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -73,4 +156,13 @@
   color: var(--tcs-blue); font-weight: 600; font-size: 0.875rem; text-decoration: none;
   &:hover { text-decoration: underline; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// === RESPONSIVE ===
+@media (max-width: 900px) {
+  .register-shell { grid-template-columns: 1fr; }
+  .register-panel { display: none; }
+  .register-form-side { padding: 24px 20px; min-height: 100vh; }
+  .register-form-wrap { padding: 28px 24px; }
+  .form-header-row .brand-link--mobile { display: flex; }
 }

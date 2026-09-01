@@ -27,7 +27,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ ('loanPurpose.' + p) | translate }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('loanPurpose')?.invalid && f('loanPurpose')?.touched">
             {{ 'loanReq.purposeError' | translate }}
@@ -68,7 +68,7 @@
     <!-- Form actions -->
     <div class="form-actions">
       <div></div>
-      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+      <button type="submit" class="db-btn db-btn--primary" [disabled]="saving() || !ready()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>
     </div>
@@ -93,7 +93,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ ('loanPurpose.' + p) | translate }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('loanPurpose')?.invalid && f('loanPurpose')?.touched">{{ 'loanReq.purposeError' | translate }}</div>
         </div>
@@ -112,7 +112,7 @@
       </div>
 
       <div class="dense-form-actions" *ngIf="!readOnly()">
-        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving()">
+        <button type="submit" class="db-btn db-btn--primary" [disabled]="saving() || !ready()">
           {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
         </button>
       </div>

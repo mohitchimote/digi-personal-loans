@@ -14,6 +14,9 @@ export interface AssistTarget {
   customerNationalId?: string | null;
   customerIdIssueDate?: string | null;
   customerCompanyName?: string | null;
+  customerCompanyRegistrationNumber?: string | null;
+  customerCompanyIndustry?: string | null;
+  customerCompanyFoundedYear?: number | null;
 }
 
 /** Holds the active "Banker acting as customer X" target while a staff member fills in a

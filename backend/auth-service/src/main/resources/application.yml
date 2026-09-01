@@ -5,9 +5,13 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:mysql://localhost:3306/digibank_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: root
+    # DB_HOST defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it to the
+    # `mysql` service name (see backend/docker-compose.yml), so nothing here changes for local dev.
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/digibank_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    # No default — required. Missing env var fails startup immediately rather than falling back to
+    # a guessable value. Set locally via your shell/IDE run config, never in this file.
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -24,7 +28,11 @@ spring:
 
 app:
   jwt:
-    secret: DiGiBaNkIsRaElDeMoSuPeRsEcReTkEy2024XxYyZzAaBbCcDdEeFf1234567890AbCd
+    # No default — required, and deliberately not one. Every service must be given the same
+    # JWT_SECRET (tokens are validated statelessly, see PRODUCTION_READINESS.md §4/§5), sourced
+    # from a real secrets manager in any real environment. Missing env var fails startup rather
+    # than silently signing tokens with a guessable value.
+    secret: ${JWT_SECRET}
     expiration: 86400000
   branding:
     storage-path: ./branding-store

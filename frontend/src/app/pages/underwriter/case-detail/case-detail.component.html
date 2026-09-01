@@ -1,16 +1,37 @@
 <div *ngIf="!loading() && application()">
-  <div class="page-header mb-24">
-    <h2 *ngIf="!isBusiness">{{ applicantDisplayName }} · {{ application()!.applicationRef }}</h2>
-    <h2 *ngIf="isBusiness">{{ company.companyName }} · {{ application()!.applicationRef }}</h2>
-    <p class="page-sub">{{ statusLabel(application()!.status) }} · {{ 'uw.submitted' | translate }} {{ application()!.submittedAt | date:'dd MMM yyyy HH:mm' }}</p>
-  </div>
-
-  <!-- Quick-scan summary strip -->
-  <div class="uw-summary-strip mb-24">
-    <div class="uw-summary-item">
+  <div class="uw-case-strip">
+    <div class="uw-case-strip-item">
+      <span>{{ 'uw.applicant' | translate }}</span>
+      <strong>{{ isBusiness ? company.companyName : applicantDisplayName }}</strong>
+    </div>
+    <div class="uw-case-strip-item">
+      <span>{{ 'dashboard.reference' | translate }}</span>
+      <strong>{{ application()!.applicationRef }} <span class="text-muted">({{ isBusiness ? ('uw.business' | translate) : ('uw.personal' | translate) }})</span></strong>
+    </div>
+    <div class="uw-case-strip-item">
+      <span>{{ 'uw.caseCreated' | translate }}</span>
+      <strong>{{ application()!.createdAt | date:'dd MMM, y' }}</strong>
+    </div>
+    <div class="uw-case-strip-item">
+      <span>{{ 'uw.caseStatus' | translate }}</span>
+      <strong>{{ statusLabel(application()!.status) }}</strong>
+    </div>
+    <div class="uw-case-strip-item" *ngIf="affordability.passed !== undefined">
+      <span>{{ 'uw.affordabilityResult' | translate }}</span>
+      <strong [class.risk-low]="affordability.passed" [class.risk-high]="!affordability.passed">{{ affordability.passed ? ('uw.passed' | translate) : ('uw.failed' | translate) }}</strong>
+    </div>
+    <div class="uw-case-strip-item">
       <span>{{ 'uw.requestedAmount' | translate }}</span>
       <strong>₪{{ (isBusiness ? company.loanAmount : loanReqs.loanAmount) | number }}</strong>
     </div>
+    <div class="uw-case-strip-item">
+      <span>{{ 'credit.scoreLabel' | translate }}</span>
+      <strong>{{ isBusiness ? businessCredit.directorCreditScore : credit.creditScore }}</strong>
+    </div>
+  </div>
+
+  <!-- Quick-scan summary strip -->
+  <div class="uw-summary-strip mb-8" *ngIf="hasSecondaryAffordabilityMetrics">
     <div class="uw-summary-item" *ngIf="!isBusiness && affordability.dti !== undefined">
       <span>{{ 'uw.dti' | translate }}</span>
       <strong>{{ affordability.dti }}%</strong>
@@ -27,18 +48,10 @@
       <span>{{ 'afford.riskCategoryLabel' | translate }}</span>
       <strong [class]="riskClass()">{{ affordability.riskCategory }}</strong>
     </div>
-    <div class="uw-summary-item">
-      <span>{{ 'credit.scoreLabel' | translate }}</span>
-      <strong>{{ isBusiness ? businessCredit.directorCreditScore : credit.creditScore }}</strong>
-    </div>
-    <div class="uw-summary-item" *ngIf="affordability.passed !== undefined">
-      <span>{{ 'uw.autoAssessment' | translate }}</span>
-      <strong [class.risk-low]="affordability.passed" [class.risk-high]="!affordability.passed">{{ affordability.passed ? ('uw.passed' | translate) : ('uw.failed' | translate) }}</strong>
-    </div>
   </div>
 
-  <div class="db-alert db-alert--success mb-16" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
-  <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+  <div class="db-alert db-alert--success mb-8" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
+  <div class="db-alert db-alert--error mb-8" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
   <div class="db-alert db-alert--warning mb-16" *ngIf="dataVerification()">
     <span class="material-icons mi-sm">fact_check</span>
     {{ 'dataVerification.bannerSummary' | translate:{ red: redCount(), amber: amberCount(), green: greenCount() } }}
@@ -64,12 +77,12 @@
           <div class="card-header"><h3>{{ 'steps.loanRequirements' | translate }}</h3></div>
           <div class="review-grid">
             <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
-            <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+            <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ ('loanPurpose.' + loanReqs.loanPurpose) | translate }}</strong></div>
             <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ loanReqs.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
           </div>
           <div class="uw-notes" *ngIf="notesFor('loanRequirements').length">
             <div class="uw-note" *ngFor="let n of notesFor('loanRequirements')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -112,7 +125,7 @@
         <div class="uw-notes-card" *ngIf="notesFor('general').length">
           <div class="card-header"><h3>{{ 'uw.generalSection' | translate }} {{ 'uw.notesAndHistory' | translate }}</h3></div>
           <div class="uw-note" *ngFor="let n of notesFor('general')">
-            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
             <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
           </div>
         </div>
@@ -206,7 +219,7 @@
 
           <div class="uw-notes" *ngIf="notesFor('personalDetails').length">
             <div class="uw-note" *ngFor="let n of notesFor('personalDetails')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -235,7 +248,7 @@
           </div>
           <div class="uw-notes" *ngIf="notesFor('verifyId').length">
             <div class="uw-note" *ngFor="let n of notesFor('verifyId')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -409,7 +422,7 @@
 
           <div class="uw-notes" *ngIf="notesFor('incomeEmployment').length">
             <div class="uw-note" *ngFor="let n of notesFor('incomeEmployment')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -445,7 +458,7 @@
 
           <div class="uw-notes" *ngIf="notesFor('outgoings').length">
             <div class="uw-note" *ngFor="let n of notesFor('outgoings')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -480,7 +493,7 @@
           </div>
           <div class="uw-notes" *ngIf="notesFor('directDebit').length">
             <div class="uw-note" *ngFor="let n of notesFor('directDebit')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -499,7 +512,7 @@
           </div>
           <div class="uw-notes" *ngIf="notesFor('businessCreditDeclarations').length">
             <div class="uw-note" *ngFor="let n of notesFor('businessCreditDeclarations')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -560,7 +573,7 @@
 
           <div class="uw-notes" *ngIf="notesFor('creditDeclarations').length">
             <div class="uw-note" *ngFor="let n of notesFor('creditDeclarations')">
-              <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+              <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
               <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
             </div>
           </div>
@@ -687,7 +700,7 @@
         <div class="uw-notes-card" *ngIf="notesFor('general').length">
           <div class="card-header"><h3>{{ 'uw.decisionHistory' | translate }}</h3></div>
           <div class="uw-note" *ngFor="let n of notesFor('general')">
-            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
             <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
           </div>
         </div>
@@ -720,7 +733,7 @@
         <div class="uw-notes-card" *ngIf="notesFor('disbursement').length">
           <div class="card-header"><h3>{{ 'uw.notesAndHistory' | translate }}</h3></div>
           <div class="uw-note" *ngFor="let n of notesFor('disbursement')">
-            <span class="uw-note-type">{{ n.noteType }}</span> {{ n.note }}
+            <span class="uw-note-type">{{ 'noteType.' + n.noteType | translate }}</span> {{ n.note }}
             <span class="uw-note-meta">— {{ n.createdBy }}, {{ n.createdAt | date:'dd MMM HH:mm' }}</span>
           </div>
         </div>

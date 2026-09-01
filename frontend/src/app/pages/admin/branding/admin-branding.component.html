@@ -41,6 +41,15 @@
   </div>
 
   <div class="db-form-group">
+    <label>{{ 'admin.secondaryColor' | translate }}</label>
+    <div class="color-row">
+      <input type="color" [(ngModel)]="settings()!.secondaryColor" />
+      <input class="db-input" type="text" [(ngModel)]="settings()!.secondaryColor" />
+    </div>
+    <div class="db-hint">{{ 'admin.secondaryColorHint' | translate }}</div>
+  </div>
+
+  <div class="db-form-group">
     <label>{{ 'admin.accentColor' | translate }}</label>
     <div class="color-row">
       <input type="color" [(ngModel)]="settings()!.accentColor" />

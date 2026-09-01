@@ -1,0 +1,1 @@
+ALTER TABLE `branding_settings` ADD `secondary_color` text DEFAULT '#002244' NOT NULL;

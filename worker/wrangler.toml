@@ -1,0 +1,36 @@
+name = "digibank-personal-loans"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[assets]
+directory = "../frontend/dist/frontend/browser"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "digibank"
+database_id = "7e8a728a-f15b-4b38-9c3d-5cb64c031e46"
+
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "digibank-documents"
+
+[[routes]]
+pattern = "is.personalloans.tcsdigilend.com"
+custom_domain = true
+
+[vars]
+DEMO_MODE = "true"
+# The "from" address for event notification emails (sent via Resend, see lib/email.ts). Must be
+# on a domain verified in your Resend account, or delivery will fail.
+RESEND_FROM_EMAIL = "DigiLend <notifications@tcsdigilend.com>"
+
+# Secrets (set via `wrangler secret put`, not stored here):
+#   JWT_SECRET
+#   RESEND_API_KEY — API key from resend.com, used by lib/email.ts to send event notification
+#   emails. Until a sending domain is verified in Resend, delivery only reaches the Resend
+#   account owner's own address — use the admin "Send test email" button until then.

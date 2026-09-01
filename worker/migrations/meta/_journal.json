@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1786958819838,
+      "tag": "0000_unique_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786960145110,
+      "tag": "0001_purple_gravity",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786992257880,
+      "tag": "0002_regular_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787048434744,
+      "tag": "0003_brave_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787132065180,
+      "tag": "0004_breezy_squirrel_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787301693237,
+      "tag": "0005_gifted_lord_hawal",
+      "breakpoints": true
+    }
+  ]
+}

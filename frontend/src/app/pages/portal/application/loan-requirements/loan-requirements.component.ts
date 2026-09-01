@@ -18,6 +18,7 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 export class LoanRequirementsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
+  ready = signal(false);
   appRef = signal('');
   readOnly = signal(false);
   purposes = LOAN_PURPOSES;
@@ -57,7 +58,9 @@ export class LoanRequirementsComponent implements OnInit {
         if (app.loanRequirementsJson) {
           this.form.patchValue(JSON.parse(app.loanRequirementsJson));
         }
-      }
+        this.ready.set(true);
+      },
+      error: () => this.ready.set(true)
     });
   }
 

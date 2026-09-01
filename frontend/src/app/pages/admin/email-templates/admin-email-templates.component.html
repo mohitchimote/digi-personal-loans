@@ -1,0 +1,99 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.emailTemplates' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.emailTemplatesSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.emailTemplateSaved' | translate }}</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'admin.loadingEmailTemplates' | translate }}</span>
+</div>
+
+<ng-container *ngIf="!loading()">
+  <div class="db-form-group mb-24">
+    <label>{{ 'admin.emailEvent' | translate }}</label>
+    <select class="db-select" [ngModel]="selectedEventKey()" (ngModelChange)="selectEvent($event)">
+      <option *ngFor="let e of events()" [value]="e.eventKey">{{ e.label }}</option>
+    </select>
+    <p class="db-hint" *ngIf="selectedEvent() as ev">{{ ev.description }}</p>
+  </div>
+
+  <div class="db-card mb-24" *ngIf="selectedEventKey()">
+    <div class="card-header">
+      <h3>{{ selectedEvent()?.label }}</h3>
+      <label class="db-checkbox enabled-toggle">
+        <input type="checkbox" [(ngModel)]="form.enabled" />
+        <span>{{ 'admin.emailTemplateEnabled' | translate }}</span>
+      </label>
+    </div>
+
+    <div class="form-row mb-16">
+      <div class="db-form-group">
+        <label>{{ 'admin.emailTo' | translate }}</label>
+        <input class="db-input" [(ngModel)]="form.toAddress" [placeholder]="'admin.emailToPlaceholder' | translate" />
+        <p class="db-hint">{{ 'admin.emailToHint' | translate }}</p>
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.emailCc' | translate }}</label>
+        <input class="db-input" [(ngModel)]="form.ccAddress" [placeholder]="'admin.emailCcPlaceholder' | translate" />
+        <p class="db-hint">{{ 'admin.emailCcHint' | translate }}</p>
+      </div>
+    </div>
+
+    <div class="db-form-group">
+      <label>{{ 'admin.emailSubject' | translate }}</label>
+      <input class="db-input" #subjectInput [(ngModel)]="form.subject" (focus)="setFocus('subject', subjectInput)" />
+    </div>
+
+    <div class="variable-chips mb-16" *ngIf="selectedEvent() as ev">
+      <span class="chip-label">{{ 'admin.insertVariable' | translate }}:</span>
+      <button
+        type="button"
+        class="db-btn db-btn--ghost db-btn--sm"
+        *ngFor="let v of ev.variables"
+        (click)="insertVariable(v.name)"
+        [title]="v.description"
+      >{{ '{{' + v.name + '}}' }}</button>
+    </div>
+
+    <div class="db-form-group">
+      <label>{{ 'admin.emailHeader' | translate }}</label>
+      <textarea class="db-textarea" rows="2" #headerInput [(ngModel)]="form.headerContent" (focus)="setFocus('headerContent', headerInput)"></textarea>
+    </div>
+
+    <div class="db-form-group">
+      <label>{{ 'admin.emailBody' | translate }}</label>
+      <textarea class="db-textarea" rows="6" #bodyInput [(ngModel)]="form.bodyContent" (focus)="setFocus('bodyContent', bodyInput)"></textarea>
+    </div>
+
+    <div class="db-form-group">
+      <label>{{ 'admin.emailSignature' | translate }}</label>
+      <textarea class="db-textarea" rows="2" #signatureInput [(ngModel)]="form.signature" (focus)="setFocus('signature', signatureInput)"></textarea>
+    </div>
+
+    <div class="db-form-group">
+      <label>{{ 'admin.emailFooter' | translate }}</label>
+      <textarea class="db-textarea" rows="2" #footerInput [(ngModel)]="form.footer" (focus)="setFocus('footer', footerInput)"></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button class="db-btn db-btn--outline" (click)="refreshPreview()" [disabled]="previewLoading()">
+        {{ previewLoading() ? ('admin.loadingPreview' | translate) : ('admin.refreshPreview' | translate) }}
+      </button>
+      <button class="db-btn db-btn--outline" (click)="sendTest()" [disabled]="testSending()">
+        {{ testSending() ? ('admin.sendingTest' | translate) : ('admin.sendTestEmail' | translate) }}
+      </button>
+      <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
+        {{ saving() ? ('common.saving' | translate) : ('common.save' | translate) }}
+      </button>
+    </div>
+
+    <p class="test-message" [class.test-message--error]="testError()" *ngIf="testMessage()">{{ testMessage() }}</p>
+  </div>
+
+  <div class="db-card preview-card" *ngIf="previewHtml()">
+    <div class="card-header"><h3>{{ 'admin.previewHeader' | translate }}</h3></div>
+    <iframe class="preview-frame" [srcdoc]="previewHtml()"></iframe>
+  </div>
+</ng-container>

@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslatePipe } from '../pipes/translate.pipe';
 
-export interface CaseNavItem { key: string; labelKey: string; }
+export interface CaseNavItem { key: string; labelKey: string; status?: 'complete' | 'warning' | 'pending'; }
 
 /** Staff-facing left navigation for a single case (Underwriter / Banker case-detail) — a flat
  * top item, a collapsible group of the application's sections, a flat bottom item, and a couple

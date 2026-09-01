@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+dist/
+.dev.vars
+seed.sql
+*.log
+*.pdf

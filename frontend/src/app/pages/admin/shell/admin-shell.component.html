@@ -1,7 +1,7 @@
 <div class="uw-shell">
   <header class="uw-header">
     <div class="uw-brand">
-      <span class="material-icons mi-lg">admin_panel_settings</span>
+      <app-brand-logo iconClass="mi-lg" />
       <span>{{ 'admin.brand' | translate }}</span>
     </div>
     <nav class="uw-nav">
@@ -11,6 +11,7 @@
       <a routerLink="/admin/mandates" routerLinkActive="active">{{ 'admin.mandates' | translate }}</a>
       <a routerLink="/admin/products" routerLinkActive="active">{{ 'admin.products' | translate }}</a>
       <a routerLink="/admin/branding" routerLinkActive="active">{{ 'admin.branding' | translate }}</a>
+      <a routerLink="/admin/email-templates" routerLinkActive="active">{{ 'admin.emailTemplates' | translate }}</a>
     </nav>
     <div class="uw-header-right">
       <app-language-switcher />

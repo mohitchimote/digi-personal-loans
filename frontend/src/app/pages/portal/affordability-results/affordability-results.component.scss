@@ -14,8 +14,9 @@
   border-radius: 12px; padding: 24px 28px; margin-bottom: 24px;
   display: flex; align-items: flex-start; gap: 20px;
 
-  &--pass { background: var(--success-light); border: 2px solid var(--success); }
-  &--fail { background: var(--error-light); border: 2px solid var(--error); }
+  &--pass    { background: var(--success-light); border: 2px solid var(--success); }
+  &--fail    { background: var(--error-light); border: 2px solid var(--error); }
+  &--warning { background: var(--warning-light); border: 2px solid var(--warning); }
 
   .result-icon {
     width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
@@ -23,6 +24,7 @@
     font-size: 1.4rem; font-weight: 700;
     .result-header--pass & { background: var(--success); color: #fff; }
     .result-header--fail & { background: var(--error); color: #fff; }
+    .result-header--warning & { background: var(--warning); color: #fff; }
   }
 
   h2 { margin-bottom: 6px; }
@@ -30,7 +32,7 @@
 }
 
 .metrics-row {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;
 }
 
 .metric-card {
@@ -62,9 +64,31 @@
   &.risk-high   { background: var(--error-light); color: var(--error); }
 }
 
+.suggestion-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.suggestion-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--white); border: 1.5px solid var(--tcs-blue); border-radius: 10px; padding: 16px 20px;
+
+  .suggestion-icon { color: var(--tcs-blue); font-size: 1.6rem; flex-shrink: 0; }
+  .suggestion-text { font-size: 0.95rem; color: var(--dark-text); font-weight: 600; }
+}
+
+.joint-hint {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--info-light); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;
+  font-size: 0.875rem; color: var(--body-text);
+}
+
 .failure-list { display: flex; flex-direction: column; gap: 10px; }
 .failure-item { display: flex; gap: 10px; padding: 10px 12px; background: var(--error-light); border-radius: 6px; font-size: 0.875rem; color: var(--error);
   .failure-icon { flex-shrink: 0; font-weight: 700; }
 }
 
-.result-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+.result-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; gap: 12px; flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .metrics-row { grid-template-columns: repeat(2, 1fr); }
+  .result-header { flex-direction: column; }
+  .result-actions { flex-direction: column-reverse; align-items: stretch; }
+  .result-actions .db-btn { justify-content: center; }
+}

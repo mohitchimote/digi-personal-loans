@@ -14,6 +14,8 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent) },
   { path: 'register/verify-otp', loadComponent: () => import('./pages/register/verify-otp/verify-otp.component').then(m => m.VerifyOtpComponent) },
   { path: 'intro',    loadComponent: () => import('./pages/intro/intro.component').then(m => m.IntroComponent) },
+  { path: 'legal/terms',   loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { type: 'terms' } },
+  { path: 'legal/privacy', loadComponent: () => import('./pages/legal/legal-page.component').then(m => m.LegalPageComponent), data: { type: 'privacy' } },
   {
     path: 'portal',
     loadComponent: () => import('./pages/portal/portal.component').then(m => m.PortalComponent),
@@ -74,7 +76,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/underwriter/shell/uw-shell.component').then(m => m.UwShellComponent),
     canActivate: [underwriterGuard],
     children: [
-      { path: '', redirectTo: 'pipeline', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      {
+        path: 'home', loadComponent: () => import('../app/shared/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
+        data: { caseDetailBasePath: '/underwriter/case' }
+      },
       { path: 'pipeline',      loadComponent: () => import('./pages/underwriter/pipeline/pipeline.component').then(m => m.PipelineComponent) },
       { path: 'case/:appRef',  loadComponent: () => import('./pages/underwriter/case-detail/case-detail.component').then(m => m.CaseDetailComponent) },
     ]
@@ -84,7 +90,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/banker/shell/banker-shell.component').then(m => m.BankerShellComponent),
     canActivate: [bankerGuard],
     children: [
-      { path: '', redirectTo: 'queue', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      {
+        path: 'home', loadComponent: () => import('../app/shared/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent),
+        data: { caseDetailBasePath: '/banker/case', createCaseRoute: '/banker/create' }
+      },
       { path: 'queue',     loadComponent: () => import('./pages/banker/queue/banker-queue.component').then(m => m.BankerQueueComponent) },
       { path: 'create',    loadComponent: () => import('./pages/banker/create-application/banker-create-application.component').then(m => m.BankerCreateApplicationComponent) },
       { path: 'case/:appRef', loadComponent: () => import('./pages/banker/case-detail/banker-case-detail.component').then(m => m.BankerCaseDetailComponent) },
@@ -136,6 +146,7 @@ export const routes: Routes = [
       { path: 'mandates', loadComponent: () => import('./pages/admin/mandates/admin-mandates.component').then(m => m.AdminMandatesComponent) },
       { path: 'products', loadComponent: () => import('./pages/admin/products/admin-products.component').then(m => m.AdminProductsComponent) },
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
+      { path: 'email-templates', loadComponent: () => import('./pages/admin/email-templates/admin-email-templates.component').then(m => m.AdminEmailTemplatesComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

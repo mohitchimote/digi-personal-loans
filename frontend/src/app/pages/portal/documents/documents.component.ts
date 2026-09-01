@@ -117,7 +117,9 @@ export class DocumentsComponent implements OnInit {
       case 'APPROVAL_LETTER':       return 'description';
       case 'FINAL_APPROVAL_LETTER': return 'description';
       case 'LOAN_AGREEMENT':        return 'assignment';
-      case 'REPAYMENT_SCHEDULE':    return 'fact_check';
+      case 'REPAYMENT_SCHEDULE':    return 'calendar_month';
+      case 'KEY_FACTS_STATEMENT':   return 'fact_check';
+      case 'TERMS_AND_CONDITIONS':  return 'gavel';
       default: return 'attach_file';
     }
   }
@@ -128,6 +130,8 @@ export class DocumentsComponent implements OnInit {
       case 'FINAL_APPROVAL_LETTER': return this.i18n.t('docs.finalLetter');
       case 'LOAN_AGREEMENT':        return this.i18n.t('docs.loanAgreement');
       case 'REPAYMENT_SCHEDULE':    return this.i18n.t('docs.repaymentSchedule');
+      case 'KEY_FACTS_STATEMENT':   return this.i18n.t('docs.keyFactsStatement');
+      case 'TERMS_AND_CONDITIONS':  return this.i18n.t('docs.termsAndConditions');
       default: return type;
     }
   }

@@ -23,6 +23,11 @@ export class LoginComponent {
     this.form = this.fb.group({
       nationalId: ['', [Validators.required, Validators.pattern(/^\d{9}$/)]],
     });
+    // Set by the 401 interceptor (session-expired.interceptor.ts) via AuthService.logout()'s
+    // router state — history.state survives the navigation but not a later reload, which is the
+    // desired behavior (don't keep re-showing a stale expiry message).
+    const message = (history.state as { message?: string })?.message;
+    if (message) this.error.set(message);
   }
 
   submit(): void {

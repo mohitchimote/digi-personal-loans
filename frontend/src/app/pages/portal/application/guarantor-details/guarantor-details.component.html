@@ -70,7 +70,7 @@
     </div>
 
     <div class="form-actions mt-16">
-      <div></div>
+      <a routerLink="/portal/apply/personal-details" class="db-btn db-btn--ghost">{{ 'common.back' | translate }}</a>
       <button type="submit" class="db-btn db-btn--primary" [disabled]="!canContinue || saving()">
         {{ saving() ? ('wizard.saving' | translate) : ('wizard.saveContinue' | translate) }}
       </button>

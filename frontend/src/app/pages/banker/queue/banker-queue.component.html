@@ -6,16 +6,42 @@
   <a routerLink="/banker/create" class="db-btn db-btn--primary"><span class="material-icons mi-sm">add</span> {{ 'banker.createApplication' | translate }}</a>
 </div>
 
+<div class="db-card filter-panel mb-24">
+  <div class="db-form-group">
+    <input class="db-input" type="text" [(ngModel)]="searchText" [placeholder]="'uw.searchPlaceholder' | translate" />
+  </div>
+  <div class="filter-panel-row">
+    <div class="db-form-group">
+      <label>{{ 'dashboard.status' | translate }}</label>
+      <select class="db-select" [(ngModel)]="statusFilter">
+        <option value="ALL">{{ 'uw.tileAll' | translate }}</option>
+        <option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</option>
+        <option value="PENDING_DISBURSEMENT">{{ 'uw.pendingDisbursement' | translate }}</option>
+        <option value="DISBURSED">{{ 'uw.disbursed' | translate }}</option>
+      </select>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'common.startDate' | translate }}</label>
+      <input class="db-input" type="date" [(ngModel)]="startDate" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'common.endDate' | translate }}</label>
+      <input class="db-input" type="date" [(ngModel)]="endDate" />
+    </div>
+    <button type="button" class="db-btn db-btn--ghost" (click)="resetFilters()">{{ 'common.resetFilters' | translate }}</button>
+  </div>
+</div>
+
 <div class="loading-row" *ngIf="loading()">
   <div class="spinner"></div><span>{{ 'banker.loadingQueue' | translate }}</span>
 </div>
 
-<div class="empty-state" *ngIf="!loading() && applications().length === 0">
+<div class="empty-state" *ngIf="!loading() && filteredApplications().length === 0">
   <div class="empty-icon material-icons">inbox</div>
   <p>{{ 'banker.noApplications' | translate }}</p>
 </div>
 
-<div class="db-card" *ngIf="!loading() && applications().length > 0">
+<div class="db-card" *ngIf="!loading() && filteredApplications().length > 0">
   <table class="db-table">
     <thead>
       <tr>
@@ -28,13 +54,16 @@
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let app of applications()">
+      <tr *ngFor="let app of filteredApplications()">
         <td><strong class="text-primary">{{ app.applicationRef }}</strong></td>
         <td>
           <span class="material-icons mi-sm" [title]="isBusiness(app) ? ('uw.business' | translate) : ('uw.personal' | translate)">{{ isBusiness(app) ? 'apartment' : 'person' }}</span>
         </td>
         <td>{{ applicantName(app) }}</td>
-        <td><span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span></td>
+        <td>
+          <span class="db-badge db-badge--in-progress">{{ statusLabel(app.status) }}</span>
+          <span class="db-badge db-badge--stp" *ngIf="app.autoApproved" [title]="'uw.autoApprovedTitle' | translate">{{ 'uw.autoApprovedBadge' | translate }}</span>
+        </td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.updatedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>
           <a [routerLink]="['/banker/case', app.applicationRef]" class="db-btn db-btn--primary db-btn--sm">{{ 'banker.openAssist' | translate }}</a>

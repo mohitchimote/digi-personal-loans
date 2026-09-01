@@ -10,6 +10,22 @@
   gap: 16px;
 }
 
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-panel-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .db-form-group { margin-bottom: 0; min-width: 160px; }
+  .db-btn { margin-inline-start: auto; }
+}
+
 .loading-row {
   display: flex;
   align-items: center;

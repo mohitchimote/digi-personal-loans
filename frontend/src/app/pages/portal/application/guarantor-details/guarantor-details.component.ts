@@ -1,6 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { DocumentService } from '../../../../core/services/document.service';
@@ -14,7 +14,7 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 @Component({
   selector: 'app-guarantor-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
   templateUrl: './guarantor-details.component.html',
   styleUrl: './guarantor-details.component.scss'
 })

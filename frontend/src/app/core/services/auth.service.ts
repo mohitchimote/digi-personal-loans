@@ -14,6 +14,13 @@ const USER_KEY  = 'db_user';
 export class AuthService {
   currentUser = signal<AuthResponse | null>(this.loadUser());
 
+  /** Tracks whether the Home dashboard's "last accessed" toast has already been shown this login
+   * session — set true the first time it's displayed, reset on every new login. Lives here
+   * (rather than on the dashboard component itself) because the component is destroyed and
+   * recreated on every navigation to/from Home, so its own state can't survive a round trip to a
+   * case and back the way this singleton service can. */
+  lastAccessedToastShown = false;
+
   constructor(private http: HttpClient, private router: Router) {}
 
   register(req: RegisterRequest): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
@@ -55,11 +62,13 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  /** @param sessionExpiredMessage set only by the 401 interceptor (session-expired.interceptor.ts)
+   * — a manual "Log out" click never passes this, so the login screen stays silent for that case. */
+  logout(sessionExpiredMessage?: string): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.currentUser.set(null);
-    this.router.navigate(['/login']);
+    this.router.navigate(['/login'], sessionExpiredMessage ? { state: { message: sessionExpiredMessage } } : undefined);
   }
 
   get token(): string | null {
@@ -121,10 +130,27 @@ export class AuthService {
     return this.currentUser()?.companyName ?? null;
   }
 
+  get companyRegistrationNumber(): string | null {
+    return this.currentUser()?.companyRegistrationNumber ?? null;
+  }
+
+  get companyIndustry(): string | null {
+    return this.currentUser()?.companyIndustry ?? null;
+  }
+
+  get companyFoundedYear(): number | null {
+    return this.currentUser()?.companyFoundedYear ?? null;
+  }
+
+  get previousLogin(): string | null {
+    return this.currentUser()?.previousLogin ?? null;
+  }
+
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));
     this.currentUser.set(auth);
+    this.lastAccessedToastShown = false;
   }
 
   private loadUser(): AuthResponse | null {

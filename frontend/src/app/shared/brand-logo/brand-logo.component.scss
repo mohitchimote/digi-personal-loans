@@ -5,3 +5,14 @@ img {
   object-fit: contain;
   vertical-align: middle;
 }
+
+// The fallback material-icon glyph (shown until an admin uploads a logo image) has no color of
+// its own — every current usage of <app-brand-logo> sits on the dark navy brand background
+// (sidebar, landing/intro headers, auth pages), so it was inheriting whatever ambient color
+// happened to be nearby: the browser's default link blue inside a bare <a>, a muted slate color
+// elsewhere. Neither is visible against dark navy. Same "contrast on dark headers" bug class as
+// the ghost-button fix (see PROJECT_DOCUMENTATION.md's Cross-cutting concerns) -- set it
+// explicitly rather than rely on inheritance.
+.material-icons {
+  color: #fff;
+}

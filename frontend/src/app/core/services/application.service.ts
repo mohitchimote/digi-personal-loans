@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
-import { catchError, switchMap, tap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../models';
+import { catchError, finalize, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis, StaffActivityItem } from '../models';
 import { API_BASE } from './api-base';
 import { AssistContextService } from './assist-context.service';
 import { AuthService } from './auth.service';
@@ -99,12 +99,35 @@ export class ApplicationService {
     return this.http.get<LoanApplication>(`${API}/${appRef}`);
   }
 
+  private myApplicationsInFlight = new Map<number, Observable<LoanApplication[]>>();
+  private currentInFlight = new Map<number, Observable<LoanApplication>>();
+
+  /** The portal shell re-resolves the current application on every route navigation, and each
+   * wizard step independently resolves it again on activation — so a single sidebar click
+   * naturally fires this call more than once at the same moment. Coalescing concurrent callers
+   * onto one shared HTTP request (instead of one call each) keeps the app from firing a burst of
+   * identical requests to the same origin in the same tick, which is what a wedged/misrouted
+   * browser connection has been observed to fail on under real-world testing. */
   getMyApplications(customerId: number): Observable<LoanApplication[]> {
-    return this.http.get<LoanApplication[]>(`${API}/customer/${customerId}`);
+    const cached = this.myApplicationsInFlight.get(customerId);
+    if (cached) return cached;
+    const request$ = this.http.get<LoanApplication[]>(`${API}/customer/${customerId}`).pipe(
+      shareReplay({ bufferSize: 1, refCount: false }),
+      finalize(() => this.myApplicationsInFlight.delete(customerId))
+    );
+    this.myApplicationsInFlight.set(customerId, request$);
+    return request$;
   }
 
   getCurrent(customerId: number): Observable<LoanApplication> {
-    return this.http.get<LoanApplication>(`${API}/customer/${customerId}/current`);
+    const cached = this.currentInFlight.get(customerId);
+    if (cached) return cached;
+    const request$ = this.http.get<LoanApplication>(`${API}/customer/${customerId}/current`).pipe(
+      shareReplay({ bufferSize: 1, refCount: false }),
+      finalize(() => this.currentInFlight.delete(customerId))
+    );
+    this.currentInFlight.set(customerId, request$);
+    return request$;
   }
 
   withdraw(appRef: string): Observable<LoanApplication> {
@@ -136,6 +159,14 @@ export class ApplicationService {
 
   getBankerQueue(): Observable<LoanApplication[]> {
     return this.http.get<LoanApplication[]>(`${API}/banker-queue`);
+  }
+
+  getHomeStats(): Observable<LoanApplication[]> {
+    return this.http.get<LoanApplication[]>(`${API}/home-stats`);
+  }
+
+  getStaffActivity(): Observable<StaffActivityItem[]> {
+    return this.http.get<StaffActivityItem[]>(`${API}/staff-activity`);
   }
 
   decline(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {

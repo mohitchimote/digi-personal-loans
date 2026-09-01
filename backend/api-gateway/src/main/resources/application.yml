@@ -9,10 +9,17 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
+            # Dev-only origins (localhost, a dev LAN IP) belong here for local `mvnd spring-boot:run`
+            # convenience. A production deploy should replace this whole list with only real
+            # customer domain(s), sourced from environment-specific config rather than this
+            # checked-in file — see PRODUCTION_READINESS.md §3/§4. An ephemeral ngrok tunnel URL
+            # used to be listed here too; removed — free-tier ngrok subdomains are reassignable, so
+            # leaving one in a shared config with allowCredentials:true is a standing credential-
+            # leak risk once that subdomain is claimed by someone else (PRODUCTION_READINESS.md §5,
+            # finding 6).
             allowedOrigins:
               - "http://localhost:4200"
               - "http://10.73.91.21:4200"
-              - "https://exquisite-hasty-issuing.ngrok-free.dev"
               - "https://ispersonalloans.tcsdigilend.com"
             allowedMethods:
               - GET
@@ -28,38 +35,50 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
       routes:
+        # Must come before the auth-service catch-all below (Spring Cloud Gateway matches routes in
+        # definition order) — /api/auth/admin/email-templates/** is served by notification-service,
+        # not auth-service, even though the URL still lives under /api/auth for frontend backwards
+        # compatibility (frontend/src/app/core/services/email-template.service.ts is unchanged).
+        # Each uri below defaults to localhost for `mvnd spring-boot:run` — Docker Compose
+        # overrides these via env vars to the compose service names (see backend/docker-compose.yml),
+        # so nothing here changes for local dev.
+        - id: email-templates-admin
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/auth/admin/email-templates/**
+
         - id: auth-service
-          uri: http://localhost:8081
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
 
         - id: branding
-          uri: http://localhost:8081
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/branding/**
 
         - id: application-service
-          uri: http://localhost:8082
+          uri: ${APPLICATION_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/applications/**
 
         - id: affordability-service
-          uri: http://localhost:8083
+          uri: ${AFFORDABILITY_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/affordability/**
 
         - id: product-service
-          uri: http://localhost:8084
+          uri: ${PRODUCT_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/products/**
 
         - id: document-service
-          uri: http://localhost:8085
+          uri: ${DOCUMENT_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/api/documents/**
 
         - id: notification-service
-          uri: http://localhost:8086
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/api/notifications/**
 

@@ -1,0 +1,197 @@
+# Local/dev orchestration for the 7 backend services (ARCHITECTURE_REVIEW_GAPS.md, G1). This is
+# NOT the production deployment target — that's container orchestration across two availability
+# zones with managed MySQL (DigiLend_Production_Architecture.docx §8). This compose file exists so
+# the services can be built, run, and integration-tested together without seven manual
+# `mvnd spring-boot:run` windows, and so each service's Dockerfile is exercised at least once
+# before it reaches a real orchestrator.
+#
+# Usage:
+#   cp .env.example .env      # then edit .env with real values
+#   docker compose up --build
+#
+# NOT build/run-verified against a real Docker engine — this development machine has neither
+# Docker nor WSL installed. Written correctly against each service's actual config (ports,
+# artifact names, inter-service URL env vars all confirmed directly against pom.xml/application.yml
+# — see ARCHITECTURE_REVIEW_GAPS.md, G1), but treat the first `docker compose up --build` as the
+# real verification step, not this comment.
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set this in .env}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+    volumes:
+      - auth-branding:/app/branding-store
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  affordability-service:
+    build: ./affordability-service
+    ports:
+      - "8083:8083"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "8084:8084"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  document-service:
+    build: ./document-service
+    ports:
+      - "8085:8085"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+    volumes:
+      - document-store:/app/document-store
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  application-service:
+    build: ./application-service
+    ports:
+      - "8082:8082"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set this in .env}
+      DB_HOST: mysql
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      NOTIFICATION_SERVICE_URL: http://notification-service:8086
+      DOCUMENT_SERVICE_URL: http://document-service:8085
+      AFFORDABILITY_SERVICE_URL: http://affordability-service:8083
+      PRODUCT_SERVICE_URL: http://product-service:8084
+    depends_on:
+      mysql:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      document-service:
+        condition: service_healthy
+      affordability-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      APPLICATION_SERVICE_URL: http://application-service:8082
+      AFFORDABILITY_SERVICE_URL: http://affordability-service:8083
+      PRODUCT_SERVICE_URL: http://product-service:8084
+      DOCUMENT_SERVICE_URL: http://document-service:8085
+      NOTIFICATION_SERVICE_URL: http://notification-service:8086
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      application-service:
+        condition: service_healthy
+      affordability-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      document-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mysql-data:
+  auth-branding:
+  document-store:

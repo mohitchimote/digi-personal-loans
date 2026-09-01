@@ -5,6 +5,7 @@ import { API_BASE } from './api-base';
 
 export interface BrandingSettings {
   primaryColor: string;
+  secondaryColor: string;
   accentColor: string;
   logoUrl?: string;
 }
@@ -41,8 +42,8 @@ export class BrandingService {
     return this.http.get<BrandingSettings>(`${API}/branding`);
   }
 
-  updateColors(primaryColor: string, accentColor: string): Observable<BrandingSettings> {
-    return this.http.put<BrandingSettings>(`${API}/auth/admin/branding`, { primaryColor, accentColor })
+  updateColors(primaryColor: string, secondaryColor: string, accentColor: string): Observable<BrandingSettings> {
+    return this.http.put<BrandingSettings>(`${API}/auth/admin/branding`, { primaryColor, secondaryColor, accentColor })
       .pipe(tap(settings => this.applyTheme(settings)));
   }
 
@@ -64,6 +65,9 @@ export class BrandingService {
     root.setProperty('--tcs-blue-dark', shade(settings.primaryColor, -0.25));
     root.setProperty('--tcs-blue-light', shade(settings.primaryColor, 0.25));
     root.setProperty('--tcs-blue-rgb', toRgbChannels(settings.primaryColor));
+    root.setProperty('--tcs-secondary', settings.secondaryColor);
+    root.setProperty('--tcs-secondary-dark', shade(settings.secondaryColor, -0.25));
+    root.setProperty('--tcs-secondary-light', shade(settings.secondaryColor, 0.25));
     root.setProperty('--tcs-yellow', settings.accentColor);
     root.setProperty('--tcs-yellow-dark', shade(settings.accentColor, -0.18));
     root.setProperty('--tcs-yellow-rgb', toRgbChannels(settings.accentColor));

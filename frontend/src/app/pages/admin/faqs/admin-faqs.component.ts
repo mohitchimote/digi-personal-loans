@@ -18,7 +18,7 @@ export class AdminFaqsComponent implements OnInit {
   error = signal('');
   editingId = signal<number | null>(null);
 
-  form: Partial<Faq> = { category: '', question: '', answer: '', videoId: '', displayOrder: 1 };
+  form: Partial<Faq> = { category: '', question: '', answer: '', questionHe: '', answerHe: '', videoId: '', displayOrder: 1 };
   showNewForm = signal(false);
 
   constructor(private faqSvc: FaqService, private i18n: I18nService) {}

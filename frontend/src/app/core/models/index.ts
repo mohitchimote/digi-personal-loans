@@ -10,6 +10,10 @@ export interface AuthResponse {
   role: string;
   expiresIn: number;
   companyName?: string;
+  companyRegistrationNumber?: string;
+  companyIndustry?: string;
+  companyFoundedYear?: number;
+  previousLogin?: string | null;
 }
 
 export interface RegisterRequest {
@@ -33,6 +37,9 @@ export interface CustomerProfileResponse {
   fullName: string;
   phoneNumber?: string;
   companyName?: string;
+  companyRegistrationNumber?: string;
+  companyIndustry?: string;
+  companyFoundedYear?: number;
 }
 
 export interface RegisterInitiatedResponse {
@@ -96,6 +103,7 @@ export interface LoanApplication {
   guarantorDetailsJson?: string;
   disbursementStatus?: DisbursementStatus;
   approvedAmount?: number;
+  autoApproved?: boolean;
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
@@ -168,6 +176,24 @@ export interface UnderwritingNote {
   section: string;
   note: string;
   noteType: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** Backs the staff Home dashboard's Action Items / Recent Notifications panels — an
+ * underwriting note enriched with just enough of its parent application to display and link to
+ * it, without shipping the full application JSON blobs over the wire. */
+export interface StaffActivityItem {
+  id: number;
+  applicationRef: string;
+  applicationType: string;
+  customerEmail: string;
+  personalDetailsJson: string | null;
+  companyDetailsJson: string | null;
+  applicationStatus: string;
+  section: string;
+  noteType: string;
+  note: string;
   createdBy: string;
   createdAt: string;
 }
@@ -311,6 +337,8 @@ export interface BusinessCreditDeclarations {
   directorCreditScore: number;
 }
 
+export type AffordabilityFailureType = 'CAPACITY' | 'STRUCTURAL' | 'TERMINAL' | null;
+
 export interface BusinessAffordabilityResult {
   passed: boolean;
   dscr: number;
@@ -318,6 +346,9 @@ export interface BusinessAffordabilityResult {
   monthlyRepaymentCapacity: number;
   calculatedMonthlyRepayment: number;
   failureReasons: string[];
+  failureType: AffordabilityFailureType;
+  maxAffordableAmount: number | null;
+  minAffordableTermMonths: number | null;
   riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
   creditScoreCategory: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 }
@@ -330,6 +361,9 @@ export interface AffordabilityResult {
   monthlyRepaymentCapacity: number;
   calculatedMonthlyRepayment: number;
   failureReasons: string[];
+  failureType: AffordabilityFailureType;
+  maxAffordableAmount: number | null;
+  minAffordableTermMonths: number | null;
   riskCategory: 'LOW' | 'MEDIUM' | 'HIGH';
   creditScoreCategory: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 }

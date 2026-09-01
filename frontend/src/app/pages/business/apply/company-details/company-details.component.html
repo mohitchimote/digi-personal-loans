@@ -65,7 +65,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ optLabel('businessLoanPurpose', p) }}</option>
           </select>
         </div>
       </div>
@@ -165,7 +165,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ p }}</option>
+            <option *ngFor="let p of purposes" [value]="p">{{ optLabel('businessLoanPurpose', p) }}</option>
           </select>
         </div>
         <div class="dense-field">

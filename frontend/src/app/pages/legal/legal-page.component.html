@@ -1,0 +1,36 @@
+<div class="legal-shell">
+  <div class="legal-header">
+    <a routerLink="/" class="brand-link">
+      <app-brand-logo iconClass="brand-icon" />
+      <span class="brand-name">{{ 'common.brandName' | translate }}</span>
+    </a>
+  </div>
+
+  <div class="legal-content">
+    <div class="db-alert db-alert--info mb-24">
+      <span class="material-icons mi-sm">info</span> {{ 'legal.demoNotice' | translate }}
+    </div>
+
+    <ng-container *ngIf="isTerms; else privacyBlock">
+      <h1>{{ 'legal.termsTitle' | translate }}</h1>
+      <p class="legal-intro">{{ 'legal.termsIntro' | translate }}</p>
+      <ul class="legal-points">
+        <li>{{ 'legal.termsPoint1' | translate }}</li>
+        <li>{{ 'legal.termsPoint2' | translate }}</li>
+        <li>{{ 'legal.termsPoint3' | translate }}</li>
+        <li>{{ 'legal.termsPoint4' | translate }}</li>
+      </ul>
+    </ng-container>
+
+    <ng-template #privacyBlock>
+      <h1>{{ 'legal.privacyTitle' | translate }}</h1>
+      <p class="legal-intro">{{ 'legal.privacyIntro' | translate }}</p>
+      <ul class="legal-points">
+        <li>{{ 'legal.privacyPoint1' | translate }}</li>
+        <li>{{ 'legal.privacyPoint2' | translate }}</li>
+        <li>{{ 'legal.privacyPoint3' | translate }}</li>
+        <li>{{ 'legal.privacyPoint4' | translate }}</li>
+      </ul>
+    </ng-template>
+  </div>
+</div>

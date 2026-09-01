@@ -8,6 +8,8 @@ export interface Faq {
   category: string;
   question: string;
   answer: string;
+  questionHe?: string | null;
+  answerHe?: string | null;
   videoId?: string;
   displayOrder: number;
 }

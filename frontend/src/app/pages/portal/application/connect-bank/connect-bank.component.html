@@ -14,14 +14,61 @@
 
     <h3 class="mb-16" *ngIf="isJoint">{{ 'connectBank.applicant1Header' | translate }}</h3>
 
+    <!-- Linked accounts list -->
+    <div class="linked-accounts" *ngIf="accounts().length">
+      <h3 style="margin-bottom:12px;">{{ 'connectBank.linkedAccounts' | translate }}</h3>
+      <div class="review-grid" *ngFor="let acc of accounts()" style="border:1px solid var(--light-grey); border-radius:var(--border-radius); padding:12px; margin-bottom:10px;">
+        <div class="review-item">
+          <span>{{ acc.bankName }} <span class="db-badge" *ngIf="acc.id === primaryAccountId()">{{ 'connectBank.primaryBadge' | translate }}</span> <span class="db-badge" *ngIf="acc.manual">{{ 'connectBank.manualBadge' | translate }}</span></span>
+          <strong>{{ acc.accountMasked }}</strong>
+        </div>
+        <div class="review-item" *ngIf="acc.avgBalance !== null"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ acc.avgBalance | number }}</strong></div>
+        <div class="review-item" *ngIf="acc.transactions !== null"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ acc.transactions }}</strong></div>
+        <div style="display:flex; gap:12px; margin-top:8px;">
+          <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="acc.id !== primaryAccountId()" (click)="setPrimaryAccount(acc.id)">{{ 'connectBank.setAsPrimary' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" style="color:#c62828;" (click)="removeAccount(acc.id)">{{ 'connectBank.remove' | translate }}</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Bank selection -->
-    <div *ngIf="!connected() && !connecting()">
-      <h3 style="margin-bottom:12px;" *ngIf="!isJoint">{{ 'connectBank.chooseBank' | translate }}</h3>
+    <div *ngIf="!connecting() && !showManualForm()">
+      <h3 style="margin-bottom:12px;" *ngIf="!isJoint">{{ accounts().length ? ('connectBank.addAnotherAccount' | translate) : ('connectBank.chooseBank' | translate) }}</h3>
       <div class="bank-grid">
         <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
           <span class="bank-icon material-icons">{{ b.icon }}</span>
           <span>{{ b.name }}</span>
         </button>
+      </div>
+      <button class="db-btn db-btn--outline db-btn--sm mt-16" (click)="showManualForm.set(true)">{{ 'connectBank.enterManually' | translate }}</button>
+    </div>
+
+    <!-- Manual entry -->
+    <div class="manual-entry-form" *ngIf="showManualForm()">
+      <p class="text-muted mb-16">{{ 'connectBank.manualIntro' | translate }}</p>
+      <div class="form-row">
+        <div class="db-form-group">
+          <label>{{ 'connectBank.manualBankLabel' | translate }}</label>
+          <select class="db-select" [(ngModel)]="manualBankCode" (ngModelChange)="onManualBankChange()">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let b of israeliBanks" [value]="b.code">{{ b.name }}</option>
+          </select>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'connectBank.manualBranchLabel' | translate }}</label>
+          <select class="db-select" [(ngModel)]="manualBranchCode" [disabled]="!manualBankCode">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let br of manualBranches" [value]="br.code">{{ br.name }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="db-form-group" style="max-width:260px">
+        <label>{{ 'connectBank.manualAccountNumberLabel' | translate }}</label>
+        <input class="db-input" type="text" inputmode="numeric" [(ngModel)]="manualAccountNumber" placeholder="e.g. 123456" />
+      </div>
+      <div style="display:flex; gap:12px;">
+        <button class="db-btn db-btn--ghost" (click)="showManualForm.set(false)">{{ 'connectBank.cancel' | translate }}</button>
+        <button class="db-btn db-btn--primary" [disabled]="!manualFormValid" (click)="addManualAccount()">{{ 'connectBank.addAccount' | translate }}</button>
       </div>
     </div>
 
@@ -29,19 +76,6 @@
     <div class="connecting-state" *ngIf="connecting()">
       <div class="spinner"></div>
       <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank?.name }}…</p>
-    </div>
-
-    <!-- Connected -->
-    <div class="connected-state" *ngIf="connected() && connectionSummary">
-      <div class="db-alert db-alert--success mb-16">
-        ✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank?.name || '' } }}
-      </div>
-      <div class="review-grid">
-        <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary.accountMasked }}</strong></div>
-        <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary.avgBalance | number }}</strong></div>
-        <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary.transactions }}</strong></div>
-      </div>
-      <button class="db-btn db-btn--ghost db-btn--sm mt-16" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
     </div>
   </div>
 
@@ -97,26 +131,62 @@
     <div class="card-header"><h3>{{ 'connectBank.title' | translate }}</h3></div>
 
     <div class="dense-section-label" *ngIf="isJoint">{{ 'connectBank.applicant1Header' | translate }}</div>
-    <div *ngIf="!connected() && !connecting() && !readOnly()">
+
+    <div class="linked-accounts" *ngIf="accounts().length">
+      <div class="review-grid" *ngFor="let acc of accounts()" style="border:1px solid var(--light-grey); border-radius:var(--border-radius); padding:12px; margin-bottom:10px;">
+        <div class="review-item">
+          <span>{{ acc.bankName }} <span class="db-badge" *ngIf="acc.id === primaryAccountId()">{{ 'connectBank.primaryBadge' | translate }}</span> <span class="db-badge" *ngIf="acc.manual">{{ 'connectBank.manualBadge' | translate }}</span></span>
+          <strong>{{ acc.accountMasked }}</strong>
+        </div>
+        <div class="review-item" *ngIf="acc.avgBalance !== null"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ acc.avgBalance | number }}</strong></div>
+        <div class="review-item" *ngIf="acc.transactions !== null"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ acc.transactions }}</strong></div>
+        <div style="display:flex; gap:12px; margin-top:8px;" *ngIf="!readOnly()">
+          <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="acc.id !== primaryAccountId()" (click)="setPrimaryAccount(acc.id)">{{ 'connectBank.setAsPrimary' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" style="color:#c62828;" (click)="removeAccount(acc.id)">{{ 'connectBank.remove' | translate }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!connecting() && !showManualForm() && !readOnly()">
       <div class="bank-grid">
         <button class="bank-tile" *ngFor="let b of banks" (click)="connect(b)">
           <span class="bank-icon material-icons">{{ b.icon }}</span>
           <span>{{ b.name }}</span>
         </button>
       </div>
+      <button class="db-btn db-btn--outline db-btn--sm mt-16" (click)="showManualForm.set(true)">{{ 'connectBank.enterManually' | translate }}</button>
     </div>
+
+    <div class="manual-entry-form" *ngIf="showManualForm() && !readOnly()">
+      <div class="dense-grid">
+        <div class="dense-field">
+          <label>{{ 'connectBank.manualBankLabel' | translate }}</label>
+          <select class="db-select" [(ngModel)]="manualBankCode" (ngModelChange)="onManualBankChange()">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let b of israeliBanks" [value]="b.code">{{ b.name }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'connectBank.manualBranchLabel' | translate }}</label>
+          <select class="db-select" [(ngModel)]="manualBranchCode" [disabled]="!manualBankCode">
+            <option value="">{{ 'common.select' | translate }}</option>
+            <option *ngFor="let br of manualBranches" [value]="br.code">{{ br.name }}</option>
+          </select>
+        </div>
+        <div class="dense-field">
+          <label>{{ 'connectBank.manualAccountNumberLabel' | translate }}</label>
+          <input class="db-input" type="text" inputmode="numeric" [(ngModel)]="manualAccountNumber" />
+        </div>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <button class="db-btn db-btn--ghost db-btn--sm" (click)="showManualForm.set(false)">{{ 'connectBank.cancel' | translate }}</button>
+        <button class="db-btn db-btn--primary db-btn--sm" [disabled]="!manualFormValid" (click)="addManualAccount()">{{ 'connectBank.addAccount' | translate }}</button>
+      </div>
+    </div>
+
     <div class="connecting-state" *ngIf="connecting()">
       <div class="spinner"></div>
       <p>{{ 'connectBank.connectingTo' | translate }} {{ selectedBank?.name }}…</p>
-    </div>
-    <div class="connected-state" *ngIf="connected() && connectionSummary">
-      <div class="db-alert db-alert--success mb-16">✅ {{ 'connectBank.connectedSuccess' | translate:{ bank: selectedBank?.name || '' } }}</div>
-      <div class="review-grid">
-        <div class="review-item"><span>{{ 'connectBank.account' | translate }}</span><strong>{{ connectionSummary.accountMasked }}</strong></div>
-        <div class="review-item"><span>{{ 'connectBank.avgBalance' | translate }}</span><strong>₪{{ connectionSummary.avgBalance | number }}</strong></div>
-        <div class="review-item"><span>{{ 'connectBank.transactionsPulled' | translate }}</span><strong>{{ connectionSummary.transactions }}</strong></div>
-      </div>
-      <button class="db-btn db-btn--ghost db-btn--sm mt-16" *ngIf="!readOnly()" (click)="disconnect()">{{ 'connectBank.disconnect' | translate }}</button>
     </div>
 
     <ng-container *ngIf="isJoint">

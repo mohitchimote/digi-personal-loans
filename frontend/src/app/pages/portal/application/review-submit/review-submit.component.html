@@ -18,7 +18,7 @@
     </div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
-      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ ('loanPurpose.' + loanReqs.loanPurpose) | translate }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ loanReqs.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
     </div>
   </div>
@@ -147,7 +147,7 @@
 
     <label class="db-checkbox mb-16">
       <input type="checkbox" [(ngModel)]="agreedToPrivacy" />
-      <span>{{ 'reviewSubmit.agreeTermsPrefix' | translate }} <a href="#">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="#">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</span>
+      <span>{{ 'reviewSubmit.agreeTermsPrefix' | translate }} <a href="/legal/terms" target="_blank" rel="noopener">{{ 'reviewSubmit.termsLink' | translate }}</a> {{ 'reviewSubmit.and' | translate }} <a href="/legal/privacy" target="_blank" rel="noopener">{{ 'reviewSubmit.privacyLink' | translate }}</a>.</span>
     </label>
 
     <label class="db-checkbox mb-24">
