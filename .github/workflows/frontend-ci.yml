@@ -1,0 +1,45 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Uses Angular's newer @angular/build:unit-test builder (Vitest-backed, not Karma) — runs
+      # under Node with no browser/display needed, confirmed directly on this change: `--watch=false`
+      # is what makes it a single run-and-exit rather than hanging in watch mode, which is what CI
+      # needs. Only one real spec file exists today; a stale scaffold assertion that no longer
+      # matched the app (checking for placeholder "Hello, frontend" title text that was never
+      # customized) was removed as part of adding this workflow so CI starts green, not red on a
+      # pre-existing, unrelated issue.
+      - name: Run unit tests
+        run: npm test -- --watch=false
