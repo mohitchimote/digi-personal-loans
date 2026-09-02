@@ -41,7 +41,9 @@ copies, edited in place, run-level text replacement to preserve existing formatt
 - **C1** — `DigiBank_Solution_Architecture.pptx`, Technical Architecture slide, OBSERVABILITY & OPS
   box: replaced the false "End-to-end request correlation (txn ID)" bullet with "No cross-service
   request correlation (txn ID) yet — planned", matching the honest phrasing style already used by
-  the sibling bullet underneath it.
+  the sibling bullet underneath it. **Superseded 2026-09-02 (same day, later in the session)**: once
+  S4 actually shipped `X-Correlation-Id` propagation, this bullet was updated again to "X-Correlation-Id
+  propagated end-to-end via MDC (§4, §9)" — see the dated note below.
 - **C2** — `DigiLend_Production_Architecture.docx`: §7.3 (Document storage) no longer calls the
   offer pack "a near-term extension" — it now says all four documents are generated today and only
   the approval letter carries final legal content, the rest placeholder pending legal/compliance
@@ -76,6 +78,33 @@ Applied to both review documents (`python-docx`/`python-pptx`, in place):
   file afterward (searched both, paragraphs/tables/all slide shapes) — the only `DigiLend_*` hits
   left are the product name "TCS DigiLend Personal Loans" and literal filename references to the
   doc itself, both correctly untouched.
+
+**Deck/doc consistency pass (2026-09-02, continued)**: the user edited the Technical Architecture
+slide directly in LibreOffice (ESB/MQ/DMS layout repositioned, a new `digibank_audit` schema box
+added) and asked for a full deck-vs-doc consistency review in auto mode. Found and fixed, all
+verified visually via headless LibreOffice → PDF → PNG render (`soffice --headless --convert-to
+pdf`, `pymupdf`), not just by reading the XML:
+
+- **Arrow routing regression**: the user's LibreOffice edit reconnected the Object
+  Storage/DMS arrows to originate from the `digibank_docs` schema box instead of from
+  `document-service` — the same imprecision flagged and fixed once already earlier in the session.
+  Rerouted as five-segment obstacle-avoiding paths (round the MySQL container's right edge, through
+  the gap before the ESB box, back in above the Core Banking row) so the lines read correctly as
+  sourced from `document-service` without cutting through unrelated boxes.
+- **`digibank_audit` had no equivalent in the doc**: added as a new row in §7.1's schema table
+  (marked "Shared — written by any service that performs an auditable state change", not attributed
+  to one owning service, since the deck shows no arrow into it from any single service), a new
+  paragraph after the affordability-service schema paragraph explaining it's the one deliberate
+  exception to "one schema per service," a new Open Point #19 (MySQL vs. a separate MongoDB-based
+  audit store, per the review discussion — undecided), and added to the §3.1 ASCII topology diagram's
+  MySQL box.
+- **Stale naming leftover in the ASCII diagram** (§3.1): the diagram's service box still read
+  `user-auth-svc` — the Q1 rename pass caught prose and the deck but missed this hand-drawn box;
+  fixed to `auth-svc`, box-drawing alignment preserved and verified character-for-character.
+- **C1's fix had gone stale**: see the superseded note above — the deck said correlation IDs were
+  "not yet — planned" when S4 (this same session) had already shipped them; updated to match.
+- Swept the full 7-slide deck's text and the full doc for `user-auth`/`DigiLend_auth`/`DigiLend_app`/
+  `iText` regressions — none found; both files clean.
 
 ---
 
