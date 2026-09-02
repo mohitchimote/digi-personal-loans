@@ -16,87 +16,93 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            # Dev-only origins (localhost, a dev LAN IP) belong here for local `mvnd spring-boot:run`
-            # convenience. A production deploy should replace this whole list with only real
-            # customer domain(s), sourced from environment-specific config rather than this
-            # checked-in file — see PRODUCTION_READINESS.md §3/§4. An ephemeral ngrok tunnel URL
-            # used to be listed here too; removed — free-tier ngrok subdomains are reassignable, so
-            # leaving one in a shared config with allowCredentials:true is a standing credential-
-            # leak risk once that subdomain is claimed by someone else (PRODUCTION_READINESS.md §5,
-            # finding 6).
-            allowedOrigins:
-              - "http://localhost:4200"
-              - "http://10.73.91.21:4200"
-              - "https://ispersonalloans.tcsdigilend.com"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-              - PATCH
-            allowedHeaders:
-              - "*"
-            allowCredentials: true
-            maxAge: 3600
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
-      # ARCHITECTURE_REVIEW_GAPS.md, G3 — every uri below is now `lb://<eureka-service-id>` instead
-      # of a hardcoded/env-var host:port. Spring Cloud LoadBalancer resolves the service-id against
-      # whatever the service-registry currently has registered (see eureka: block below), so a
-      # route survives an instance restarting on a different port/host without a gateway config
-      # change or redeploy — the actual point of doing this, not just a cosmetic rename. This does
-      # mean the gateway can only route once service-registry is reachable and the target service
-      # has registered; every other service in backend/ keeps working fine without the registry
-      # (they only use it to be found, not to find anything themselves — see each service's own
-      # application.yml comment).
-      routes:
-        # Must come before the auth-service catch-all below (Spring Cloud Gateway matches routes in
-        # definition order) — /api/auth/admin/email-templates/** is served by notification-service,
-        # not auth-service, even though the URL still lives under /api/auth for frontend backwards
-        # compatibility (frontend/src/app/core/services/email-template.service.ts is unchanged).
-        - id: email-templates-admin
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/auth/admin/email-templates/**
+      # Spring Cloud 2025.0's Gateway module split (server vs. proxy exchange, WebMvc vs.
+      # WebFlux) moved every property below from spring.cloud.gateway.* to
+      # spring.cloud.gateway.server.webflux.* — this stays the reactive/WebFlux gateway this
+      # service has always been, just renamed.
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                # Dev-only origins (localhost, a dev LAN IP) belong here for local `mvnd spring-boot:run`
+                # convenience. A production deploy should replace this whole list with only real
+                # customer domain(s), sourced from environment-specific config rather than this
+                # checked-in file — see PRODUCTION_READINESS.md §3/§4. An ephemeral ngrok tunnel URL
+                # used to be listed here too; removed — free-tier ngrok subdomains are reassignable, so
+                # leaving one in a shared config with allowCredentials:true is a standing credential-
+                # leak risk once that subdomain is claimed by someone else (PRODUCTION_READINESS.md §5,
+                # finding 6).
+                allowedOrigins:
+                  - "http://localhost:4200"
+                  - "http://10.73.91.21:4200"
+                  - "https://ispersonalloans.tcsdigilend.com"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                  - PATCH
+                allowedHeaders:
+                  - "*"
+                allowCredentials: true
+                maxAge: 3600
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
+          # ARCHITECTURE_REVIEW_GAPS.md, G3 — every uri below is now `lb://<eureka-service-id>` instead
+          # of a hardcoded/env-var host:port. Spring Cloud LoadBalancer resolves the service-id against
+          # whatever the service-registry currently has registered (see eureka: block below), so a
+          # route survives an instance restarting on a different port/host without a gateway config
+          # change or redeploy — the actual point of doing this, not just a cosmetic rename. This does
+          # mean the gateway can only route once service-registry is reachable and the target service
+          # has registered; every other service in backend/ keeps working fine without the registry
+          # (they only use it to be found, not to find anything themselves — see each service's own
+          # application.yml comment).
+          routes:
+            # Must come before the auth-service catch-all below (Spring Cloud Gateway matches routes in
+            # definition order) — /api/auth/admin/email-templates/** is served by notification-service,
+            # not auth-service, even though the URL still lives under /api/auth for frontend backwards
+            # compatibility (frontend/src/app/core/services/email-template.service.ts is unchanged).
+            - id: email-templates-admin
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/auth/admin/email-templates/**
 
-        - id: auth-service
-          uri: lb://auth-service
-          predicates:
-            - Path=/api/auth/**
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
 
-        - id: branding
-          uri: lb://auth-service
-          predicates:
-            - Path=/api/branding/**
+            - id: branding
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/branding/**
 
-        - id: application-service
-          uri: lb://application-service
-          predicates:
-            - Path=/api/applications/**
+            - id: application-service
+              uri: lb://application-service
+              predicates:
+                - Path=/api/applications/**
 
-        - id: affordability-service
-          uri: lb://affordability-service
-          predicates:
-            - Path=/api/affordability/**
+            - id: affordability-service
+              uri: lb://affordability-service
+              predicates:
+                - Path=/api/affordability/**
 
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/products/**
+            - id: product-service
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**
 
-        - id: document-service
-          uri: lb://document-service
-          predicates:
-            - Path=/api/documents/**
+            - id: document-service
+              uri: lb://document-service
+              predicates:
+                - Path=/api/documents/**
 
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/notifications/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
 
 management:
   endpoints:

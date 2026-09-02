@@ -10,6 +10,18 @@ import { requireAuth } from "../middleware/auth";
 export const documents = new Hono<AppEnv>();
 documents.use("*", requireAuth);
 
+// Same duplicated list as applications.ts/admin.ts (tracked separately as Q2) — staff can
+// download/view any customer's documents; a customer may only reach their own.
+const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
+
+function assertOwnsDocument(c: any, documentCustomerId: number) {
+  const authUser = c.get("authUser");
+  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (authUser.id !== documentCustomerId) {
+    throw new AppError("Forbidden.", 403);
+  }
+}
+
 // Enough for a scanned payslip/ID photo or a multi-page PDF, small enough to keep a single
 // upload from being a disproportionate R2 storage cost.
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -82,6 +94,7 @@ async function serveGenerated(c: any, disposition: "attachment" | "inline") {
   const docId = Number(c.req.param("docId"));
   const [doc] = await db.select().from(generatedDocuments).where(eq(generatedDocuments.id, docId)).limit(1);
   if (!doc) throw new AppError(`Document not found: ${docId}`);
+  assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.filePath);
   if (!obj) throw new AppError(`Document not found: ${docId}`);
   return new Response(obj.body, {
@@ -144,6 +157,7 @@ async function serveUploaded(c: any, disposition: "attachment" | "inline") {
   const id = Number(c.req.param("id"));
   const [doc] = await db.select().from(uploadedDocuments).where(eq(uploadedDocuments.id, id)).limit(1);
   if (!doc) throw new AppError(`Uploaded document not found: ${id}`);
+  assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.storagePath);
   if (!obj) throw new AppError(`Uploaded document not found: ${id}`);
   return new Response(obj.body, {

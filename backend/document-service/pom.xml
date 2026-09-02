@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.5</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -22,7 +22,7 @@
         <itext.version>7.2.5</itext.version>
         <jjwt.version>0.11.5</jjwt.version>
         <!-- Same train as api-gateway's/service-registry's Spring Cloud dependencies. -->
-        <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
     </properties>
 
     <dependencies>

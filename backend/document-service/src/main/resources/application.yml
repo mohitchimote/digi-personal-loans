@@ -28,7 +28,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
   servlet:
     multipart:
       max-file-size: 10MB
@@ -49,3 +49,10 @@ management:
 document:
   storage:
     path: ./document-store
+
+logging:
+  pattern:
+    # Injects CorrelationIdFilter's MDC value next to the log level (S4, ARCHITECTURE_REVIEW_GAPS.md)
+    # — e.g. "INFO [a1b2c3d4-...]" — so a request's log lines across every service it touches can be
+    # grepped out by one ID. ":-" default keeps startup/background logs (no request in flight) clean.
+    level: "%5p [%X{correlationId:-}]"

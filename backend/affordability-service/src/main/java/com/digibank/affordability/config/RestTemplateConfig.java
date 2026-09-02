@@ -1,6 +1,7 @@
 package com.digibank.affordability.config;
 
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import com.digibank.affordability.observability.CorrelationIdRequestInterceptor;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -14,10 +15,11 @@ import java.time.Duration;
 public class RestTemplateConfig {
 
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+    public RestTemplate restTemplate(RestTemplateBuilder builder, CorrelationIdRequestInterceptor correlationIdRequestInterceptor) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(3))
-                .setReadTimeout(Duration.ofSeconds(8))
+                .connectTimeout(Duration.ofSeconds(3))
+                .readTimeout(Duration.ofSeconds(8))
+                .additionalInterceptors(correlationIdRequestInterceptor)
                 .build();
     }
 }

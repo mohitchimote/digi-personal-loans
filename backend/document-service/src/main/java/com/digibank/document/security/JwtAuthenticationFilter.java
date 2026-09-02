@@ -24,8 +24,8 @@ import java.util.List;
 /**
  * Validates the JWT issued by auth-service. This service owns no user table, so — unlike
  * auth-service's own filter — authentication is derived entirely from the token's signed claims
- * (role), never a database lookup. See auth-service's AuthService.buildAuthResponse for where
- * those claims are embedded at issuance.
+ * (role, userId), never a database lookup. See auth-service's AuthService.buildAuthResponse for
+ * where those claims are embedded at issuance.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -60,8 +60,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String role = claims.get("role", String.class);
             if (role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                AuthenticatedUser principal = new AuthenticatedUser(
+                        claims.getSubject(), claims.get("userId", Long.class), role);
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(claims.getSubject(), null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }

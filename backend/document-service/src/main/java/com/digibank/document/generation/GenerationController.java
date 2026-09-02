@@ -1,11 +1,15 @@
 package com.digibank.document.generation;
 
 import com.digibank.document.generation.dto.DocumentGenerationRequest;
+import com.digibank.document.security.AuthenticatedUser;
+import com.digibank.document.security.CurrentUser;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Document generation context (ARCHITECTURE.md §10) — split out of the old DocumentController.
@@ -14,6 +18,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/documents")
 public class GenerationController {
+
+    // Same duplicated list as StorageController/application-service's SecurityConfig (Q2) —
+    // staff can view/download any customer's documents; a customer may only reach their own (S1).
+    private static final Set<String> STAFF_ROLES = Set.of(
+            "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN");
+
+    private static void assertOwnsDocument(Long documentCustomerId) {
+        AuthenticatedUser user = CurrentUser.get();
+        if (STAFF_ROLES.contains(user.role())) return;
+        if (!user.userId().equals(documentCustomerId)) {
+            throw new AccessDeniedException("Forbidden.");
+        }
+    }
 
     private final GenerationService generationService;
 
@@ -48,6 +65,7 @@ public class GenerationController {
     @GetMapping("/{docId}/download")
     public ResponseEntity<byte[]> download(@PathVariable Long docId) throws IOException {
         GeneratedDocument doc = generationService.getGeneratedById(docId);
+        assertOwnsDocument(doc.getCustomerId());
         byte[] bytes = generationService.getGeneratedBytes(docId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getDocumentName() + ".pdf\"")
@@ -58,6 +76,7 @@ public class GenerationController {
     @GetMapping("/{docId}/view")
     public ResponseEntity<byte[]> view(@PathVariable Long docId) throws IOException {
         GeneratedDocument doc = generationService.getGeneratedById(docId);
+        assertOwnsDocument(doc.getCustomerId());
         byte[] bytes = generationService.getGeneratedBytes(docId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getDocumentName() + ".pdf\"")
