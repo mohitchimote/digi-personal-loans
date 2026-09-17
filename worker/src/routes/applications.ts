@@ -22,6 +22,7 @@ import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
 import { generateOfferPack } from "../lib/document-pack";
 import { authoriseCardPayment } from "../lib/card-payment";
 import { logError } from "../lib/log";
+import { recordAudit } from "../lib/audit";
 import { requireAuth, assertRole } from "../middleware/auth";
 import { cached, invalidate } from "../lib/cache";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
@@ -156,6 +157,17 @@ async function addNote(
       createdAt: new Date().toISOString(),
     })
     .returning();
+
+  // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — every decisioning action funnels through this
+  // one function, so this is the single hook point for all of them (decline/send-back/approve/
+  // refer/disbursement/second-check/edit/note), same shape as the Java side's AuditTrailService.
+  await recordAudit(db, {
+    eventType: noteType,
+    subjectType: "LoanApplication",
+    subjectId: appRef,
+    actor: createdBy,
+    detail: note,
+  });
 
   if (noteType === "CLARIFICATION_REQUEST" || noteType === "DOCUMENT_REQUEST") {
     const isDocRequest = noteType === "DOCUMENT_REQUEST";

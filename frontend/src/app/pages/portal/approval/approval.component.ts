@@ -18,7 +18,7 @@ export class ApprovalComponent implements OnInit {
   application = signal<LoanApplication | null>(null);
   generating = signal(false);
   generated = signal(false);
-  docId = signal<number | null>(null);
+  docId = signal<string | null>(null);
   finalLetter = signal<GeneratedDocument | null>(null);
   documentsUploaded = signal(false);
   allDocs = signal<GeneratedDocument[]>([]);

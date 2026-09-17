@@ -22,7 +22,7 @@ export class NotificationService {
       .subscribe(r => this.unreadCount.set(r.count));
   }
 
-  markRead(id: number): Observable<Notification> {
+  markRead(id: string): Observable<Notification> {
     return this.http.put<Notification>(`${API}/${id}/read`, {});
   }
 

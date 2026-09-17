@@ -8,6 +8,7 @@ import { generateOfferPack } from "../lib/document-pack";
 import { requireAuth } from "../middleware/auth";
 import { STAFF_ROLES } from "../lib/roles";
 import { isAllowedUpload } from "../lib/file-signature";
+import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
 export const documents = new Hono<AppEnv>();
 documents.use("*", requireAuth);
@@ -18,6 +19,17 @@ function assertOwnsDocument(c: any, documentCustomerId: number) {
   if (authUser.id !== documentCustomerId) {
     throw new AppError("Forbidden.", 403);
   }
+}
+
+// S6 (ARCHITECTURE_REVIEW_GAPS.md) — opaque ids at the API boundary; see lib/opaque-id.ts. Two
+// prefixes since generatedDocuments and uploadedDocuments are separate tables with overlapping
+// numeric ids — without namespacing, a "doc" id could collide with an "upl" id under the same
+// obfuscated value.
+function toGeneratedDocSummary(doc: typeof generatedDocuments.$inferSelect) {
+  return { ...doc, id: encodeOpaqueId("doc", doc.id) };
+}
+function toUploadedDocSummary(doc: typeof uploadedDocuments.$inferSelect) {
+  return { ...doc, id: encodeOpaqueId("upl", doc.id) };
 }
 
 // Enough for a scanned payslip/ID photo or a multi-page PDF, small enough to keep a single
@@ -61,7 +73,7 @@ documents.post("/generate", async (c) => {
   }
 
   const pack = await generateOfferPack(db, c.env, req, req.documentType === "FINAL_APPROVAL_LETTER");
-  return c.json(pack);
+  return c.json(pack.map(toGeneratedDocSummary));
 });
 
 documents.get("/customer/:customerId", async (c) => {
@@ -72,7 +84,7 @@ documents.get("/customer/:customerId", async (c) => {
     .from(generatedDocuments)
     .where(eq(generatedDocuments.customerId, customerId))
     .orderBy(desc(generatedDocuments.generatedAt));
-  return c.json(rows);
+  return c.json(rows.map(toGeneratedDocSummary));
 });
 
 documents.get("/application/:appRef", async (c) => {
@@ -83,18 +95,19 @@ documents.get("/application/:appRef", async (c) => {
     .from(generatedDocuments)
     .where(eq(generatedDocuments.applicationRef, appRef))
     .orderBy(desc(generatedDocuments.generatedAt));
-  return c.json(rows);
+  return c.json(rows.map(toGeneratedDocSummary));
 });
 
 async function serveGenerated(c: any, disposition: "attachment" | "inline") {
   const bucket = requireBucket(c);
   const db = getDb(c.env.DB);
-  const docId = Number(c.req.param("docId"));
+  const rawDocId = c.req.param("docId");
+  const docId = decodeOpaqueId("doc", rawDocId);
   const [doc] = await db.select().from(generatedDocuments).where(eq(generatedDocuments.id, docId)).limit(1);
-  if (!doc) throw new AppError(`Document not found: ${docId}`);
+  if (!doc) throw new AppError(`Document not found: ${rawDocId}`);
   assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.filePath);
-  if (!obj) throw new AppError(`Document not found: ${docId}`);
+  if (!obj) throw new AppError(`Document not found: ${rawDocId}`);
   return new Response(obj.body, {
     headers: {
       "Content-Type": "application/pdf",
@@ -140,7 +153,7 @@ documents.post("/upload", async (c) => {
       uploadedAt: new Date().toISOString(),
     })
     .returning();
-  return c.json(saved);
+  return c.json(toUploadedDocSummary(saved));
 });
 
 documents.get("/uploaded/:appRef", async (c) => {
@@ -151,18 +164,19 @@ documents.get("/uploaded/:appRef", async (c) => {
     .from(uploadedDocuments)
     .where(eq(uploadedDocuments.applicationRef, appRef))
     .orderBy(desc(uploadedDocuments.uploadedAt));
-  return c.json(rows);
+  return c.json(rows.map(toUploadedDocSummary));
 });
 
 async function serveUploaded(c: any, disposition: "attachment" | "inline") {
   const bucket = requireBucket(c);
   const db = getDb(c.env.DB);
-  const id = Number(c.req.param("id"));
+  const rawId = c.req.param("id");
+  const id = decodeOpaqueId("upl", rawId);
   const [doc] = await db.select().from(uploadedDocuments).where(eq(uploadedDocuments.id, id)).limit(1);
-  if (!doc) throw new AppError(`Uploaded document not found: ${id}`);
+  if (!doc) throw new AppError(`Uploaded document not found: ${rawId}`);
   assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.storagePath);
-  if (!obj) throw new AppError(`Uploaded document not found: ${id}`);
+  if (!obj) throw new AppError(`Uploaded document not found: ${rawId}`);
   return new Response(obj.body, {
     headers: {
       "Content-Type": doc.mimeType ?? "application/octet-stream",

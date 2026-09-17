@@ -416,7 +416,7 @@ export interface BankRelationshipAccount {
 }
 
 export interface Notification {
-  id: number;
+  id: string;
   customerId: number;
   title: string;
   message: string;
@@ -427,7 +427,7 @@ export interface Notification {
 }
 
 export interface GeneratedDocument {
-  id: number;
+  id: string;
   applicationRef: string;
   customerId: number;
   documentType: string;
@@ -439,7 +439,7 @@ export interface GeneratedDocument {
 }
 
 export interface UploadedDocument {
-  id: number;
+  id: string;
   applicationRef: string;
   customerId: number;
   documentType: string;

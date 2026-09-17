@@ -234,6 +234,23 @@ export const mandateRules = sqliteTable("mandate_rules", {
   ceoLimit: real("ceo_limit").notNull().default(999999999),
 });
 
+// Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — compliance audit trail, distinct from
+// underwritingNotes above (that one is customer/staff-facing case notes; this one is a flat,
+// append-only record of auditable state changes, not shown in any UI). actorRole is only populated
+// from admin.ts's staff-management routes, which already have the full authUser in scope — the
+// decisioning routes only pass a display-name string (see applications.ts's addNote), so it stays
+// null there rather than risk misattributing a role.
+export const auditLog = sqliteTable("audit_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  occurredAt: text("occurred_at").notNull(),
+  eventType: text("event_type").notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id").notNull(),
+  actor: text("actor"),
+  actorRole: text("actor_role"),
+  detail: text("detail"),
+});
+
 // One row per lifecycle event key (see lib/email-events.ts's EVENT_REGISTRY for the fixed list of
 // valid keys). Rows are lazily seeded on first read rather than pre-populated by a migration, so
 // the event list can grow later without a schema change — see lib/email.ts's getOrSeedTemplate.

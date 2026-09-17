@@ -4,6 +4,7 @@ import com.digibank.document.generation.dto.DocumentGenerationRequest;
 import com.digibank.document.security.AuthenticatedUser;
 import com.digibank.document.security.CurrentUser;
 import com.digibank.document.security.StaffRoles;
+import com.digibank.document.util.OpaqueId;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
@@ -58,10 +59,11 @@ public class GenerationController {
     }
 
     @GetMapping("/{docId}/download")
-    public ResponseEntity<byte[]> download(@PathVariable Long docId) throws IOException {
-        GeneratedDocument doc = generationService.getGeneratedById(docId);
+    public ResponseEntity<byte[]> download(@PathVariable String docId) throws IOException {
+        Long decoded = OpaqueId.decode("doc", docId);
+        GeneratedDocument doc = generationService.getGeneratedById(decoded);
         assertOwnsDocument(doc.getCustomerId());
-        byte[] bytes = generationService.getGeneratedBytes(docId);
+        byte[] bytes = generationService.getGeneratedBytes(decoded);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getDocumentName() + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
@@ -69,10 +71,11 @@ public class GenerationController {
     }
 
     @GetMapping("/{docId}/view")
-    public ResponseEntity<byte[]> view(@PathVariable Long docId) throws IOException {
-        GeneratedDocument doc = generationService.getGeneratedById(docId);
+    public ResponseEntity<byte[]> view(@PathVariable String docId) throws IOException {
+        Long decoded = OpaqueId.decode("doc", docId);
+        GeneratedDocument doc = generationService.getGeneratedById(decoded);
         assertOwnsDocument(doc.getCustomerId());
-        byte[] bytes = generationService.getGeneratedBytes(docId);
+        byte[] bytes = generationService.getGeneratedBytes(decoded);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + doc.getDocumentName() + ".pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)

@@ -10,6 +10,7 @@ import { AppError } from "../lib/errors";
 import { toUserSummary } from "../lib/user-mappers";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { STAFF_ROLES } from "../lib/roles";
+import { recordAudit } from "../lib/audit";
 
 export const admin = new Hono<AppEnv>();
 admin.use("*", requireAuth, requireRole("ADMIN"));
@@ -41,6 +42,15 @@ admin.put("/users/:id/role", zValidator("json", z.object({ role: z.string() })),
     .set({ role, sessionsRevokedAt: new Date().toISOString() })
     .where(eq(users.id, id))
     .returning();
+  const actor = c.get("authUser");
+  await recordAudit(db, {
+    eventType: "ROLE_CHANGED",
+    subjectType: "User",
+    subjectId: String(id),
+    actor: actor.fullName?.trim() || actor.email,
+    actorRole: actor.role,
+    detail: `${user.role} -> ${role}`,
+  });
   return success(c, "Role updated.", toUserSummary(updated));
 });
 
@@ -57,6 +67,14 @@ admin.put("/users/:id/enabled", zValidator("json", z.object({ enabled: z.boolean
     .set({ enabled, sessionsRevokedAt: new Date().toISOString() })
     .where(eq(users.id, id))
     .returning();
+  const actor = c.get("authUser");
+  await recordAudit(db, {
+    eventType: enabled ? "USER_ENABLED" : "USER_DISABLED",
+    subjectType: "User",
+    subjectId: String(id),
+    actor: actor.fullName?.trim() || actor.email,
+    actorRole: actor.role,
+  });
   return success(c, "User updated.", toUserSummary(updated));
 });
 
@@ -94,6 +112,15 @@ admin.post("/users", zValidator("json", createStaffSchema), async (c) => {
       emailVerified: true,
     })
     .returning();
+  const actor = c.get("authUser");
+  await recordAudit(db, {
+    eventType: "STAFF_USER_CREATED",
+    subjectType: "User",
+    subjectId: String(saved.id),
+    actor: actor.fullName?.trim() || actor.email,
+    actorRole: actor.role,
+    detail: `role=${body.role}`,
+  });
   return success(c, "Staff user created.", toUserSummary(saved), 201);
 });
 
@@ -106,6 +133,14 @@ admin.delete("/users/:id", async (c) => {
     return fail(c, "Only customer records can be deleted.");
   }
   await db.delete(users).where(eq(users.id, id));
+  const actor = c.get("authUser");
+  await recordAudit(db, {
+    eventType: "USER_DELETED",
+    subjectType: "User",
+    subjectId: String(id),
+    actor: actor.fullName?.trim() || actor.email,
+    actorRole: actor.role,
+  });
   return c.body(null, 204);
 });
 

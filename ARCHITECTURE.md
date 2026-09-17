@@ -442,6 +442,55 @@ Full detail (endpoint-by-endpoint responsibilities, the ESB's expected sync/asyn
 `DigiLend_Production_Architecture.docx` §2.8/§3.4/§9 — source of record, don't duplicate-drift from
 it here.
 
+### 6.8 Opaque ids at the API boundary (S6, ARCHITECTURE_REVIEW_GAPS.md)
+
+Internal primary keys are, and stay, plain sequential auto-increment integers everywhere — no
+schema migration. Only the JSON/path-param boundary is opaque, via a reversible keyed bijection
+(multiply-mod-prime, same technique Hashids/Sqids use) implemented independently per stack:
+`worker/src/lib/opaque-id.ts` and one `util.OpaqueId` class per Java service (document-service,
+notification-service — duplicated, not shared, per §6.7's/Q2's no-cross-service-module constraint).
+This is obfuscation against casual enumeration/business-intelligence leakage, **not cryptographic
+security** — the algorithm is in the source, so a determined attacker with source access can
+reverse it. The actual access-control fix is the ownership checks from S1/S6; this sits on top as
+defense-in-depth.
+
+Applied so far to the two surfaces that had a real ownership gap before S1/S6 (documents,
+notifications) — a JPA entity's real `id` field gets `@JsonIgnore` plus a `@JsonProperty("id")`
+`getOpaqueId()` override (Java), or a route-layer mapper function wraps the row before it's
+returned (Worker). Deliberately **not** applied to `users.id`/admin routes this round — staff-only,
+lower enumeration value, would also touch the admin-users frontend component — left as residual if
+ever prioritized. Extending this pattern to a new entity: add the encode call where the entity/row
+becomes a response, add the decode call wherever its opaque form comes back in as a path param, pick
+a prefix not already used in that service.
+
+### 6.9 Compliance audit trail (Open Point #19, ARCHITECTURE_REVIEW_GAPS.md)
+
+A flat, append-only `audit_log` table, resolved in favour of a shared MySQL `digibank_audit` schema
+over a separate MongoDB-based store (no new infra to run, same reasoning as the S2/S5 Redis
+decision) — Worker equivalent is just another table in the same D1 database, since the Worker has
+no per-service schema separation to begin with. Distinct from `AuditTrailService`'s
+`underwriting_notes` (§10, `application-service`'s `audittrail` package) — that one is a
+customer/staff-facing case timeline shown in the UI; this one is never shown anywhere, exists only
+for compliance/forensics.
+
+One `ComplianceAuditWriter` per writing service (duplicated, same §6.7/Q2 constraint) — its own
+small Hikari pool + `JdbcTemplate` against `digibank_audit`, deliberately outside the JPA-managed
+primary datasource (a second `EntityManagerFactory` for one small table would be disproportionate).
+`record(...)` is swallow-all: a compliance write must never block the real action it's recording,
+same convention as this codebase's other non-critical adapter side effects (N1's card-payment call,
+`generateFinalApprovalLetter`).
+
+Wired so far: `application-service`'s `AuditTrailService.addNote` (single hook point — every
+decisioning action and every wizard edit/note already funnels through it, so one call site covers
+all of them) and `auth-service`'s `UserAdminController` (role change/enable/disable/staff
+create/delete, actor captured from `SecurityContextHolder`). Worker mirrors both: `applications.ts`'s
+`addNote` and `admin.ts`'s staff-management routes. Actor role is only populated where the caller's
+raw role is in scope at the call site (admin actions); decisioning actions only have a display-name
+string, so `actorRole` stays null there rather than risk misattributing one (see the worker
+schema's comment on `auditLog`). Extending this to a new service: copy `ComplianceAuditWriter`,
+give it that service's own name as the `service` column value, call `record(...)` at the point of
+state change.
+
 ## 7. Frontend architecture
 
 - **Standalone components throughout** (no NgModules), signals for local component state,

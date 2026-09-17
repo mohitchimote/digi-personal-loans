@@ -3,6 +3,7 @@ package com.digibank.application.audittrail;
 import com.digibank.application.client.EmailClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.client.NotificationText;
+import com.digibank.application.compliance.ComplianceAuditWriter;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
 import com.digibank.application.repository.LoanApplicationRepository;
@@ -27,14 +28,17 @@ public class AuditTrailService {
     private final NotificationClient notificationClient;
     private final NotificationText text;
     private final EmailClient emailClient;
+    private final ComplianceAuditWriter complianceAuditWriter;
 
     public AuditTrailService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
-                              NotificationClient notificationClient, NotificationText text, EmailClient emailClient) {
+                              NotificationClient notificationClient, NotificationText text, EmailClient emailClient,
+                              ComplianceAuditWriter complianceAuditWriter) {
         this.repository = repository;
         this.noteRepository = noteRepository;
         this.notificationClient = notificationClient;
         this.text = text;
         this.emailClient = emailClient;
+        this.complianceAuditWriter = complianceAuditWriter;
     }
 
     @Transactional
@@ -47,6 +51,11 @@ public class AuditTrailService {
         entity.setNoteType(noteType);
         entity.setCreatedBy(createdBy);
         UnderwritingNote saved = noteRepository.save(entity);
+
+        // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — every decisioning action (decline/send-back/
+        // approve/refer/disbursement/second-check) and every wizard edit/note funnels through this
+        // one method, so this is the single hook point for all of them.
+        complianceAuditWriter.record(noteType, "LoanApplication", appRef, createdBy, note);
 
         if ("CLARIFICATION_REQUEST".equals(noteType) || "DOCUMENT_REQUEST".equals(noteType)) {
             boolean isDocRequest = "DOCUMENT_REQUEST".equals(noteType);

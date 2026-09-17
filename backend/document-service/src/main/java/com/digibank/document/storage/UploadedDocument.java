@@ -1,5 +1,8 @@
 package com.digibank.document.storage;
 
+import com.digibank.document.util.OpaqueId;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -8,7 +11,14 @@ import java.time.LocalDateTime;
 public class UploadedDocument {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
     private Long id;
+
+    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — the real numeric id never crosses the API boundary; every
+    // response carries this opaque token in its place, decoded back by OpaqueId.decode wherever a
+    // controller receives one as a path variable.
+    @JsonProperty("id")
+    public String getOpaqueId() { return OpaqueId.encode("upl", id); }
 
     @Column(nullable = false) private String applicationRef;
     @Column(nullable = false) private Long customerId;

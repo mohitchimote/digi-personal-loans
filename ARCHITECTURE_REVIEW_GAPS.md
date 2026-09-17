@@ -107,6 +107,35 @@ pdf`, `pymupdf`), not just by reading the XML:
 - Swept the full 7-slide deck's text and the full doc for `user-auth`/`DigiLend_auth`/`DigiLend_app`/
   `iText` regressions — none found; both files clean.
 
+**Open Point #19 resolved (2026-09-17) — MySQL `digibank_audit`, plus a first basic implementation**
+(user decision: resolve the decision *and* build a first working slice, not just document the
+choice). MySQL wins over a separate MongoDB-based store for the same reason Redis was rejected for
+S2/S5 — no new infra to stand up and run; the schema already existed as a documented concept since
+2026-09-08, this just makes it real. Full architecture pattern (why one flat table, why its own
+Hikari pool instead of a second JPA `EntityManagerFactory`, the swallow-all write convention) is in
+`ARCHITECTURE.md` §6.9 — not duplicated here.
+
+- **What's covered**: every decisioning action and wizard edit/note (`application-service`'s
+  `AuditTrailService.addNote` — one hook point, covers decline/send-back/approve/refer/disbursement/
+  second-check/edit/note uniformly) and every staff-management action (`auth-service`'s
+  `UserAdminController` — role change, enable/disable, staff create/delete). Worker mirrors both
+  (`applications.ts`'s `addNote`, `admin.ts`'s staff routes) into a new `auditLog` D1 table
+  (migration `0009_sticky_callisto.sql`).
+- **What's NOT covered, deliberately** (a first slice, not a comprehensive audit trail): customer
+  self-service actions that don't call `addNote` (e.g. `approveApplication`'s conditional-approval
+  path), and every other service (affordability-service, product-service, document-service,
+  notification-service, rule-service, integration-service) — none of them currently perform a state
+  change that seemed worth auditing on this first pass. Extend using the `ARCHITECTURE.md` §6.9
+  recipe when one does.
+- `mvnd compile` clean on `application-service` and `auth-service`; `npx tsc --noEmit` clean on the
+  worker; the D1 migration was generated and applied to the local database. **Not runtime-verified
+  against a live MySQL round-trip this session** — no local DB credentials (`DB_USERNAME`/
+  `DB_PASSWORD`) were available in this environment to actually start `auth-service`/
+  `application-service` against MySQL and confirm a row lands in `digibank_audit.audit_log`.
+  Flagging honestly rather than claiming full verification, per this project's standing
+  verify-before-claiming-done convention — worth a real end-to-end check (trigger a decline, a role
+  change, query the table) next time the Java stack is actually run.
+
 **C6 note (2026-09-08)**: the user made a further LibreOffice edit to the deck and asked for another
 full deck-vs-doc consistency pass. Rather than a layout regression this time, the pass surfaced a
 staleness gap that had survived every prior pass since G4 shipped (2026-09-01): grepped
@@ -391,8 +420,8 @@ visible next to the review, not just buried in that document's residual-findings
 | S2 | **No session/token revocation** — JWTs are stateless, 24h, no refresh or blacklist. If a staff member's role changes or they leave, their token is valid until natural expiry. (Doc Open Point 9.) | P1 | M | Done — see note below |
 | S3 | **No malware/content scanning on uploads** — path-traversal is fixed (`PRODUCTION_READINESS.md` §5 finding 3); nothing inspects file content or type before storage. (Doc Open Point 7.) | P1 | M | Partially done (type/signature validation shipped; real malware scanning needs new infra — see note below) |
 | S4 | **No distributed tracing, no correlation ID, no structured logging** — see C1 above. Needed for both the deck's own claim to become true and for any real multi-service debugging once `rule-service`/`integration-service` exist. | P1 | M | Partially done — correlation ID and structured logging shipped and verified; full distributed tracing remains out of scope, see note below |
-| S5 | **No gateway-level rate limiting** — Spring Cloud Gateway's `RequestRateLimiter` needs Redis, which isn't present; nothing throttles a client anywhere in the app layer (`PRODUCTION_READINESS.md` §2/§4 — correctly scoped as partly a client-infra WAF/edge concern, but the Redis-backed in-app option is also just absent). | P2 | M | Partially done (Java shipped; worker needs a dashboard action — see note below) |
-| S6 | **Numeric sequential IDs used as public identifiers** — makes S1 trivially enumerable once authenticated. Opaque-ID hardening touches every DTO/repository that exposes these fields (`PRODUCTION_READINESS.md` §5 finding 9, LOW, explicitly deferred). | P2 | M | Partially done (real IDOR fixed, opaque IDs deferred — see note below) |
+| S5 | **No gateway-level rate limiting** — Spring Cloud Gateway's `RequestRateLimiter` needs Redis, which isn't present; nothing throttles a client anywhere in the app layer (`PRODUCTION_READINESS.md` §2/§4 — correctly scoped as partly a client-infra WAF/edge concern, but the Redis-backed in-app option is also just absent). | P2 | M | Done — Java side is the item that matters (see note below); worker/Cloudflare side deliberately not pursued |
+| S6 | **Numeric sequential IDs used as public identifiers** — makes S1 trivially enumerable once authenticated. Opaque-ID hardening touches every DTO/repository that exposes these fields (`PRODUCTION_READINESS.md` §5 finding 9, LOW, explicitly deferred). | P2 | M | Done — API-boundary obfuscation shipped for documents/notifications in both stacks, see note below |
 | S7 | **Spring Boot 3.2.5 is several patch releases behind current** — no CVE research done; recommend a deliberate, tested bump rather than folding into another change, given there's no CI/test suite yet to catch a regression (`PRODUCTION_READINESS.md` §5 finding 8). | P2 | L (re-scoped from S) | Done — runtime-verified, see note below |
 | S8 | **No field/shape validation on wizard section saves** — `PUT /:appRef/section` and `/section-by-underwriter` accepted `data: Record<string, unknown>` (worker) / `Map<String, Object>` (Java) and stored it verbatim: any channel could submit an arbitrary JSON blob under any section key, with no check that it matched that section's actual shape. Raised directly in the 2026-09-09 architecture review (`Architecture Review Notes.docx`, "Field Exposure Controls"/"Channel-Specific Validation") — banking applications undergo intensive pen-testing and unrecognised fields "should not be returned or accepted." | P1 | M | Done — see note below |
 | S9 | **POST-not-GET for banking integrations, and `integration-service`'s ESB placement** — same 2026-09-09 review, "Secure Channel And API Design"/"POST-Based Integration" and "Enterprise Integration And ESB Placement": GET is discouraged for banking calls (use a POST wrapper object); `integration-service` should stay a lightweight internal gateway, not a parallel ESB. | P2 | S | Done — mostly already true, one real gap fixed; see note below |
@@ -699,6 +728,41 @@ the record; staff roles bypass) rather than opaque IDs:
 - `mvnd compile` clean on `notification-service` and `application-service`; `npx tsc --noEmit` clean
   on the worker.
 
+**S6 remainder note (2026-09-17) — opaque ids, resolved as API-boundary obfuscation, not a schema
+migration** (user decision, given full-migration effort/risk for a demo app): internal auto-increment
+PKs are unchanged everywhere; a reversible keyed bijection (multiply-mod-prime over a >2^32 prime,
+the same technique Hashids/Sqids use) obfuscates ids only where they cross the API boundary. This is
+obfuscation against casual enumeration, not cryptographic security — documented as such in both
+implementations and in ARCHITECTURE.md §6.8. Verified with a standalone throwaway roundtrip+collision
+test (200k sequential values, zero collisions) in both TypeScript and Java before wiring it in.
+
+- **Worker**: new `lib/opaque-id.ts` (`encodeOpaqueId`/`decodeOpaqueId`, prefix-namespaced —
+  `"doc"`/`"upl"`/`"ntf"`). Wired into `documents.ts` (both `generatedDocuments` and
+  `uploadedDocuments` — list endpoints map rows through a summary function, the four
+  download/view/upload endpoints decode the path param) and `notifications.ts` (`toNotificationSummary`,
+  the `PUT /:id/read` path param). `admin.ts`/`users.id` deliberately left alone — see below.
+- **Java**: one `util.OpaqueId` class per service (`document-service`, `notification-service` —
+  duplicated per the Q2 constraint, not shared). `UploadedDocument`/`GeneratedDocument`/`Notification`
+  entities get `@JsonIgnore` on the real `id` field plus a `@JsonProperty("id")` `getOpaqueId()`
+  override, so every existing response (list endpoints, upload/create) is opaque with no controller
+  change; the four `@PathVariable Long id/docId` download/view/mark-read endpoints changed to
+  `String` and decode explicitly.
+- **Frontend**: `Notification`/`GeneratedDocument`/`UploadedDocument.id` typed `string` (was
+  `number`); `docId` signals in both approval components updated to match. Every call site already
+  treated `id` as an opaque token passed straight into a URL (never arithmetic), so this was a type
+  change with no logic change — confirmed with a full `ng build`, zero errors.
+- **Deliberately not touched**: `users.id`/admin routes (`GET/PUT/POST/DELETE /admin/users/**`) —
+  staff-only (ADMIN role required), lower enumeration value than the two customer-facing surfaces
+  above, and would also require updating the admin-users frontend component's typing. Left as this
+  item's residual if ever prioritized further.
+- `mvnd compile` clean on `document-service` and `notification-service`; `npx tsc --noEmit` clean on
+  the worker; `ng build --configuration production` clean on the frontend. **Not runtime-verified
+  against a live MySQL/HTTP round-trip this session** — no local DB credentials were available in
+  this environment (see the S2/audit-trail notes for the same caveat) — the worker side did get the
+  D1 migration applied locally, but not exercised through a live HTTP request. Flagging honestly
+  rather than claiming full verification; worth a real end-to-end pass (upload → list → download by
+  the returned opaque id) next time the app is actually run.
+
 **S2 note (2026-09-09)**: no Redis (decided before starting). Design: a per-user
 `sessionsRevokedAt` timestamp, checked against the token's own `iat` (issued-at) — every token
 issued before that timestamp is rejected on its next use, regardless of its own expiry. One
@@ -796,6 +860,14 @@ no alternative implementation.
   fallback is a D1-backed counter in `requireAuth`/a new middleware — more code, slower, only worth
   it if avoiding the dashboard matters more than the simplicity of the native rule.
 
+**S5 remainder note (2026-09-17)** — user decision: the worker/Cloudflare side is explicitly out of
+scope going forward. This sandbox's Worker deployment is not the production target — production
+will run on the customer's own environment (Java, not Cloudflare Workers) — so a dashboard action
+scoped to this sandbox's Cloudflare account has no bearing on the actual production posture. Marked
+**Done** on the strength of the Java-side fix above, which is the item that matters; the
+dashboard-rule recommendation above stays written down for whoever operates this sandbox, but is no
+longer tracked as a blocking gap.
+
 ---
 
 ## 5. Quick wins (small, already fully scoped, no dependency)
@@ -875,4 +947,5 @@ their detail:
 5. **After a spec exists, not before**: N1–N3 (card payments, core banking, reporting warehouse) — none of these are engineering-ready yet regardless of how much delivery capacity is available.
 6. **Done**: S7 (Spring Boot 3→4 migration, re-scoped from a patch bump to a major-version jump once the real EOL status was checked — see its note above).
 7. **Done**: S4's correlation-ID slice (request tracing across the gateway → service hop) — full distributed tracing and structured/JSON logging remain not-built, tracked as the same item's unfinished remainder.
-8. **Next up, not yet started**: S2, S3, S5, S6 (session revocation, upload malware scanning, gateway rate limiting, opaque IDs), and Q2/Q3 (STAFF_ROLES deduplication, branding polish) — none block each other or anything above.
+8. **Done**: S2, S5, S6, S8, S9, Q2, Q3, N1, and Open Point #19 (session revocation; Java-side rate limiting — worker/Cloudflare side deliberately dropped, see S5 remainder note; API-boundary opaque ids for documents/notifications; wizard section validation; POST-based integration cleanup; STAFF_ROLES dedup; branding polish; simulated card-payment adapter; MySQL `digibank_audit` compliance trail). S3 remains partial (type/signature validation shipped, real malware scanning needs new infra).
+9. **Remaining**: S3's malware-scanning remainder, N2-N3 (core banking, reporting warehouse — still not engineering-ready without a spec), the pending manual PowerPoint edit for C6, and whatever's left in §6's decisions-needed list.

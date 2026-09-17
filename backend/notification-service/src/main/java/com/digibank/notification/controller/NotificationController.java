@@ -4,6 +4,7 @@ import com.digibank.notification.model.Notification;
 import com.digibank.notification.security.AuthenticatedUser;
 import com.digibank.notification.security.CurrentUser;
 import com.digibank.notification.service.NotificationService;
+import com.digibank.notification.util.OpaqueId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
@@ -48,9 +49,10 @@ public class NotificationController {
     }
 
     @PutMapping("/{id}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
-        assertOwnsCustomerId(notificationService.getById(id).getCustomerId());
-        notificationService.markAsRead(id);
+    public ResponseEntity<Void> markAsRead(@PathVariable String id) {
+        Long decoded = OpaqueId.decode("ntf", id);
+        assertOwnsCustomerId(notificationService.getById(decoded).getCustomerId());
+        notificationService.markAsRead(decoded);
         return ResponseEntity.ok().build();
     }
 

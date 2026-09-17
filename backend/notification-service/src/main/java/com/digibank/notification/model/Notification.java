@@ -1,5 +1,8 @@
 package com.digibank.notification.model;
 
+import com.digibank.notification.util.OpaqueId;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -9,7 +12,13 @@ public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
     private Long id;
+
+    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — the real numeric id never crosses the API boundary; same
+    // pattern as document-service's UploadedDocument/GeneratedDocument.
+    @JsonProperty("id")
+    public String getOpaqueId() { return OpaqueId.encode("ntf", id); }
 
     @Column(nullable = false)
     private Long customerId;
