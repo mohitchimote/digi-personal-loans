@@ -20,8 +20,12 @@ import { getAutoApprovalThreshold } from "../lib/affordability-rules";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
 import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
 import { generateOfferPack } from "../lib/document-pack";
+import { authoriseCardPayment } from "../lib/card-payment";
+import { logError } from "../lib/log";
 import { requireAuth, assertRole } from "../middleware/auth";
 import { cached, invalidate } from "../lib/cache";
+import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
+import { STAFF_ROLES } from "../lib/roles";
 
 const MANDATE_RULES_CACHE_KEY = "mandate-rules";
 const MANDATE_RULES_TTL_MS = 30_000;
@@ -36,8 +40,6 @@ type WaitUntil = (promise: Promise<unknown>) => void;
 
 export const applications = new Hono<AppEnv>();
 applications.use("*", requireAuth);
-
-const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
 
 // The five-tier underwriting hierarchy's approval mandate limits, enforced server-side at the
 // point of decision per DigiLend_Production_Architecture.docx §5.2 ("there is no override; the
@@ -100,6 +102,31 @@ const BANKER_QUEUE_STATUSES = [
   "APPROVED",
 ];
 const CANCELLABLE_STATUSES = ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"];
+
+// Channel-specific field exposure control (2026-09 architecture review, "Field Exposure
+// Controls"/"Channel-Specific Validation"): every section save must match that section's known
+// shape exactly — unrecognised fields are rejected (400), not silently stored or stripped. Returns
+// the validated data so the JSON persisted is always exactly the parsed, in-shape value.
+function validateSectionData(section: string, data: unknown): Record<string, unknown> {
+  const schema = SECTION_SCHEMAS[section];
+  if (!schema) throw new AppError(`Unknown section: ${section}`);
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new AppError(`Invalid data for section '${section}': ${formatZodIssues(result.error)}`);
+  }
+  return result.data as Record<string, unknown>;
+}
+
+// S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check at
+// all: any authenticated user could enumerate another customer's applications by guessing a numeric
+// customerId. Same fix shape as documents.ts's assertOwnsDocument (S1).
+function assertOwnsCustomerId(c: Context<AppEnv>, customerId: number) {
+  const authUser = c.get("authUser");
+  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (authUser.id !== customerId) {
+    throw new AppError("Forbidden.", 403);
+  }
+}
 
 async function getByRef(db: Db, appRef: string) {
   const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
@@ -206,7 +233,7 @@ async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
       true
     );
   } catch (e) {
-    console.error("generateFinalApprovalLetter failed (non-fatal):", e);
+    logError("generateFinalApprovalLetter failed (non-fatal)", e, { appRef });
   }
 }
 
@@ -272,7 +299,7 @@ async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$
     await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount, true, waitUntil);
   } catch (e) {
     // Auto-approval is a convenience; failures fall back to manual underwriter review.
-    console.error("maybeAutoApprove failed (non-fatal):", e);
+    logError("maybeAutoApprove failed (non-fatal)", e, { appRef: app.applicationRef });
   }
 }
 
@@ -513,15 +540,16 @@ applications.put("/:appRef/section", async (c) => {
   const app = await getByRef(db, appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
+  const validated = validateSectionData(section, data);
 
-  const merged = { ...app, [column]: JSON.stringify(data) };
+  const merged = { ...app, [column]: JSON.stringify(validated) };
   const newCurrentSection = nextSection(section, merged as any);
   const completionPercentage = calculateCompletion(merged as any);
 
   const [updated] = await db
     .update(loanApplications)
     .set({
-      [column]: JSON.stringify(data),
+      [column]: JSON.stringify(validated),
       status: "IN_PROGRESS",
       currentSection: newCurrentSection,
       completionPercentage,
@@ -542,10 +570,11 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   await getByRef(db, appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
+  const validated = validateSectionData(section, data);
 
   const [updated] = await db
     .update(loanApplications)
-    .set({ [column]: JSON.stringify(data), updatedAt: new Date().toISOString() })
+    .set({ [column]: JSON.stringify(validated), updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
@@ -674,6 +703,7 @@ applications.put("/mandate-rules", async (c) => {
 applications.get("/customer/:customerId", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  assertOwnsCustomerId(c, customerId);
   const rows = await db
     .select()
     .from(loanApplications)
@@ -685,6 +715,7 @@ applications.get("/customer/:customerId", async (c) => {
 applications.get("/customer/:customerId/current", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  assertOwnsCustomerId(c, customerId);
   const [app] = await db
     .select()
     .from(loanApplications)
@@ -964,9 +995,13 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
   const appRef = c.req.param("appRef");
   const reviewedBy = actorName(c);
   const app = await getByRef(db, appRef);
+  // N1 — generate-once-then-persist, same convention as businessFinancialsAnalysisJson: a repeat
+  // authorise call on the same application doesn't regenerate the synthetic transaction.
+  const cardPaymentResultJson = app.cardPaymentResultJson
+    ?? JSON.stringify(authoriseCardPayment(appRef, app.approvedAmount));
   const [updated] = await db
     .update(loanApplications)
-    .set({ disbursementStatus: "FUNDS_RELEASED", updatedAt: new Date().toISOString() })
+    .set({ disbursementStatus: "FUNDS_RELEASED", cardPaymentResultJson, updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
   await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", reviewedBy, (p) => c.executionCtx.waitUntil(p));

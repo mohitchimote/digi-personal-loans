@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,9 @@ public class UserAdminController {
     public ResponseEntity<ApiResponse<UserSummaryResponse>> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
         user.setRole(body.get("role"));
+        // S2 — a role change invalidates any token already issued for this user; without this, the
+        // old role's permissions stay live in the token's claims until natural (24h) expiry.
+        user.setSessionsRevokedAt(LocalDateTime.now());
         userRepository.save(user);
         return ResponseEntity.ok(ApiResponse.success("Role updated.", UserSummaryResponse.from(user)));
     }
@@ -62,6 +66,8 @@ public class UserAdminController {
     public ResponseEntity<ApiResponse<UserSummaryResponse>> setEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
         user.setEnabled(Boolean.TRUE.equals(body.get("enabled")));
+        // S2 — disabling a user invalidates any token already issued for them immediately.
+        user.setSessionsRevokedAt(LocalDateTime.now());
         userRepository.save(user);
         return ResponseEntity.ok(ApiResponse.success("User updated.", UserSummaryResponse.from(user)));
     }

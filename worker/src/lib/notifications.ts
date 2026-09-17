@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { notifications, users } from "../db/schema";
 import type { Lang } from "./app-format";
+import { logError } from "./log";
 
 /** Server-generated content (this file, sendTemplatedEmail) has no other way to know which
  * language to write in — the frontend's language toggle is purely client-side (localStorage), so
@@ -32,6 +33,6 @@ export async function sendNotification(
       createdAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("sendNotification failed (non-fatal):", e);
+    logError("sendNotification failed (non-fatal)", e, { customerId, appRef: applicationRef });
   }
 }

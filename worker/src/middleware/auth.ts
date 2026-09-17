@@ -15,16 +15,24 @@ export async function requireAuth(c: Context<AppEnv>, next: Next) {
   }
   const token = header.slice(7);
 
-  let uuid: string;
+  let verified: { uuid: string; issuedAt: number };
   try {
-    uuid = await verifyJwt(token, c.env.JWT_SECRET);
+    verified = await verifyJwt(token, c.env.JWT_SECRET);
   } catch {
     throw new AppError("Token is invalid or expired.", 401);
   }
 
   const db = getDb(c.env.DB);
-  const [user] = await db.select().from(users).where(eq(users.uuid, uuid)).limit(1);
+  const [user] = await db.select().from(users).where(eq(users.uuid, verified.uuid)).limit(1);
   if (!user || !user.enabled) {
+    throw new AppError("Token is invalid or expired.", 401);
+  }
+
+  // S2 (ARCHITECTURE_REVIEW_GAPS.md) — every token issued before sessionsRevokedAt is rejected,
+  // regardless of its own expiry. Bumped by admin enable/disable/role-change actions and by
+  // logout-everywhere, so those take effect on the very next request instead of waiting out the
+  // token's full 24h natural expiry.
+  if (user.sessionsRevokedAt && verified.issuedAt * 1000 < Date.parse(user.sessionsRevokedAt)) {
     throw new AppError("Token is invalid or expired.", 401);
   }
 

@@ -54,7 +54,13 @@ brandingAdmin.use("*", requireAuth, requireRole("ADMIN"));
 
 brandingAdmin.put("/", async (c) => {
   const db = getDb(c.env.DB);
-  const body = await c.req.json<{ primaryColor?: string; secondaryColor?: string; accentColor?: string }>();
+  const body = await c.req.json<{
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+    gradientStart?: string | null;
+    gradientEnd?: string | null;
+  }>();
   const settings = await currentSettings(db);
   const [updated] = await db
     .update(brandingSettings)
@@ -62,6 +68,8 @@ brandingAdmin.put("/", async (c) => {
       primaryColor: body.primaryColor ?? settings.primaryColor,
       secondaryColor: body.secondaryColor ?? settings.secondaryColor,
       accentColor: body.accentColor ?? settings.accentColor,
+      gradientStart: body.gradientStart !== undefined ? body.gradientStart : settings.gradientStart,
+      gradientEnd: body.gradientEnd !== undefined ? body.gradientEnd : settings.gradientEnd,
     })
     .where(eq(brandingSettings.id, 1))
     .returning();

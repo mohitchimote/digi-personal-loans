@@ -415,6 +415,33 @@ customer" feature (e.g. underwriter-assisted edits) — inject `EffectiveIdentit
 `AssistTarget`/`EntitlementsService` if new fields/permissions are needed, and add a route resolver
 rather than starting context from a component.
 
+### 6.7 External integrations stay behind `integration-service`, which stays thin
+
+Every outbound call to something outside this platform — OTP/SMS/email delivery, Open Banking,
+National ID registry, document OCR, credit bureau — goes through Java's `integration-service`
+(worker equivalent: `worker/src/lib/otp.ts`, `data-verification.ts`, `business-financials.ts`,
+simulating the same seam in-process since the Worker has no separate integration microservice). One
+port/adapter per external concern, swappable to a real implementation without touching the caller's
+orchestration code.
+
+`integration-service` deliberately stays a **thin internal gateway**, not a second ESB: protocol
+conversion, aggregation, transformation, and the actual connection to core banking/third-party
+systems is the bank's enterprise service bus's job in production (sync APIs plus MQ/Kafka for async),
+not something this platform builds for itself — duplicating that would be a substantial, avoidable
+project, and some core banking platforms run on mainframe technology this team has no reason to
+adapt to directly. `integration-service`'s own three endpoints today are already this shape: each is
+a single `POST` + JSON wrapper body to one Component with no cross-call aggregation.
+
+Also applies to any endpoint carrying a customer identifier as input, not just literal
+`integration-service` calls: prefer `POST` with a wrapper body over `GET` with the identifier in a
+query string or URL — a GET URL lands in server access logs, browser history, and proxy logs. See
+`backend/product-service/.../PreApprovedController.java` (`POST /pre-approved/lookup`) for the
+pattern.
+
+Full detail (endpoint-by-endpoint responsibilities, the ESB's expected sync/async contract) lives in
+`DigiLend_Production_Architecture.docx` §2.8/§3.4/§9 — source of record, don't duplicate-drift from
+it here.
+
 ## 7. Frontend architecture
 
 - **Standalone components throughout** (no NgModules), signals for local component state,
@@ -703,11 +730,17 @@ style to invent.
 ### 11.3 A concrete gap, surfaced now, not roadmap
 
 Wiring role-gating this session (§5, finding 1) left `STAFF_ROLES` as an identical hardcoded array
-literal duplicated across all 6 protected services' `SecurityConfig` classes plus
-`staffadmin.UserAdminController` — 7 places that must be edited correctly, in sync, to add a role or
-change who counts as staff. This is exactly the problem the Role & Entitlements context (11.1)
-exists to solve, and it's worth deciding the fix shape now even though the context itself is
-roadmap:
+literal duplicated across services and runtimes. **Updated 2026-09-09 (Q2,
+`ARCHITECTURE_REVIEW_GAPS.md`)** — the actual count had drifted to 8 (not the 7 recorded here
+originally; `document-service` split into two controllers during the S1 fix, each carrying its own
+copy). Deduped where a shared source was cheap to introduce: the worker's 3 route files now import
+one `worker/src/lib/roles.ts`; `document-service`'s 2 controllers now share one
+`security.StaffRoles` constant. Left as single, un-shared literals where deduping would need a new
+cross-service shared library module (a bigger build-system change than this item warrants):
+`application-service`'s `SecurityConfig`, `auth-service`'s `UserAdminController`, and the frontend's
+`admin-users.component.ts` (different runtime/casing convention regardless). This is exactly the
+problem the Role & Entitlements context (11.1) exists to solve properly, and it's worth deciding the
+fix shape now even though the context itself is roadmap:
 
 1. **Entitlements stays the source of truth; each service gets a synced/generated constant**
    (compile-time codegen, or a config fetch at startup) — closest to today's pattern, most

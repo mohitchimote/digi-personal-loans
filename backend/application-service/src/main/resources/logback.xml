@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging, replacing the
+  plain pattern-layout console output. CorrelationIdFilter already puts correlationId into MDC
+  (S4's earlier slice) — LogstashEncoder includes every MDC entry as a top-level JSON field
+  automatically, no extra wiring needed. logging.level.* in application.yml still applies on top
+  of this (Spring Boot's LoggingSystem processes those properties regardless of a custom XML here).
+  Plain `logback.xml`, not `logback-spring.xml` — no Spring-specific tags (<springProfile> etc.)
+  are used here, so the plain filename works identically for Spring Boot AND is picked up by
+  Logback's own classpath auto-config outside a full Spring context (e.g. a unit test that never
+  boots Spring) — logback-spring.xml is Spring-Boot-bootstrap-only and silently does nothing
+  otherwise, which is exactly the trap this avoids (caught by this class's own verification test).
+-->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

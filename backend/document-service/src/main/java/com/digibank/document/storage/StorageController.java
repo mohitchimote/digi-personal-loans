@@ -2,6 +2,7 @@ package com.digibank.document.storage;
 
 import com.digibank.document.security.AuthenticatedUser;
 import com.digibank.document.security.CurrentUser;
+import com.digibank.document.security.StaffRoles;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Document storage & retrieval context (ARCHITECTURE.md §10) — split out of the old
@@ -19,14 +19,9 @@ import java.util.Set;
 @RequestMapping("/api/documents")
 public class StorageController {
 
-    // Same duplicated list as application-service's SecurityConfig (tracked separately as Q2) —
-    // staff can view/download any customer's documents; a customer may only reach their own (S1).
-    private static final Set<String> STAFF_ROLES = Set.of(
-            "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN");
-
     private static void assertOwnsDocument(Long documentCustomerId) {
         AuthenticatedUser user = CurrentUser.get();
-        if (STAFF_ROLES.contains(user.role())) return;
+        if (StaffRoles.STAFF_ROLES.contains(user.role())) return;
         if (!user.userId().equals(documentCustomerId)) {
             throw new AccessDeniedException("Forbidden.");
         }

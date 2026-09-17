@@ -196,6 +196,17 @@ auth.get("/validate", requireAuth, async (c) => {
   return success(c, "Token is valid.", user.uuid);
 });
 
+// S2 (ARCHITECTURE_REVIEW_GAPS.md) — no logout/session-invalidation endpoint existed before this;
+// "logging out" was purely a client-side token discard, so a copied/leaked token stayed valid until
+// its natural 24h expiry regardless. Bumping sessionsRevokedAt invalidates this token (and every
+// other one already issued for this user) on its very next use.
+auth.post("/logout", requireAuth, async (c) => {
+  const db = getDb(c.env.DB);
+  const user = c.get("authUser");
+  await db.update(users).set({ sessionsRevokedAt: new Date().toISOString() }).where(eq(users.id, user.id));
+  return success(c, "Logged out.", null);
+});
+
 // The frontend's language toggle is otherwise purely client-side (localStorage) — this is what
 // lets server-generated content (notifications, etc.) know which language to write in.
 auth.put(

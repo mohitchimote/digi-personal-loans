@@ -22,6 +22,9 @@ app:
     secret: ${JWT_SECRET}
   rule-service:
     url: ${RULE_SERVICE_URL:http://localhost:8087}
+  # S2 — polled every 30s by SessionRevocationCache, not called per-request.
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
 
 management:
   endpoints:
@@ -32,8 +35,6 @@ management:
 logging:
   level:
     com.digibank: INFO
-  pattern:
-    # Injects CorrelationIdFilter's MDC value next to the log level (S4, ARCHITECTURE_REVIEW_GAPS.md)
-    # — e.g. "INFO [a1b2c3d4-...]" — so a request's log lines across every service it touches can be
-    # grepped out by one ID. ":-" default keeps startup/background logs (no request in flight) clean.
-    level: "%5p [%X{correlationId:-}]"
+  # Console output is now structured JSON (logback.xml, S4 remainder, ARCHITECTURE_REVIEW_GAPS.md)
+  # — CorrelationIdFilter's MDC value lands there as a top-level `correlationId` field
+  # automatically; the old plain-text pattern override this replaced is gone.

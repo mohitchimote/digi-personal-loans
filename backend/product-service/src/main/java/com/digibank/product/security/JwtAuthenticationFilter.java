@@ -33,6 +33,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Value("${app.jwt.secret}")
     private String jwtSecret;
 
+    private final SessionRevocationCache sessionRevocationCache;
+
+    public JwtAuthenticationFilter(SessionRevocationCache sessionRevocationCache) {
+        this.sessionRevocationCache = sessionRevocationCache;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                      HttpServletResponse response,
@@ -58,6 +64,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             String role = claims.get("role", String.class);
+            Long userId = claims.get("userId", Long.class);
+            // S2 — reject if this token was issued before the user's last revocation.
+            if (claims.getIssuedAt() != null && sessionRevocationCache.isRevoked(userId, claims.getIssuedAt().toInstant())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             if (role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
                 UsernamePasswordAuthenticationToken authToken =

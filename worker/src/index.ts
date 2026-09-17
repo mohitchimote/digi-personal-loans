@@ -12,6 +12,7 @@ import { products } from "./routes/products";
 import { notificationsRoute } from "./routes/notifications";
 import { documents } from "./routes/documents";
 import { emailTemplatesAdmin } from "./routes/admin-email-templates";
+import { logError } from "./lib/log";
 
 const app = new Hono<AppEnv>();
 
@@ -40,7 +41,7 @@ app.onError((err, c) => {
   if (err instanceof AppError) {
     return c.json({ success: false, message: err.message, data: null }, err.status as any);
   }
-  console.error(err);
+  logError("Unhandled error", err, { path: c.req.path, method: c.req.method });
   return c.json({ success: false, message: "Internal server error.", data: null }, 500);
 });
 

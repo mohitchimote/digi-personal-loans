@@ -34,6 +34,7 @@ gap underneath each.
 | C3 | Functional slide, Underwriter Workbench: "Case assignments (auto and manual allocations)"; doc §2.5 states the same as a *current* capability | Grepped the entire codebase — zero case-assignment/allocation logic exists anywhere. `ARCHITECTURE.md` §11.5 explicitly records this as an **open, unresolved architectural question** (which service should even own it), not a built feature — and the same document's own §10 (Planned Extensions) correctly lists it as not built. §2.5 contradicts §10 of its own document. Fix §2.5 to describe the pipeline as it exists today (one shared queue, no allocation) and move the assignment description fully into §10. | P0 | Done — see note below |
 | C4 | Naming: doc uses `auth-service`/`DigiLend_auth`; deck uses `user-auth-service`/`DigiLend_user-auth`; **actual code** uses `auth-service`/`digibank_auth` | Three different names for the same thing, not two — the doc's own Open Point 2 only catches the deck-vs-doc mismatch, not that neither matches code. See §5 (naming decision) below — this needs one decision applied to code, doc, and deck together. | P0 | Done — see Q1 note below |
 | C5 | Doc §7.1: rule-service is described as the eventual owner of affordability thresholds, "an open point for this review" | Correctly hedged in the doc already (§11 open point 3) — no correction needed, listed here only so it's cross-referenced from one place. See §2 below. | — | N/A |
+| C6 | Deck's Technical Architecture slide and doc §7.1's schema table both show six MySQL schemas, omitting `digibank_rules`; doc §7.1 and §11 open point 3 still describe rule-service's thresholds as in-memory/unbuilt, an "open point" | `rule-service` has owned a real, persistent `digibank_rules` schema (`mandate_limits`, `affordability_rule_settings`) since G4, runtime-verified 2026-09-01 — the schema table and both open-point references had gone stale the moment G4 shipped and were never updated | P1 | Partially done (doc fixed, deck edit pending — manual, see note below) |
 
 **C1/C2/C3 note (2026-09-02)**: fixed directly in both files using `python-docx`/`python-pptx` (no
 copies, edited in place, run-level text replacement to preserve existing formatting/bold labels).
@@ -105,6 +106,41 @@ pdf`, `pymupdf`), not just by reading the XML:
   "not yet — planned" when S4 (this same session) had already shipped them; updated to match.
 - Swept the full 7-slide deck's text and the full doc for `user-auth`/`DigiLend_auth`/`DigiLend_app`/
   `iText` regressions — none found; both files clean.
+
+**C6 note (2026-09-08)**: the user made a further LibreOffice edit to the deck and asked for another
+full deck-vs-doc consistency pass. Rather than a layout regression this time, the pass surfaced a
+staleness gap that had survived every prior pass since G4 shipped (2026-09-01): grepped
+`backend/rule-service/src/main/resources/application.yml` and confirmed `rule-service` connects to
+`jdbc:mysql://.../digibank_rules`, a real schema — but neither review document had ever been updated
+to say so.
+
+Fixed in the doc with `python-docx` (in place, run-level text replacement) and verified visually via
+headless LibreOffice → PDF → PNG render. **The matching deck edit was attempted with `python-pptx` and
+reverted the same day** — saving this particular deck through `python-pptx` silently corrupted it for
+PowerPoint viewers (black backgrounds, wrong theme colors, garbled footer text, on every slide, not
+just the one edited) even though LibreOffice's own render looked identical before and after. Recovered
+by restoring from LibreOffice's own auto-backup of the user's last Impress save. Full incident record:
+`project_ppt_corruption_incident_2026-09-08` in memory. **The deck's rule-service box therefore still
+does not mention `digibank_rules`** — going forward, pptx changes are flagged here in text for the user
+to apply by hand in Impress rather than edited programmatically:
+- **Deck (not yet applied — needs a manual edit in Impress)**: Technical Architecture slide,
+  `rule-service (internal)` box, last line — append "(own digibank_rules schema)" after "every
+  threshold", i.e. "...single source of truth for every threshold (own digibank_rules schema)".
+- **Doc §7.1 schema table**: added a `digibank_rules` / `rule-service (internal)` row ("Mandate
+  limits (5-tier) and affordability rule settings — extracted from digibank_app during the
+  rule-service extraction (G4)"); fixed the `digibank_app` row, which still listed "mandate rules" as
+  living there after they'd moved out.
+- **Doc §7.1 body paragraph**: no longer says affordability-service's thresholds "sit in an
+  in-memory configuration store" or that rule-service's persistent schema is a future "target
+  design" — both were true before G4, neither is true now.
+- **Doc §11 open point 3** ("Ownership of lending policy"): marked resolved as of 2026-09-01 (rule-
+  service's schema exists, runtime-verified, both services read it live via a cached client) while
+  keeping honest what G4 didn't touch — policy-change versioning and replaying a decision against the
+  policy that applied on the day still have no answer, so the point stays open for those two
+  questions specifically rather than being closed outright.
+- **Doc §5 service catalogue, affordability-service row**: "in the target design it reads its
+  thresholds from rule-service" → "reads its thresholds live from rule-service via a cached client" —
+  same target-vs-actual tense fix, cross-referenced to the now-updated open point.
 
 ---
 
@@ -312,9 +348,34 @@ time.
 
 | # | Item | What's needed before build can start | Priority | Effort | Status |
 |---|---|---|---|---|---|
-| N1 | **Card payments** | A payment provider decision (which processor, PCI scope implications), then an adapter behind `integration-service` (G5) — same pattern as every other external provider. Doc correctly marks this "planned, not built." | P2 | M | Not started |
+| N1 | **Card payments** | A payment provider decision (which processor, PCI scope implications), then an adapter behind `integration-service` (G5) — same pattern as every other external provider. Doc correctly marks this "planned, not built." | P2 | M | Done — simulated adapter (real processor decision still deferred), see note below |
 | N2 | **Core banking integration landscape** (Product Sync, Customer Information File, CASA Accounts, Disbursements, Collateral Module — doc §3.4) | Specification, data mapping, protocol, and error/reconciliation approach with the client's core banking team — doc's own Open Point 8 states none of this exists yet. This is the single largest unscoped item in the whole package; until it has an owner and a first workshop date, it can't be estimated. | P2 | XL | Not started |
 | N3 | **Reporting schema / data warehouse replication** (doc §3.4, table 2) | A target warehouse identified, a replication method and cadence agreed, and — critically — a rule for masking personal data in the reporting copy (doc Open Point 12). No code, no design. | P2 | L | Not started |
+
+**N1 note (2026-09-09)**: user decision — build a simulated adapter now (same "fake it" pattern as
+OCR/bureau/Open Banking, ARCHITECTURE.md §6.3), not a real processor integration; the payment
+provider decision (which processor, PCI scope) stays deferred, same as the doc always said.
+
+- **`integration-service`**: new `cardpayment` package — `CardPaymentController`
+  (`POST /internal/integration/card-payment/authorise`, no gateway route, internal-only) →
+  `CardPaymentGenerator`, seeded by `applicationRef.hashCode()` exactly like
+  `BusinessFinancialsGenerator`. Produces a synthetic transaction id/status/card-last-4/
+  authorisation-code.
+- **`application-service`**: new `cardpayment` package — `CardPaymentPort` interface +
+  `IntegrationServiceCardPaymentAdapter` (mirrors `businessfinancials`'s Port/Adapter exactly).
+  Wired into `DecisioningService.authoriseFundRelease` — the natural hook point (already exists as
+  the one staff action representing "release funds"; was previously a pure status-flag flip with no
+  adapter call). New nullable `LoanApplication.cardPaymentResultJson` column, generate-once-then-
+  persist, wrapped in the same swallow-all try/catch as `maybeAutoApprove`'s other adapter calls —
+  a synthetic side effect must never block the actual fund release.
+- **Worker**: `worker/src/lib/card-payment.ts`, using the existing `javaStringHashCode`/
+  `SeededRandom` helpers (same contract as `business-financials.ts`). New
+  `cardPaymentResultJson` column (migration `0008_eminent_roxanne_simpson.sql`), wired into
+  `POST /:appRef/disbursement/authorise`. Verified determinism directly (same `applicationRef` →
+  identical `transactionId`/`cardLast4`/`authorisationCode` across calls, different `applicationRef`
+  → different values; `generatedAt` legitimately differs, it's a timestamp) via a throwaway script.
+- `mvnd compile` clean on `integration-service` and `application-service`; `npx tsc --noEmit` clean
+  on the worker.
 
 ---
 
@@ -327,12 +388,14 @@ visible next to the review, not just buried in that document's residual-findings
 | # | Gap | Priority | Effort | Status |
 |---|---|---|---|---|
 | S1 | **Document IDOR** — an authenticated customer can download another customer's document by guessing a sequential `docId`/`id`. True in both the Worker and Java (`PRODUCTION_READINESS.md` §5 finding 2) — not a Java regression, but real in the system being reviewed. Fix: opaque IDs and/or an ownership check comparing the token's `userId` to the document's `customerId`. | P0 | S | Done — runtime-verified, see note below |
-| S2 | **No session/token revocation** — JWTs are stateless, 24h, no refresh or blacklist. If a staff member's role changes or they leave, their token is valid until natural expiry. (Doc Open Point 9.) | P1 | M | Not started |
-| S3 | **No malware/content scanning on uploads** — path-traversal is fixed (`PRODUCTION_READINESS.md` §5 finding 3); nothing inspects file content or type before storage. (Doc Open Point 7.) | P1 | M | Not started |
-| S4 | **No distributed tracing, no correlation ID, no structured logging** — see C1 above. Needed for both the deck's own claim to become true and for any real multi-service debugging once `rule-service`/`integration-service` exist. | P1 | M | Partially done — correlation ID shipped and runtime-verified, see note below; full distributed tracing and structured (JSON) logging remain out of scope |
-| S5 | **No gateway-level rate limiting** — Spring Cloud Gateway's `RequestRateLimiter` needs Redis, which isn't present; nothing throttles a client anywhere in the app layer (`PRODUCTION_READINESS.md` §2/§4 — correctly scoped as partly a client-infra WAF/edge concern, but the Redis-backed in-app option is also just absent). | P2 | M | Not started |
-| S6 | **Numeric sequential IDs used as public identifiers** — makes S1 trivially enumerable once authenticated. Opaque-ID hardening touches every DTO/repository that exposes these fields (`PRODUCTION_READINESS.md` §5 finding 9, LOW, explicitly deferred). | P2 | M | Not started |
+| S2 | **No session/token revocation** — JWTs are stateless, 24h, no refresh or blacklist. If a staff member's role changes or they leave, their token is valid until natural expiry. (Doc Open Point 9.) | P1 | M | Done — see note below |
+| S3 | **No malware/content scanning on uploads** — path-traversal is fixed (`PRODUCTION_READINESS.md` §5 finding 3); nothing inspects file content or type before storage. (Doc Open Point 7.) | P1 | M | Partially done (type/signature validation shipped; real malware scanning needs new infra — see note below) |
+| S4 | **No distributed tracing, no correlation ID, no structured logging** — see C1 above. Needed for both the deck's own claim to become true and for any real multi-service debugging once `rule-service`/`integration-service` exist. | P1 | M | Partially done — correlation ID and structured logging shipped and verified; full distributed tracing remains out of scope, see note below |
+| S5 | **No gateway-level rate limiting** — Spring Cloud Gateway's `RequestRateLimiter` needs Redis, which isn't present; nothing throttles a client anywhere in the app layer (`PRODUCTION_READINESS.md` §2/§4 — correctly scoped as partly a client-infra WAF/edge concern, but the Redis-backed in-app option is also just absent). | P2 | M | Partially done (Java shipped; worker needs a dashboard action — see note below) |
+| S6 | **Numeric sequential IDs used as public identifiers** — makes S1 trivially enumerable once authenticated. Opaque-ID hardening touches every DTO/repository that exposes these fields (`PRODUCTION_READINESS.md` §5 finding 9, LOW, explicitly deferred). | P2 | M | Partially done (real IDOR fixed, opaque IDs deferred — see note below) |
 | S7 | **Spring Boot 3.2.5 is several patch releases behind current** — no CVE research done; recommend a deliberate, tested bump rather than folding into another change, given there's no CI/test suite yet to catch a regression (`PRODUCTION_READINESS.md` §5 finding 8). | P2 | L (re-scoped from S) | Done — runtime-verified, see note below |
+| S8 | **No field/shape validation on wizard section saves** — `PUT /:appRef/section` and `/section-by-underwriter` accepted `data: Record<string, unknown>` (worker) / `Map<String, Object>` (Java) and stored it verbatim: any channel could submit an arbitrary JSON blob under any section key, with no check that it matched that section's actual shape. Raised directly in the 2026-09-09 architecture review (`Architecture Review Notes.docx`, "Field Exposure Controls"/"Channel-Specific Validation") — banking applications undergo intensive pen-testing and unrecognised fields "should not be returned or accepted." | P1 | M | Done — see note below |
+| S9 | **POST-not-GET for banking integrations, and `integration-service`'s ESB placement** — same 2026-09-09 review, "Secure Channel And API Design"/"POST-Based Integration" and "Enterprise Integration And ESB Placement": GET is discouraged for banking calls (use a POST wrapper object); `integration-service` should stay a lightweight internal gateway, not a parallel ESB. | P2 | S | Done — mostly already true, one real gap fixed; see note below |
 
 **S7 note (2026-09-02) — Done, and actually runtime-verified end-to-end, not just compiled. Scope
 turned out much larger than originally estimated**: checked current release status before touching
@@ -470,6 +533,37 @@ bridging to make the gateway's *own* logs show the ID; the gateway's job here is
 header to the services that *can* log it, which is verified above and is the part that actually
 matters for tracing a request across services).
 
+**S4 remainder note (2026-09-09) — structured JSON logging shipped; full distributed tracing still
+not built, and now explicitly flagged rather than left ambiguous**. Full tracing needs OpenTelemetry
+(or equivalent) across all 9 Java services + the worker, plus a trace collector/backend (Jaeger,
+Zipkin, Grafana Tempo) — that collector is itself new infrastructure to provision and run, in
+tension with the "no new infra" framing that drove the Redis decision for S2/S5. Treating it as its
+own scoped decision (which backend, self-hosted vs. managed) rather than building it opportunistically.
+
+- **Java (all 9 services)**: added `logstash-logback-encoder` 8.0. New plain `logback.xml` per
+  service (deliberately not `logback-spring.xml` — no `<springProfile>` or other Spring-specific XML
+  tags are used, so the plain filename works identically for Spring Boot *and* is picked up by
+  Logback's own classpath auto-config outside a full Spring Boot bootstrap, e.g. a unit test that
+  never starts Spring; `logback-spring.xml` is Spring-Boot-bootstrap-only and silently does nothing
+  in that case — a real trap, caught by the first attempt at verifying this: an initial
+  `logback-spring.xml` produced a passing-looking but actually-plain-text log line in a throwaway
+  test, because the test never boots Spring). `logging.level.*` overrides in each `application.yml`
+  are untouched and still apply (Spring Boot's `LoggingSystem` processes those regardless of a custom
+  XML); only the now-redundant `logging.pattern.level` line each service had (added by the original
+  S4 slice above, `%5p [%X{correlationId:-}]`) was removed — the JSON encoder supersedes it, and
+  `CorrelationIdFilter`'s existing MDC value now lands in the JSON output as a top-level
+  `correlationId` field automatically, no extra wiring needed. Verified with a throwaway JUnit test
+  (captured stdout, parsed the line back with Jackson, asserted `message`/`correlationId`/`level`
+  fields) — deleted after confirming; no permanent test suite exists in any of these services yet.
+  `mvnd compile` clean on all 9.
+- **Worker**: new `worker/src/lib/log.ts` (`logError(message, error, context)`), replacing all 6
+  existing `console.error(...)` call sites (`index.ts`, `applications.ts` ×2, `email.ts` ×2,
+  `notifications.ts`) with structured JSON output. **No `correlationId` field on this side** — the
+  worker has no equivalent request-scoped correlation-ID mechanism (single-process monolith, not a
+  chain of services a header needs to propagate across), and adding one now is net-new scope beyond
+  "structured logging," not part of this item; flagged explicitly rather than silently left out.
+  `npx tsc --noEmit` clean; confirmed no `console.error` call sites remain outside `log.ts` itself.
+
 **S1 note (2026-09-02) — Done, and actually runtime-verified end-to-end, not just compiled**: added
 an ownership check (staff roles bypass, a customer must own the document) to every document
 read/download/view endpoint in both runtimes — the four `docId`/`id`-keyed reads the doc/generated
@@ -511,6 +605,197 @@ tables expose, in both the Worker and Java.
   `HttpClient` with the auth interceptor attaching the bearer token, so the new check is transparent
   to every existing caller.
 
+**S8 note (2026-09-09)**: added one schema per wizard section (17 total, covering both the personal
+and business flows) to both backends, `.strict()`/unknown-field-rejecting in both — a request whose
+`data` doesn't match its section's exact known shape now fails with 400 instead of being stored.
+
+- **Worker**: `worker/src/lib/section-schemas.ts` — one Zod schema per section (`.strict()` at every
+  nesting level, not just the top level), wired into both `PUT /:appRef/section` and
+  `/section-by-underwriter` in `worker/src/routes/applications.ts` via a new `validateSectionData()`
+  helper; the column write now persists the *validated* value, not the raw request body. Field lists
+  came from reading the actual Angular step components' payloads, not just
+  `frontend/src/app/core/models/index.ts` — that file turned out to be missing several real fields
+  (e.g. `personalDetails.applicant2`, `guarantorDetails.files`, three `companyDetails` staff-assist
+  fields) for multiple sections it claims to describe. `npx tsc --noEmit` clean; sanity-checked the
+  schema set against one realistic and one deliberately-broadened payload per section (a script, not
+  a permanent test file — the worker has no test suite either) — every real shape parses, every
+  smuggled extra field is rejected.
+- **Java**: `backend/application-service`'s `WizardController`/`ApplicationSectionRequest` already
+  existed with the identical gap (`Map<String, Object> data`, zero inner-shape validation) — no new
+  endpoint needed, just closing it. Added the Jakarta Bean Validation mirror of the same 17 schemas
+  under `wizard/dto/section/` (26 DTO classes including nested shapes), plus `SectionDataValidator`
+  (`wizard/SectionDataValidator.java`) — dispatches on the `section` string to the matching DTO class,
+  converts to it, then runs Bean Validation. `WizardService.saveSection`/`saveSectionByUnderwriter` now
+  call it instead of serializing the raw map. Ran a throwaway JUnit test (7 cases, deleted after —
+  `application-service` has no permanent test suite yet, so adding one wasn't this task's call to make)
+  confirming the same real-vs-smuggled-field behavior as the worker side; `mvnd compile` clean.
+  **Correction (2026-09-09, found while wiring S2)**: the original note above claimed "nothing in this
+  codebase disables" Jackson's unknown-property rejection — wrong.
+  `ApplicationServiceApplication.objectMapper()` sets `FAIL_ON_UNKNOWN_PROPERTIES` to `false` app-wide
+  (for general lenient JSON handling elsewhere), and `SectionDataValidator` was using that exact
+  injected bean for `convertValue()` — meaning unrecognised fields were **not actually rejected in the
+  real running app**, only in the throwaway test, which had used a bare unconfigured `ObjectMapper`
+  rather than reproducing the real bean's settings. Fixed: `SectionDataValidator` now derives its own
+  `strictObjectMapper` via `objectMapper.copy().configure(FAIL_ON_UNKNOWN_PROPERTIES, true)` for the
+  `convertValue()` step specifically, leaving the shared lenient bean untouched for its other
+  consumers. Re-verified with a corrected throwaway test that reproduces the real bean's exact
+  configuration (`new ObjectMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false)` as the input) —
+  confirms rejection now actually holds; `mvnd compile`/test clean, test deleted again after.
+- Deliberately out of scope: full cross-field business rules (e.g. net income ≤ gross income) — these
+  already run client-side for UX and are a separate, larger effort from the exposure-control gap this
+  closes. Also out of scope: `/select-product` and `/affordability-result`, which the architect's note
+  didn't target and which take computed/internal payloads rather than direct wizard-channel input.
+
+**S9 note (2026-09-09)**: both points turned out to already be mostly resolved, just not visible in
+the right place — checked before assuming either was an open gap.
+
+- **POST-vs-GET**: `integration-service`'s own 3 endpoints (`otp/deliver`,
+  `data-verification/generate`, `business-financials/generate`) were already all `POST` with a JSON
+  wrapper body, called that way by all 3 of their callers (`auth-service`, `application-service` ×2)
+  — no GET anywhere in that service. **One real instance did exist, just not inside
+  `integration-service`**: the pre-approved-offer lookup put a customer's national ID in a
+  browser-facing GET URL (`GET /api/products/pre-approved/{nationalId}`, called from the customer
+  dashboard). Fixed on all three sides — `backend/product-service`'s `PreApprovedController`
+  (`POST /pre-approved/lookup` + new `PreApprovedLookupRequest` DTO), `application-service`'s
+  `ProductClient` (now `postForObject`), the worker's `products.ts` route (now
+  `POST /pre-approved/lookup`, Zod-validated), and `frontend/.../product.service.ts` (now posts
+  `{ nationalId }`). The sibling `/consume` endpoint was already `POST` and was left as-is — a
+  `nationalId` in a POST path segment is a materially smaller residual than one in a GET URL, and
+  changing it wasn't needed to satisfy the architect's note. `mvnd compile` clean on both Java
+  services; `npx tsc --noEmit` clean on both worker and frontend.
+- **ESB placement**: `integration-service` was already a clean thin adapter — Controller → single
+  Component per concern, no orchestration/aggregation/protocol-conversion logic anywhere in it — and
+  the ESB boundary language (thin gateway vs. parallel ESB; protocol conversion/aggregation/
+  transformation is the bank's job) was already written up near-verbatim to the architect's own
+  wording in `DigiLend_Production_Architecture.docx` §2.8/§3.4/§9/§11. That work just never made it
+  into this repo's own `ARCHITECTURE.md`, which had zero mentions of ESB, MQ, `integration-service`,
+  or `rule-service` at all — it predates their extraction (G4/G5). Added §6.7 to `ARCHITECTURE.md`
+  documenting the boundary (citing the docx as source of record, not duplicating its full detail) so
+  the repo's own living doc doesn't stay silent on a decision that's already made.
+- **Flagged, not fixed**: `ARCHITECTURE.md` §10 ("Domain boundaries within each Java service") still
+  doesn't mention `rule-service`/`integration-service` at all — a real, pre-existing gap from before
+  this review, bigger than what this item asked for (a full domain-boundary write-up for two
+  services, not a short ESB-placement note). Left open rather than folded in silently.
+
+**S6 note (2026-09-09)**: turned out worse than the original "enumerable IDs" framing — two endpoints
+had **no ownership check at all**, the same class of bug as S1 (documents), just never caught in that
+pass: notifications (any authenticated user could read/mark-read another customer's notifications by
+guessing a numeric `customerId`/`id`) and "applications by customer" (`GET /customer/:customerId[/current]`,
+same gap). Fixed both with the exact S1 pattern (compare the authenticated caller's own id/role against
+the record; staff roles bypass) rather than opaque IDs:
+- Worker: `worker/src/routes/notifications.ts` (new `assertOwnsCustomerId`, applied to all 4 routes —
+  `PUT /:id/read` fetches the notification first to get its `customerId`, since the id in the path
+  isn't the customer's) and `worker/src/routes/applications.ts` (same helper, applied to
+  `GET /customer/:customerId[/current]`).
+- Java: `notification-service`'s `NotificationController` (new `assertOwnsCustomerId`, plus a new
+  `NotificationService.getById()` for the same fetch-then-compare on `PUT /{id}/read`) and
+  `application-service`'s `WizardController` (same pattern, reusing `SecurityConfig.STAFF_ROLES` — see
+  Q2 note).
+- **Deferred, not built now**: opaque IDs. `users.id` is the same global sequential counter behind
+  every one of these — now that the real IDOR is closed, opacity is defense-in-depth (blocks inference
+  of customer volume/growth even where ownership is enforced), not a fix for a live bug. Bigger touch
+  (JWT claim shape, every DTO) for materially lower marginal urgency post-fix — left as this item's
+  residual rather than built speculatively.
+- `mvnd compile` clean on `notification-service` and `application-service`; `npx tsc --noEmit` clean
+  on the worker.
+
+**S2 note (2026-09-09)**: no Redis (decided before starting). Design: a per-user
+`sessionsRevokedAt` timestamp, checked against the token's own `iat` (issued-at) — every token
+issued before that timestamp is rejected on its next use, regardless of its own expiry. One
+mechanism covers all three trigger scenarios (role change, disable, explicit logout).
+
+- **Worker**: `users.sessionsRevokedAt` column (migration `0006_cute_gorgon.sql`). `jwt.ts`'s
+  `verifyJwt` now returns `{ uuid, issuedAt }` instead of a bare string. `middleware/auth.ts`'s
+  `requireAuth` — which already re-read the user row every request — now also rejects if
+  `issuedAt < sessionsRevokedAt`. `admin.ts`'s role/enabled handlers bump `sessionsRevokedAt`. New
+  `POST /api/auth/logout` (didn't exist before — logout was purely client-side token discard).
+  `frontend/.../auth.service.ts`'s `logout()` now fire-and-forgets a call to it (never on the
+  session-expired path — that token's already invalid, nothing to revoke).
+- **Java — the harder half, blast radius bigger than the ticket implied**: 5 of 6 protected
+  services (`application-service`, `affordability-service`, `document-service`,
+  `notification-service`, `product-service`) never touch a database at all — they trust the
+  signed `role`/`userId` claims from issuance outright (confirmed by each filter's own existing
+  comment: *"authentication is derived entirely from the token's signed claims... never a database
+  lookup"*). A live per-request call back to auth-service was rejected on the same grounds
+  `ARCHITECTURE.md` §11.3 already argues against (no per-request inter-service call), so each of
+  those 5 gets a new `security.SessionRevocationCache` — polls `auth-service`'s new
+  `GET /api/auth/revoked-since?since=` every 30s (`@Scheduled`, new `@EnableScheduling` on each
+  service's main class), keeps a small in-memory `Map<userId, revokedAt>`, checked by that
+  service's own `JwtAuthenticationFilter` against the token's `iat` claim. Bounded ~30s staleness
+  instead of Redis or a live call. `document-service` and `product-service` had never made an
+  outbound HTTP call before this and needed a new `spring-boot-starter-restclient` dependency +
+  `RestTemplateConfig` to get a `RestTemplate` bean at all.
+- **`auth-service` itself had a real, separate bug**, not just a missing mechanism:
+  `JwtAuthenticationFilter.validateToken` only checked username + expiry — it never actually
+  enforced the disabled/locked flags `buildUserDetails()` already computed from the live row, so a
+  disabled account's already-issued token stayed usable there until natural expiry too, on the one
+  service that *does* hit the database. Fixed alongside the revocation check (now also verifies
+  `userDetails.isEnabled()`/`isAccountNonLocked()`). New `POST /api/auth/logout` and
+  `GET /api/auth/revoked-since` (public, no PII beyond userId+timestamp — same exposure pattern as
+  the existing public `/api/branding`); `UserAdminController`'s role/enabled handlers bump
+  `sessionsRevokedAt`.
+- **Bug found and fixed in the same pass, unrelated to S2 itself**: while wiring this, discovered
+  S8's `SectionDataValidator` had been using the app-wide injected `ObjectMapper` bean for its
+  unknown-field rejection — but `ApplicationServiceApplication.objectMapper()` sets
+  `FAIL_ON_UNKNOWN_PROPERTIES` to `false` globally (for other, legitimately lenient JSON handling
+  elsewhere), so S8's rejection was **not actually active in the real app**, only in its own
+  throwaway test (which had used a bare unconfigured `ObjectMapper`, not a reproduction of the real
+  bean). Fixed — see the correction appended to the S8 note above.
+- `mvnd compile` clean on all 6 touched Java services (no aggregator pom exists across `backend/`,
+  so each was compiled individually); `npx tsc --noEmit` clean on the worker and frontend.
+
+**S3 note (2026-09-09)**: explicit scope limit going in — this is type/signature validation, not
+malware scanning. A real AV engine needs new infrastructure on both sides (a scanning daemon/API);
+Cloudflare Workers specifically can't run one at all (no filesystem, no subprocess, no persistent
+virus-definition state in the sandbox) — so full malware scanning is left not-built rather than
+faked.
+
+- **Java (`document-service`)**: added `tika-core` 3.1.0 to `pom.xml` (pure-Java, no native
+  dependency). `StorageService.storeUpload` now runs `Tika.detect(bytes)` against the real file
+  content before `Files.write` — rejects (400, via the existing `IllegalArgumentException` →
+  `GlobalExceptionHandler` path) anything outside an allowlist (`application/pdf`, `image/jpeg`,
+  `image/png`, `.docx`, legacy `.doc`) matching what the product's own upload pages actually accept.
+  The stored `mimeType` now records the *detected* type, not the client-supplied `Content-Type`
+  header the old code trusted outright. Verified with a throwaway JUnit test (3 cases: real PDF/PNG
+  magic bytes detected correctly, a `<script>` payload correctly detected as neither — deleted
+  after, no permanent test suite exists yet); `mvnd compile` clean.
+- **Worker**: new `worker/src/lib/file-signature.ts` — hand-rolled magic-byte detection (no
+  equivalent lightweight signature library at the edge), same allowlist/logic as the Java side.
+  Wired into `worker/src/routes/documents.ts`'s `/upload` route before the `R2` `bucket.put` call.
+  Verified against real PDF/JPEG/PNG/docx magic bytes and a fake payload (script tag) via a
+  throwaway script; `npx tsc --noEmit` clean.
+- Branding logo upload (`worker/src/routes/branding.ts`) already had its own content-type + size
+  check and was left as-is — bringing Java's equivalent up to the same bar is tracked under Q3, not
+  here, since it's a branding-parity item, not part of this document-upload gap.
+
+**S5 note (2026-09-09)**: no Redis (decided before starting). Confirmed Spring Cloud Gateway ships
+no non-Redis built-in rate limiter — `RequestRateLimiter` is Lua-script-backed against Redis with
+no alternative implementation.
+
+- **Java (`api-gateway`)**: added `bucket4j-core` 8.10.1 (small, in-memory, no new infra). New
+  `ratelimit.RateLimitGlobalFilter` — a `GlobalFilter` (same shape as the existing
+  `CorrelationIdGlobalFilter`, since this gateway is WebFlux/reactive, not Spring MVC — a
+  `GatewayFilterFactory`/servlet filter doesn't apply here), auto-applied to every route with no
+  YAML wiring needed. Two tiers, both keyed by client IP (`X-Forwarded-For`, falling back to the
+  direct remote address for local dev where nothing sits in front): a tight 10 requests/minute on
+  `/api/auth/login/**` and `/api/auth/register/**` (the actual brute-force/OTP-abuse target) and a
+  generous 120 requests/minute baseline elsewhere. Per-instance, not cluster-wide — the stated
+  tradeoff of skipping Redis, acceptable for the current single-instance target. Exceeding the
+  limit returns 429 in the same `{success, message, data}` shape every other error path uses.
+  Verified the underlying bucket4j construction (capacity enforced exactly, separate IPs
+  independent) via a throwaway JUnit test, deleted after — no permanent test suite exists yet;
+  `mvnd compile` clean.
+- **Worker — a dashboard action, not code**: recommending Cloudflare's native **Rate Limiting
+  Rules** rather than building an in-Worker limiter, since it needs no new dependency or D1 table
+  and Cloudflare already sits in front of every request. Not yet configured — this is a
+  `dashboard.cloudflare.com` action for whoever holds that account, not something committable to
+  this repo. Suggested rule: path `/api/auth/login/*` and `/api/auth/register/*`, threshold ~10
+  requests per IP per minute, action "Block" (or "Managed Challenge" if outright blocking is too
+  aggressive for legitimate retries), plus a looser rule (~120/min) across `/api/*` generally,
+  mirroring the Java tiers above. If dashboard-managed config is undesirable, the documented
+  fallback is a D1-backed counter in `requireAuth`/a new middleware — more code, slower, only worth
+  it if avoiding the dashboard matters more than the simplicity of the native rule.
+
 ---
 
 ## 5. Quick wins (small, already fully scoped, no dependency)
@@ -518,8 +803,48 @@ tables expose, in both the Worker and Java.
 | # | Gap | Priority | Effort | Status |
 |---|---|---|---|---|
 | Q1 | **Naming decision** (C4) — pick one of `auth-service`/`user-auth-service` and one schema prefix, apply to code (package/schema/pom rename), doc, and deck together. Small in isolation; touches every service's config and both review documents. | P0 | S | Done — decided in favor of code, both documents updated, see §1 Q1 note |
-| Q2 | **`STAFF_ROLES` is a hardcoded array literal duplicated across 7 places** (`ARCHITECTURE.md` §11.3) — adding or changing a staff role means editing all 7 in sync today. Not urgent to solve with the full Role & Entitlements roadmap context (§11.1) — a single shared constant or config value would remove the duplication risk now. | P1 | S | Not started |
-| Q3 | **Branding polish** (secondary colour, gradients, logo upload) — flagged as small–medium, post-review roadmap in `PRODUCTION_READINESS.md` §6 item 5. | P2 | S | Not started |
+| Q2 | **`STAFF_ROLES` is a hardcoded array literal duplicated across 7 places** (`ARCHITECTURE.md` §11.3) — adding or changing a staff role means editing all 7 in sync today. Not urgent to solve with the full Role & Entitlements roadmap context (§11.1) — a single shared constant or config value would remove the duplication risk now. | P1 | S | Done — see note below |
+| Q3 | **Branding polish** (secondary colour, gradients, logo upload) — flagged as small–medium, post-review roadmap in `PRODUCTION_READINESS.md` §6 item 5. | P2 | S | Done — see note below |
+
+**Q2 note (2026-09-09)**: actual count was 8, not 7 — `ARCHITECTURE.md` §11.3 was already stale (see
+that section's own updated note). Deduped where cheap: worker's `applications.ts`/`documents.ts`/
+`admin.ts` now import one `worker/src/lib/roles.ts`; `document-service`'s `StorageController`/
+`GenerationController` now share one `security.StaffRoles` constant (new file). `application-service`'s
+`SecurityConfig.STAFF_ROLES` was already a single site within that service — widened from `private` to
+`public` so `WizardController`'s new S6 ownership check (below) could reuse it instead of adding a
+second copy. `auth-service`'s `UserAdminController` and the frontend's `admin-users.component.ts` are
+each already single, un-shared sites — left as-is; a true cross-service shared constant would need a
+new shared Java module, out of scope for this item. `mvnd compile` clean on `document-service` and
+`application-service`; `npx tsc --noEmit` clean on the worker.
+
+**Q3 note (2026-09-09)**: turned out asymmetric — worker + frontend already had `secondaryColor`
+and logo upload fully built end-to-end; only Java was lagging. Gradients were genuinely net-new on
+both sides.
+
+- **Java parity**: `BrandingSettings.java` gained `secondaryColor` (was silently dropped by the old
+  `PUT` handler despite the frontend already sending it) plus `gradientStart`/`gradientEnd`.
+  `BrandingController`'s `PUT` now persists all of them (`containsKey`, not `!= null`, for the
+  gradient fields — an explicit `null` means "clear it," same semantics as the worker). Logo upload
+  hardened to match the worker's existing bar: added `tika-core` (already a document-service
+  dependency for S3; same magic-byte approach, SVG handled via Tika's XML-detection path) + a
+  5MB cap, rejecting anything outside PNG/JPEG/SVG — previously unchecked entirely. Needed a new
+  `IllegalArgumentException` handler in `auth-service`'s `GlobalExceptionHandler` (didn't exist
+  before — without it the new validation's rejection would've fallen through to Spring's default
+  `/error` forward and surfaced as a misleading 401, the same bug class already fixed in the other
+  3 services' handlers).
+- **Gradients (net-new, both sides)**: worker's `brandingSettings` schema gained
+  `gradientStart`/`gradientEnd` (migration `0007_fat_yellow_claw.sql`), wired through `branding.ts`'s
+  `PUT`. `branding.service.ts`'s `applyTheme()` sets a `--tcs-gradient` CSS custom property when both
+  ends are configured, otherwise leaves `styles.scss`'s default in place (`linear-gradient(160deg,
+  var(--tcs-blue-dark) 0%, var(--tcs-blue) 45%, var(--tcs-secondary) 100%)` — the exact gradient the
+  login page's branded panel already used, so an unconfigured tenant looks identical to before this).
+  Swapped `login.component.scss`'s hero-panel gradient to reference `--tcs-gradient` — deliberately
+  the *only* one of the ~13 gradient usages found across the frontend that got swapped; the others
+  (buttons, dashboard cards) already derive their gradients from the primary/secondary/accent colors
+  directly and intentionally look different from each other — collapsing them all onto one shared
+  gradient property would have been a visual regression, not a fix. Admin UI gained two colour
+  pickers + a "reset to default" link (`admin-branding.component.html`/`.ts`), en/he i18n keys added.
+  `mvnd compile` clean on `auth-service`; `npx tsc --noEmit` clean on the worker and frontend.
 
 ---
 

@@ -9,11 +9,11 @@ import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { toUserSummary } from "../lib/user-mappers";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { STAFF_ROLES } from "../lib/roles";
 
 export const admin = new Hono<AppEnv>();
 admin.use("*", requireAuth, requireRole("ADMIN"));
 
-const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
 const CUSTOMER_ROLES = ["CUSTOMER", "BUSINESS_OWNER"];
 
 admin.get("/users", async (c) => {
@@ -34,7 +34,13 @@ admin.put("/users/:id/role", zValidator("json", z.object({ role: z.string() })),
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new AppError(`User not found: ${id}`);
   const { role } = c.req.valid("json");
-  const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+  // S2 — a role change invalidates any token already issued for this user; without this, the old
+  // role's permissions stay live in the token's claims until natural (24h) expiry.
+  const [updated] = await db
+    .update(users)
+    .set({ role, sessionsRevokedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+    .returning();
   return success(c, "Role updated.", toUserSummary(updated));
 });
 
@@ -44,7 +50,13 @@ admin.put("/users/:id/enabled", zValidator("json", z.object({ enabled: z.boolean
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new AppError(`User not found: ${id}`);
   const { enabled } = c.req.valid("json");
-  const [updated] = await db.update(users).set({ enabled }).where(eq(users.id, id)).returning();
+  // S2 — disabling a user invalidates any token already issued for them immediately, rather than
+  // relying solely on requireAuth's existing !user.enabled check racing the token's own expiry.
+  const [updated] = await db
+    .update(users)
+    .set({ enabled, sessionsRevokedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+    .returning();
   return success(c, "User updated.", toUserSummary(updated));
 });
 

@@ -45,6 +45,12 @@ public class JwtTokenProvider {
         return extractClaim(token, Claims::getSubject);
     }
 
+    // S2 (ARCHITECTURE_REVIEW_GAPS.md) — lets a filter reject a token issued before the user's
+    // sessionsRevokedAt timestamp, regardless of the token's own expiry.
+    public java.time.Instant getIssuedAtFromToken(String token) {
+        return extractClaim(token, Claims::getIssuedAt).toInstant();
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);

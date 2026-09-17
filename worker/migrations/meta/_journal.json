@@ -43,6 +43,27 @@
       "when": 1787301693237,
       "tag": "0005_gifted_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788946307891,
+      "tag": "0006_cute_gorgon",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788947367841,
+      "tag": "0007_fat_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788947813266,
+      "tag": "0008_eminent_roxanne_simpson",
+      "breakpoints": true
     }
   ]
 }

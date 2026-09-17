@@ -17,6 +17,13 @@ public class NotificationService {
         this.repository = repository;
     }
 
+    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — lets the controller check ownership (compare the
+    // authenticated caller against the notification's own customerId) before mutating it.
+    public Notification getById(Long notificationId) {
+        return repository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+    }
+
     public Notification createNotification(Long customerId, String title, String message, String type, String appRef) {
         return repository.save(Notification.builder()
                 .customerId(customerId)

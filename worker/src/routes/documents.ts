@@ -6,13 +6,11 @@ import { generatedDocuments, uploadedDocuments } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { generateOfferPack } from "../lib/document-pack";
 import { requireAuth } from "../middleware/auth";
+import { STAFF_ROLES } from "../lib/roles";
+import { isAllowedUpload } from "../lib/file-signature";
 
 export const documents = new Hono<AppEnv>();
 documents.use("*", requireAuth);
-
-// Same duplicated list as applications.ts/admin.ts (tracked separately as Q2) — staff can
-// download/view any customer's documents; a customer may only reach their own.
-const STAFF_ROLES = ["BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"];
 
 function assertOwnsDocument(c: any, documentCustomerId: number) {
   const authUser = c.get("authUser");
@@ -120,8 +118,13 @@ documents.post("/upload", async (c) => {
   const customerId = Number(body["customerId"]);
   const docType = String(body["documentType"] ?? "SUPPORTING");
 
-  const key = `uploaded/${appRef}/${crypto.randomUUID()}_${file.name}`;
   const bytes = await file.arrayBuffer();
+  // S3 — magic-byte check against the real bytes, not the client-claimed Content-Type header.
+  if (!isAllowedUpload(bytes)) {
+    throw new AppError("Unsupported file type. Allowed: PDF, JPEG, PNG, DOC, DOCX.");
+  }
+
+  const key = `uploaded/${appRef}/${crypto.randomUUID()}_${file.name}`;
   await bucket.put(key, bytes, { httpMetadata: { contentType: file.type || "application/octet-stream" } });
 
   const [saved] = await db

@@ -37,6 +37,20 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Q3 (ARCHITECTURE_REVIEW_GAPS.md) — bringing the branding logo upload up to the same
+             content-type validation bar the worker already has (S3's document-service pattern). -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <!-- S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging, see
+             src/main/resources/logback-spring.xml. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
