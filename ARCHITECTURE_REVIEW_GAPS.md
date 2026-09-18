@@ -927,7 +927,20 @@ These come from the doc's own §11 (Open Points for Architecture Review) and `AR
 their detail:
 
 - Sandbox → production migration estimate (doc Open Point 1) — nothing sizes the Worker+D1+R2 → nine-component Java + managed MySQL + object storage move yet, including the data-layer migration itself.
-- Non-functional requirements — volumes, concurrency, response-time targets, availability commitment (doc Open Point 4). My earlier infra sizing estimate assumed the target topology already existed and was explicit that it's a planning estimate pending these numbers.
+- Non-functional requirements — volumes, concurrency, response-time targets, availability commitment (doc Open Point 4). My earlier infra sizing estimate assumed the target topology already existed and was explicit that it's a planning estimate pending these numbers. **2026-09-17**: a local JMeter load-testing setup now exists (`loadtest/personal-loan-journey.jmx`, `loadtest/README.md`) — stresses the full customer journey (register → wizard → affordability) through `api-gateway` on this development machine and produces JMeter's standard HTML dashboard report (response-time percentiles, throughput, error breakdown). It gives real local numbers to sanity-check against `DigiLend_Infra_Sizing_Estimate.xlsx`'s planning assumptions, but it's still one machine, not the target topology — don't treat its throughput ceiling as a production number, only as a relative baseline (e.g. "did this change regress p95 latency").
+  **First real numbers (2026-09-17)**, run at `THREADS=150` to match the sizing doc's own stated
+  peak-concurrency figure (~150–250): 300 full journeys, 4,351 requests, **0% errors**, ~74 req/s
+  sustained (peaking to 129 req/s) — against the doc's own stated peak-throughput target of
+  ~8–10 req/s, roughly an 8–16× margin, on one shared machine running the load generator alongside
+  all 10 un-redundant backend JVMs (no HA, no dedicated hardware — a harsher setup than any real
+  environment). This is consistent with, and supports, the doc's own conclusion that "throughput
+  is not the sizing driver at this transaction volume" — redundancy/HA needs, not raw capacity,
+  are what should be driving the VM counts. One real open question surfaced, not yet explained:
+  `POST /api/applications/start` has a persistent p99 tail (224ms at 300 samples, up from a single
+  514ms outlier at 100 samples) that didn't shrink with scale the way the affordability-check
+  endpoint's did — worth profiling before treating this as fully clean. Full results, chart, and
+  the doc-comparison table are published as an artifact (link in session records, not duplicated
+  here) rather than only living in the gitignored `loadtest/report/` output.
 - Recovery objectives — RTO/RPO, automatic vs. invoked failover, object storage replication, rehearsal cadence (doc Open Point 5).
 - Data protection & retention — encryption at rest, key rotation, cross-schema erasure execution, DPIA (doc Open Point 6).
 - Regulatory positioning — applicable regime, affordability-evidence retention, decline explainability (doc Open Point 10).
@@ -941,11 +954,11 @@ their detail:
 ## 7. Suggested build sequence
 
 1. **Now, in parallel, no dependencies** — done: Q1 (naming), S1 (document IDOR), C3/C1/C2 (fix the three deck/doc inaccuracies so the review package is accurate while the rest of this executes).
-2. **Foundation** — done: G1 → G2 → G3 (containers, CI/CD, service discovery).
+2. **Foundation** — done: G3 (service discovery), runtime-verified. G1 (containers) and G2 (CI/CD) are functionally complete and compile/parse clean but have never been run against a real Docker engine (no Docker/WSL on this development machine) — tracker status stays "In progress" until that one verification step happens.
 3. **Extraction** — done: G4 (`rule-service`, resolved G6 as a side effect) and G5 (`integration-service`), both runtime-verified. `backend/` now matches the doc's nine-component service catalog.
 4. **In parallel with 1, needs an owner not a sprint**: the decisions in §6 — particularly the sandbox-to-production estimate and the case-allocation ownership question, since both block downstream work if left open too long.
 5. **After a spec exists, not before**: N1–N3 (card payments, core banking, reporting warehouse) — none of these are engineering-ready yet regardless of how much delivery capacity is available.
 6. **Done**: S7 (Spring Boot 3→4 migration, re-scoped from a patch bump to a major-version jump once the real EOL status was checked — see its note above).
 7. **Done**: S4's correlation-ID slice (request tracing across the gateway → service hop) — full distributed tracing and structured/JSON logging remain not-built, tracked as the same item's unfinished remainder.
 8. **Done**: S2, S5, S6, S8, S9, Q2, Q3, N1, and Open Point #19 (session revocation; Java-side rate limiting — worker/Cloudflare side deliberately dropped, see S5 remainder note; API-boundary opaque ids for documents/notifications; wizard section validation; POST-based integration cleanup; STAFF_ROLES dedup; branding polish; simulated card-payment adapter; MySQL `digibank_audit` compliance trail). S3 remains partial (type/signature validation shipped, real malware scanning needs new infra).
-9. **Remaining**: S3's malware-scanning remainder, N2-N3 (core banking, reporting warehouse — still not engineering-ready without a spec), the pending manual PowerPoint edit for C6, and whatever's left in §6's decisions-needed list.
+9. **Remaining**: S3's malware-scanning remainder (tracked as a separate effort — needs new infra), N2-N3 (core banking, reporting warehouse — still not engineering-ready without a spec), the pending manual PowerPoint edit for C6, G1/G2's real-Docker verification step (needs a machine with Docker/WSL), and whatever's left in §6's decisions-needed list.
