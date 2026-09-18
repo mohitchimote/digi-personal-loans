@@ -1,0 +1,45 @@
+<div class="db-form-group" *ngIf="isVisible && field.type !== 'checkbox'">
+  <label>{{ label }} <span class="required" *ngIf="field.required">*</span></label>
+
+  <input
+    *ngIf="field.type === 'text'"
+    class="db-input"
+    type="text"
+    [formControl]="control"
+    [maxlength]="field.validation?.maxLength ?? null"
+  />
+
+  <input
+    *ngIf="field.type === 'number'"
+    class="db-input"
+    type="number"
+    [formControl]="control"
+    [min]="field.validation?.min ?? null"
+    [max]="field.validation?.max ?? null"
+  />
+
+  <input *ngIf="field.type === 'date'" class="db-input" type="date" [formControl]="control" />
+
+  <textarea *ngIf="field.type === 'textarea'" class="db-textarea" rows="3" [formControl]="control"></textarea>
+
+  <select *ngIf="field.type === 'select'" class="db-select" [formControl]="control">
+    <option value="">{{ 'common.select' | translate }}</option>
+    <option *ngFor="let opt of field.options" [value]="opt.value">{{ optionLabel(opt) }}</option>
+  </select>
+
+  <div class="declaration-toggle" *ngIf="field.type === 'radio'">
+    <label class="toggle-label" *ngFor="let opt of field.options">
+      <input type="radio" [formControl]="control" [value]="opt.value" />
+      {{ optionLabel(opt) }}
+    </label>
+  </div>
+
+  <div class="db-error-msg" *ngIf="control.invalid && control.touched">{{ 'common.required' | translate }}</div>
+</div>
+
+<div class="db-form-group" *ngIf="isVisible && field.type === 'checkbox'">
+  <label class="db-checkbox">
+    <input type="checkbox" [formControl]="control" />
+    <span>{{ label }}</span>
+  </label>
+</div>

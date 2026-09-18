@@ -27,6 +27,8 @@ import { requireAuth, assertRole } from "../middleware/auth";
 import { cached, invalidate } from "../lib/cache";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
 import { STAFF_ROLES } from "../lib/roles";
+import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
+import type { InferSelectModel } from "drizzle-orm";
 
 const MANDATE_RULES_CACHE_KEY = "mandate-rules";
 const MANDATE_RULES_TTL_MS = 30_000;
@@ -108,14 +110,62 @@ const CANCELLABLE_STATUSES = ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW
 // Controls"/"Channel-Specific Validation"): every section save must match that section's known
 // shape exactly — unrecognised fields are rejected (400), not silently stored or stripped. Returns
 // the validated data so the JSON persisted is always exactly the parsed, in-shape value.
-function validateSectionData(section: string, data: unknown): Record<string, unknown> {
+//
+// Admin Form Builder integration: an admin-added `kind: "custom"` field on this section is, by
+// definition, a key the static per-section schema above has never heard of — and that schema is
+// `.strict()`, so it would reject the payload outright as soon as one is present. Custom-field keys
+// are split out before the static schema runs, validated separately against the resolved form
+// version's own required/type metadata, then merged back into the result — the static schema stays
+// exactly as strict as it already was for every field it actually knows about.
+async function validateSectionData(
+  db: Db,
+  app: InferSelectModel<typeof loanApplications>,
+  section: string,
+  data: unknown
+): Promise<Record<string, unknown>> {
   const schema = SECTION_SCHEMAS[section];
   if (!schema) throw new AppError(`Unknown section: ${section}`);
-  const result = schema.safeParse(data);
+
+  const customFields = await customFieldsFor(db, app, section);
+  const isPlainObject = data != null && typeof data === "object" && !Array.isArray(data);
+  const staticData: Record<string, unknown> = isPlainObject ? { ...(data as Record<string, unknown>) } : (data as any);
+  const customData: Record<string, unknown> = {};
+  if (isPlainObject) {
+    for (const f of customFields) {
+      if (f.key in staticData) {
+        customData[f.key] = staticData[f.key];
+        delete staticData[f.key];
+      }
+    }
+  }
+
+  const result = schema.safeParse(staticData);
   if (!result.success) {
     throw new AppError(`Invalid data for section '${section}': ${formatZodIssues(result.error)}`);
   }
-  return result.data as Record<string, unknown>;
+
+  for (const f of customFields) {
+    if (!f.required || f.hidden) continue;
+    const value = customData[f.key];
+    if (value === undefined || value === null || value === "") {
+      throw new AppError(`Missing required field '${f.key}' for section '${section}'.`);
+    }
+  }
+
+  return { ...(result.data as Record<string, unknown>), ...customData };
+}
+
+async function customFieldsFor(db: Db, app: InferSelectModel<typeof loanApplications>, section: string) {
+  const activeVersion = await resolveActiveSchemaVersion(db, app);
+  if (!activeVersion) return [];
+  let schema;
+  try {
+    schema = parseSchema(activeVersion);
+  } catch {
+    return [];
+  }
+  const sectionSchema = schema.sections.find((s) => s.key === section);
+  return sectionSchema ? sectionSchema.fields.filter((f) => f.kind === "custom") : [];
 }
 
 // S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check at
@@ -552,7 +602,7 @@ applications.put("/:appRef/section", async (c) => {
   const app = await getByRef(db, appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
-  const validated = validateSectionData(section, data);
+  const validated = await validateSectionData(db, app, section, data);
 
   const merged = { ...app, [column]: JSON.stringify(validated) };
   const newCurrentSection = nextSection(section, merged as any);
@@ -579,10 +629,10 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   const editedBy = actorName(c);
   const { section, data } = await c.req.json<{ section: string; data: Record<string, unknown> }>();
 
-  await getByRef(db, appRef);
+  const app = await getByRef(db, appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
-  const validated = validateSectionData(section, data);
+  const validated = await validateSectionData(db, app, section, data);
 
   const [updated] = await db
     .update(loanApplications)
@@ -735,7 +785,7 @@ applications.get("/customer/:customerId/current", async (c) => {
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (!app) throw new AppError(`No application found for customer: ${customerId}`);
-  return c.json(app);
+  return c.json(await withResolvedFormVersion(db, app));
 });
 
 applications.get("/:appRef/notes", async (c) => {
@@ -763,7 +813,7 @@ applications.post("/:appRef/notes", async (c) => {
 applications.get("/:appRef", async (c) => {
   const db = getDb(c.env.DB);
   const app = await getByRef(db, c.req.param("appRef"));
-  return c.json(app);
+  return c.json(await withResolvedFormVersion(db, app));
 });
 
 applications.put("/:appRef/affordability-result", async (c) => {
@@ -788,7 +838,10 @@ applications.post("/:appRef/withdraw", async (c) => {
   }
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "IN_PROGRESS", currentSection: "reviewSubmit", updatedAt: new Date().toISOString() })
+    // Un-freezes formVersionId back to null: a withdrawn application is editable again, so it
+    // should resume live-resolving against whatever is currently published, same as any other
+    // in-flight application — not stay pinned to a version from a submission that no longer stands.
+    .set({ status: "IN_PROGRESS", currentSection: "reviewSubmit", formVersionId: null, updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
   return c.json(updated);
@@ -812,11 +865,22 @@ applications.post("/:appRef/cancel", async (c) => {
 applications.post("/:appRef/submit", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  await getByRef(db, appRef);
+  const app = await getByRef(db, appRef);
   const now = new Date().toISOString();
+  // Admin Form Builder traceability: freeze whichever form_versions row is PUBLISHED right now —
+  // this is the one and only write to formVersionId (see lib/form-versions.ts's
+  // resolveActiveSchemaVersion doc comment). From this point on this application is judged against
+  // this exact version forever, regardless of any later publish.
+  const activeVersion = await resolveActiveSchemaVersion(db, app);
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "SUBMITTED", submittedAt: now, completionPercentage: 100, updatedAt: now })
+    .set({
+      status: "SUBMITTED",
+      submittedAt: now,
+      completionPercentage: 100,
+      updatedAt: now,
+      formVersionId: activeVersion?.id ?? null,
+    })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
   c.executionCtx.waitUntil(sendTemplatedEmail(db, c.env, "SUBMITTED", updated, {}));

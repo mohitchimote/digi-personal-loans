@@ -7,6 +7,10 @@
     <p class="section-subtitle">{{ 'personal.subtitle' | translate }}</p>
   </div>
 
+  <div class="db-alert db-alert--warning mb-16" *ngIf="needsAttention()">
+    <span class="material-icons mi-sm">info</span> {{ 'personal.needsAttentionNotice' | translate }}
+  </div>
+
   <form [formGroup]="form" (ngSubmit)="saveAndNext()">
     <div class="db-card mb-16">
       <div class="card-header"><h3>{{ 'personal.identityHeader' | translate }}</h3></div>
@@ -93,6 +97,16 @@
           <div class="db-error-msg" *ngIf="f('email')?.invalid && f('email')?.touched">{{ 'register.emailError' | translate }}</div>
         </div>
       </div>
+    </div>
+
+    <div class="db-card mb-16" *ngIf="customFieldDefs().length">
+      <div class="card-header"><h3>{{ 'personal.additionalInfoHeader' | translate }}</h3></div>
+      <app-dynamic-field
+        *ngFor="let field of customFieldDefs()"
+        [field]="field"
+        [control]="$any(customFields.get(field.key))"
+        [allValues]="form.getRawValue()"
+      ></app-dynamic-field>
     </div>
 
     <div class="db-card mb-16">

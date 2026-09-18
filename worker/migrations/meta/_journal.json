@@ -71,6 +71,13 @@
       "when": 1789665278624,
       "tag": "0009_sticky_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789757837801,
+      "tag": "0010_open_alex_wilder",
+      "breakpoints": true
     }
   ]
 }

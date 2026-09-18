@@ -64,7 +64,7 @@ export function columnForSection(section: string): keyof App | undefined {
   return SECTION_TO_COLUMN[section];
 }
 
-function isSectionFilled(app: App, section: string): boolean {
+export function isSectionFilled(app: App, section: string): boolean {
   if (section === "guarantorDetails") {
     // Skipped by default — only becomes a real stop once an underwriter has flagged
     // guarantorRequired and it hasn't been filled in yet.
@@ -142,6 +142,36 @@ export function sectionLabel(section: string, lang: "en" | "he" = "en"): string 
     default:
       return "application";
   }
+}
+
+// Admin Form Builder integration: a section already "filled" by the legacy per-column check above
+// can still be missing a *new* required custom field the admin added after the customer completed
+// it — this is the check that can un-tick a previously-green sidebar item. Only ever adds sections
+// to the legacy incomplete set, never removes one: a section the legacy check already considers
+// incomplete stays incomplete regardless of what this finds.
+export function needsAttentionSections(app: App, schema: { sections: readonly { key: string; fields: readonly { key: string; kind: string; required: boolean; hidden?: boolean }[] }[] } | null): string[] {
+  if (!schema) return [];
+  const flagged: string[] = [];
+  for (const section of schema.sections) {
+    if (!isSectionFilled(app, section.key)) continue; // already incomplete by the legacy check — nothing new to add
+    const column = SECTION_TO_COLUMN[section.key];
+    if (!column) continue;
+    const raw = (app as any)[column];
+    if (raw == null) continue;
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const missingRequiredCustomField = section.fields.some((f) => {
+      if (f.kind !== "custom" || !f.required || f.hidden) return false;
+      const value = data[f.key];
+      return value === undefined || value === null || value === "";
+    });
+    if (missingRequiredCustomField) flagged.push(section.key);
+  }
+  return flagged;
 }
 
 export function generateApplicationRef(): string {

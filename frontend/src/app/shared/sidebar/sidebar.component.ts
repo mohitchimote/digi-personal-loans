@@ -132,7 +132,12 @@ export class SidebarComponent implements OnInit {
       directDebit:        this.application.directDebitJson,
       reviewSubmit:       this.application.reviewSubmitJson,
     };
-    return !!map[sectionKey];
+    if (!map[sectionKey]) return false;
+    // Admin Form Builder: a section can be filled by the map above yet still need attention if a
+    // newly-published required field isn't answered yet — see lib/sections.ts's
+    // needsAttentionSections (Worker) for how this is computed. Empty/absent on every application
+    // until an admin actually publishes such a change, so this is a no-op today.
+    return !(this.application.needsAttentionSections ?? []).includes(sectionKey);
   }
 
   completedCount(): number {

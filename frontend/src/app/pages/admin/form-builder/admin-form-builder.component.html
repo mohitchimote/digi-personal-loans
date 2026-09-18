@@ -1,0 +1,192 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.formBuilder' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.formBuilderSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.formVersionSaved' | translate }}</div>
+
+<div class="form-tabs mb-24">
+  <button
+    type="button"
+    class="db-btn"
+    [class.db-btn--primary]="selectedFormKey() === 'personal-loan-wizard'"
+    [class.db-btn--outline]="selectedFormKey() !== 'personal-loan-wizard'"
+    (click)="selectForm('personal-loan-wizard')"
+  >{{ 'admin.formPersonalWizard' | translate }}</button>
+  <button
+    type="button"
+    class="db-btn"
+    [class.db-btn--primary]="selectedFormKey() === 'business-loan-wizard'"
+    [class.db-btn--outline]="selectedFormKey() !== 'business-loan-wizard'"
+    (click)="selectForm('business-loan-wizard')"
+  >{{ 'admin.formBusinessWizard' | translate }}</button>
+</div>
+
+<div class="loading-row" *ngIf="loading()">
+  <div class="spinner"></div><span>{{ 'admin.loadingFormBuilder' | translate }}</span>
+</div>
+
+<ng-container *ngIf="!loading() && schema() as sc">
+
+  <div class="db-card version-bar mb-24">
+    <div class="version-bar__row">
+      <div class="version-chip" *ngIf="publishedVersion() as pv">
+        <span class="version-chip__dot version-chip__dot--published"></span>
+        {{ 'admin.formPublished' | translate }} v{{ pv.version }}
+        <span class="version-chip__meta" *ngIf="pv.publishedAt">· {{ pv.publishedAt | date:'medium' }}</span>
+      </div>
+      <div class="version-chip" *ngIf="draftVersion() as dv">
+        <span class="version-chip__dot version-chip__dot--draft"></span>
+        {{ 'admin.formDraft' | translate }} v{{ dv.version }}
+      </div>
+      <div class="version-bar__actions">
+        <button
+          type="button"
+          class="db-btn db-btn--outline db-btn--sm"
+          *ngFor="let v of archivedVersions()"
+          (click)="openVersion(v.id)"
+        >v{{ v.version }} ({{ 'admin.formArchived' | translate }})</button>
+
+        <button
+          type="button"
+          class="db-btn db-btn--outline db-btn--sm"
+          *ngIf="publishedVersion() as pv"
+          [class.db-btn--primary]="activeVersion()?.id === pv.id"
+          (click)="openVersion(pv.id)"
+        >{{ 'admin.formViewPublished' | translate }}</button>
+
+        <button
+          type="button"
+          class="db-btn db-btn--outline db-btn--sm"
+          *ngIf="draftVersion() as dv"
+          [class.db-btn--primary]="activeVersion()?.id === dv.id"
+          (click)="openVersion(dv.id)"
+        >{{ 'admin.formViewDraft' | translate }}</button>
+
+        <button
+          type="button"
+          class="db-btn db-btn--primary db-btn--sm"
+          *ngIf="!draftVersion()"
+          [disabled]="saving()"
+          (click)="createDraft()"
+        >{{ 'admin.formCreateDraft' | translate }}</button>
+      </div>
+    </div>
+    <p class="db-hint" *ngIf="!isEditable()">{{ 'admin.formReadOnlyNotice' | translate }}</p>
+  </div>
+
+  <div class="db-card mb-16" *ngFor="let section of sc.sections" [class.section-card--collapsed]="expandedSection() !== section.key">
+    <div class="card-header section-card__header" (click)="toggleSection(section.key)">
+      <h3>{{ sideMenuLabel(section) }} <span class="section-card__key">({{ section.key }})</span></h3>
+      <span class="material-icons mi-sm section-card__chevron">{{ expandedSection() === section.key ? 'expand_less' : 'expand_more' }}</span>
+    </div>
+
+    <ng-container *ngIf="expandedSection() === section.key">
+      <div class="section-header-block" *ngFor="let sh of section.sectionHeaders; let hi = index; let first = first; let last = last">
+        <div class="section-header-block__title">
+          <strong>{{ headerLabel(section, sh.key) }}</strong>
+          <span class="db-hint">{{ sh.key }}</span>
+          <div class="reorder-btns" *ngIf="isEditable()">
+            <button type="button" class="icon-btn" [disabled]="first" (click)="moveHeader(section, sh.key, -1)"><span class="material-icons mi-sm">arrow_upward</span></button>
+            <button type="button" class="icon-btn" [disabled]="last" (click)="moveHeader(section, sh.key, 1)"><span class="material-icons mi-sm">arrow_downward</span></button>
+          </div>
+        </div>
+
+        <table class="db-table field-table" *ngIf="fieldsFor(section, sh.key).length">
+          <thead>
+            <tr>
+              <th>{{ 'admin.formFieldLabel' | translate }}</th>
+              <th>{{ 'admin.formFieldKind' | translate }}</th>
+              <th>{{ 'admin.formFieldRequired' | translate }}</th>
+              <th>{{ 'admin.formFieldHidden' | translate }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let field of fieldsFor(section, sh.key); let ffirst = first; let flast = last" [class.field-row--hidden]="field.hidden">
+              <td>
+                {{ fieldLabel(field) }}
+                <span class="db-hint field-row__key">{{ field.key }}</span>
+                <span class="chip chip--visibility" *ngIf="field.visibility">{{ 'admin.formConditional' | translate }}: {{ field.visibility.fieldKey }}</span>
+              </td>
+              <td><span class="chip" [class.chip--custom]="field.kind === 'custom'">{{ field.kind === 'custom' ? (field.type || 'custom') : ('admin.formExisting' | translate) }}</span></td>
+              <td>
+                <input type="checkbox" [checked]="field.required" [disabled]="!isEditable()" (change)="toggleRequired(field)" />
+              </td>
+              <td>
+                <input type="checkbox" [checked]="!!field.hidden" [disabled]="!isEditable()" (change)="toggleHidden(field)" />
+              </td>
+              <td class="field-row__actions" *ngIf="isEditable()">
+                <button type="button" class="icon-btn" [disabled]="ffirst" (click)="moveField(section, field, -1)"><span class="material-icons mi-sm">arrow_upward</span></button>
+                <button type="button" class="icon-btn" [disabled]="flast" (click)="moveField(section, field, 1)"><span class="material-icons mi-sm">arrow_downward</span></button>
+                <button type="button" class="icon-btn icon-btn--danger" *ngIf="field.kind === 'custom'" (click)="removeCustomField(section, field)"><span class="material-icons mi-sm">delete</span></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="db-hint" *ngIf="!fieldsFor(section, sh.key).length">{{ 'admin.formNoFields' | translate }}</p>
+
+        <ng-container *ngIf="isEditable()">
+          <button
+            type="button"
+            class="db-btn db-btn--ghost db-btn--sm mt-8"
+            *ngIf="newFieldDraft()?.sectionKey !== section.key || newFieldDraft()?.sectionHeaderKey !== sh.key"
+            (click)="startNewField(section.key, sh.key)"
+          >{{ 'admin.formAddField' | translate }}</button>
+
+          <div class="new-field-form" *ngIf="newFieldDraft() as draft" [hidden]="draft.sectionKey !== section.key || draft.sectionHeaderKey !== sh.key">
+            <div class="form-row" *ngIf="draft.sectionKey === section.key && draft.sectionHeaderKey === sh.key">
+              <div class="db-form-group">
+                <label>{{ 'admin.formFieldType' | translate }}</label>
+                <select class="db-select" [(ngModel)]="draft.type">
+                  <option *ngFor="let t of fieldTypes" [value]="t">{{ t }}</option>
+                </select>
+              </div>
+              <div class="db-form-group">
+                <label>{{ 'admin.formLabelEn' | translate }}</label>
+                <input class="db-input" [(ngModel)]="draft.labelEn" />
+              </div>
+              <div class="db-form-group">
+                <label>{{ 'admin.formLabelHe' | translate }}</label>
+                <input class="db-input" [(ngModel)]="draft.labelHe" dir="rtl" />
+              </div>
+              <div class="db-form-group db-form-group--checkbox">
+                <label class="db-checkbox">
+                  <input type="checkbox" [(ngModel)]="draft.required" />
+                  <span>{{ 'admin.formFieldRequired' | translate }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="new-field-form__actions">
+              <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="cancelNewField()">{{ 'common.cancel' | translate }}</button>
+              <button type="button" class="db-btn db-btn--primary db-btn--sm" (click)="addNewField(section)">{{ 'admin.formAddField' | translate }}</button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </ng-container>
+  </div>
+
+  <div class="db-card save-bar" *ngIf="isEditable()">
+    <div class="db-form-group">
+      <label>{{ 'admin.formChangeNote' | translate }}</label>
+      <textarea class="db-textarea" rows="2" [(ngModel)]="changeNote" [placeholder]="'admin.formChangeNotePlaceholder' | translate"></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="db-btn db-btn--ghost" [disabled]="saving()" (click)="discardDraft()">{{ 'admin.formDiscardDraft' | translate }}</button>
+      <button type="button" class="db-btn db-btn--outline" [disabled]="saving()" (click)="saveDraft()">
+        {{ saving() ? ('common.saving' | translate) : ('admin.formSaveDraft' | translate) }}
+      </button>
+      <button type="button" class="db-btn db-btn--primary" *ngIf="!publishConfirm()" (click)="requestPublish()">{{ 'admin.formPublish' | translate }}</button>
+      <ng-container *ngIf="publishConfirm()">
+        <span class="publish-confirm-text">{{ 'admin.formPublishConfirm' | translate }}</span>
+        <button type="button" class="db-btn db-btn--ghost" (click)="cancelPublish()">{{ 'common.cancel' | translate }}</button>
+        <button type="button" class="db-btn db-btn--primary" [disabled]="publishing()" (click)="confirmPublish()">
+          {{ publishing() ? ('admin.formPublishing' | translate) : ('admin.formPublishConfirmYes' | translate) }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+</ng-container>

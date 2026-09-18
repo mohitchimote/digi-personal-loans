@@ -87,6 +87,14 @@ export const loanApplications = sqliteTable("loan_applications", {
   guarantorRequired: integer("guarantor_required", { mode: "boolean" }).notNull().default(false),
   guarantorDetailsJson: text("guarantor_details_json"),
 
+  // Admin Form Builder traceability (see lib/form-versions.ts). Written exactly once, at the
+  // moment this application transitions to SUBMITTED — recording whichever form_versions row was
+  // PUBLISHED at that instant. Null while DRAFT/IN_PROGRESS: an in-flight application always
+  // resolves against the *currently* published version rather than a pinned one, so a newly
+  // required field can surface mid-journey; once submitted this is frozen forever, so a later
+  // publish can never change what an already-submitted application is judged against.
+  formVersionId: integer("form_version_id"),
+
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at"),
   submittedAt: text("submitted_at"),
@@ -267,4 +275,26 @@ export const emailTemplates = sqliteTable("email_templates", {
   footer: text("footer"),
   updatedAt: text("updated_at"),
   updatedBy: text("updated_by"),
+});
+
+// Admin Form Builder — versioned wizard section/field definitions. One flat table keyed by
+// formKey rather than a form_definitions/form_versions parent-child pair: there are only ever two
+// forms (personal-loan-wizard, business-loan-wizard), same flat-table-keyed-by-a-string precedent
+// as emailTemplates above. schemaJson is the whole sections -> sectionHeaders -> fields tree in
+// one blob (see lib/form-schema-types.ts for its shape) — same JSON-blob-over-normalized-tables
+// choice this project already made for loanApplications' per-section columns, for the same
+// reason: the shape can keep evolving without a migration per field.
+// Exactly one PUBLISHED row per formKey at a time; publishing archives the previous one rather
+// than deleting it, so version history (and a submitted application's frozen reference) survives.
+export const formVersions = sqliteTable("form_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  formKey: text("form_key").notNull(),
+  version: integer("version").notNull(),
+  status: text("status").notNull().default("DRAFT"),
+  schemaJson: text("schema_json").notNull(),
+  changeNote: text("change_note"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+  publishedAt: text("published_at"),
+  publishedBy: text("published_by"),
 });
