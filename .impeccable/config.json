@@ -1,0 +1,38 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "space grotesk",
+        "createdAt": "2026-09-18T15:50:27.992Z",
+        "reason": "Deliberate display face, documented in DESIGN.md's Typography section: geometric/ticker-adjacent character chosen specifically for the loan amount figure and headings in the Signal Gold direction, per craft-floor's own guidance that Space Grotesk is a legitimate named exception when it has a specific reason (here: distinguishing large numerals from Apple-style restraint, the user's named anti-reference)."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-18T15:50:33.544Z",
+        "reason": "Body/label/UI text only, never display (Space Grotesk owns display) — matches craft-floor's own calibration note that Inter is a valid workhorse face for Operate-mode body copy, and matches the existing production app's body font for continuity (see PRODUCT.md Brand Commitments)."
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "design-prototype/index.html"
+        ],
+        "createdAt": "2026-09-18T15:50:39.160Z",
+        "reason": "Intentional, disciplined use: every glow shadow carries a real offset+blur (never zero-offset), per craft-floor's own Depth rule, and is restricted to exactly the gold-accented elements (primary button, slider thumb, brand mark) per DESIGN.md's 'Flat-By-Default Rule' — nothing else in this system gets a shadow."
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "design-prototype/*.html"
+        ],
+        "createdAt": "2026-09-18T16:17:09.453Z",
+        "reason": "Intentional, disciplined use across the whole Signal Gold direction: every glow shadow carries a real offset+blur (never zero-offset) and is restricted to gold-accented elements only, per DESIGN.md's Flat-By-Default Rule. Scoped to every wizard-step page since they all share the same styles.css tokens/components (supersedes the earlier index.html-only ignore)."
+      }
+    ]
+  }
+}

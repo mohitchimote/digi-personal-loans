@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Verify ID (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Verify Your Identity</h1>
+    <p class="ask-subtitle">Please upload a clear photo or scan of your National ID (Teudat Zehut), passport, or driving licence.</p>
+    <p class="input-hint" style="margin:-28px 0 28px;">Accepted documents: National ID (front and back), passport, or driving licence.</p>
+
+    <section class="field-group">
+      <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload ID document">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 01-1-7.87A5 5 0 0116 8a4.5 4.5 0 011 8.9"/><path d="M12 12v7M9 16l3-3 3 3"/></svg>
+        <div class="upload-zone__title">Drop your ID here, or click to browse</div>
+        <div class="upload-zone__hint">Accepted: PDF, JPG, PNG · Max 10MB per file</div>
+      </div>
+      <input type="file" id="fileInput" hidden accept=".jpg,.jpeg,.png,.pdf">
+      <div id="fileList"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn" disabled><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="verify-id.js"></script>
+</body>
+</html>

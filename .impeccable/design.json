@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T00:00:00Z",
+  "title": "Design System: DigiBank — Signal Gold",
+  "extensions": {
+    "colorMeta": {
+      "signal-gold": {
+        "role": "primary",
+        "displayName": "Signal Gold",
+        "canonical": "#ffb833",
+        "tonalRamp": ["#3d2a05", "#5c3f08", "#8a5d0e", "#b87d16", "#e09b1e", "#ffb833", "#ffcb66", "#ffe3ad"]
+      },
+      "ledger-mint": {
+        "role": "secondary",
+        "displayName": "Ledger Mint",
+        "canonical": "#35e0a1",
+        "tonalRamp": ["#062018", "#0b3a2a", "#11553c", "#1c7a58", "#26a377", "#35e0a1", "#79ebbf", "#bdf5dc"]
+      },
+      "alert-coral": {
+        "role": "error",
+        "displayName": "Alert Coral",
+        "canonical": "#ff6b6b",
+        "tonalRamp": ["#3d0f0f", "#5c1717", "#8a2222", "#b82f2f", "#e0453f", "#ff6b6b", "#ff9e9e", "#ffcfcf"]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Vault Ink",
+        "canonical": "#0b0c14",
+        "tonalRamp": ["#05050a", "#0b0c14", "#14151f", "#1c1e2b", "#262838", "#3a3d52", "#5c5f78", "#8a8ca3"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#f4f3f7"
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Dusk Violet-Gray",
+        "canonical": "#a8a6c0"
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The loan amount figure — the single number this step exists to let the customer set." },
+      "heading": { "displayName": "Headline", "purpose": "The step's one question." },
+      "body": { "displayName": "Body", "purpose": "Repayment estimate line and supporting copy." },
+      "label": { "displayName": "Label", "purpose": "Field labels, pill and button text." }
+    },
+    "shadows": [
+      { "name": "signal-glow", "value": "0 10px 26px -8px rgba(255,184,51,0.35)", "purpose": "Primary button and slider thumb at rest — the only elements allowed a shadow." },
+      { "name": "signal-glow-active", "value": "0 14px 32px -8px rgba(255,184,51,0.35)", "purpose": "Primary button hover/press." },
+      { "name": "brand-mark-glow", "value": "0 3px 10px rgba(255,184,51,0.35)", "purpose": "Top-bar brand mark only." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for every transition — pills, switch thumb, button hover, amount pulse." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "720px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per screen (e.g. Save & Continue).",
+      "html": "<button class=\"ds-btn-primary\">Save &amp; Continue</button>",
+      "css": ".ds-btn-primary { background: linear-gradient(160deg, #ffb833 0%, #e09b1e 100%); color: #241a05; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.98rem; border: none; padding: 15px 30px; border-radius: 14px; cursor: pointer; box-shadow: 0 10px 26px -8px rgba(255,184,51,0.35); transition: transform 180ms cubic-bezier(0.16,1,0.3,1), box-shadow 180ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -8px rgba(255,184,51,0.35); } .ds-btn-primary:focus-visible { outline: 2px solid #ffb833; outline-offset: 3px; } .ds-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action (Back, Save & exit).",
+      "html": "<button class=\"ds-btn-ghost\">← Back</button>",
+      "css": ".ds-btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.16); color: #a8a6c0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem; padding: 12px 20px; border-radius: 10px; cursor: pointer; transition: border-color 180ms, color 180ms, background 180ms; } .ds-btn-ghost:hover { border-color: #a8a6c0; color: #f4f3f7; background: #14151f; }"
+    },
+    {
+      "name": "Selection Pill",
+      "kind": "chip",
+      "refersTo": "pill-selected",
+      "description": "Single-select chip used for purpose and term choice groups.",
+      "html": "<button class=\"ds-pill\" aria-checked=\"true\" role=\"radio\">Home Improvement</button>",
+      "css": ".ds-pill { background: #14151f; border: 1px solid rgba(255,255,255,0.08); color: #a8a6c0; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 0.88rem; padding: 11px 18px; border-radius: 999px; cursor: pointer; transition: border-color 160ms, background 160ms, color 160ms, transform 120ms; } .ds-pill:hover { border-color: rgba(255,255,255,0.16); color: #f4f3f7; } .ds-pill:active { transform: scale(0.97); } .ds-pill[aria-checked='true'] { background: #ffb833; border-color: #ffb833; color: #241a05; font-weight: 600; } .ds-pill:focus-visible { outline: 2px solid #ffb833; outline-offset: 3px; }"
+    },
+    {
+      "name": "Amount Slider",
+      "kind": "input",
+      "refersTo": "slider-amount",
+      "description": "The signature control — sets the loan amount, drives the live amount figure and repayment estimate.",
+      "html": "<input type=\"range\" class=\"ds-slider\" min=\"5000\" max=\"300000\" step=\"1000\" value=\"50000\" style=\"--fill: 15%\">",
+      "css": ".ds-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; background: linear-gradient(to right, #ffb833 0%, #ffb833 var(--fill,15%), #262838 var(--fill,15%), #262838 100%); outline: none; cursor: pointer; } .ds-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #ffb833; border: 4px solid #0b0c14; box-shadow: 0 4px 14px -2px rgba(255,184,51,0.35), 0 0 0 1px #e09b1e; cursor: grab; }"
+    },
+    {
+      "name": "Segmented Switch",
+      "kind": "custom",
+      "refersTo": "switch-2up",
+      "description": "Two-option exclusive switch (e.g. Just me / Me + someone else). Options must stay equal-width — the sliding thumb is a 50%-width absolute element.",
+      "html": "<div class=\"ds-switch\" data-active=\"1\"><span class=\"ds-switch-thumb\"></span><button class=\"ds-switch-opt is-active\" role=\"radio\" aria-checked=\"true\">Just me</button><button class=\"ds-switch-opt\" role=\"radio\" aria-checked=\"false\">Me + someone else</button></div>",
+      "css": ".ds-switch { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; width: min(100%, 420px); background: #14151f; border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 4px; gap: 4px; } .ds-switch-thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); background: #ffb833; border-radius: 999px; transition: transform 260ms cubic-bezier(0.16,1,0.3,1); z-index: 0; } .ds-switch[data-active='2'] .ds-switch-thumb { transform: translateX(100%); } .ds-switch-opt { position: relative; z-index: 1; background: transparent; border: none; color: #a8a6c0; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.88rem; padding: 11px 16px; border-radius: 999px; text-align: center; cursor: pointer; transition: color 200ms; } .ds-switch-opt.is-active { color: #241a05; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Vault at Night",
+    "overview": "A digital bank's after-hours trading floor, not a brochure: near-black ink surfaces, one precise gold signal, and numbers that mean something the instant they change. Where DigiBank's original portal (TCS Blue/Yellow, light chrome, card grids) reads as a form to fill in, Signal Gold reads as a live instrument the customer is operating — closer to Revolut's dark ticker energy and Monzo's confident single-accent discipline than to Apple's deliberately quiet neutrality, which this brief explicitly rejected as too bland for a product whose whole point is \"how much money, on what terms.\" Gold was chosen over the more expected neo-bank accents (electric purple, hot coral, mint-teal) because it's load-bearing: it reads as value in a lending product, not just as a brand color, and it lets DigiBank retire its literal blue/yellow palette while still rhyming with \"yellow = DigiBank\" at a conceptual level.",
+    "keyCharacteristics": [
+      "Near-black tinted base (never pure black or neutral gray) with a single saturated gold signal",
+      "No boxed cards anywhere — pills, a slider, and a segmented switch carry the interface instead",
+      "Every large numeral on screen is a real, live-computed value, never a decorative stat",
+      "Space Grotesk for anything the eye should land on first; Inter for everything read in sequence"
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Gold is the only color that means \"act here\" or \"this is chosen.\" The moment a second saturated color is used for selection or emphasis in the same control group, the system has lost its own discipline.", "section": "colors" },
+      { "name": "The No-Kicker Rule", "body": "No eyebrow/kicker label ever sits above a heading in this system. The headline carries its own weight.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Nothing gets a shadow just for existing. A surface earns a shadow only by being gold.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Signal Gold for exactly one job per control group: the primary action, or the selected state.",
+      "Do tint every secondary/tertiary text color from the background's violet undertone — never a plain neutral gray.",
+      "Do keep large numerals in Space Grotesk with tabular-nums so digits don't jitter as they change.",
+      "Do keep surfaces in this world effectively card-less unless a genuinely new content type requires a bounded container."
+    ],
+    "donts": [
+      "Don't introduce a second saturated accent competing with Signal Gold for attention. Ledger Mint and Alert Coral are feedback-only.",
+      "Don't reach for a drop shadow on a non-gold surface. Depth is the three ink tiers, not box-shadow.",
+      "Don't fall back to Inter, or any system sans, as the display voice for headings or large numerals.",
+      "Don't revive the retired DigiBank Blue (#003F79) or Yellow (#F5A200) inside this direction."
+    ]
+  }
+}
