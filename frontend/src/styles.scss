@@ -249,6 +249,8 @@ html[dir="rtl"] {
 .db-textarea { min-height: 100px; resize: vertical; }
 .db-error-msg { color: var(--error); font-size: 0.78rem; margin-top: 4px; }
 .db-hint { color: var(--mid-grey); font-size: 0.78rem; margin-top: 4px; }
+.field-tooltip { color: var(--mid-grey); vertical-align: middle; cursor: help; font-size: 16px !important; margin-inline-start: 4px; }
+.field-help { margin-top: -2px; }
 
 .form-row {
   display: grid;

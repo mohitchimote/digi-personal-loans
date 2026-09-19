@@ -26,6 +26,22 @@ const visibilityRuleSchema = z
   })
   .strict();
 
+export type VisibilityRule = z.infer<typeof visibilityRuleSchema>;
+
+/** Shared by every place that decides whether a field's `required`/display state should
+ * currently apply — worker/src/routes/applications.ts (submit-time validation),
+ * worker/src/lib/sections.ts (needsAttentionSections), and the frontend's
+ * DynamicFieldComponent/personal-details.component.ts (client-side display + validators).
+ * Kept dependency-free (no framework imports) so it can be copied/mirrored on the
+ * frontend without pulling in worker code. */
+export function isFieldVisible(field: { visibility?: VisibilityRule | null }, values: Record<string, unknown>): boolean {
+  const rule = field.visibility;
+  if (!rule) return true;
+  const actual = values[rule.fieldKey];
+  const matches = actual === rule.value;
+  return rule.op === "equals" ? matches : !matches;
+}
+
 const fieldValidationSchema = z
   .object({
     min: z.number().optional(),
@@ -44,6 +60,8 @@ export const formFieldSchema = z
     type: z.enum(FIELD_TYPES).optional(),
     labelKey: z.string().optional(),
     label: bilingualLabelSchema.optional(),
+    helpText: bilingualLabelSchema.optional(),
+    tooltip: bilingualLabelSchema.optional(),
     required: z.boolean(),
     hidden: z.boolean().optional(), // unconditionally hidden — distinct from `visibility`'s conditional rule
     order: z.number(),

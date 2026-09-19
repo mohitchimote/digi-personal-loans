@@ -1,5 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { loanApplications } from "../db/schema";
+import { isFieldVisible, type VisibilityRule } from "./form-schema-types";
 
 type App = InferSelectModel<typeof loanApplications>;
 
@@ -149,7 +150,7 @@ export function sectionLabel(section: string, lang: "en" | "he" = "en"): string 
 // it — this is the check that can un-tick a previously-green sidebar item. Only ever adds sections
 // to the legacy incomplete set, never removes one: a section the legacy check already considers
 // incomplete stays incomplete regardless of what this finds.
-export function needsAttentionSections(app: App, schema: { sections: readonly { key: string; fields: readonly { key: string; kind: string; required: boolean; hidden?: boolean }[] }[] } | null): string[] {
+export function needsAttentionSections(app: App, schema: { sections: readonly { key: string; fields: readonly { key: string; kind: string; required: boolean; hidden?: boolean; visibility?: VisibilityRule | null }[] }[] } | null): string[] {
   if (!schema) return [];
   const flagged: string[] = [];
   for (const section of schema.sections) {
@@ -164,12 +165,16 @@ export function needsAttentionSections(app: App, schema: { sections: readonly { 
     } catch {
       continue;
     }
-    const missingRequiredCustomField = section.fields.some((f) => {
-      if (f.kind !== "custom" || !f.required || f.hidden) return false;
+    // Checked across every schema field, not just kind: "custom" — an admin can also mark an
+    // existing (hardcoded) field required, e.g. personalDetails' preferredBranch shown only when
+    // assistedByStaff is true (see applications.ts's validateSectionData for the matching
+    // submit-time enforcement).
+    const missingRequiredField = section.fields.some((f) => {
+      if (!f.required || f.hidden || !isFieldVisible(f, data)) return false;
       const value = data[f.key];
       return value === undefined || value === null || value === "";
     });
-    if (missingRequiredCustomField) flagged.push(section.key);
+    if (missingRequiredField) flagged.push(section.key);
   }
   return flagged;
 }

@@ -1,9 +1,20 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { FormField } from '../../core/services/form-builder.service';
+import { FormField, VisibilityRule } from '../../core/services/form-builder.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../pipes/translate.pipe';
+
+/** Shared by DynamicFieldComponent (display) and personal-details.component.ts (reactive
+ * required-validator toggling) — mirrors worker/src/lib/form-schema-types.ts's isFieldVisible so
+ * both sides agree on what a field's visibility rule means. */
+export function isFieldVisible(field: { visibility?: VisibilityRule | null }, values: Record<string, any>): boolean {
+  const rule = field.visibility;
+  if (!rule) return true;
+  const actual = values[rule.fieldKey];
+  const matches = actual === rule.value;
+  return rule.op === 'equals' ? matches : !matches;
+}
 
 // Renders one admin-added `kind: "custom"` field (see AdminFormBuilder) — text / number / date /
 // select / radio / checkbox / textarea, bound to a plain FormControl the caller owns (not an
@@ -36,12 +47,23 @@ export class DynamicFieldComponent {
     return this.i18n.lang() === 'he' ? opt.label.he : opt.label.en;
   }
 
+  get helpText(): string {
+    if (!this.field.helpText) return '';
+    return this.i18n.lang() === 'he' ? this.field.helpText.he : this.field.helpText.en;
+  }
+
+  get tooltip(): string {
+    if (!this.field.tooltip) return '';
+    return this.i18n.lang() === 'he' ? this.field.tooltip.he : this.field.tooltip.en;
+  }
+
   get isVisible(): boolean {
     if (this.field.hidden) return false;
+    const values = { ...this.allValues };
     const rule = this.field.visibility;
-    if (!rule) return true;
-    const actual = this.allValues[rule.fieldKey] ?? this.control.parent?.get(rule.fieldKey)?.value;
-    const matches = actual === rule.value;
-    return rule.op === 'equals' ? matches : !matches;
+    if (rule && !(rule.fieldKey in values)) {
+      values[rule.fieldKey] = this.control.parent?.get(rule.fieldKey)?.value;
+    }
+    return isFieldVisible(this.field, values);
   }
 }

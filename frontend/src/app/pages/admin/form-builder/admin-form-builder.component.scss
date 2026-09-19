@@ -179,6 +179,64 @@
   box-shadow: var(--shadow-lg);
 }
 
+.field-row__label-cell {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.field-row__chevron {
+  color: var(--mid-grey);
+  align-self: center;
+}
+
+.field-row--expanded {
+  background: var(--off-white);
+}
+
+.field-detail-row td {
+  background: var(--off-white);
+  padding: 16px;
+  border-top: none;
+}
+
+.field-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .form-row { margin-bottom: 0; }
+  label { font-size: 0.82rem; }
+}
+
+.field-detail__visibility,
+.field-detail__options,
+.field-detail__validation {
+  border-top: 1px solid var(--light-grey);
+  padding-top: 12px;
+}
+
+.visibility-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+
+  .db-select, .db-input { width: auto; min-width: 120px; }
+}
+
+.option-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+
+  .db-input { flex: 1; }
+}
+
 .publish-confirm-text {
   font-size: 0.85rem;
   color: var(--warning);

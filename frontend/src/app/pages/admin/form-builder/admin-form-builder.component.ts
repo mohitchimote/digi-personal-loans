@@ -11,6 +11,8 @@ import {
   FormSection,
   FormField,
   FieldType,
+  BilingualLabel,
+  VisibilityRule,
 } from '../../../core/services/form-builder.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -24,7 +26,12 @@ interface NewFieldDraft {
   required: boolean;
 }
 
+type VisibilityValueType = 'boolean' | 'text' | 'number';
+type BilingualProp = 'label' | 'helpText' | 'tooltip';
+
 const FIELD_TYPES: FieldType[] = ['text', 'number', 'date', 'select', 'radio', 'checkbox', 'textarea'];
+const OPTION_TYPES: FieldType[] = ['select', 'radio'];
+const VALIDATION_TYPES: FieldType[] = ['text', 'number', 'textarea'];
 
 @Component({
   selector: 'app-admin-form-builder',
@@ -35,6 +42,8 @@ const FIELD_TYPES: FieldType[] = ['text', 'number', 'date', 'select', 'radio', '
 })
 export class AdminFormBuilderComponent implements OnInit {
   fieldTypes = FIELD_TYPES;
+  optionTypes = OPTION_TYPES;
+  validationTypes = VALIDATION_TYPES;
 
   forms = signal<FormSummary[]>([]);
   versions = signal<FormVersionSummary[]>([]);
@@ -51,6 +60,7 @@ export class AdminFormBuilderComponent implements OnInit {
   saved = signal(false);
 
   expandedSection = signal<string | null>(null);
+  expandedFieldKey = signal<string | null>(null);
   newFieldDraft = signal<NewFieldDraft | null>(null);
 
   isEditable = computed(() => this.activeVersion()?.status === 'DRAFT');
@@ -141,9 +151,12 @@ export class AdminFormBuilderComponent implements OnInit {
     return section.fields.filter((f) => f.sectionHeaderKey === headerKey).sort((a, b) => a.order - b.order);
   }
 
+  // Inline `label` (an admin-authored override) now wins over `labelKey` — otherwise editing the
+  // label of an `existing` field in the detail panel below would never actually change what's
+  // displayed, since labelKey would keep winning.
   fieldLabel(field: FormField): string {
-    if (field.labelKey) return this.i18n.t(field.labelKey);
     if (field.label) return this.i18n.lang() === 'he' ? field.label.he : field.label.en;
+    if (field.labelKey) return this.i18n.t(field.labelKey);
     return field.key;
   }
 
@@ -290,6 +303,7 @@ export class AdminFormBuilderComponent implements OnInit {
   removeCustomField(section: FormSection, field: FormField): void {
     if (field.kind !== 'custom') return;
     section.fields = section.fields.filter((f) => f !== field);
+    if (this.expandedFieldKey() === field.key) this.expandedFieldKey.set(null);
     this.touch();
   }
 
@@ -327,6 +341,9 @@ export class AdminFormBuilderComponent implements OnInit {
     this.newFieldDraft.set(null);
     this.error.set('');
     this.touch();
+    // Open the new field straight into the detail panel — help text, tooltip, options,
+    // validation and visibility are all edited there, not duplicated into this "add" form too.
+    this.expandedFieldKey.set(key);
   }
 
   private slugify(text: string): string {
@@ -337,6 +354,134 @@ export class AdminFormBuilderComponent implements OnInit {
         .replace(/^[A-Z]/, (c) => c.toLowerCase())
         .replace(/[^a-zA-Z0-9]/g, '') || `field${Date.now()}`
     );
+  }
+
+  // --- Field detail panel (label overrides, help text, tooltip, options, validation, visibility) ---
+
+  isFieldExpanded(field: FormField): boolean {
+    return this.expandedFieldKey() === field.key;
+  }
+
+  toggleFieldExpand(field: FormField): void {
+    if (this.expandedFieldKey() === field.key) {
+      this.expandedFieldKey.set(null);
+      return;
+    }
+    if (field.kind === 'custom') {
+      if (OPTION_TYPES.includes(field.type!) && !field.options) field.options = [];
+      if (VALIDATION_TYPES.includes(field.type!) && !field.validation) field.validation = {};
+    }
+    this.expandedFieldKey.set(field.key);
+  }
+
+  hasOptions(field: FormField): boolean {
+    return field.kind === 'custom' && !!field.type && OPTION_TYPES.includes(field.type);
+  }
+
+  hasValidation(field: FormField): boolean {
+    return field.kind === 'custom' && !!field.type && VALIDATION_TYPES.includes(field.type);
+  }
+
+  bilingualValue(field: FormField, prop: BilingualProp, lang: 'en' | 'he'): string {
+    return field[prop]?.[lang] ?? '';
+  }
+
+  setBilingual(field: FormField, prop: BilingualProp, lang: 'en' | 'he', value: string): void {
+    const current: BilingualLabel = field[prop] ?? { en: '', he: '' };
+    field[prop] = { ...current, [lang]: value };
+    this.touch();
+  }
+
+  siblingFields(section: FormSection, excludeKey: string): FormField[] {
+    return section.fields.filter((f) => f.key !== excludeKey).sort((a, b) => a.order - b.order);
+  }
+
+  visibilityTriggerLabel(section: FormSection, field: FormField): string {
+    const rule = field.visibility;
+    if (!rule) return '';
+    const trigger = section.fields.find((f) => f.key === rule.fieldKey);
+    return trigger ? this.fieldLabel(trigger) : rule.fieldKey;
+  }
+
+  toggleVisibility(field: FormField, section: FormSection): void {
+    if (field.visibility) {
+      field.visibility = null;
+    } else {
+      const sibling = this.siblingFields(section, field.key)[0];
+      field.visibility = { fieldKey: sibling?.key ?? '', op: 'equals', value: true };
+    }
+    this.touch();
+  }
+
+  setVisibilityField(field: FormField, fieldKey: string): void {
+    if (!field.visibility) return;
+    field.visibility = { ...field.visibility, fieldKey };
+    this.touch();
+  }
+
+  setVisibilityOp(field: FormField, op: VisibilityRule['op']): void {
+    if (!field.visibility) return;
+    field.visibility = { ...field.visibility, op };
+    this.touch();
+  }
+
+  visibilityValueType(field: FormField): VisibilityValueType {
+    const v = field.visibility?.value;
+    if (typeof v === 'number') return 'number';
+    if (typeof v === 'string') return 'text';
+    return 'boolean';
+  }
+
+  setVisibilityValueType(field: FormField, type: VisibilityValueType): void {
+    if (!field.visibility) return;
+    const value = type === 'boolean' ? true : type === 'number' ? 0 : '';
+    field.visibility = { ...field.visibility, value };
+    this.touch();
+  }
+
+  setVisibilityBoolValue(field: FormField, value: boolean): void {
+    if (!field.visibility) return;
+    field.visibility = { ...field.visibility, value };
+    this.touch();
+  }
+
+  setVisibilityRawValue(field: FormField, raw: string): void {
+    if (!field.visibility) return;
+    const type = this.visibilityValueType(field);
+    const value = type === 'number' ? Number(raw) || 0 : raw;
+    field.visibility = { ...field.visibility, value };
+    this.touch();
+  }
+
+  addOption(field: FormField): void {
+    if (!field.options) field.options = [];
+    field.options.push({ value: '', label: { en: '', he: '' } });
+    this.touch();
+  }
+
+  removeOption(field: FormField, index: number): void {
+    field.options?.splice(index, 1);
+    this.touch();
+  }
+
+  setOptionField(opt: { value: string; label: BilingualLabel }, key: 'value' | 'labelEn' | 'labelHe', raw: string): void {
+    if (key === 'value') opt.value = raw;
+    else if (key === 'labelEn') opt.label.en = raw;
+    else opt.label.he = raw;
+    this.touch();
+  }
+
+  setValidationField(field: FormField, key: 'min' | 'max' | 'minLength' | 'maxLength', raw: string): void {
+    if (!field.validation) field.validation = {};
+    const num = raw === '' ? undefined : Number(raw);
+    field.validation = { ...field.validation, [key]: num };
+    this.touch();
+  }
+
+  setValidationPattern(field: FormField, raw: string): void {
+    if (!field.validation) field.validation = {};
+    field.validation = { ...field.validation, pattern: raw || undefined };
+    this.touch();
   }
 
   private touch(): void {

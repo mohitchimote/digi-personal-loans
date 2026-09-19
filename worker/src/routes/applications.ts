@@ -28,6 +28,7 @@ import { cached, invalidate } from "../lib/cache";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
 import { STAFF_ROLES } from "../lib/roles";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
+import { isFieldVisible } from "../lib/form-schema-types";
 import type { InferSelectModel } from "drizzle-orm";
 
 const MANDATE_RULES_CACHE_KEY = "mandate-rules";
@@ -126,7 +127,8 @@ async function validateSectionData(
   const schema = SECTION_SCHEMAS[section];
   if (!schema) throw new AppError(`Unknown section: ${section}`);
 
-  const customFields = await customFieldsFor(db, app, section);
+  const allSchemaFields = await sectionSchemaFields(db, app, section);
+  const customFields = allSchemaFields.filter((f) => f.kind === "custom");
   const isPlainObject = data != null && typeof data === "object" && !Array.isArray(data);
   const staticData: Record<string, unknown> = isPlainObject ? { ...(data as Record<string, unknown>) } : (data as any);
   const customData: Record<string, unknown> = {};
@@ -144,18 +146,24 @@ async function validateSectionData(
     throw new AppError(`Invalid data for section '${section}': ${formatZodIssues(result.error)}`);
   }
 
-  for (const f of customFields) {
-    if (!f.required || f.hidden) continue;
-    const value = customData[f.key];
+  const merged = { ...(result.data as Record<string, unknown>), ...customData };
+
+  // Checked across every schema field, not just kind: "custom" — an admin can mark an *existing*
+  // field required (e.g. personalDetails' preferredBranch, only asked when assistedByStaff is
+  // true) and this is the only server-side enforcement of that, layered on top of (never
+  // replacing) whatever the static per-section Zod schema above already requires.
+  for (const f of allSchemaFields) {
+    if (!f.required || f.hidden || !isFieldVisible(f, merged)) continue;
+    const value = merged[f.key];
     if (value === undefined || value === null || value === "") {
       throw new AppError(`Missing required field '${f.key}' for section '${section}'.`);
     }
   }
 
-  return { ...(result.data as Record<string, unknown>), ...customData };
+  return merged;
 }
 
-async function customFieldsFor(db: Db, app: InferSelectModel<typeof loanApplications>, section: string) {
+async function sectionSchemaFields(db: Db, app: InferSelectModel<typeof loanApplications>, section: string) {
   const activeVersion = await resolveActiveSchemaVersion(db, app);
   if (!activeVersion) return [];
   let schema;
@@ -165,7 +173,7 @@ async function customFieldsFor(db: Db, app: InferSelectModel<typeof loanApplicat
     return [];
   }
   const sectionSchema = schema.sections.find((s) => s.key === section);
-  return sectionSchema ? sectionSchema.fields.filter((f) => f.kind === "custom") : [];
+  return sectionSchema ? sectionSchema.fields : [];
 }
 
 // S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check at

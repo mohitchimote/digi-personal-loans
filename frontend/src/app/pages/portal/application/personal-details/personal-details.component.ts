@@ -1,7 +1,8 @@
 import { Component, OnInit, signal, WritableSignal } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -10,13 +11,14 @@ import { ApplicationAsideComponent } from '../../../../shared/application-aside/
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
-import { DynamicFieldComponent } from '../../../../shared/dynamic-field/dynamic-field.component';
+import { DynamicFieldComponent, isFieldVisible } from '../../../../shared/dynamic-field/dynamic-field.component';
+import { FieldHelpComponent } from '../../../../shared/field-help/field-help.component';
 import { FormField } from '../../../../core/services/form-builder.service';
 
 @Component({
   selector: 'app-personal-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, DynamicFieldComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, DynamicFieldComponent, FieldHelpComponent],
   templateUrl: './personal-details.component.html',
   styleUrl: './personal-details.component.scss'
 })
@@ -59,6 +61,12 @@ export class PersonalDetailsComponent implements OnInit {
   customFieldDefs = signal<FormField[]>([]);
   customFields!: FormGroup;
   needsAttention = signal(false);
+
+  // All resolved personalDetails fields (existing + custom), keyed for <app-field-help> lookups
+  // and for applySchemaFieldRules()'s required/visibility wiring — see both below.
+  allFieldDefs = signal<FormField[]>([]);
+  private ruleSubs: Subscription[] = [];
+  private baseValidators = new Map<AbstractControl, ValidatorFn | null>();
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
@@ -270,7 +278,10 @@ export class PersonalDetailsComponent implements OnInit {
         }
 
         const existingCustomData = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : {};
-        this.setUpCustomFields(app, existingCustomData);
+        const allFields: FormField[] = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails')?.fields ?? [];
+        this.allFieldDefs.set(allFields);
+        this.setUpCustomFields(allFields, existingCustomData);
+        this.applySchemaFieldRules(allFields);
         this.needsAttention.set((app.needsAttentionSections ?? []).includes('personalDetails'));
 
         if (this.readOnly()) { this.form.disable(); this.applicant2Form.disable(); this.customFields.disable(); }
@@ -281,16 +292,59 @@ export class PersonalDetailsComponent implements OnInit {
   /** Builds `customFields` from the resolved form version's personalDetails section, if any admin
    * has added one — see the field on this class for why it's a separate FormGroup. Re-running this
    * on every load (rather than once) is what lets a newly-published required field show up on an
-   * in-flight application's very next visit, per lib/sections.ts's needsAttentionSections. */
-  private setUpCustomFields(app: any, existingData: Record<string, any>): void {
-    const section = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails');
-    const fields: FormField[] = (section?.fields ?? []).filter((f: FormField) => f.kind === 'custom');
+   * in-flight application's very next visit, per lib/sections.ts's needsAttentionSections.
+   * Required/visibility-driven validators are layered on afterwards by applySchemaFieldRules() —
+   * not set here — so both existing and custom fields go through one shared mechanism. */
+  private setUpCustomFields(allFields: FormField[], existingData: Record<string, any>): void {
+    const fields = allFields.filter((f) => f.kind === 'custom');
     this.customFieldDefs.set(fields);
     for (const key of Object.keys(this.customFields.controls)) this.customFields.removeControl(key);
     for (const field of fields) {
       const defaultValue = field.type === 'checkbox' ? false : '';
-      const validators = field.required && !field.hidden ? [Validators.required] : [];
-      this.customFields.addControl(field.key, this.fb.control(existingData[field.key] ?? defaultValue, validators));
+      this.customFields.addControl(field.key, this.fb.control(existingData[field.key] ?? defaultValue));
+    }
+  }
+
+  fieldDef(key: string): FormField | undefined {
+    return this.allFieldDefs().find((f) => f.key === key);
+  }
+
+  private resolveControl(key: string): AbstractControl | null {
+    return this.form.get(key) ?? this.customFields.get(key);
+  }
+
+  /** Layers schema-driven `required`/`visibility` on top of every existing (hardcoded) and custom
+   * field's own validators, for both kinds uniformly — never removing whatever validators a field
+   * already had (e.g. firstName's hardcoded Validators.required stays regardless of what the
+   * schema says). A field with a `visibility` rule gets its required-ness re-evaluated whenever
+   * its trigger field changes, mirroring DynamicFieldComponent's isFieldVisible so the wizard and
+   * the Admin Form Builder agree on what "shown only if" means. See lib/form-schema-types.ts's
+   * isFieldVisible (worker) / dynamic-field.component.ts's isFieldVisible (frontend) for the
+   * matching evaluation used server-side. */
+  private applySchemaFieldRules(fields: FormField[]): void {
+    this.ruleSubs.forEach((s) => s.unsubscribe());
+    this.ruleSubs = [];
+
+    for (const field of fields) {
+      const control = this.resolveControl(field.key);
+      if (!control) continue;
+      if (!this.baseValidators.has(control)) {
+        this.baseValidators.set(control, control.validator);
+      }
+      const base = this.baseValidators.get(control) ?? null;
+
+      const recompute = () => {
+        const values = { ...this.form.getRawValue(), ...this.customFields.getRawValue() };
+        const applies = field.required && !field.hidden && isFieldVisible(field, values);
+        control.setValidators(applies ? Validators.compose([base, Validators.required]) : base);
+        control.updateValueAndValidity({ emitEvent: false });
+      };
+
+      if (field.visibility) {
+        const trigger = this.resolveControl(field.visibility.fieldKey);
+        if (trigger) this.ruleSubs.push(trigger.valueChanges.subscribe(recompute));
+      }
+      recompute();
     }
   }
 

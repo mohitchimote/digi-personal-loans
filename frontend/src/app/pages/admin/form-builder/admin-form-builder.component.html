@@ -104,25 +104,134 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let field of fieldsFor(section, sh.key); let ffirst = first; let flast = last" [class.field-row--hidden]="field.hidden">
-              <td>
-                {{ fieldLabel(field) }}
-                <span class="db-hint field-row__key">{{ field.key }}</span>
-                <span class="chip chip--visibility" *ngIf="field.visibility">{{ 'admin.formConditional' | translate }}: {{ field.visibility.fieldKey }}</span>
-              </td>
-              <td><span class="chip" [class.chip--custom]="field.kind === 'custom'">{{ field.kind === 'custom' ? (field.type || 'custom') : ('admin.formExisting' | translate) }}</span></td>
-              <td>
-                <input type="checkbox" [checked]="field.required" [disabled]="!isEditable()" (change)="toggleRequired(field)" />
-              </td>
-              <td>
-                <input type="checkbox" [checked]="!!field.hidden" [disabled]="!isEditable()" (change)="toggleHidden(field)" />
-              </td>
-              <td class="field-row__actions" *ngIf="isEditable()">
-                <button type="button" class="icon-btn" [disabled]="ffirst" (click)="moveField(section, field, -1)"><span class="material-icons mi-sm">arrow_upward</span></button>
-                <button type="button" class="icon-btn" [disabled]="flast" (click)="moveField(section, field, 1)"><span class="material-icons mi-sm">arrow_downward</span></button>
-                <button type="button" class="icon-btn icon-btn--danger" *ngIf="field.kind === 'custom'" (click)="removeCustomField(section, field)"><span class="material-icons mi-sm">delete</span></button>
-              </td>
-            </tr>
+            <ng-container *ngFor="let field of fieldsFor(section, sh.key); let ffirst = first; let flast = last">
+              <tr [class.field-row--hidden]="field.hidden" [class.field-row--expanded]="isFieldExpanded(field)">
+                <td class="field-row__label-cell" (click)="toggleFieldExpand(field)">
+                  <span class="material-icons mi-sm field-row__chevron">{{ isFieldExpanded(field) ? 'expand_less' : 'expand_more' }}</span>
+                  {{ fieldLabel(field) }}
+                  <span class="db-hint field-row__key">{{ field.key }}</span>
+                  <span class="chip chip--visibility" *ngIf="field.visibility">{{ 'admin.formConditional' | translate }}: {{ visibilityTriggerLabel(section, field) }}</span>
+                </td>
+                <td><span class="chip" [class.chip--custom]="field.kind === 'custom'">{{ field.kind === 'custom' ? (field.type || 'custom') : ('admin.formExisting' | translate) }}</span></td>
+                <td>
+                  <input type="checkbox" [checked]="field.required" [disabled]="!isEditable()" (change)="toggleRequired(field)" />
+                </td>
+                <td>
+                  <input type="checkbox" [checked]="!!field.hidden" [disabled]="!isEditable()" (change)="toggleHidden(field)" />
+                </td>
+                <td class="field-row__actions" *ngIf="isEditable()">
+                  <button type="button" class="icon-btn" [disabled]="ffirst" (click)="moveField(section, field, -1)"><span class="material-icons mi-sm">arrow_upward</span></button>
+                  <button type="button" class="icon-btn" [disabled]="flast" (click)="moveField(section, field, 1)"><span class="material-icons mi-sm">arrow_downward</span></button>
+                  <button type="button" class="icon-btn icon-btn--danger" *ngIf="field.kind === 'custom'" (click)="removeCustomField(section, field)"><span class="material-icons mi-sm">delete</span></button>
+                </td>
+              </tr>
+
+              <tr class="field-detail-row" *ngIf="isFieldExpanded(field)">
+                <td colspan="5">
+                  <div class="field-detail">
+                    <div class="form-row">
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formLabelEn' | translate }}</label>
+                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'label', 'en')" (ngModelChange)="setBilingual(field, 'label', 'en', $event)" [placeholder]="field.labelKey ? (field.labelKey | translate) : ''" />
+                      </div>
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formLabelHe' | translate }}</label>
+                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'label', 'he')" (ngModelChange)="setBilingual(field, 'label', 'he', $event)" />
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formTooltipEn' | translate }}</label>
+                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'tooltip', 'en')" (ngModelChange)="setBilingual(field, 'tooltip', 'en', $event)" />
+                      </div>
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formTooltipHe' | translate }}</label>
+                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'tooltip', 'he')" (ngModelChange)="setBilingual(field, 'tooltip', 'he', $event)" />
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formHelpTextEn' | translate }}</label>
+                        <textarea class="db-textarea" rows="2" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'helpText', 'en')" (ngModelChange)="setBilingual(field, 'helpText', 'en', $event)"></textarea>
+                      </div>
+                      <div class="db-form-group">
+                        <label>{{ 'admin.formHelpTextHe' | translate }}</label>
+                        <textarea class="db-textarea" rows="2" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'helpText', 'he')" (ngModelChange)="setBilingual(field, 'helpText', 'he', $event)"></textarea>
+                      </div>
+                    </div>
+
+                    <div class="field-detail__visibility">
+                      <label class="db-checkbox">
+                        <input type="checkbox" [checked]="!!field.visibility" [disabled]="!isEditable()" (change)="toggleVisibility(field, section)" />
+                        <span>{{ 'admin.formMakeConditional' | translate }}</span>
+                      </label>
+
+                      <div class="visibility-rule-row" *ngIf="field.visibility as rule">
+                        <span>{{ 'admin.formVisShownOnlyIf' | translate }}</span>
+                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="rule.fieldKey" (ngModelChange)="setVisibilityField(field, $event)">
+                          <option *ngFor="let sib of siblingFields(section, field.key)" [value]="sib.key">{{ fieldLabel(sib) }}</option>
+                        </select>
+                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="rule.op" (ngModelChange)="setVisibilityOp(field, $event)">
+                          <option value="equals">{{ 'admin.formVisOpEquals' | translate }}</option>
+                          <option value="notEquals">{{ 'admin.formVisOpNotEquals' | translate }}</option>
+                        </select>
+                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="visibilityValueType(field)" (ngModelChange)="setVisibilityValueType(field, $event)">
+                          <option value="boolean">{{ 'admin.formVisTypeYesNo' | translate }}</option>
+                          <option value="text">{{ 'admin.formVisTypeText' | translate }}</option>
+                          <option value="number">{{ 'admin.formVisTypeNumber' | translate }}</option>
+                        </select>
+                        <select class="db-select" *ngIf="visibilityValueType(field) === 'boolean'" [disabled]="!isEditable()" [ngModel]="rule.value" (ngModelChange)="setVisibilityBoolValue(field, $event)">
+                          <option [ngValue]="true">{{ 'common.yes' | translate }}</option>
+                          <option [ngValue]="false">{{ 'common.no' | translate }}</option>
+                        </select>
+                        <input class="db-input" *ngIf="visibilityValueType(field) !== 'boolean'" [disabled]="!isEditable()" [ngModel]="rule.value" (ngModelChange)="setVisibilityRawValue(field, $event)" />
+                      </div>
+                    </div>
+
+                    <div class="field-detail__options" *ngIf="hasOptions(field)">
+                      <label>{{ 'admin.formOptionsHeader' | translate }}</label>
+                      <div class="option-row" *ngFor="let opt of field.options; let oi = index">
+                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="opt.value" (ngModelChange)="setOptionField(opt, 'value', $event)" [placeholder]="'admin.formOptionValue' | translate" />
+                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="opt.label.en" (ngModelChange)="setOptionField(opt, 'labelEn', $event)" [placeholder]="'admin.formLabelEn' | translate" />
+                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="opt.label.he" (ngModelChange)="setOptionField(opt, 'labelHe', $event)" [placeholder]="'admin.formLabelHe' | translate" />
+                        <button type="button" class="icon-btn icon-btn--danger" *ngIf="isEditable()" (click)="removeOption(field, oi)"><span class="material-icons mi-sm">delete</span></button>
+                      </div>
+                      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="isEditable()" (click)="addOption(field)">{{ 'admin.formAddOption' | translate }}</button>
+                    </div>
+
+                    <div class="field-detail__validation" *ngIf="hasValidation(field)">
+                      <label>{{ 'admin.formValidationHeader' | translate }}</label>
+                      <div class="form-row" *ngIf="field.type === 'number'">
+                        <div class="db-form-group">
+                          <label>{{ 'admin.formValidationMin' | translate }}</label>
+                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.min" (ngModelChange)="setValidationField(field, 'min', $event)" />
+                        </div>
+                        <div class="db-form-group">
+                          <label>{{ 'admin.formValidationMax' | translate }}</label>
+                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.max" (ngModelChange)="setValidationField(field, 'max', $event)" />
+                        </div>
+                      </div>
+                      <div class="form-row" *ngIf="field.type === 'text' || field.type === 'textarea'">
+                        <div class="db-form-group">
+                          <label>{{ 'admin.formValidationMinLength' | translate }}</label>
+                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.minLength" (ngModelChange)="setValidationField(field, 'minLength', $event)" />
+                        </div>
+                        <div class="db-form-group">
+                          <label>{{ 'admin.formValidationMaxLength' | translate }}</label>
+                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.maxLength" (ngModelChange)="setValidationField(field, 'maxLength', $event)" />
+                        </div>
+                        <div class="db-form-group">
+                          <label>{{ 'admin.formValidationPattern' | translate }}</label>
+                          <input class="db-input" [disabled]="!isEditable()" [ngModel]="field.validation?.pattern" (ngModelChange)="setValidationPattern(field, $event)" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
           </tbody>
         </table>
         <p class="db-hint" *ngIf="!fieldsFor(section, sh.key).length">{{ 'admin.formNoFields' | translate }}</p>
@@ -158,6 +267,7 @@
                 </label>
               </div>
             </div>
+            <p class="db-hint">{{ 'admin.formAddFieldHint' | translate }}</p>
             <div class="new-field-form__actions">
               <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="cancelNewField()">{{ 'common.cancel' | translate }}</button>
               <button type="button" class="db-btn db-btn--primary db-btn--sm" (click)="addNewField(section)">{{ 'admin.formAddField' | translate }}</button>

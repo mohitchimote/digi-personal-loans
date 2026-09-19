@@ -1,5 +1,9 @@
 <div class="db-form-group" *ngIf="isVisible && field.type !== 'checkbox'">
-  <label>{{ label }} <span class="required" *ngIf="field.required">*</span></label>
+  <label>
+    {{ label }} <span class="required" *ngIf="field.required">*</span>
+    <span class="material-icons mi-sm field-tooltip" *ngIf="tooltip" [title]="tooltip">info</span>
+  </label>
+  <p class="db-hint field-help" *ngIf="helpText">{{ helpText }}</p>
 
   <input
     *ngIf="field.type === 'text'"
@@ -41,5 +45,7 @@
   <label class="db-checkbox">
     <input type="checkbox" [formControl]="control" />
     <span>{{ label }}</span>
+    <span class="material-icons mi-sm field-tooltip" *ngIf="tooltip" [title]="tooltip">info</span>
   </label>
+  <p class="db-hint field-help" *ngIf="helpText">{{ helpText }}</p>
 </div>

@@ -1,0 +1,4 @@
+<ng-container *ngIf="field">
+  <span class="material-icons mi-sm field-tooltip" *ngIf="tooltip" [title]="tooltip">info</span>
+  <p class="db-hint field-help" *ngIf="helpText">{{ helpText }}</p>
+</ng-container>

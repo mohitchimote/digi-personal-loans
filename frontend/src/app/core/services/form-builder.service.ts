@@ -40,6 +40,8 @@ export interface FormField {
   type?: FieldType;
   labelKey?: string;
   label?: BilingualLabel;
+  helpText?: BilingualLabel;
+  tooltip?: BilingualLabel;
   required: boolean;
   hidden?: boolean;
   order: number;
