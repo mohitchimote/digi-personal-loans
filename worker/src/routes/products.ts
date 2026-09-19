@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { and, asc, eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
@@ -8,6 +9,9 @@ import { calculateMonthlyRepayment } from "../lib/repayment";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { cached, invalidatePrefix } from "../lib/cache";
+import { formatZodIssues } from "../lib/section-schemas";
+
+const preApprovedLookupSchema = z.object({ nationalId: z.string().min(1) }).strict();
 
 export const products = new Hono<AppEnv>();
 products.use("*", requireAuth);
@@ -141,9 +145,14 @@ products.get("/selection/:appRef", async (c) => {
   return c.json(selection);
 });
 
-products.get("/pre-approved/:nationalId", async (c) => {
+// POST + wrapper body, not GET — a customer's national ID shouldn't sit in a browser-facing GET URL
+// (server access logs, browser history, proxy logs). See ARCHITECTURE_REVIEW_GAPS.md S9.
+products.post("/pre-approved/lookup", async (c) => {
   const db = getDb(c.env.DB);
-  const offer = await getPreApprovedOffer(db, c.req.param("nationalId"));
+  const body = await c.req.json();
+  const result = preApprovedLookupSchema.safeParse(body);
+  if (!result.success) throw new AppError(`Invalid request: ${formatZodIssues(result.error)}`);
+  const offer = await getPreApprovedOffer(db, result.data.nationalId);
   if (!offer) return c.body(null, 404);
   return c.json(offer);
 });

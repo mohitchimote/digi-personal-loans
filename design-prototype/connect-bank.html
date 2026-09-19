@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Connect Bank (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Connect Your Bank</h1>
+    <p class="ask-subtitle">Securely connect your bank account using Open Banking so we can verify your income and outgoings automatically — this can speed up your decision.</p>
+
+    <section class="field-group" id="pickerSection">
+      <h2 class="field-label">Choose your bank</h2>
+      <div class="bank-list" id="bankList">
+        <button class="bank-row" data-bank="Bank Hapoalim"><span class="bank-row__mark">BH</span><span class="bank-row__name">Bank Hapoalim</span>
+          <svg class="bank-row__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="bank-row" data-bank="Bank Leumi"><span class="bank-row__mark">BL</span><span class="bank-row__name">Bank Leumi</span>
+          <svg class="bank-row__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="bank-row" data-bank="Discount Bank"><span class="bank-row__mark">DB</span><span class="bank-row__name">Discount Bank</span>
+          <svg class="bank-row__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="bank-row" data-bank="Mizrahi-Tefahot"><span class="bank-row__mark">MT</span><span class="bank-row__name">Mizrahi-Tefahot</span>
+          <svg class="bank-row__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <button class="link-edit" id="manualLink" type="button" style="margin-top:14px;">Enter account details manually instead</button>
+    </section>
+
+    <section class="field-group" id="connectedSection" style="display:none;">
+      <h2 class="field-label">Connected</h2>
+      <div id="connectedList"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn"><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="connect-bank.js"></script>
+</body>
+</html>

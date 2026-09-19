@@ -1,20 +1,16 @@
 package com.digibank.affordability.rules;
 
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 
 /**
- * Mutable, runtime-editable affordability rules. Admin-managed via /api/affordability/rules
- * (RulesController, this package). Resets to defaults on service restart — to be backed by
- * persistent storage / external rules engine post-selection.
+ * Wire shape for rule-service's GET/PUT /internal/rules/affordability. Fetched/updated via
+ * client.RuleServiceClient (ARCHITECTURE_REVIEW_GAPS.md, G4); no longer a Spring-managed bean
+ * holding state itself — rule-service persists it now (G6), this is just the deserialized value.
  *
- * Implements AffordabilityRulesView so the assessment package can depend on the read-only
- * interface instead of this mutable bean directly (ARCHITECTURE.md §10) — this is the bounded
- * -context boundary between "rules administration" and "assessment," made real in code rather
- * than just a package name.
+ * Still implements AffordabilityRulesView so it can be handed straight to assessment code that
+ * expects the read-only interface, but the actual bean assessment.AffordabilityService is wired to
+ * is rules.CachedAffordabilityRulesView, not this class directly (ARCHITECTURE.md §10).
  */
-@Component
 public class AffordabilityRules implements AffordabilityRulesView {
 
     private BigDecimal maxDti = new BigDecimal("40");

@@ -4,6 +4,7 @@ import type { Env } from "../types";
 import { emailTemplates, brandingSettings, type loanApplications } from "../db/schema";
 import { applicantFirstName, loanPurpose } from "./app-format";
 import { withTimeout, withRetry, CircuitBreaker, TimeoutError } from "./resilience";
+import { logError } from "./log";
 
 type TemplateFields = {
   subject: string;
@@ -202,9 +203,9 @@ export async function sendTemplatedEmail(
     const rendered = renderTemplate(branding, template, variables);
     const result = await deliverEmail(env, { to, cc, subject: rendered.subject, html: rendered.html, text: rendered.text });
     if (!result.ok) {
-      console.error(`sendTemplatedEmail: ${eventKey} send failed:`, result.error);
+      logError(`sendTemplatedEmail: ${eventKey} send failed`, result.error, { appRef: app.applicationRef, eventKey });
     }
   } catch (e) {
-    console.error(`sendTemplatedEmail failed for ${eventKey} (non-fatal):`, e);
+    logError(`sendTemplatedEmail failed for ${eventKey} (non-fatal)`, e, { appRef: app.applicationRef, eventKey });
   }
 }

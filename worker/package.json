@@ -12,6 +12,9 @@
     "db:seed:generate": "tsx scripts/seed-generate.ts > seed.sql",
     "db:seed:local": "wrangler d1 execute digibank --local --file=./seed.sql",
     "db:seed:remote": "wrangler d1 execute digibank --remote --file=./seed.sql",
+    "db:seed:form-versions:generate": "tsx scripts/seed-form-versions.ts > seed-form-versions.sql",
+    "db:seed:form-versions:local": "wrangler d1 execute digibank --local --file=./seed-form-versions.sql",
+    "db:seed:form-versions:remote": "wrangler d1 execute digibank --remote --file=./seed-form-versions.sql",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

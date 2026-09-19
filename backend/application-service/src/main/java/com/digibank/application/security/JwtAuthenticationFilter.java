@@ -25,13 +25,20 @@ import java.util.List;
  * Validates the JWT issued by auth-service. This service owns no user table, so — unlike
  * auth-service's own filter — authentication is derived entirely from the token's signed claims
  * (role), never a database lookup. See auth-service's AuthService.buildAuthResponse for where
- * those claims are embedded at issuance.
+ * those claims are embedded at issuance. The one exception is session revocation (S2) — see
+ * SessionRevocationCache, an in-memory poll rather than a per-request lookup.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Value("${app.jwt.secret}")
     private String jwtSecret;
+
+    private final SessionRevocationCache sessionRevocationCache;
+
+    public JwtAuthenticationFilter(SessionRevocationCache sessionRevocationCache) {
+        this.sessionRevocationCache = sessionRevocationCache;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -58,10 +65,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             String role = claims.get("role", String.class);
+            Long userId = claims.get("userId", Long.class);
+            // S2 — reject if this token was issued before the user's last revocation (role change,
+            // disable, or logout-everywhere), even though it's otherwise a validly-signed,
+            // unexpired token.
+            if (claims.getIssuedAt() != null && sessionRevocationCache.isRevoked(userId, claims.getIssuedAt().toInstant())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             if (role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
                 AuthenticatedUser principal = new AuthenticatedUser(
-                        claims.getSubject(), claims.get("userId", Long.class), role, claims.get("fullName", String.class));
+                        claims.getSubject(), userId, role, claims.get("fullName", String.class));
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

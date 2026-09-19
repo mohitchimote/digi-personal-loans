@@ -3,25 +3,48 @@ import { and, count, desc, eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { notifications } from "../db/schema";
+import { AppError } from "../lib/errors";
 import { requireAuth } from "../middleware/auth";
+import { STAFF_ROLES } from "../lib/roles";
+import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
 export const notificationsRoute = new Hono<AppEnv>();
 notificationsRoute.use("*", requireAuth);
 
+// S6 (ARCHITECTURE_REVIEW_GAPS.md) — these routes had no ownership check at all: any authenticated
+// user could read/mark-read another customer's notifications by guessing a numeric customerId/id.
+// Same fix shape as documents.ts's assertOwnsDocument (S1).
+function assertOwnsCustomerId(c: any, customerId: number) {
+  const authUser = c.get("authUser");
+  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (authUser.id !== customerId) {
+    throw new AppError("Forbidden.", 403);
+  }
+}
+
+// S6 — opaque id at the API boundary; see lib/opaque-id.ts. customerId is left as a plain number:
+// it's never a public identifier here (every route requiring it is already ownership-checked
+// against the caller's own id), only notifications.id is used the way S1's docId was.
+function toNotificationSummary(n: typeof notifications.$inferSelect) {
+  return { ...n, id: encodeOpaqueId("ntf", n.id) };
+}
+
 notificationsRoute.get("/customer/:customerId", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  assertOwnsCustomerId(c, customerId);
   const rows = await db
     .select()
     .from(notifications)
     .where(eq(notifications.customerId, customerId))
     .orderBy(desc(notifications.createdAt));
-  return c.json(rows);
+  return c.json(rows.map(toNotificationSummary));
 });
 
 notificationsRoute.get("/customer/:customerId/unread-count", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  assertOwnsCustomerId(c, customerId);
   const [row] = await db
     .select({ value: count() })
     .from(notifications)
@@ -31,7 +54,10 @@ notificationsRoute.get("/customer/:customerId/unread-count", async (c) => {
 
 notificationsRoute.put("/:id/read", async (c) => {
   const db = getDb(c.env.DB);
-  const id = Number(c.req.param("id"));
+  const id = decodeOpaqueId("ntf", c.req.param("id"));
+  const [existing] = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+  if (!existing) throw new AppError("Notification not found.", 404);
+  assertOwnsCustomerId(c, existing.customerId);
   await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
   return c.body(null, 200);
 });
@@ -39,6 +65,7 @@ notificationsRoute.put("/:id/read", async (c) => {
 notificationsRoute.put("/customer/:customerId/read-all", async (c) => {
   const db = getDb(c.env.DB);
   const customerId = Number(c.req.param("customerId"));
+  assertOwnsCustomerId(c, customerId);
   await db
     .update(notifications)
     .set({ isRead: true })
@@ -61,7 +88,7 @@ notificationsRoute.post("/create", async (c) => {
       createdAt: new Date().toISOString(),
     })
     .returning();
-  return c.json(created);
+  return c.json(toNotificationSummary(created));
 });
 
 const WELCOME_MESSAGES = {

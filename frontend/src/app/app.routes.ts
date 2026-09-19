@@ -147,6 +147,7 @@ export const routes: Routes = [
       { path: 'products', loadComponent: () => import('./pages/admin/products/admin-products.component').then(m => m.AdminProductsComponent) },
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
       { path: 'email-templates', loadComponent: () => import('./pages/admin/email-templates/admin-email-templates.component').then(m => m.AdminEmailTemplatesComponent) },
+      { path: 'form-builder', loadComponent: () => import('./pages/admin/form-builder/admin-form-builder.component').then(m => m.AdminFormBuilderComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

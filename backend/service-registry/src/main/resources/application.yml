@@ -1,0 +1,39 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: service-registry
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    # A standalone instance doesn't need to register with itself or fetch its own registry —
+    # both default to true, which is only meaningful for a peer-replicated Eureka cluster.
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Faster eviction than Eureka's very conservative defaults (90s+), since this is a small,
+    # fast-restarting local/Compose deployment, not a large fleet where aggressive eviction risks
+    # flapping.
+    eviction-interval-timer-in-ms: 5000
+    # Self-preservation exists to stop evicting everyone during a network partition in a large
+    # fleet, where "most clients suddenly missed a heartbeat" more likely means the network broke
+    # than that they all crashed. With only nine services, that math inverts — a couple of
+    # restarts during local dev/Compose testing looks exactly like the partition scenario and
+    # self-preservation kicks in defensively, which just means dead instances linger and stop the
+    # load balancer routing around them. Confirmed directly: a force-killed test instance stayed
+    # registered well past its 90s lease with this on. Off is the standard recommendation for a
+    # deployment this size.
+    enable-self-preservation: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.digibank: INFO

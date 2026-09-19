@@ -10,11 +10,13 @@ import { ApplicationAsideComponent } from '../../../../shared/application-aside/
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
+import { DynamicFieldComponent } from '../../../../shared/dynamic-field/dynamic-field.component';
+import { FormField } from '../../../../core/services/form-builder.service';
 
 @Component({
   selector: 'app-personal-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, DynamicFieldComponent],
   templateUrl: './personal-details.component.html',
   styleUrl: './personal-details.component.scss'
 })
@@ -48,9 +50,20 @@ export class PersonalDetailsComponent implements OnInit {
   consentError = signal('');
   private storedConsent: any = null;
 
+  // Admin Form Builder integration: any `kind: "custom"` field the admin added to the
+  // personalDetails section of the resolved form version (see lib/form-versions.ts's
+  // withResolvedFormVersion) — rendered generically via DynamicFieldComponent, kept in a
+  // separate FormGroup from `form` above so none of the hand-built fields/validators/logic
+  // there are touched. Empty array/group when nothing's been added, which is every application
+  // until an admin actually adds a custom field — zero behavior change until then.
+  customFieldDefs = signal<FormField[]>([]);
+  customFields!: FormGroup;
+  needsAttention = signal(false);
+
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
               private notifications: NotificationService) {
+    this.customFields = this.fb.group({});
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
       lastName:     ['', Validators.required],
@@ -255,9 +268,30 @@ export class PersonalDetailsComponent implements OnInit {
             idIssueDate: this.identity.userIdIssueDate,
           });
         }
-        if (this.readOnly()) { this.form.disable(); this.applicant2Form.disable(); }
+
+        const existingCustomData = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : {};
+        this.setUpCustomFields(app, existingCustomData);
+        this.needsAttention.set((app.needsAttentionSections ?? []).includes('personalDetails'));
+
+        if (this.readOnly()) { this.form.disable(); this.applicant2Form.disable(); this.customFields.disable(); }
       }
     });
+  }
+
+  /** Builds `customFields` from the resolved form version's personalDetails section, if any admin
+   * has added one — see the field on this class for why it's a separate FormGroup. Re-running this
+   * on every load (rather than once) is what lets a newly-published required field show up on an
+   * in-flight application's very next visit, per lib/sections.ts's needsAttentionSections. */
+  private setUpCustomFields(app: any, existingData: Record<string, any>): void {
+    const section = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails');
+    const fields: FormField[] = (section?.fields ?? []).filter((f: FormField) => f.kind === 'custom');
+    this.customFieldDefs.set(fields);
+    for (const key of Object.keys(this.customFields.controls)) this.customFields.removeControl(key);
+    for (const field of fields) {
+      const defaultValue = field.type === 'checkbox' ? false : '';
+      const validators = field.required && !field.hidden ? [Validators.required] : [];
+      this.customFields.addControl(field.key, this.fb.control(existingData[field.key] ?? defaultValue, validators));
+    }
   }
 
   get isJoint(): boolean {
@@ -276,6 +310,7 @@ export class PersonalDetailsComponent implements OnInit {
 
   saveAndNext(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.customFields.invalid) { this.customFields.markAllAsTouched(); return; }
     this.applicant2Error.set('');
     this.addressHistoryError.set('');
     if (this.needsMoreAddressHistory) {
@@ -304,7 +339,7 @@ export class PersonalDetailsComponent implements OnInit {
 
   private proceedToSave(): void {
     this.saving.set(true);
-    const payload = { ...this.form.value, applicant2: this.isJoint ? this.applicant2Form.value : null };
+    const payload = { ...this.form.value, ...this.customFields.value, applicant2: this.isJoint ? this.applicant2Form.value : null };
     this.appSvc.saveSection(this.appRef(), 'personalDetails', payload, this.identity.userId!).subscribe({
       next: () => { this.saving.set(false); this.router.navigate(this.identity.applyUrl('connect-bank')); },
       error: () => this.saving.set(false)

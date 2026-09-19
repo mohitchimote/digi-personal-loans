@@ -1,5 +1,6 @@
 package com.digibank.auth.staffadmin;
 
+import com.digibank.auth.compliance.ComplianceAuditWriter;
 import com.digibank.auth.dto.ApiResponse;
 import com.digibank.auth.model.User;
 import com.digibank.auth.repository.UserRepository;
@@ -7,8 +8,11 @@ import com.digibank.auth.staffadmin.dto.CreateStaffRequest;
 import com.digibank.auth.staffadmin.dto.UserSummaryResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,14 +27,31 @@ import java.util.Map;
 public class UserAdminController {
 
     private final UserRepository userRepository;
+    private final ComplianceAuditWriter complianceAuditWriter;
 
-    public UserAdminController(UserRepository userRepository) {
+    public UserAdminController(UserRepository userRepository, ComplianceAuditWriter complianceAuditWriter) {
         this.userRepository = userRepository;
+        this.complianceAuditWriter = complianceAuditWriter;
     }
 
     private static final List<String> STAFF_ROLES = Arrays.asList(
             "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN");
     private static final List<String> CUSTOMER_ROLES = Arrays.asList("CUSTOMER", "BUSINESS_OWNER");
+
+    // The security principal's username is the uuid (see JwtAuthenticationFilter's
+    // loadUserByUsername(uuid)) — every request into this controller is already ADMIN-only
+    // (SecurityConfig), so an Authentication is always present here.
+    private String currentActorUuid() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
+    private String currentActorRole() {
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .findFirst()
+                .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                .orElse(null);
+    }
 
     @GetMapping("/users")
     public ResponseEntity<List<UserSummaryResponse>> getUsers(
@@ -53,16 +74,27 @@ public class UserAdminController {
     @PutMapping("/users/{id}/role")
     public ResponseEntity<ApiResponse<UserSummaryResponse>> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        String previousRole = user.getRole();
         user.setRole(body.get("role"));
+        // S2 — a role change invalidates any token already issued for this user; without this, the
+        // old role's permissions stay live in the token's claims until natural (24h) expiry.
+        user.setSessionsRevokedAt(LocalDateTime.now());
         userRepository.save(user);
+        complianceAuditWriter.record("ROLE_CHANGED", "User", id.toString(), currentActorUuid(), currentActorRole(),
+                previousRole + " -> " + body.get("role"));
         return ResponseEntity.ok(ApiResponse.success("Role updated.", UserSummaryResponse.from(user)));
     }
 
     @PutMapping("/users/{id}/enabled")
     public ResponseEntity<ApiResponse<UserSummaryResponse>> setEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
-        user.setEnabled(Boolean.TRUE.equals(body.get("enabled")));
+        boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
+        user.setEnabled(enabled);
+        // S2 — disabling a user invalidates any token already issued for them immediately.
+        user.setSessionsRevokedAt(LocalDateTime.now());
         userRepository.save(user);
+        complianceAuditWriter.record(enabled ? "USER_ENABLED" : "USER_DISABLED", "User", id.toString(),
+                currentActorUuid(), currentActorRole(), null);
         return ResponseEntity.ok(ApiResponse.success("User updated.", UserSummaryResponse.from(user)));
     }
 
@@ -86,6 +118,8 @@ public class UserAdminController {
         user.setEnabled(true);
         user.setEmailVerified(true);
         userRepository.save(user);
+        complianceAuditWriter.record("STAFF_USER_CREATED", "User", user.getId().toString(), currentActorUuid(), currentActorRole(),
+                "role=" + req.getRole());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Staff user created.", UserSummaryResponse.from(user)));
     }
 
@@ -96,6 +130,7 @@ public class UserAdminController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Only customer records can be deleted."));
         }
         userRepository.deleteById(id);
+        complianceAuditWriter.record("USER_DELETED", "User", id.toString(), currentActorUuid(), currentActorRole(), null);
         return ResponseEntity.noContent().build();
     }
 }

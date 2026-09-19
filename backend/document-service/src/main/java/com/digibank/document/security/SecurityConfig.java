@@ -11,11 +11,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Mirrors worker/src/routes/documents.ts exactly: blanket requireAuth, no extra role gating
- * (see PRODUCTION_READINESS.md §5/§6). Per-resource ownership checks (a customer downloading
- * only their own documents) are a residual gap in the Worker too — flagged in
- * PRODUCTION_READINESS.md as a known follow-up, not silently invented here beyond what the
- * reference implementation actually enforces.
+ * Mirrors worker/src/routes/documents.ts: blanket requireAuth at the filter-chain level; the
+ * per-resource ownership check (a customer may only download/view their own documents, staff
+ * may reach any) lives in StorageController/GenerationController instead, since it depends on
+ * which document is being fetched, not the route shape (S1, ARCHITECTURE_REVIEW_GAPS.md).
  */
 @Configuration
 @EnableWebSecurity

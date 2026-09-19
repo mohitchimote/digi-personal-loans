@@ -1,8 +1,8 @@
-package com.digibank.application.dataverification;
+package com.digibank.integration.dataverification;
 
-import com.digibank.application.dataverification.dto.DataVerificationRule;
-import com.digibank.application.dataverification.dto.DataVerificationSummary;
-import com.digibank.application.model.LoanApplication;
+import com.digibank.integration.dataverification.dto.DataVerificationGenerateRequest;
+import com.digibank.integration.dataverification.dto.DataVerificationRule;
+import com.digibank.integration.dataverification.dto.DataVerificationSummary;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,16 +16,17 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Only implementation of DataVerificationPort today. Generates a demo-only, deterministic-per
- * -application "discrepancy check" comparing the customer's self-declared Application Data against
- * synthetic Document Data (no OCR exists — uploaded files are never read) and synthetic 3rd-Party
- * Data (no credit-bureau/national-registry integration exists). Same applicationRef always
- * produces the same result (seeded by the ref); different applications produce different but
- * plausible discrepancies, so the demo works with whatever name/income the underwriter actually
- * typed in rather than a hardcoded persona.
+ * Ported from application-service's SimulatedDataVerificationAdapter (ARCHITECTURE_REVIEW_GAPS.md,
+ * G5) — the actual generation logic is unchanged, only where it runs. Generates a demo-only,
+ * deterministic-per-application "discrepancy check" comparing the customer's self-declared
+ * Application Data against synthetic Document Data (no OCR exists — uploaded files are never read)
+ * and synthetic 3rd-Party Data (no credit-bureau/national-registry integration exists). Same
+ * applicationRef always produces the same result (seeded by the ref); different applications
+ * produce different but plausible discrepancies, so the demo works with whatever name/income the
+ * underwriter actually typed in rather than a hardcoded persona.
  */
 @Component
-public class SimulatedDataVerificationAdapter implements DataVerificationPort {
+public class DataVerificationGenerator {
 
     private final ObjectMapper objectMapper;
 
@@ -37,17 +38,16 @@ public class SimulatedDataVerificationAdapter implements DataVerificationPort {
             "Teva Pharmaceutical Industries", "Bank Hapoalim", "Check Point Software",
             "Elbit Systems", "Wix.com", "Amdocs");
 
-    public SimulatedDataVerificationAdapter(ObjectMapper objectMapper) {
+    public DataVerificationGenerator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    @Override
-    public DataVerificationSummary generate(LoanApplication app) {
-        JsonNode personal = readTree(app.getPersonalDetailsJson());
-        JsonNode income = readTree(app.getIncomeEmploymentJson());
-        JsonNode credit = readTree(app.getCreditDeclarationsJson());
+    public DataVerificationSummary generate(DataVerificationGenerateRequest request) {
+        JsonNode personal = readTree(request.getPersonalDetailsJson());
+        JsonNode income = readTree(request.getIncomeEmploymentJson());
+        JsonNode credit = readTree(request.getCreditDeclarationsJson());
 
-        long seed = app.getApplicationRef().hashCode();
+        long seed = request.getApplicationRef().hashCode();
 
         List<DataVerificationRule> rules = new ArrayList<>();
         rules.add(buildFullNameRule(personal, seed));
@@ -63,7 +63,7 @@ public class SimulatedDataVerificationAdapter implements DataVerificationPort {
 
         DataVerificationSummary summary = new DataVerificationSummary();
         summary.setGeneratedAt(LocalDateTime.now().toString());
-        summary.setSeed(app.getApplicationRef());
+        summary.setSeed(request.getApplicationRef());
         summary.setRules(rules);
         return summary;
     }

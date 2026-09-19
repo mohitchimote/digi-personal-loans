@@ -44,6 +44,11 @@ public class User {
     private String companyIndustry;
     private Integer companyFoundedYear;
 
+    // S2 (ARCHITECTURE_REVIEW_GAPS.md) — every token issued before this timestamp is rejected on
+    // its next use, regardless of expiry. Bumped by admin enable/disable/role-change actions and by
+    // the user's own logout-everywhere action.
+    private LocalDateTime sessionsRevokedAt;
+
     public User() {}
 
     @PrePersist
@@ -71,6 +76,8 @@ public class User {
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public LocalDateTime getSessionsRevokedAt() { return sessionsRevokedAt; }
+    public void setSessionsRevokedAt(LocalDateTime sessionsRevokedAt) { this.sessionsRevokedAt = sessionsRevokedAt; }
     public boolean isEmailVerified() { return emailVerified; }
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
     public String getOtpCode() { return otpCode; }

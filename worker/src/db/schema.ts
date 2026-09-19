@@ -32,6 +32,11 @@ export const users = sqliteTable("users", {
   // from the frontend's language toggle, which is otherwise purely a client-side localStorage
   // setting the server has no visibility into.
   preferredLanguage: text("preferred_language").notNull().default("en"),
+  // S2 (ARCHITECTURE_REVIEW_GAPS.md) — every token issued before this timestamp is rejected on its
+  // next use, regardless of expiry. Bumped by admin enable/disable/role-change actions and by the
+  // user's own logout-everywhere action, so a stolen token or a role/disable change takes effect on
+  // the next request rather than waiting out the token's full 24h natural expiry.
+  sessionsRevokedAt: text("sessions_revoked_at"),
 });
 
 export const loanApplications = sqliteTable("loan_applications", {
@@ -75,9 +80,20 @@ export const loanApplications = sqliteTable("loan_applications", {
   businessOutgoingsJson: text("business_outgoings_json"),
   businessCreditDeclarationsJson: text("business_credit_declarations_json"),
   businessFinancialsAnalysisJson: text("business_financials_analysis_json"),
+  // N1 (ARCHITECTURE_REVIEW_GAPS.md) — synthetic card-network transaction result from the
+  // fund-release step, generated once and cached here (same "fake it" pattern as the column above).
+  cardPaymentResultJson: text("card_payment_result_json"),
 
   guarantorRequired: integer("guarantor_required", { mode: "boolean" }).notNull().default(false),
   guarantorDetailsJson: text("guarantor_details_json"),
+
+  // Admin Form Builder traceability (see lib/form-versions.ts). Written exactly once, at the
+  // moment this application transitions to SUBMITTED — recording whichever form_versions row was
+  // PUBLISHED at that instant. Null while DRAFT/IN_PROGRESS: an in-flight application always
+  // resolves against the *currently* published version rather than a pinned one, so a newly
+  // required field can surface mid-journey; once submitted this is frozen forever, so a later
+  // publish can never change what an already-submitted application is judged against.
+  formVersionId: integer("form_version_id"),
 
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at"),
@@ -99,6 +115,10 @@ export const brandingSettings = sqliteTable("branding_settings", {
   primaryColor: text("primary_color").notNull().default("#003366"),
   secondaryColor: text("secondary_color").notNull().default("#002244"),
   accentColor: text("accent_color").notNull().default("#FBB034"),
+  // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — net-new. Null means "no gradient configured", falls back to
+  // a solid primaryColor background (see branding.service.ts's applyTheme()).
+  gradientStart: text("gradient_start"),
+  gradientEnd: text("gradient_end"),
   logoUrl: text("logo_url"),
 });
 
@@ -222,6 +242,23 @@ export const mandateRules = sqliteTable("mandate_rules", {
   ceoLimit: real("ceo_limit").notNull().default(999999999),
 });
 
+// Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — compliance audit trail, distinct from
+// underwritingNotes above (that one is customer/staff-facing case notes; this one is a flat,
+// append-only record of auditable state changes, not shown in any UI). actorRole is only populated
+// from admin.ts's staff-management routes, which already have the full authUser in scope — the
+// decisioning routes only pass a display-name string (see applications.ts's addNote), so it stays
+// null there rather than risk misattributing a role.
+export const auditLog = sqliteTable("audit_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  occurredAt: text("occurred_at").notNull(),
+  eventType: text("event_type").notNull(),
+  subjectType: text("subject_type").notNull(),
+  subjectId: text("subject_id").notNull(),
+  actor: text("actor"),
+  actorRole: text("actor_role"),
+  detail: text("detail"),
+});
+
 // One row per lifecycle event key (see lib/email-events.ts's EVENT_REGISTRY for the fixed list of
 // valid keys). Rows are lazily seeded on first read rather than pre-populated by a migration, so
 // the event list can grow later without a schema change — see lib/email.ts's getOrSeedTemplate.
@@ -238,4 +275,26 @@ export const emailTemplates = sqliteTable("email_templates", {
   footer: text("footer"),
   updatedAt: text("updated_at"),
   updatedBy: text("updated_by"),
+});
+
+// Admin Form Builder — versioned wizard section/field definitions. One flat table keyed by
+// formKey rather than a form_definitions/form_versions parent-child pair: there are only ever two
+// forms (personal-loan-wizard, business-loan-wizard), same flat-table-keyed-by-a-string precedent
+// as emailTemplates above. schemaJson is the whole sections -> sectionHeaders -> fields tree in
+// one blob (see lib/form-schema-types.ts for its shape) — same JSON-blob-over-normalized-tables
+// choice this project already made for loanApplications' per-section columns, for the same
+// reason: the shape can keep evolving without a migration per field.
+// Exactly one PUBLISHED row per formKey at a time; publishing archives the previous one rather
+// than deleting it, so version history (and a submitted application's frozen reference) survives.
+export const formVersions = sqliteTable("form_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  formKey: text("form_key").notNull(),
+  version: integer("version").notNull(),
+  status: text("status").notNull().default("DRAFT"),
+  schemaJson: text("schema_json").notNull(),
+  changeNote: text("change_note"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+  publishedAt: text("published_at"),
+  publishedBy: text("published_by"),
 });

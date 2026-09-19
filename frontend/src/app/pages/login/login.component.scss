@@ -4,10 +4,11 @@
   grid-template-columns: minmax(380px, 42%) 1fr;
 }
 
-// === LEFT: branded panel — the gradient runs primary -> secondary so it stays fully
-// admin-configurable (both colours come from Branding settings, not hardcoded).
+// === LEFT: branded panel — --tcs-gradient (Q3, ARCHITECTURE_REVIEW_GAPS.md) defaults to the
+// primary -> secondary gradient this always was, but is now independently admin-configurable
+// (gradientStart/gradientEnd in Branding settings) rather than always derived from primary/secondary.
 .login-panel {
-  background: linear-gradient(160deg, var(--tcs-blue-dark) 0%, var(--tcs-blue) 45%, var(--tcs-secondary) 100%);
+  background: var(--tcs-gradient);
   display: flex;
   flex-direction: column;
   padding: 48px 56px;

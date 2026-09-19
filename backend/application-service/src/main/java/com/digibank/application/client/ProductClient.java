@@ -18,11 +18,13 @@ public class ProductClient {
         this.restTemplate = restTemplate;
     }
 
+    // POST + wrapper body, not GET — matches product-service's PreApprovedController (S9).
     @SuppressWarnings("unchecked")
     public Map<String, Object> getPreApprovedOffer(String nationalId) {
         try {
-            return restTemplate.getForObject(
-                    productServiceUrl + "/api/products/pre-approved/" + nationalId, Map.class);
+            return restTemplate.postForObject(
+                    productServiceUrl + "/api/products/pre-approved/lookup",
+                    Map.of("nationalId", nationalId), Map.class);
         } catch (Exception ignored) {
             return null;
         }

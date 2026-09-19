@@ -415,6 +415,82 @@ customer" feature (e.g. underwriter-assisted edits) — inject `EffectiveIdentit
 `AssistTarget`/`EntitlementsService` if new fields/permissions are needed, and add a route resolver
 rather than starting context from a component.
 
+### 6.7 External integrations stay behind `integration-service`, which stays thin
+
+Every outbound call to something outside this platform — OTP/SMS/email delivery, Open Banking,
+National ID registry, document OCR, credit bureau — goes through Java's `integration-service`
+(worker equivalent: `worker/src/lib/otp.ts`, `data-verification.ts`, `business-financials.ts`,
+simulating the same seam in-process since the Worker has no separate integration microservice). One
+port/adapter per external concern, swappable to a real implementation without touching the caller's
+orchestration code.
+
+`integration-service` deliberately stays a **thin internal gateway**, not a second ESB: protocol
+conversion, aggregation, transformation, and the actual connection to core banking/third-party
+systems is the bank's enterprise service bus's job in production (sync APIs plus MQ/Kafka for async),
+not something this platform builds for itself — duplicating that would be a substantial, avoidable
+project, and some core banking platforms run on mainframe technology this team has no reason to
+adapt to directly. `integration-service`'s own three endpoints today are already this shape: each is
+a single `POST` + JSON wrapper body to one Component with no cross-call aggregation.
+
+Also applies to any endpoint carrying a customer identifier as input, not just literal
+`integration-service` calls: prefer `POST` with a wrapper body over `GET` with the identifier in a
+query string or URL — a GET URL lands in server access logs, browser history, and proxy logs. See
+`backend/product-service/.../PreApprovedController.java` (`POST /pre-approved/lookup`) for the
+pattern.
+
+Full detail (endpoint-by-endpoint responsibilities, the ESB's expected sync/async contract) lives in
+`DigiLend_Production_Architecture.docx` §2.8/§3.4/§9 — source of record, don't duplicate-drift from
+it here.
+
+### 6.8 Opaque ids at the API boundary (S6, ARCHITECTURE_REVIEW_GAPS.md)
+
+Internal primary keys are, and stay, plain sequential auto-increment integers everywhere — no
+schema migration. Only the JSON/path-param boundary is opaque, via a reversible keyed bijection
+(multiply-mod-prime, same technique Hashids/Sqids use) implemented independently per stack:
+`worker/src/lib/opaque-id.ts` and one `util.OpaqueId` class per Java service (document-service,
+notification-service — duplicated, not shared, per §6.7's/Q2's no-cross-service-module constraint).
+This is obfuscation against casual enumeration/business-intelligence leakage, **not cryptographic
+security** — the algorithm is in the source, so a determined attacker with source access can
+reverse it. The actual access-control fix is the ownership checks from S1/S6; this sits on top as
+defense-in-depth.
+
+Applied so far to the two surfaces that had a real ownership gap before S1/S6 (documents,
+notifications) — a JPA entity's real `id` field gets `@JsonIgnore` plus a `@JsonProperty("id")`
+`getOpaqueId()` override (Java), or a route-layer mapper function wraps the row before it's
+returned (Worker). Deliberately **not** applied to `users.id`/admin routes this round — staff-only,
+lower enumeration value, would also touch the admin-users frontend component — left as residual if
+ever prioritized. Extending this pattern to a new entity: add the encode call where the entity/row
+becomes a response, add the decode call wherever its opaque form comes back in as a path param, pick
+a prefix not already used in that service.
+
+### 6.9 Compliance audit trail (Open Point #19, ARCHITECTURE_REVIEW_GAPS.md)
+
+A flat, append-only `audit_log` table, resolved in favour of a shared MySQL `digibank_audit` schema
+over a separate MongoDB-based store (no new infra to run, same reasoning as the S2/S5 Redis
+decision) — Worker equivalent is just another table in the same D1 database, since the Worker has
+no per-service schema separation to begin with. Distinct from `AuditTrailService`'s
+`underwriting_notes` (§10, `application-service`'s `audittrail` package) — that one is a
+customer/staff-facing case timeline shown in the UI; this one is never shown anywhere, exists only
+for compliance/forensics.
+
+One `ComplianceAuditWriter` per writing service (duplicated, same §6.7/Q2 constraint) — its own
+small Hikari pool + `JdbcTemplate` against `digibank_audit`, deliberately outside the JPA-managed
+primary datasource (a second `EntityManagerFactory` for one small table would be disproportionate).
+`record(...)` is swallow-all: a compliance write must never block the real action it's recording,
+same convention as this codebase's other non-critical adapter side effects (N1's card-payment call,
+`generateFinalApprovalLetter`).
+
+Wired so far: `application-service`'s `AuditTrailService.addNote` (single hook point — every
+decisioning action and every wizard edit/note already funnels through it, so one call site covers
+all of them) and `auth-service`'s `UserAdminController` (role change/enable/disable/staff
+create/delete, actor captured from `SecurityContextHolder`). Worker mirrors both: `applications.ts`'s
+`addNote` and `admin.ts`'s staff-management routes. Actor role is only populated where the caller's
+raw role is in scope at the call site (admin actions); decisioning actions only have a display-name
+string, so `actorRole` stays null there rather than risk misattributing one (see the worker
+schema's comment on `auditLog`). Extending this to a new service: copy `ComplianceAuditWriter`,
+give it that service's own name as the `service` column value, call `record(...)` at the point of
+state change.
+
 ## 7. Frontend architecture
 
 - **Standalone components throughout** (no NgModules), signals for local component state,
@@ -703,11 +779,17 @@ style to invent.
 ### 11.3 A concrete gap, surfaced now, not roadmap
 
 Wiring role-gating this session (§5, finding 1) left `STAFF_ROLES` as an identical hardcoded array
-literal duplicated across all 6 protected services' `SecurityConfig` classes plus
-`staffadmin.UserAdminController` — 7 places that must be edited correctly, in sync, to add a role or
-change who counts as staff. This is exactly the problem the Role & Entitlements context (11.1)
-exists to solve, and it's worth deciding the fix shape now even though the context itself is
-roadmap:
+literal duplicated across services and runtimes. **Updated 2026-09-09 (Q2,
+`ARCHITECTURE_REVIEW_GAPS.md`)** — the actual count had drifted to 8 (not the 7 recorded here
+originally; `document-service` split into two controllers during the S1 fix, each carrying its own
+copy). Deduped where a shared source was cheap to introduce: the worker's 3 route files now import
+one `worker/src/lib/roles.ts`; `document-service`'s 2 controllers now share one
+`security.StaffRoles` constant. Left as single, un-shared literals where deduping would need a new
+cross-service shared library module (a bigger build-system change than this item warrants):
+`application-service`'s `SecurityConfig`, `auth-service`'s `UserAdminController`, and the frontend's
+`admin-users.component.ts` (different runtime/casing convention regardless). This is exactly the
+problem the Role & Entitlements context (11.1) exists to solve properly, and it's worth deciding the
+fix shape now even though the context itself is roadmap:
 
 1. **Entitlements stays the source of truth; each service gets a synced/generated constant**
    (compile-time codegen, or a config fetch at startup) — closest to today's pattern, most

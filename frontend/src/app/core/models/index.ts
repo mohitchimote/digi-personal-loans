@@ -107,6 +107,14 @@ export interface LoanApplication {
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
+  formVersionId?: number | null;
+  // Added by GET /:appRef and GET /customer/:customerId/current only (lib/form-versions.ts's
+  // withResolvedFormVersion) — the resolved Admin Form Builder version and which already-filled
+  // sections are missing a newly-required custom field. Absent on responses from every other
+  // endpoint (e.g. a mutation's own `.returning()` row), so always guard with `?.`/`??`.
+  resolvedFormVersion?: { id: number; version: number; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' } | null;
+  formSchema?: { sections: import('../services/form-builder.service').FormSection[] } | null;
+  needsAttentionSections?: string[];
 }
 
 export type ApplicationStatus =
@@ -416,7 +424,7 @@ export interface BankRelationshipAccount {
 }
 
 export interface Notification {
-  id: number;
+  id: string;
   customerId: number;
   title: string;
   message: string;
@@ -427,7 +435,7 @@ export interface Notification {
 }
 
 export interface GeneratedDocument {
-  id: number;
+  id: string;
   applicationRef: string;
   customerId: number;
   documentType: string;
@@ -439,7 +447,7 @@ export interface GeneratedDocument {
 }
 
 export interface UploadedDocument {
-  id: number;
+  id: string;
   applicationRef: string;
   customerId: number;
   documentType: string;

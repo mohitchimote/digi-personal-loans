@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Loan Requirements (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+
+  <div class="topbar__progress" id="stepProgress"></div>
+
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Loan Requirements</h1>
+    <p class="ask-subtitle">Tell us how much you'd like to borrow and what it's for. This information helps us find the best product for your needs.</p>
+
+    <section class="amount-block" aria-label="Loan amount">
+      <div class="amount-display">
+        <span class="amount-currency">₪</span><span class="amount-figure" id="amountFigure">50,000</span>
+      </div>
+
+      <div class="slider-wrap">
+        <input
+          type="range"
+          id="amountSlider"
+          class="slider slider--amount"
+          min="5000"
+          max="300000"
+          step="1000"
+          value="50000"
+          aria-label="Loan amount in shekels"
+        >
+        <div class="slider-scale">
+          <span>₪5,000</span>
+          <span>₪300,000</span>
+        </div>
+      </div>
+
+      <p class="input-hint" style="text-align:center; margin:12px 0 0;">Minimum ₪5,000 · Maximum ₪300,000</p>
+
+      <p class="repayment-estimate">
+        Indicative Monthly Repayment: <strong id="monthlyFigure">₪1,509</strong>/mo · <span id="termEcho">36 months</span> · 5.5% APR (representative). Your actual rate may differ.
+      </p>
+    </section>
+
+    <section class="field-group" aria-labelledby="purposeLabel">
+      <h2 class="field-label" id="purposeLabel">Loan Purpose</h2>
+      <div class="pill-group" role="radiogroup" aria-labelledby="purposeLabel" id="purposeGroup">
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Home Improvement">Home Improvement</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Debt Consolidation">Debt Consolidation</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Vehicle Purchase">Vehicle Purchase</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Education">Education</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Medical Expenses">Medical Expenses</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Wedding">Wedding</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Travel">Travel</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Business">Business</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="Other">Other</button>
+      </div>
+      <p class="field-error" id="purposeError" hidden>Please select a loan purpose.</p>
+    </section>
+
+    <section class="field-group" aria-labelledby="termLabel">
+      <h2 class="field-label" id="termLabel">Loan Term (months)</h2>
+      <div class="pill-group pill-group--term" role="radiogroup" aria-labelledby="termLabel" id="termGroup">
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="12">12 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="24">24 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="true" data-value="36">36 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="48">48 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="60">60 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="72">72 mo</button>
+        <button class="pill" type="button" role="radio" aria-checked="false" data-value="84">84 mo</button>
+      </div>
+    </section>
+
+    <section class="field-group" aria-labelledby="applicantsLabel">
+      <h2 class="field-label" id="applicantsLabel">Number of Applicants</h2>
+      <div class="switch" role="radiogroup" aria-labelledby="applicantsLabel" id="applicantsSwitch">
+        <span class="switch__thumb" aria-hidden="true"></span>
+        <button class="switch__opt is-active" type="button" role="radio" aria-checked="true" data-value="1">1 — Sole Applicant</button>
+        <button class="switch__opt" type="button" role="radio" aria-checked="false" data-value="2">2 — Joint Application</button>
+      </div>
+      <p class="input-hint" style="margin-top:12px;">If there are two applicants, we'll collect details for both.</p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn">
+    <span class="btn-primary__label">Save &amp; Continue</span>
+  </button>
+</footer>
+
+<script src="common.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

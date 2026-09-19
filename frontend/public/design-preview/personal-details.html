@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Personal Details (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Personal Details</h1>
+    <p class="ask-subtitle">We need to verify your identity and confirm your current address. This information is kept strictly confidential.</p>
+
+    <section class="field-group">
+      <h2 class="field-label">Identity Information</h2>
+      <div class="form-grid">
+        <div class="field"><label class="input-label" for="firstName">First Name</label>
+          <input class="input" id="firstName" placeholder="First Name" value="Noa"></div>
+        <div class="field"><label class="input-label" for="lastName">Last Name</label>
+          <input class="input" id="lastName" placeholder="Last Name" value="Barak"></div>
+        <div class="field"><label class="input-label" for="dob">Date of Birth</label>
+          <input class="input" id="dob" type="date" value="1991-04-12"></div>
+        <div class="field">
+          <label class="input-label" for="nationalId">National ID / Teudat Zehut</label>
+          <input class="input" id="nationalId" inputmode="numeric" maxlength="9" placeholder="9-digit ID number" value="304857291">
+          <span class="verify-status" id="verifyStatus"></span>
+        </div>
+        <div class="field"><label class="input-label" for="idIssueDate">ID Issue Date</label>
+          <input class="input" id="idIssueDate" type="date" value="2019-02-01"></div>
+        <div class="field"><label class="input-label" for="nationality">Nationality</label>
+          <select class="select" id="nationality">
+            <option>Israeli</option><option>American</option><option>British</option>
+            <option>French</option><option>German</option><option>Russian</option>
+            <option>Ethiopian</option><option>Indian</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label class="input-label" for="maritalStatus">Marital Status</label>
+          <select class="select" id="maritalStatus">
+            <option value="">Select…</option>
+            <option>Single</option><option>Married</option><option>Divorced</option>
+            <option>Widowed</option><option>Civil Partnership</option><option>Separated</option>
+          </select>
+        </div>
+        <div class="field"><label class="input-label" for="dependents">Number of Dependants</label>
+          <input class="input" id="dependents" type="number" min="0" max="20" value="0">
+          <span class="input-hint">Children up to age 18</span>
+        </div>
+        <div class="field"><label class="input-label" for="phone">Phone Number</label>
+          <input class="input" id="phone" type="tel" value="+972 52-345-1290"></div>
+        <div class="field"><label class="input-label" for="email">Email Address</label>
+          <input class="input" id="email" type="email" value="noa.barak@example.com"></div>
+      </div>
+    </section>
+
+    <section class="field-group">
+      <h2 class="field-label">Current Address</h2>
+      <div class="form-grid">
+        <div class="field field--full"><label class="input-label" for="street">Street Address</label>
+          <input class="input" id="street" placeholder="12 Rothschild Blvd"></div>
+        <div class="field"><label class="input-label" for="city">City</label>
+          <input class="input" id="city" placeholder="Tel Aviv"></div>
+        <div class="field"><label class="input-label" for="postCode">Post Code</label>
+          <input class="input" id="postCode" placeholder="6473926"></div>
+        <div class="field"><label class="input-label" for="country">Country</label>
+          <input class="input" id="country" value="Israel"></div>
+        <div class="field"><label class="input-label" for="months">Length at this Address (months)</label>
+          <input class="input" id="months" type="number" min="0" placeholder="e.g. 24" value="18"></div>
+      </div>
+      <p class="input-hint" id="addressHint">18 of 36 months of address history captured.</p>
+      <div id="previousAddresses"></div>
+      <button class="link-edit" id="addAddressBtn" type="button" style="margin-top:12px;" hidden>+ Add Previous Address</button>
+    </section>
+
+    <section class="field-group" aria-labelledby="assistLabel">
+      <h2 class="field-label" id="assistLabel">Branch Assistance</h2>
+      <p class="input-hint" style="margin:-4px 0 16px;">Are you being assisted by a member of staff?</p>
+      <div class="switch" role="radiogroup" aria-labelledby="assistLabel" id="assistSwitch">
+        <span class="switch__thumb" aria-hidden="true"></span>
+        <button class="switch__opt is-active" type="button" role="radio" aria-checked="true" data-value="no">No</button>
+        <button class="switch__opt" type="button" role="radio" aria-checked="false" data-value="yes">Yes</button>
+      </div>
+
+      <div class="form-grid" id="branchFields" style="margin-top:20px; display:none;">
+        <div class="field"><label class="input-label" for="branch">Which branch is assisting you?</label>
+          <select class="select" id="branch">
+            <option value="">Select…</option>
+            <option>Tel Aviv - Rothschild Blvd</option>
+            <option>Jerusalem - Jaffa Road</option>
+            <option>Haifa - Hadar</option>
+            <option>Beer Sheva - Old City</option>
+            <option>Netanya - City Center</option>
+            <option>Eilat - Tourist Center</option>
+          </select>
+        </div>
+        <div class="field"><label class="input-label" for="staffName">Staff member</label>
+          <select class="select" id="staffName"><option value="">Select…</option></select>
+          <span class="input-hint">Select the team member assisting this customer.</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="modal-scrim" id="consentModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="consentTitle" id="consentStep">
+    <h2 class="modal__title" id="consentTitle">Consent Management</h2>
+    <p class="modal__body">Before we continue, we need your consent for a few important checks. These checks help us assess your application fairly and comply with financial regulations. None of them affect your credit score at this stage.</p>
+
+    <label class="consent-check">
+      <input type="checkbox" class="consent-input">
+      <span class="consent-check__label">
+        <span style="display:block; color:var(--text-secondary); font-size:0.8rem; margin-bottom:4px;">To process your loan application, DigiLend needs to perform a credit search with licensed credit reference agencies. This will initially be a soft search that does not affect your credit score. A full credit search will only be performed if you accept a conditional offer.</span>
+        I consent to DigiLend performing a credit search with credit reference agencies as part of this application.
+      </span>
+    </label>
+    <label class="consent-check">
+      <input type="checkbox" class="consent-input">
+      <span class="consent-check__label">
+        <span style="display:block; color:var(--text-secondary); font-size:0.8rem; margin-bottom:4px;">As required by anti-money laundering (AML) regulation, DigiLend must screen all applicants against Politically Exposed Persons (PEP) databases.</span>
+        I consent to being screened against Politically Exposed Persons (PEP) databases.
+      </span>
+    </label>
+    <label class="consent-check">
+      <input type="checkbox" class="consent-input">
+      <span class="consent-check__label">
+        <span style="display:block; color:var(--text-secondary); font-size:0.8rem; margin-bottom:4px;">DigiLend is required to screen all applicants against relevant sanctions and watchlists before a loan can be approved.</span>
+        I consent to being screened against sanctions and watchlists.
+      </span>
+    </label>
+    <label class="consent-check">
+      <input type="checkbox" class="consent-input">
+      <span class="consent-check__label">
+        <span style="display:block; color:var(--text-secondary); font-size:0.8rem; margin-bottom:4px;">Your personal data will be processed in accordance with DigiLend's Privacy Policy in order to assess and administer your application.</span>
+        I consent to DigiLend processing my personal data for the purposes of this application.
+      </span>
+    </label>
+
+    <div class="modal__actions">
+      <button class="btn-ghost" type="button" id="consentCancel">Cancel</button>
+      <button class="btn-primary" type="button" id="consentConfirm" disabled>Confirm Consent</button>
+    </div>
+  </div>
+
+  <div class="modal" role="dialog" aria-modal="true" id="consentRecorded" hidden>
+    <p class="modal__body" style="color:var(--mint); font-weight:600;" id="consentRecordedMessage">Thank you — your consent has been recorded and is valid until 90 days from today.</p>
+    <div class="modal__actions">
+      <button class="btn-primary" type="button" id="consentContinue">Continue</button>
+    </div>
+  </div>
+</div>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn"><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="personal-details.js"></script>
+</body>
+</html>

@@ -58,6 +58,26 @@
     <div class="db-hint">{{ 'admin.accentColorHint' | translate }}</div>
   </div>
 
+  <div class="db-form-group">
+    <label>{{ 'admin.gradientStart' | translate }}</label>
+    <div class="color-row">
+      <input type="color" [ngModel]="settings()!.gradientStart || settings()!.primaryColor" (ngModelChange)="settings()!.gradientStart = $event" />
+      <input class="db-input" type="text" [(ngModel)]="settings()!.gradientStart" placeholder="{{ 'admin.gradientUnset' | translate }}" />
+    </div>
+  </div>
+
+  <div class="db-form-group">
+    <label>{{ 'admin.gradientEnd' | translate }}</label>
+    <div class="color-row">
+      <input type="color" [ngModel]="settings()!.gradientEnd || settings()!.secondaryColor" (ngModelChange)="settings()!.gradientEnd = $event" />
+      <input class="db-input" type="text" [(ngModel)]="settings()!.gradientEnd" placeholder="{{ 'admin.gradientUnset' | translate }}" />
+    </div>
+    <div class="db-hint">
+      {{ 'admin.gradientHint' | translate }}
+      <a href="javascript:void(0)" (click)="clearGradient()">{{ 'admin.gradientReset' | translate }}</a>
+    </div>
+  </div>
+
   <div class="form-actions">
     <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
       {{ saving() ? ('admin.savingBranding' | translate) : ('admin.saveBranding' | translate) }}

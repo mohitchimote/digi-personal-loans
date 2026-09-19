@@ -7,6 +7,10 @@ export interface BrandingSettings {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — optional; unset means "no gradient configured", falls back
+  // to the default primary -> secondary gradient (see styles.scss's --tcs-gradient default).
+  gradientStart?: string | null;
+  gradientEnd?: string | null;
   logoUrl?: string;
 }
 
@@ -42,9 +46,18 @@ export class BrandingService {
     return this.http.get<BrandingSettings>(`${API}/branding`);
   }
 
-  updateColors(primaryColor: string, secondaryColor: string, accentColor: string): Observable<BrandingSettings> {
-    return this.http.put<BrandingSettings>(`${API}/auth/admin/branding`, { primaryColor, secondaryColor, accentColor })
-      .pipe(tap(settings => this.applyTheme(settings)));
+  // gradientStart/gradientEnd (Q3, ARCHITECTURE_REVIEW_GAPS.md) are optional — pass null for
+  // either to revert to the default derived (primary -> secondary) gradient.
+  updateColors(
+    primaryColor: string,
+    secondaryColor: string,
+    accentColor: string,
+    gradientStart: string | null = null,
+    gradientEnd: string | null = null
+  ): Observable<BrandingSettings> {
+    return this.http.put<BrandingSettings>(`${API}/auth/admin/branding`, {
+      primaryColor, secondaryColor, accentColor, gradientStart, gradientEnd
+    }).pipe(tap(settings => this.applyTheme(settings)));
   }
 
   uploadLogo(file: File): Observable<BrandingSettings> {
@@ -71,6 +84,14 @@ export class BrandingService {
     root.setProperty('--tcs-yellow', settings.accentColor);
     root.setProperty('--tcs-yellow-dark', shade(settings.accentColor, -0.18));
     root.setProperty('--tcs-yellow-rgb', toRgbChannels(settings.accentColor));
+    // Q3 — only override the CSS default when both ends are actually configured; otherwise leave
+    // styles.scss's default (primary -> secondary) in place rather than removing the property
+    // (which would fall through to `unset`/transparent, not the intended default).
+    if (settings.gradientStart && settings.gradientEnd) {
+      root.setProperty('--tcs-gradient', `linear-gradient(160deg, ${settings.gradientStart} 0%, ${settings.gradientEnd} 100%)`);
+    } else {
+      root.removeProperty('--tcs-gradient');
+    }
   }
 
   loadAndApply(): void {

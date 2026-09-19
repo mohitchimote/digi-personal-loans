@@ -50,3 +50,10 @@ branding-store/
 
 # MySQL data
 *.sql.bak
+
+# JMeter load-test output (regenerated per run, see loadtest/README.md)
+loadtest/user-pool.csv
+loadtest/results.jtl
+loadtest/report/
+loadtest/*.log
+/jmeter.log

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Income &amp; Employment (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Income &amp; Employment</h1>
+    <p class="ask-subtitle">Please provide your employment details and monthly income figures. We use this to assess what you can comfortably afford to repay.</p>
+
+    <section class="field-group">
+      <h2 class="field-label">Employment 1 Details</h2>
+      <div class="form-grid">
+        <div class="field field--full"><label class="input-label" for="empStatus">Employment Status</label>
+          <select class="select" id="empStatus">
+            <option value="">Select…</option>
+            <option>Full-Time Employed</option><option>Part-Time Employed</option>
+            <option>Self-Employed</option><option>Contract</option>
+            <option>Retired</option><option>Student</option><option>Unemployed</option>
+          </select>
+        </div>
+        <div class="field"><label class="input-label" for="employer">Employer Name</label><input class="input" id="employer" placeholder="Company name"></div>
+        <div class="field"><label class="input-label" for="jobTitle">Job Title</label><input class="input" id="jobTitle" placeholder="e.g. Software Engineer"></div>
+        <div class="field"><label class="input-label" for="duration">Length of Employment</label><input class="input" id="duration" placeholder="e.g. 3 years 2 months"></div>
+      </div>
+
+      <h2 class="field-label" style="margin-top:24px;">Monthly Income (₪)</h2>
+      <p class="input-hint" style="margin:-8px 0 16px;">Please enter your monthly income figures, not annual. Gross = before tax, Net = after tax.</p>
+      <div class="form-grid">
+        <div class="field"><label class="input-label" for="grossIncome">Monthly Gross Income (₪)</label><input class="input" id="grossIncome" type="number" min="0" value="16500">
+          <span class="input-hint">Before tax and deductions</span></div>
+        <div class="field"><label class="input-label" for="netIncome">Monthly Net Income (₪)</label><input class="input" id="netIncome" type="number" min="0" value="12800">
+          <span class="input-hint">Take-home pay after all deductions</span></div>
+        <div class="field"><label class="input-label" for="otherIncome">Other Monthly Income (₪)</label><input class="input" id="otherIncome" type="number" min="0" value="0">
+          <span class="input-hint">Rental income, freelance, benefits, etc.</span></div>
+      </div>
+      <p class="input-error-text" id="incomeError" hidden>Net income cannot be greater than gross income.</p>
+    </section>
+
+    <div id="extraEmployments"></div>
+
+    <button class="link-edit" id="addEmploymentBtn" type="button" style="margin-bottom:36px;">+ Add Another Employment</button>
+
+    <section class="field-group">
+      <div class="summary-row" style="border-top:1px solid var(--border); padding-top:16px;">
+        <span class="summary-row__label">Total monthly gross income</span>
+        <span class="summary-row__value summary-row__value--gold" id="totalGross">₪16,500</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-row__label">Total monthly net income</span>
+        <span class="summary-row__value" id="totalNet">₪12,800</span>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn"><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="income-employment.js"></script>
+</body>
+</html>

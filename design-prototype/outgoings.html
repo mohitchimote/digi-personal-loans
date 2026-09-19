@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Outgoings (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Outgoings &amp; Household Expenditure</h1>
+    <p class="ask-subtitle">Please list your regular monthly commitments. Enter 0 if a category does not apply to you. Accurate figures help us find the right loan for your circumstances.</p>
+
+    <section class="field-group">
+      <h2 class="field-label">Housing Costs (₪ / month)</h2>
+      <div class="form-grid">
+        <div class="field"><label class="input-label" for="rent">Monthly Rent (₪)</label><input class="input outgoing" id="rent" type="number" min="0" value="0">
+          <span class="input-hint">Enter 0 if you own your home</span></div>
+        <div class="field"><label class="input-label" for="mortgage">Mortgage Repayment (₪)</label><input class="input outgoing" id="mortgage" type="number" min="0" value="2400">
+          <span class="input-hint">Enter 0 if you rent or have no mortgage</span></div>
+      </div>
+
+      <h2 class="field-label" style="margin-top:24px;">Existing Debt Commitments (₪ / month)</h2>
+      <div class="form-grid">
+        <div class="field"><label class="input-label" for="loans">Existing Loan Repayments (₪)</label><input class="input outgoing" id="loans" type="number" min="0" value="600"></div>
+        <div class="field"><label class="input-label" for="creditCards">Credit Card Minimum Payments (₪)</label><input class="input outgoing" id="creditCards" type="number" min="0" value="350"></div>
+        <div class="field"><label class="input-label" for="otherCommitments">Other Regular Commitments (₪)</label><input class="input outgoing" id="otherCommitments" type="number" min="0" value="0">
+          <span class="input-hint">Child maintenance, subscriptions, insurance premiums, etc.</span></div>
+      </div>
+
+      <h2 class="field-label" style="margin-top:24px;">Living Expenses (₪ / month)</h2>
+      <div class="form-grid">
+        <div class="field"><label class="input-label" for="livingExpenses">Total Monthly Living Expenses (₪)</label><input class="input outgoing" id="livingExpenses" type="number" min="0" value="3200">
+          <span class="input-hint">Food, utilities, transport, entertainment, clothing, etc.</span></div>
+      </div>
+    </section>
+
+    <section class="field-group">
+      <div class="summary-row" style="border-top:1px solid var(--border); padding-top:16px; font-size:1rem;">
+        <span class="summary-row__label">Total Monthly Outgoings</span>
+        <span class="summary-row__value summary-row__value--gold" id="totalOutgoings">₪6,550</span>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn"><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="outgoings.js"></script>
+</body>
+</html>

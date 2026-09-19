@@ -64,9 +64,11 @@ public class WizardService {
      * where the customer confirms/changes the repayment account, reviewSubmit is always last. */
     private static final Set<String> MANDATORY_STOPS = Set.of("personalDetails", "connectBank", "reviewSubmit");
 
+    private final SectionDataValidator sectionDataValidator;
+
     public WizardService(LoanApplicationRepository repository, ObjectMapper objectMapper, ProductClient productClient,
                           DecisioningService decisioningService, AuditTrailService auditTrailService,
-                          NotificationText text, EmailClient emailClient) {
+                          NotificationText text, EmailClient emailClient, SectionDataValidator sectionDataValidator) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.productClient = productClient;
@@ -74,6 +76,7 @@ public class WizardService {
         this.auditTrailService = auditTrailService;
         this.text = text;
         this.emailClient = emailClient;
+        this.sectionDataValidator = sectionDataValidator;
     }
 
     @Transactional
@@ -264,30 +267,26 @@ public class WizardService {
     public LoanApplication saveSection(String appRef, String section, Map<String, Object> data) {
         LoanApplication app = getByRef(appRef);
 
-        try {
-            String json = objectMapper.writeValueAsString(data);
-            switch (section) {
-                case "loanRequirements"   -> app.setLoanRequirementsJson(json);
-                case "consentManagement"  -> app.setConsentManagementJson(json);
-                case "personalDetails"    -> app.setPersonalDetailsJson(json);
-                case "connectBank"        -> app.setBankConnectionJson(json);
-                case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
-                case "outgoings"          -> app.setOutgoingsJson(json);
-                case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
-                case "verifyId"           -> app.setVerifyIdJson(json);
-                case "directDebit"        -> app.setDirectDebitJson(json);
-                case "reviewSubmit"       -> app.setReviewSubmitJson(json);
-                case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
-                case "companyDetails"             -> app.setCompanyDetailsJson(json);
-                case "signatories"                -> app.setSignatoriesJson(json);
-                case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
-                case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
-                case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
-                case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
-                default -> throw new IllegalArgumentException("Unknown section: " + section);
-            }
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize section data", e);
+        String json = sectionDataValidator.validateAndSerialize(section, data);
+        switch (section) {
+            case "loanRequirements"   -> app.setLoanRequirementsJson(json);
+            case "consentManagement"  -> app.setConsentManagementJson(json);
+            case "personalDetails"    -> app.setPersonalDetailsJson(json);
+            case "connectBank"        -> app.setBankConnectionJson(json);
+            case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
+            case "outgoings"          -> app.setOutgoingsJson(json);
+            case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
+            case "verifyId"           -> app.setVerifyIdJson(json);
+            case "directDebit"        -> app.setDirectDebitJson(json);
+            case "reviewSubmit"       -> app.setReviewSubmitJson(json);
+            case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
+            case "companyDetails"             -> app.setCompanyDetailsJson(json);
+            case "signatories"                -> app.setSignatoriesJson(json);
+            case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
+            case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
+            case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
+            case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
+            default -> throw new IllegalArgumentException("Unknown section: " + section);
         }
 
         app.setStatus("IN_PROGRESS");
@@ -301,29 +300,25 @@ public class WizardService {
     public LoanApplication saveSectionByUnderwriter(String appRef, String section, Map<String, Object> data, String editedBy) {
         LoanApplication app = getByRef(appRef);
 
-        try {
-            String json = objectMapper.writeValueAsString(data);
-            switch (section) {
-                case "loanRequirements"   -> app.setLoanRequirementsJson(json);
-                case "consentManagement"  -> app.setConsentManagementJson(json);
-                case "personalDetails"    -> app.setPersonalDetailsJson(json);
-                case "connectBank"        -> app.setBankConnectionJson(json);
-                case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
-                case "outgoings"          -> app.setOutgoingsJson(json);
-                case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
-                case "verifyId"           -> app.setVerifyIdJson(json);
-                case "directDebit"        -> app.setDirectDebitJson(json);
-                case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
-                case "companyDetails"             -> app.setCompanyDetailsJson(json);
-                case "signatories"                -> app.setSignatoriesJson(json);
-                case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
-                case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
-                case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
-                case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
-                default -> throw new IllegalArgumentException("Unknown section: " + section);
-            }
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize section data", e);
+        String json = sectionDataValidator.validateAndSerialize(section, data);
+        switch (section) {
+            case "loanRequirements"   -> app.setLoanRequirementsJson(json);
+            case "consentManagement"  -> app.setConsentManagementJson(json);
+            case "personalDetails"    -> app.setPersonalDetailsJson(json);
+            case "connectBank"        -> app.setBankConnectionJson(json);
+            case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
+            case "outgoings"          -> app.setOutgoingsJson(json);
+            case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
+            case "verifyId"           -> app.setVerifyIdJson(json);
+            case "directDebit"        -> app.setDirectDebitJson(json);
+            case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
+            case "companyDetails"             -> app.setCompanyDetailsJson(json);
+            case "signatories"                -> app.setSignatoriesJson(json);
+            case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
+            case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
+            case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
+            case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
+            default -> throw new IllegalArgumentException("Unknown section: " + section);
         }
 
         repository.save(app);

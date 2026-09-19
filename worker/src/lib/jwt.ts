@@ -13,11 +13,17 @@ export async function signJwt(subjectUuid: string, secret: string): Promise<stri
     .sign(key);
 }
 
-export async function verifyJwt(token: string, secret: string): Promise<string> {
+export interface VerifiedJwt {
+  uuid: string;
+  issuedAt: number; // seconds since epoch — used for S2 session-revocation comparison
+}
+
+export async function verifyJwt(token: string, secret: string): Promise<VerifiedJwt> {
   const key = new TextEncoder().encode(secret);
   const { payload } = await jwtVerify(token, key);
   if (!payload.sub) throw new Error("Token has no subject.");
-  return payload.sub;
+  if (!payload.iat) throw new Error("Token has no issued-at claim.");
+  return { uuid: payload.sub, issuedAt: payload.iat };
 }
 
 export const JWT_EXPIRES_IN_MS = JWT_EXPIRATION_SECONDS * 1000;

@@ -1,6 +1,16 @@
 server:
   port: 8084
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: product-service
@@ -19,16 +29,24 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
 
 app:
   jwt:
     # No default — required. Must match every other service's app.jwt.secret (and auth-service's,
     # which issues the token) — see PRODUCTION_READINESS.md §4/§5.
     secret: ${JWT_SECRET}
+  # S2 — polled every 30s by SessionRevocationCache, not called per-request.
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+logging:
+  # Console output is now structured JSON (logback.xml, S4 remainder, ARCHITECTURE_REVIEW_GAPS.md)
+  # — CorrelationIdFilter's MDC value lands there as a top-level `correlationId` field
+  # automatically; the old plain-text pattern override this replaced is gone.

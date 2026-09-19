@@ -1,13 +1,17 @@
 package com.digibank.application.decisioning;
 
 import com.digibank.application.audittrail.AuditTrailService;
+import com.digibank.application.cardpayment.CardPaymentPort;
+import com.digibank.application.cardpayment.dto.CardPaymentResult;
 import com.digibank.application.client.AffordabilityClient;
 import com.digibank.application.client.DocumentClient;
 import com.digibank.application.client.EmailClient;
 import com.digibank.application.client.NotificationClient;
 import com.digibank.application.client.NotificationText;
+import com.digibank.application.client.RuleServiceClient;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.repository.LoanApplicationRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -33,8 +37,9 @@ public class DecisioningService {
     private final AffordabilityClient affordabilityClient;
     private final AuditTrailService auditTrailService;
     private final NotificationText text;
-    private final MandateRules mandateRules;
+    private final RuleServiceClient ruleServiceClient;
     private final EmailClient emailClient;
+    private final CardPaymentPort cardPaymentPort;
 
     private static final List<String> PIPELINE_STATUSES = List.of(
             "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED");
@@ -46,7 +51,8 @@ public class DecisioningService {
     public DecisioningService(LoanApplicationRepository repository, ObjectMapper objectMapper,
                                NotificationClient notificationClient, DocumentClient documentClient,
                                AffordabilityClient affordabilityClient, AuditTrailService auditTrailService,
-                               NotificationText text, MandateRules mandateRules, EmailClient emailClient) {
+                               NotificationText text, RuleServiceClient ruleServiceClient, EmailClient emailClient,
+                               CardPaymentPort cardPaymentPort) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.notificationClient = notificationClient;
@@ -54,8 +60,9 @@ public class DecisioningService {
         this.affordabilityClient = affordabilityClient;
         this.auditTrailService = auditTrailService;
         this.text = text;
-        this.mandateRules = mandateRules;
+        this.ruleServiceClient = ruleServiceClient;
         this.emailClient = emailClient;
+        this.cardPaymentPort = cardPaymentPort;
     }
 
     public List<LoanApplication> getPipeline() {
@@ -128,7 +135,7 @@ public class DecisioningService {
      * which is bounded by AffordabilityClient's own threshold instead — see maybeAutoApprove). */
     @Transactional
     public LoanApplication approveApplicationByUnderwriter(String appRef, String reviewedBy, BigDecimal approvedAmount, String callerRole) {
-        if (callerRole != null && approvedAmount != null && approvedAmount.compareTo(mandateRules.limitFor(callerRole)) > 0) {
+        if (callerRole != null && approvedAmount != null && approvedAmount.compareTo(ruleServiceClient.getMandateRules().limitFor(callerRole)) > 0) {
             // Server-side mandate enforcement — the frontend already blocks a role from entering an
             // amount above its limit, but that's advisory UI only (ARCHITECTURE.md §5/§9); a valid
             // token replayed directly against this endpoint (e.g. via Postman) previously had
@@ -184,6 +191,7 @@ public class DecisioningService {
     public LoanApplication authoriseFundRelease(String appRef, String reviewedBy) {
         LoanApplication app = getByRef(appRef);
         app.setDisbursementStatus("FUNDS_RELEASED");
+        authoriseCardPayment(app);
         repository.save(app);
         auditTrailService.addNote(appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", reviewedBy);
 
@@ -196,6 +204,23 @@ public class DecisioningService {
         variables.put("reviewedBy", reviewedBy);
         emailClient.send("DISBURSEMENT_AUTHORISED", app.getCustomerEmail(), variables);
         return app;
+    }
+
+    /** N1 (ARCHITECTURE_REVIEW_GAPS.md) — simulated card-payment authorisation, generate-once-then-
+     * persist (same convention as businessFinancialsAnalysisJson/dataVerificationJson) so a repeat
+     * fund-release call on the same application doesn't regenerate it. Wrapped in a swallow-all
+     * try/catch, same reasoning as the worker's generateFinalApprovalLetter — this is a synthetic
+     * side effect, not the underwriting decision itself, and must never block fund release. */
+    private void authoriseCardPayment(LoanApplication app) {
+        if (app.getCardPaymentResultJson() != null) return;
+        try {
+            BigDecimal amount = app.getApprovedAmount();
+            CardPaymentResult result = cardPaymentPort.authorise(app, amount);
+            app.setCardPaymentResultJson(objectMapper.writeValueAsString(result));
+        } catch (JsonProcessingException | RuntimeException e) {
+            // Non-fatal — logging only, matching this class's existing pattern for adapter calls
+            // that shouldn't block a decisioning action (see maybeAutoApprove's own catch blocks).
+        }
     }
 
     @Transactional

@@ -1,6 +1,17 @@
 server:
   port: 8081
 
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run` — Docker Compose overrides it
+# to the `service-registry` container (see backend/docker-compose.yml), so nothing here changes
+# for local dev. prefer-ip-address avoids relying on OS hostname resolution, which isn't always
+# reliable across containers/hosts.
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 spring:
   application:
     name: auth-service
@@ -19,7 +30,7 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
   servlet:
     multipart:
@@ -36,8 +47,13 @@ app:
     expiration: 86400000
   branding:
     storage-path: ./branding-store
+  integration-service:
+    url: ${INTEGRATION_SERVICE_URL:http://localhost:8088}
 
 logging:
   level:
     com.digibank: INFO
     org.springframework.security: WARN
+  # Console output is now structured JSON (logback-spring.xml, S4 remainder,
+  # ARCHITECTURE_REVIEW_GAPS.md) — CorrelationIdFilter's MDC value lands there as a top-level
+  # `correlationId` field automatically; the old plain-text pattern override this replaced is gone.

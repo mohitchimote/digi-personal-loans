@@ -12,6 +12,8 @@ import { products } from "./routes/products";
 import { notificationsRoute } from "./routes/notifications";
 import { documents } from "./routes/documents";
 import { emailTemplatesAdmin } from "./routes/admin-email-templates";
+import { formBuilderAdmin } from "./routes/admin-form-builder";
+import { logError } from "./lib/log";
 
 const app = new Hono<AppEnv>();
 
@@ -40,7 +42,7 @@ app.onError((err, c) => {
   if (err instanceof AppError) {
     return c.json({ success: false, message: err.message, data: null }, err.status as any);
   }
-  console.error(err);
+  logError("Unhandled error", err, { path: c.req.path, method: c.req.method });
   return c.json({ success: false, message: "Internal server error.", data: null }, 500);
 });
 
@@ -49,6 +51,7 @@ app.route("/api/auth", auth);
 app.route("/api/auth/admin", admin);
 app.route("/api/auth/admin/branding", brandingAdmin);
 app.route("/api/auth/admin/email-templates", emailTemplatesAdmin);
+app.route("/api/auth/admin/form-builder", formBuilderAdmin);
 app.route("/api/branding", branding);
 app.route("/api/applications", applications);
 app.route("/api/affordability", affordability);

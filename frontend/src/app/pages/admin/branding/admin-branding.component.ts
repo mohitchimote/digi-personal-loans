@@ -40,10 +40,22 @@ export class AdminBrandingComponent implements OnInit {
     this.saving.set(true);
     this.saved.set(false);
     this.error.set('');
-    this.brandingSvc.updateColors(settings.primaryColor, settings.secondaryColor, settings.accentColor).subscribe({
+    this.brandingSvc.updateColors(
+      settings.primaryColor, settings.secondaryColor, settings.accentColor,
+      settings.gradientStart ?? null, settings.gradientEnd ?? null
+    ).subscribe({
       next: updated => { this.settings.set(updated); this.saving.set(false); this.saved.set(true); },
       error: () => { this.saving.set(false); this.error.set(this.i18n.t('admin.errSaveBranding')); }
     });
+  }
+
+  // Q3 — reverts to the default derived (primary -> secondary) gradient. Doesn't save by itself;
+  // the admin still clicks Save, same as any other field on this form.
+  clearGradient(): void {
+    const settings = this.settings();
+    if (!settings) return;
+    settings.gradientStart = null;
+    settings.gradientEnd = null;
   }
 
   onLogoSelected(event: Event): void {

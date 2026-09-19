@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiBank: Credit Declarations (Design Exploration)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg-field" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-word">DigiBank</span>
+  </div>
+  <div class="topbar__progress" id="stepProgress"></div>
+  <button class="btn-ghost btn-ghost--small" type="button">Save &amp; exit</button>
+</header>
+
+<main class="wizard">
+  <div class="wizard__inner">
+
+    <h1 class="ask">Credit Declarations</h1>
+    <p class="ask-subtitle">Please answer the following honestly. These declarations are checked against credit reference agencies and inaccurate information may result in your application being declined.</p>
+    <p class="input-hint" style="margin:-28px 0 28px;">Your credit declarations are protected under Israeli banking confidentiality laws and will only be used to assess your application.</p>
+
+    <section class="field-group">
+      <h2 class="field-label">Credit History Declarations</h2>
+      <div class="declaration-row">
+        <div class="declaration-row__text">
+          <div class="declaration-row__label">Loan Default</div>
+          <div class="declaration-row__hint">Have you ever defaulted on a loan, mortgage, or credit agreement in the last 6 years?</div>
+        </div>
+        <div class="switch" data-active="1"><span class="switch__thumb"></span>
+          <button class="switch__opt is-active" data-value="no">No</button><button class="switch__opt" data-value="yes">Yes</button></div>
+      </div>
+      <div class="declaration-row">
+        <div class="declaration-row__text">
+          <div class="declaration-row__label">Bankruptcy or Insolvency</div>
+          <div class="declaration-row__hint">Have you ever been declared bankrupt or entered into an insolvency arrangement?</div>
+        </div>
+        <div class="switch" data-active="1"><span class="switch__thumb"></span>
+          <button class="switch__opt is-active" data-value="no">No</button><button class="switch__opt" data-value="yes">Yes</button></div>
+      </div>
+      <div class="declaration-row">
+        <div class="declaration-row__text">
+          <div class="declaration-row__label">County Court Judgements (CCJ)</div>
+          <div class="declaration-row__hint">Do you have any unsatisfied CCJs or court orders against you for debt?</div>
+        </div>
+        <div class="switch" data-active="1"><span class="switch__thumb"></span>
+          <button class="switch__opt is-active" data-value="no">No</button><button class="switch__opt" data-value="yes">Yes</button></div>
+      </div>
+      <div class="declaration-row">
+        <div class="declaration-row__text">
+          <div class="declaration-row__label">Debt Management Plan</div>
+          <div class="declaration-row__hint">Are you currently subject to a debt management plan or informal payment arrangement?</div>
+        </div>
+        <div class="switch" data-active="1"><span class="switch__thumb"></span>
+          <button class="switch__opt is-active" data-value="no">No</button><button class="switch__opt" data-value="yes">Yes</button></div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="actionbar">
+  <button class="btn-ghost" type="button">← Back</button>
+  <button class="btn-primary" type="button" id="continueBtn"><span class="btn-primary__label">Save &amp; Continue</span></button>
+</footer>
+
+<script src="common.js"></script>
+<script src="credit-declarations.js"></script>
+</body>
+</html>

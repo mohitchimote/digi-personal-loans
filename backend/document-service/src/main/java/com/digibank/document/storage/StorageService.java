@@ -1,6 +1,7 @@
 package com.digibank.document.storage;
 
 import com.digibank.document.PathSafety;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -20,6 +22,17 @@ import java.util.UUID;
 @Service
 public class StorageService {
 
+    // S3 (ARCHITECTURE_REVIEW_GAPS.md) — before this, nothing checked a file's actual content, only
+    // trusted whatever Content-Type the client claimed. This is magic-byte detection (Tika sniffs
+    // the real bytes, not the filename/header) against the shapes the product's own upload pages
+    // accept (frontend/.../verify-id, guarantor-details, documents.component.html's `accept=`
+    // attributes) — it is NOT malware scanning; a real AV engine would be new infrastructure
+    // (a scanning daemon/API), out of scope here.
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
+            "application/pdf", "image/jpeg", "image/png",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword");
+
+    private final Tika tika = new Tika();
     private final UploadedDocumentRepository uploadedRepo;
 
     @Value("${app.document.storage-path:./document-store}")
@@ -30,6 +43,13 @@ public class StorageService {
     }
 
     public UploadedDocument storeUpload(String appRef, Long customerId, String docType, MultipartFile file) throws IOException {
+        byte[] bytes = file.getBytes();
+        String detectedType = tika.detect(bytes);
+        if (!ALLOWED_MIME_TYPES.contains(detectedType)) {
+            throw new IllegalArgumentException(
+                    "Unsupported file type: " + detectedType + ". Allowed: PDF, JPEG, PNG, DOC, DOCX.");
+        }
+
         Path dir = Paths.get(storagePath, "uploaded", PathSafety.safePathSegment(appRef, "applicationRef"));
         Files.createDirectories(dir);
         // getOriginalFilename() is attacker-controlled and may contain path separators/".." —
@@ -41,7 +61,7 @@ public class StorageService {
         if (!filePath.startsWith(dir.normalize())) {
             throw new IllegalArgumentException("Invalid file name.");
         }
-        Files.write(filePath, file.getBytes());
+        Files.write(filePath, bytes);
 
         UploadedDocument doc = new UploadedDocument();
         doc.setApplicationRef(appRef);
@@ -50,7 +70,9 @@ public class StorageService {
         doc.setOriginalFilename(file.getOriginalFilename());
         doc.setStoragePath(filePath.toString());
         doc.setFileSize(file.getSize());
-        doc.setMimeType(file.getContentType());
+        // The detected type, not the client-supplied Content-Type header — the whole point of the
+        // check above is that the header can't be trusted.
+        doc.setMimeType(detectedType);
         return uploadedRepo.save(doc);
     }
 

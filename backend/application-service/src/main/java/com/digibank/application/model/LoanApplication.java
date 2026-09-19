@@ -98,6 +98,12 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String businessFinancialsAnalysisJson;
 
+    /** Synthetic card-network transaction result from the fund-release step (N1,
+     * ARCHITECTURE_REVIEW_GAPS.md) — generated once, on first authorisation, and cached here so it
+     * stays stable across reloads. Same "fake it" pattern as businessFinancialsAnalysisJson. */
+    @Column(columnDefinition = "TEXT")
+    private String cardPaymentResultJson;
+
     /** Guarantor is never asked in the first pass — only set true when an underwriter sends the
      * case back specifically requesting one (see ApplicationService.sendBackApplication). Shared
      * by both journeys (guarantor shape doesn't differ between personal and business). */
@@ -217,6 +223,9 @@ public class LoanApplication {
 
     public String getBusinessFinancialsAnalysisJson() { return businessFinancialsAnalysisJson; }
     public void setBusinessFinancialsAnalysisJson(String businessFinancialsAnalysisJson) { this.businessFinancialsAnalysisJson = businessFinancialsAnalysisJson; }
+
+    public String getCardPaymentResultJson() { return cardPaymentResultJson; }
+    public void setCardPaymentResultJson(String cardPaymentResultJson) { this.cardPaymentResultJson = cardPaymentResultJson; }
 
     public Boolean getGuarantorRequired() { return guarantorRequired; }
     public void setGuarantorRequired(Boolean guarantorRequired) { this.guarantorRequired = guarantorRequired; }

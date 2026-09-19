@@ -19,7 +19,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private static final String[] STAFF_ROLES = {
+    // public (not private) so WizardController's S6 ownership check can reuse this one definition
+    // instead of adding a second copy within this service (Q2).
+    public static final String[] STAFF_ROLES = {
             "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"
     };
 

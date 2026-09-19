@@ -1,0 +1,1 @@
+ALTER TABLE `loan_applications` ADD `card_payment_result_json` text;
