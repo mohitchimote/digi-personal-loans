@@ -113,7 +113,7 @@ export interface LoanApplication {
   // sections are missing a newly-required custom field. Absent on responses from every other
   // endpoint (e.g. a mutation's own `.returning()` row), so always guard with `?.`/`??`.
   resolvedFormVersion?: { id: number; version: number; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' } | null;
-  formSchema?: { sections: import('../services/form-builder.service').FormSection[] } | null;
+  formSchema?: import('../services/form-builder.service').FormVersionSchema | null;
   needsAttentionSections?: string[];
 }
 

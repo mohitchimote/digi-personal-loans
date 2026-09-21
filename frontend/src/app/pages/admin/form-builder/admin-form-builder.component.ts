@@ -12,8 +12,11 @@ import {
   FormField,
   FieldType,
   BilingualLabel,
-  VisibilityRule,
+  NamedConstant,
+  ConditionGroup,
 } from '../../../core/services/form-builder.service';
+import { toConditionNode } from '../../../shared/dynamic-field/dynamic-field.component';
+import { ConditionGroupComponent, FieldPickerOption } from './condition-group/condition-group.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -26,7 +29,6 @@ interface NewFieldDraft {
   required: boolean;
 }
 
-type VisibilityValueType = 'boolean' | 'text' | 'number';
 type BilingualProp = 'label' | 'helpText' | 'tooltip';
 
 const FIELD_TYPES: FieldType[] = ['text', 'number', 'date', 'select', 'radio', 'checkbox', 'textarea'];
@@ -36,7 +38,7 @@ const VALIDATION_TYPES: FieldType[] = ['text', 'number', 'textarea'];
 @Component({
   selector: 'app-admin-form-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe, ConditionGroupComponent],
   templateUrl: './admin-form-builder.component.html',
   styleUrl: './admin-form-builder.component.scss',
 })
@@ -362,7 +364,7 @@ export class AdminFormBuilderComponent implements OnInit {
     return this.expandedFieldKey() === field.key;
   }
 
-  toggleFieldExpand(field: FormField): void {
+  toggleFieldExpand(field: FormField, section: FormSection): void {
     if (this.expandedFieldKey() === field.key) {
       this.expandedFieldKey.set(null);
       return;
@@ -371,6 +373,7 @@ export class AdminFormBuilderComponent implements OnInit {
       if (OPTION_TYPES.includes(field.type!) && !field.options) field.options = [];
       if (VALIDATION_TYPES.includes(field.type!) && !field.validation) field.validation = {};
     }
+    this.upgradeLegacyVisibility(field, section.key);
     this.expandedFieldKey.set(field.key);
   }
 
@@ -396,60 +399,81 @@ export class AdminFormBuilderComponent implements OnInit {
     return section.fields.filter((f) => f.key !== excludeKey).sort((a, b) => a.order - b.order);
   }
 
-  visibilityTriggerLabel(section: FormSection, field: FormField): string {
-    const rule = field.visibility;
-    if (!rule) return '';
-    const trigger = section.fields.find((f) => f.key === rule.fieldKey);
-    return trigger ? this.fieldLabel(trigger) : rule.fieldKey;
+  /** Every field in the form, across every section (a condition can reference any of them, not
+   * just same-section siblings — see form-schema-types.ts's condition engine), flattened once per
+   * render for the condition-group tree's field pickers. */
+  fieldsFlatForPicker(schema: FormVersionSchema): FieldPickerOption[] {
+    const out: FieldPickerOption[] = [];
+    for (const section of schema.sections) {
+      for (const field of section.fields) {
+        out.push({ sectionKey: section.key, fieldKey: field.key, label: `${this.sideMenuLabel(section)}: ${this.fieldLabel(field)}` });
+      }
+    }
+    return out;
   }
 
-  toggleVisibility(field: FormField, section: FormSection): void {
+  toggleVisibility(field: FormField, schema: FormVersionSchema, section: FormSection): void {
     if (field.visibility) {
       field.visibility = null;
-    } else {
-      const sibling = this.siblingFields(section, field.key)[0];
-      field.visibility = { fieldKey: sibling?.key ?? '', op: 'equals', value: true };
+      this.touch();
+      return;
     }
+    const first = this.fieldsFlatForPicker(schema).find((f) => !(f.sectionKey === section.key && f.fieldKey === field.key));
+    field.visibility = {
+      kind: 'group',
+      op: 'and',
+      conditions: [
+        {
+          kind: 'condition',
+          left: first ? { kind: 'field', sectionKey: first.sectionKey, fieldKey: first.fieldKey } : { kind: 'literal', value: '' },
+          op: 'equals',
+          right: { kind: 'literal', value: true },
+        },
+      ],
+    };
     this.touch();
   }
 
-  setVisibilityField(field: FormField, fieldKey: string): void {
-    if (!field.visibility) return;
-    field.visibility = { ...field.visibility, fieldKey };
+  /** A field's visibility can be the pre-existing single same-section equality rule (kept forever
+   * for backward compatibility, see form-schema-types.ts's legacyVisibilityRuleSchema) — upgrade
+   * it in place to a one-condition group the moment an admin opens it in this editor, so the tree
+   * UI always has a group to render. Untouched fields never go through this and keep validating
+   * against the legacy shape indefinitely. */
+  private upgradeLegacyVisibility(field: FormField, sectionKey: string): void {
+    if (field.visibility && !('kind' in field.visibility)) {
+      field.visibility = { kind: 'group', op: 'and', conditions: [toConditionNode(field.visibility, sectionKey)] };
+    }
+  }
+
+  asConditionGroup(field: FormField): ConditionGroup {
+    return field.visibility as ConditionGroup;
+  }
+
+  onConditionGroupChanged(): void {
     this.touch();
   }
 
-  setVisibilityOp(field: FormField, op: VisibilityRule['op']): void {
-    if (!field.visibility) return;
-    field.visibility = { ...field.visibility, op };
+  // --- Form-level named constants (e.g. "standardRetirementAge") a condition can reference by
+  // key instead of hardcoding a literal — see form-schema-types.ts's namedConstantSchema. ---
+
+  addConstant(schema: FormVersionSchema): void {
+    if (!schema.constants) schema.constants = [];
+    schema.constants.push({ key: '', label: '', value: 0 });
     this.touch();
   }
 
-  visibilityValueType(field: FormField): VisibilityValueType {
-    const v = field.visibility?.value;
-    if (typeof v === 'number') return 'number';
-    if (typeof v === 'string') return 'text';
-    return 'boolean';
-  }
-
-  setVisibilityValueType(field: FormField, type: VisibilityValueType): void {
-    if (!field.visibility) return;
-    const value = type === 'boolean' ? true : type === 'number' ? 0 : '';
-    field.visibility = { ...field.visibility, value };
+  removeConstant(schema: FormVersionSchema, index: number): void {
+    schema.constants?.splice(index, 1);
     this.touch();
   }
 
-  setVisibilityBoolValue(field: FormField, value: boolean): void {
-    if (!field.visibility) return;
-    field.visibility = { ...field.visibility, value };
+  setConstantField(constant: NamedConstant, key: 'key' | 'label', raw: string): void {
+    constant[key] = raw;
     this.touch();
   }
 
-  setVisibilityRawValue(field: FormField, raw: string): void {
-    if (!field.visibility) return;
-    const type = this.visibilityValueType(field);
-    const value = type === 'number' ? Number(raw) || 0 : raw;
-    field.visibility = { ...field.visibility, value };
+  setConstantValue(constant: NamedConstant, raw: string): void {
+    constant.value = Number(raw) || 0;
     this.touch();
   }
 

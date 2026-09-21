@@ -1,0 +1,75 @@
+.condition-group {
+  border: 1px solid var(--light-grey);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  background: var(--card-bg, #fff);
+
+  & & {
+    margin-top: 8px;
+    background: var(--off-white);
+  }
+}
+
+.condition-group__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.condition-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 1px dashed var(--light-grey);
+
+  &:first-of-type { border-top: none; }
+}
+
+.nested-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+
+  app-condition-group { flex: 1; }
+}
+
+.computed-operand,
+.literal-operand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.list-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.group-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.db-select--sm {
+  width: auto;
+  min-width: 90px;
+}
+
+.db-select,
+.db-input {
+  width: auto;
+  min-width: 110px;
+}

@@ -76,6 +76,19 @@
     <p class="db-hint" *ngIf="!isEditable()">{{ 'admin.formReadOnlyNotice' | translate }}</p>
   </div>
 
+  <div class="db-card mb-16 constants-panel">
+    <div class="card-header"><h3>{{ 'admin.condConstantsHeader' | translate }}</h3></div>
+    <p class="db-hint">{{ 'admin.condConstantsHint' | translate }}</p>
+    <div class="constant-row" *ngFor="let c of sc.constants; let ci = index">
+      <input class="db-input" [disabled]="!isEditable()" [ngModel]="c.key" (ngModelChange)="setConstantField(c, 'key', $event)" [placeholder]="'admin.condConstantKey' | translate" />
+      <input class="db-input" [disabled]="!isEditable()" [ngModel]="c.label" (ngModelChange)="setConstantField(c, 'label', $event)" [placeholder]="'admin.formLabelEn' | translate" />
+      <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="c.value" (ngModelChange)="setConstantValue(c, $event)" [placeholder]="'admin.condConstantValue' | translate" />
+      <button type="button" class="icon-btn icon-btn--danger" *ngIf="isEditable()" (click)="removeConstant(sc, ci)"><span class="material-icons mi-sm">delete</span></button>
+    </div>
+    <p class="db-hint" *ngIf="!sc.constants?.length">{{ 'admin.condNoConstants' | translate }}</p>
+    <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="isEditable()" (click)="addConstant(sc)">{{ 'admin.condAddConstant' | translate }}</button>
+  </div>
+
   <div class="db-card mb-16" *ngFor="let section of sc.sections" [class.section-card--collapsed]="expandedSection() !== section.key">
     <div class="card-header section-card__header" (click)="toggleSection(section.key)">
       <h3>{{ sideMenuLabel(section) }} <span class="section-card__key">({{ section.key }})</span></h3>
@@ -106,11 +119,11 @@
           <tbody>
             <ng-container *ngFor="let field of fieldsFor(section, sh.key); let ffirst = first; let flast = last">
               <tr [class.field-row--hidden]="field.hidden" [class.field-row--expanded]="isFieldExpanded(field)">
-                <td class="field-row__label-cell" (click)="toggleFieldExpand(field)">
+                <td class="field-row__label-cell" (click)="toggleFieldExpand(field, section)">
                   <span class="material-icons mi-sm field-row__chevron">{{ isFieldExpanded(field) ? 'expand_less' : 'expand_more' }}</span>
                   {{ fieldLabel(field) }}
                   <span class="db-hint field-row__key">{{ field.key }}</span>
-                  <span class="chip chip--visibility" *ngIf="field.visibility">{{ 'admin.formConditional' | translate }}: {{ visibilityTriggerLabel(section, field) }}</span>
+                  <span class="chip chip--visibility" *ngIf="field.visibility">{{ 'admin.formConditional' | translate }}</span>
                 </td>
                 <td><span class="chip" [class.chip--custom]="field.kind === 'custom'">{{ field.kind === 'custom' ? (field.type || 'custom') : ('admin.formExisting' | translate) }}</span></td>
                 <td>
@@ -164,30 +177,18 @@
 
                     <div class="field-detail__visibility">
                       <label class="db-checkbox">
-                        <input type="checkbox" [checked]="!!field.visibility" [disabled]="!isEditable()" (change)="toggleVisibility(field, section)" />
+                        <input type="checkbox" [checked]="!!field.visibility" [disabled]="!isEditable()" (change)="toggleVisibility(field, sc, section)" />
                         <span>{{ 'admin.formMakeConditional' | translate }}</span>
                       </label>
 
-                      <div class="visibility-rule-row" *ngIf="field.visibility as rule">
-                        <span>{{ 'admin.formVisShownOnlyIf' | translate }}</span>
-                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="rule.fieldKey" (ngModelChange)="setVisibilityField(field, $event)">
-                          <option *ngFor="let sib of siblingFields(section, field.key)" [value]="sib.key">{{ fieldLabel(sib) }}</option>
-                        </select>
-                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="rule.op" (ngModelChange)="setVisibilityOp(field, $event)">
-                          <option value="equals">{{ 'admin.formVisOpEquals' | translate }}</option>
-                          <option value="notEquals">{{ 'admin.formVisOpNotEquals' | translate }}</option>
-                        </select>
-                        <select class="db-select" [disabled]="!isEditable()" [ngModel]="visibilityValueType(field)" (ngModelChange)="setVisibilityValueType(field, $event)">
-                          <option value="boolean">{{ 'admin.formVisTypeYesNo' | translate }}</option>
-                          <option value="text">{{ 'admin.formVisTypeText' | translate }}</option>
-                          <option value="number">{{ 'admin.formVisTypeNumber' | translate }}</option>
-                        </select>
-                        <select class="db-select" *ngIf="visibilityValueType(field) === 'boolean'" [disabled]="!isEditable()" [ngModel]="rule.value" (ngModelChange)="setVisibilityBoolValue(field, $event)">
-                          <option [ngValue]="true">{{ 'common.yes' | translate }}</option>
-                          <option [ngValue]="false">{{ 'common.no' | translate }}</option>
-                        </select>
-                        <input class="db-input" *ngIf="visibilityValueType(field) !== 'boolean'" [disabled]="!isEditable()" [ngModel]="rule.value" (ngModelChange)="setVisibilityRawValue(field, $event)" />
-                      </div>
+                      <app-condition-group
+                        *ngIf="field.visibility"
+                        [group]="asConditionGroup(field)"
+                        [fields]="fieldsFlatForPicker(sc)"
+                        [constants]="sc.constants || []"
+                        [disabled]="!isEditable()"
+                        (changed)="onConditionGroupChanged()"
+                      ></app-condition-group>
                     </div>
 
                     <div class="field-detail__options" *ngIf="hasOptions(field)">

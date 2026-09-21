@@ -1,6 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { loanApplications } from "../db/schema";
-import { isFieldVisible, type VisibilityRule } from "./form-schema-types";
+import { isFieldVisible, type FormVersionSchema } from "./form-schema-types";
 
 type App = InferSelectModel<typeof loanApplications>;
 
@@ -63,6 +63,30 @@ const SECTION_TO_COLUMN: Record<string, keyof App> = {
 
 export function columnForSection(section: string): keyof App | undefined {
   return SECTION_TO_COLUMN[section];
+}
+
+// Flattens every section's already-saved JSON into one map keyed `"sectionKey.fieldKey"` —
+// what a visibility condition's field/computed operands are resolved against, so a rule can
+// reference a field in any section (see form-schema-types.ts's condition engine), not just the
+// section the field-carrying-the-rule lives in. A section with nothing saved yet (or that
+// doesn't parse) simply contributes no entries — referencing one of its fields resolves to
+// undefined, which the evaluator already treats as "condition unmet," never an error.
+export function flattenAllSectionValues(app: App): Record<string, unknown> {
+  const values: Record<string, unknown> = {};
+  for (const [sectionKey, column] of Object.entries(SECTION_TO_COLUMN)) {
+    const raw = (app as any)[column];
+    if (raw == null) continue;
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    for (const [fieldKey, value] of Object.entries(data)) {
+      values[`${sectionKey}.${fieldKey}`] = value;
+    }
+  }
+  return values;
 }
 
 export function isSectionFilled(app: App, section: string): boolean {
@@ -150,28 +174,23 @@ export function sectionLabel(section: string, lang: "en" | "he" = "en"): string 
 // it — this is the check that can un-tick a previously-green sidebar item. Only ever adds sections
 // to the legacy incomplete set, never removes one: a section the legacy check already considers
 // incomplete stays incomplete regardless of what this finds.
-export function needsAttentionSections(app: App, schema: { sections: readonly { key: string; fields: readonly { key: string; kind: string; required: boolean; hidden?: boolean; visibility?: VisibilityRule | null }[] }[] } | null): string[] {
+export function needsAttentionSections(app: App, schema: FormVersionSchema | null): string[] {
   if (!schema) return [];
   const flagged: string[] = [];
+  // Built once, across every section — not just the one currently being checked — so a rule can
+  // reference a field anywhere in the form (see form-schema-types.ts's condition engine).
+  const values = flattenAllSectionValues(app);
+  const ctx = { constants: schema.constants ?? [], values };
   for (const section of schema.sections) {
     if (!isSectionFilled(app, section.key)) continue; // already incomplete by the legacy check — nothing new to add
-    const column = SECTION_TO_COLUMN[section.key];
-    if (!column) continue;
-    const raw = (app as any)[column];
-    if (raw == null) continue;
-    let data: Record<string, unknown>;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      continue;
-    }
+    if ((app as any)[SECTION_TO_COLUMN[section.key]] == null) continue;
     // Checked across every schema field, not just kind: "custom" — an admin can also mark an
     // existing (hardcoded) field required, e.g. personalDetails' preferredBranch shown only when
     // assistedByStaff is true (see applications.ts's validateSectionData for the matching
     // submit-time enforcement).
     const missingRequiredField = section.fields.some((f) => {
-      if (!f.required || f.hidden || !isFieldVisible(f, data)) return false;
-      const value = data[f.key];
+      if (!f.required || f.hidden || !isFieldVisible(f, section.key, ctx)) return false;
+      const value = values[`${section.key}.${f.key}`];
       return value === undefined || value === null || value === "";
     });
     if (missingRequiredField) flagged.push(section.key);

@@ -115,7 +115,8 @@
         *ngFor="let field of customFieldDefs()"
         [field]="field"
         [control]="$any(customFields.get(field.key))"
-        [allValues]="form.getRawValue()"
+        sectionKey="personalDetails"
+        [evalContext]="evalContext()"
       ></app-dynamic-field>
     </div>
 

@@ -19,10 +19,58 @@ export interface FieldOption {
   label: BilingualLabel;
 }
 
-export interface VisibilityRule {
+// --- Visibility condition engine — mirrors worker/src/lib/form-schema-types.ts. Kept in sync
+// by hand since the worker and this app are separate deployable projects with no shared
+// package; see that file for the full design rationale. ---
+
+export interface LegacyVisibilityRule {
   fieldKey: string;
   op: 'equals' | 'notEquals';
   value: string | number | boolean;
+}
+
+export interface FieldRef {
+  sectionKey: string;
+  fieldKey: string;
+}
+
+export type ScalarOperand =
+  | { kind: 'literal'; value: string | number | boolean }
+  | ({ kind: 'field' } & FieldRef)
+  | { kind: 'constant'; key: string }
+  | { kind: 'computed'; fn: 'age'; dateField: FieldRef; offsetField?: FieldRef; offsetUnit?: 'months' | 'years' };
+
+export interface ListOperand {
+  kind: 'list';
+  values: (string | number)[];
+}
+
+export const COMPARISON_OPS = ['equals', 'notEquals', 'gt', 'gte', 'lt', 'lte', 'contains'] as const;
+export const MEMBERSHIP_OPS = ['in', 'notIn'] as const;
+export const CONDITION_OPS = [...COMPARISON_OPS, ...MEMBERSHIP_OPS] as const;
+export type ComparisonOp = (typeof COMPARISON_OPS)[number];
+export type MembershipOp = (typeof MEMBERSHIP_OPS)[number];
+export type ConditionOp = (typeof CONDITION_OPS)[number];
+
+// Two variants (not one flat `op`/`right` pair) so TS can actually narrow `right`'s type from
+// `op` — mirrors how the worker's Zod union (two `.strict()` object schemas) infers it.
+export type Condition =
+  | { kind: 'condition'; left: ScalarOperand; op: ComparisonOp; right: ScalarOperand }
+  | { kind: 'condition'; left: ScalarOperand; op: MembershipOp; right: ListOperand };
+
+export interface ConditionGroup {
+  kind: 'group';
+  op: 'and' | 'or';
+  conditions: ConditionNode[];
+}
+
+export type ConditionNode = Condition | ConditionGroup;
+export type VisibilityNode = LegacyVisibilityRule | ConditionNode;
+
+export interface NamedConstant {
+  key: string;
+  label: string;
+  value: number;
 }
 
 export interface FieldValidation {
@@ -47,7 +95,7 @@ export interface FormField {
   order: number;
   options?: FieldOption[];
   validation?: FieldValidation;
-  visibility?: VisibilityRule | null;
+  visibility?: VisibilityNode | null;
 }
 
 export interface FormSectionHeader {
@@ -67,6 +115,7 @@ export interface FormSection {
 
 export interface FormVersionSchema {
   sections: FormSection[];
+  constants?: NamedConstant[];
 }
 
 export type FormVersionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';

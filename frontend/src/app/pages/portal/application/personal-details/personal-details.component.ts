@@ -2,7 +2,7 @@ import { Component, OnInit, signal, WritableSignal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { Subscription, merge } from 'rxjs';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -11,9 +11,33 @@ import { ApplicationAsideComponent } from '../../../../shared/application-aside/
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
-import { DynamicFieldComponent, isFieldVisible } from '../../../../shared/dynamic-field/dynamic-field.component';
+import { DynamicFieldComponent, isFieldVisible, EvalContext } from '../../../../shared/dynamic-field/dynamic-field.component';
 import { FieldHelpComponent } from '../../../../shared/field-help/field-help.component';
-import { FormField } from '../../../../core/services/form-builder.service';
+import { FormField, NamedConstant } from '../../../../core/services/form-builder.service';
+
+// Mirrors worker/src/lib/sections.ts's SECTION_TO_COLUMN — which section's saved data lives in
+// which JSON column on the application row. Used to flatten every *other* section's last-saved
+// values into this component's cross-section evalContext (see buildStaticValues below); kept in
+// sync by hand like every other worker/frontend pair in this feature.
+const SECTION_JSON_COLUMNS: Record<string, string> = {
+  loanRequirements: 'loanRequirementsJson',
+  consentManagement: 'consentManagementJson',
+  personalDetails: 'personalDetailsJson',
+  connectBank: 'bankConnectionJson',
+  incomeEmployment: 'incomeEmploymentJson',
+  outgoings: 'outgoingsJson',
+  creditDeclarations: 'creditDeclarationsJson',
+  verifyId: 'verifyIdJson',
+  directDebit: 'directDebitJson',
+  reviewSubmit: 'reviewSubmitJson',
+  guarantorDetails: 'guarantorDetailsJson',
+  companyDetails: 'companyDetailsJson',
+  signatories: 'signatoriesJson',
+  connectBusinessBank: 'businessBankConnectionJson',
+  businessFinancials: 'businessFinancialsJson',
+  businessOutgoings: 'businessOutgoingsJson',
+  businessCreditDeclarations: 'businessCreditDeclarationsJson',
+};
 
 @Component({
   selector: 'app-personal-details',
@@ -67,6 +91,16 @@ export class PersonalDetailsComponent implements OnInit {
   allFieldDefs = signal<FormField[]>([]);
   private ruleSubs: Subscription[] = [];
   private baseValidators = new Map<AbstractControl, ValidatorFn | null>();
+
+  // A visibility condition can reference a field in *any* section (see form-schema-types.ts's
+  // condition engine on the worker, mirrored in dynamic-field.component.ts). `staticValues` is
+  // every *other* section's last-saved data, flattened once at load (this component has no live
+  // form for those steps, so it can't do better than the snapshot from when this page loaded);
+  // `evalContext` overlays that with personalDetails' own live, currently-being-typed values and
+  // is what both DynamicFieldComponent and applySchemaFieldRules() evaluate against.
+  private staticValues: Record<string, unknown> = {};
+  private constants: NamedConstant[] = [];
+  evalContext = signal<EvalContext>({ constants: [], values: {} });
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
@@ -280,6 +314,8 @@ export class PersonalDetailsComponent implements OnInit {
         const existingCustomData = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : {};
         const allFields: FormField[] = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails')?.fields ?? [];
         this.allFieldDefs.set(allFields);
+        this.constants = app.formSchema?.constants ?? [];
+        this.staticValues = this.buildStaticValues(app);
         this.setUpCustomFields(allFields, existingCustomData);
         this.applySchemaFieldRules(allFields);
         this.needsAttention.set((app.needsAttentionSections ?? []).includes('personalDetails'));
@@ -313,39 +349,70 @@ export class PersonalDetailsComponent implements OnInit {
     return this.form.get(key) ?? this.customFields.get(key);
   }
 
+  /** Every *other* section's last-saved data, flattened once at load into `"sectionKey.fieldKey"`
+   * keys — see the class-level comment on `staticValues`/`evalContext`. A section with nothing
+   * saved yet contributes no entries, so referencing one of its fields resolves to undefined —
+   * which the evaluator already treats as "condition unmet," never an error (this is what makes
+   * a rule referencing a later, not-yet-reached wizard step safe). */
+  private buildStaticValues(app: any): Record<string, unknown> {
+    const values: Record<string, unknown> = {};
+    for (const [sectionKey, column] of Object.entries(SECTION_JSON_COLUMNS)) {
+      const raw = app[column];
+      if (!raw) continue;
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      for (const [fieldKey, value] of Object.entries(data)) {
+        values[`${sectionKey}.${fieldKey}`] = value;
+      }
+    }
+    return values;
+  }
+
+  /** Overlays `staticValues` with personalDetails' own live, currently-being-typed values (so a
+   * same-section condition reacts to typing) and republishes `evalContext` for
+   * DynamicFieldComponent and applySchemaFieldRules() to evaluate against. */
+  private recomputeEvalContext(): void {
+    const values = { ...this.staticValues };
+    const live = { ...this.form.getRawValue(), ...this.customFields.getRawValue() };
+    for (const [fieldKey, value] of Object.entries(live)) values[`personalDetails.${fieldKey}`] = value;
+    this.evalContext.set({ constants: this.constants, values });
+  }
+
   /** Layers schema-driven `required`/`visibility` on top of every existing (hardcoded) and custom
    * field's own validators, for both kinds uniformly — never removing whatever validators a field
    * already had (e.g. firstName's hardcoded Validators.required stays regardless of what the
-   * schema says). A field with a `visibility` rule gets its required-ness re-evaluated whenever
-   * its trigger field changes, mirroring DynamicFieldComponent's isFieldVisible so the wizard and
-   * the Admin Form Builder agree on what "shown only if" means. See lib/form-schema-types.ts's
-   * isFieldVisible (worker) / dynamic-field.component.ts's isFieldVisible (frontend) for the
-   * matching evaluation used server-side. */
+   * schema says). Recomputed on *any* change to this section's own fields — simpler and more
+   * correct than tracking individual trigger controls once a condition can be a tree referencing
+   * several fields across several sections; cross-section triggers can't be "live" anyway, since
+   * this component has no form for other steps. Mirrors DynamicFieldComponent's isFieldVisible
+   * (and worker/src/lib/form-schema-types.ts's isFieldVisible server-side) so the wizard, its own
+   * display, and the Admin Form Builder all agree on what "shown only if" means. */
   private applySchemaFieldRules(fields: FormField[]): void {
     this.ruleSubs.forEach((s) => s.unsubscribe());
     this.ruleSubs = [];
 
-    for (const field of fields) {
-      const control = this.resolveControl(field.key);
-      if (!control) continue;
-      if (!this.baseValidators.has(control)) {
-        this.baseValidators.set(control, control.validator);
-      }
-      const base = this.baseValidators.get(control) ?? null;
-
-      const recompute = () => {
-        const values = { ...this.form.getRawValue(), ...this.customFields.getRawValue() };
-        const applies = field.required && !field.hidden && isFieldVisible(field, values);
+    const recomputeAll = () => {
+      this.recomputeEvalContext();
+      const ctx = this.evalContext();
+      for (const field of fields) {
+        const control = this.resolveControl(field.key);
+        if (!control) continue;
+        if (!this.baseValidators.has(control)) {
+          this.baseValidators.set(control, control.validator);
+        }
+        const base = this.baseValidators.get(control) ?? null;
+        const applies = field.required && !field.hidden && isFieldVisible(field, 'personalDetails', ctx);
         control.setValidators(applies ? Validators.compose([base, Validators.required]) : base);
         control.updateValueAndValidity({ emitEvent: false });
-      };
-
-      if (field.visibility) {
-        const trigger = this.resolveControl(field.visibility.fieldKey);
-        if (trigger) this.ruleSubs.push(trigger.valueChanges.subscribe(recompute));
       }
-      recompute();
-    }
+    };
+
+    this.ruleSubs.push(merge(this.form.valueChanges, this.customFields.valueChanges).subscribe(recomputeAll));
+    recomputeAll();
   }
 
   get isJoint(): boolean {

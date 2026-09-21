@@ -1,0 +1,110 @@
+<ng-template #operandEditor let-operand="operand" let-cond="cond" let-side="side">
+  <select class="db-select" [disabled]="disabled" [ngModel]="operandKindOf(operand)" (ngModelChange)="setOperandKind(cond, side, $event)">
+    <option value="field">{{ 'admin.condOperandField' | translate }}</option>
+    <option value="constant">{{ 'admin.condOperandConstant' | translate }}</option>
+    <option value="computed">{{ 'admin.condOperandComputed' | translate }}</option>
+    <option value="literal">{{ 'admin.condOperandLiteral' | translate }}</option>
+  </select>
+
+  <ng-container [ngSwitch]="operand.kind">
+    <select *ngSwitchCase="'field'" class="db-select" [disabled]="disabled" [ngModel]="fieldRefKey($any(operand))" (ngModelChange)="setFieldOperand($any(operand), $event)">
+      <option *ngFor="let f of fields" [value]="f.sectionKey + '::' + f.fieldKey">{{ f.label }}</option>
+    </select>
+
+    <select *ngSwitchCase="'constant'" class="db-select" [disabled]="disabled" [ngModel]="$any(operand).key" (ngModelChange)="setConstantOperand($any(operand), $event)">
+      <option *ngIf="!constants.length" value="">{{ 'admin.condNoConstants' | translate }}</option>
+      <option *ngFor="let c of constants" [value]="c.key">{{ c.label }}</option>
+    </select>
+
+    <span *ngSwitchCase="'computed'" class="computed-operand">
+      <span class="db-hint">{{ 'admin.condComputedAge' | translate }}</span>
+      <select class="db-select" [disabled]="disabled" [ngModel]="fieldRefKey($any(operand).dateField)" (ngModelChange)="setComputedDateField($any(operand), $event)">
+        <option *ngFor="let f of fields" [value]="f.sectionKey + '::' + f.fieldKey">{{ f.label }}</option>
+      </select>
+      <label class="db-checkbox">
+        <input type="checkbox" [disabled]="disabled" [checked]="!!$any(operand).offsetField" (change)="toggleComputedOffset($any(operand))" />
+        <span>{{ 'admin.condComputedOffsetToggle' | translate }}</span>
+      </label>
+      <ng-container *ngIf="$any(operand).offsetField">
+        <select class="db-select" [disabled]="disabled" [ngModel]="fieldRefKey($any(operand).offsetField)" (ngModelChange)="setComputedOffsetField($any(operand), $event)">
+          <option *ngFor="let f of fields" [value]="f.sectionKey + '::' + f.fieldKey">{{ f.label }}</option>
+        </select>
+        <select class="db-select" [disabled]="disabled" [ngModel]="$any(operand).offsetUnit" (ngModelChange)="setComputedOffsetUnit($any(operand), $event)">
+          <option value="months">{{ 'admin.condUnitMonths' | translate }}</option>
+          <option value="years">{{ 'admin.condUnitYears' | translate }}</option>
+        </select>
+      </ng-container>
+    </span>
+
+    <span *ngSwitchCase="'literal'" class="literal-operand">
+      <select class="db-select" [disabled]="disabled" [ngModel]="literalType($any(operand))" (ngModelChange)="setLiteralType($any(operand), $event)">
+        <option value="text">{{ 'admin.formVisTypeText' | translate }}</option>
+        <option value="number">{{ 'admin.formVisTypeNumber' | translate }}</option>
+        <option value="boolean">{{ 'admin.formVisTypeYesNo' | translate }}</option>
+      </select>
+      <select *ngIf="literalType($any(operand)) === 'boolean'" class="db-select" [disabled]="disabled" [ngModel]="$any(operand).value" (ngModelChange)="setLiteralBool($any(operand), $event)">
+        <option [ngValue]="true">{{ 'common.yes' | translate }}</option>
+        <option [ngValue]="false">{{ 'common.no' | translate }}</option>
+      </select>
+      <input *ngIf="literalType($any(operand)) !== 'boolean'" class="db-input" [disabled]="disabled" [ngModel]="$any(operand).value" (ngModelChange)="setLiteralValue($any(operand), $event)" />
+    </span>
+  </ng-container>
+</ng-template>
+
+<div class="condition-group">
+  <div class="condition-group__header">
+    <select class="db-select db-select--sm" [disabled]="disabled" [ngModel]="group.op" (ngModelChange)="setGroupOp($event)">
+      <option value="and">{{ 'admin.condGroupAnd' | translate }}</option>
+      <option value="or">{{ 'admin.condGroupOr' | translate }}</option>
+    </select>
+    <span class="db-hint">{{ 'admin.condGroupHint' | translate }}</span>
+  </div>
+
+  <div class="condition-row" *ngFor="let node of group.conditions; let i = index">
+    <ng-container *ngIf="!isGroup(node); else groupTpl">
+      <ng-container *ngTemplateOutlet="operandEditor; context: { operand: asCondition(node).left, cond: asCondition(node), side: 'left' }"></ng-container>
+
+      <select class="db-select" [disabled]="disabled" [ngModel]="asCondition(node).op" (ngModelChange)="setConditionOp(asCondition(node), $event)">
+        <optgroup [label]="'admin.condOpsComparison' | translate">
+          <option *ngFor="let op of comparisonOps" [value]="op">{{ ('admin.condOp.' + op) | translate }}</option>
+        </optgroup>
+        <optgroup [label]="'admin.condOpsMembership' | translate">
+          <option *ngFor="let op of membershipOps" [value]="op">{{ ('admin.condOp.' + op) | translate }}</option>
+        </optgroup>
+      </select>
+
+      <ng-container *ngIf="isMembership(asCondition(node).op); else scalarRight">
+        <div class="list-editor">
+          <div class="list-editor__row" *ngFor="let v of $any(asCondition(node).right).values; let vi = index">
+            <input class="db-input" [disabled]="disabled" [ngModel]="v" (ngModelChange)="setListValue($any(asCondition(node).right), vi, $event)" />
+            <button type="button" class="icon-btn icon-btn--danger" *ngIf="!disabled" (click)="removeListValue($any(asCondition(node).right), vi)"><span class="material-icons mi-sm">delete</span></button>
+          </div>
+          <button type="button" class="db-btn db-btn--ghost db-btn--sm" *ngIf="!disabled" (click)="addListValue($any(asCondition(node).right))">{{ 'admin.condAddListValue' | translate }}</button>
+        </div>
+      </ng-container>
+      <ng-template #scalarRight>
+        <ng-container *ngTemplateOutlet="operandEditor; context: { operand: asCondition(node).right, cond: asCondition(node), side: 'right' }"></ng-container>
+      </ng-template>
+
+      <button type="button" class="icon-btn icon-btn--danger" *ngIf="!disabled" (click)="removeNode(i)"><span class="material-icons mi-sm">delete</span></button>
+    </ng-container>
+
+    <ng-template #groupTpl>
+      <div class="nested-group">
+        <app-condition-group
+          [group]="asGroup(node)"
+          [fields]="fields"
+          [constants]="constants"
+          [disabled]="disabled"
+          (changed)="changed.emit()"
+        ></app-condition-group>
+        <button type="button" class="icon-btn icon-btn--danger" *ngIf="!disabled" (click)="removeNode(i)"><span class="material-icons mi-sm">delete</span></button>
+      </div>
+    </ng-template>
+  </div>
+
+  <div class="group-actions" *ngIf="!disabled">
+    <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="addCondition()">{{ 'admin.condAddCondition' | translate }}</button>
+    <button type="button" class="db-btn db-btn--ghost db-btn--sm" (click)="addNestedGroup()">{{ 'admin.condAddGroup' | translate }}</button>
+  </div>
+</div>

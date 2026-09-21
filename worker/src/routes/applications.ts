@@ -11,6 +11,7 @@ import {
   nextSection,
   sectionLabel,
   generateApplicationRef,
+  flattenAllSectionValues,
 } from "../lib/sections";
 import { sendNotification, getPreferredLanguage } from "../lib/notifications";
 import { sendTemplatedEmail } from "../lib/email";
@@ -127,7 +128,8 @@ async function validateSectionData(
   const schema = SECTION_SCHEMAS[section];
   if (!schema) throw new AppError(`Unknown section: ${section}`);
 
-  const allSchemaFields = await sectionSchemaFields(db, app, section);
+  const resolved = await resolveFormSchema(db, app);
+  const allSchemaFields = resolved?.sections.find((s) => s.key === section)?.fields ?? [];
   const customFields = allSchemaFields.filter((f) => f.kind === "custom");
   const isPlainObject = data != null && typeof data === "object" && !Array.isArray(data);
   const staticData: Record<string, unknown> = isPlainObject ? { ...(data as Record<string, unknown>) } : (data as any);
@@ -152,8 +154,15 @@ async function validateSectionData(
   // field required (e.g. personalDetails' preferredBranch, only asked when assistedByStaff is
   // true) and this is the only server-side enforcement of that, layered on top of (never
   // replacing) whatever the static per-section Zod schema above already requires.
+  //
+  // A visibility condition can reference a field in *any* section (see form-schema-types.ts's
+  // condition engine), so the values a field is checked against span the whole application, not
+  // just this section — every other section's last-*saved* data, overlaid with this section's
+  // just-validated `merged` data (freshest for the section actually being saved right now).
+  const crossSectionValues = { ...flattenAllSectionValues(app), ...Object.fromEntries(Object.entries(merged).map(([k, v]) => [`${section}.${k}`, v])) };
+  const evalCtx = { constants: resolved?.constants ?? [], values: crossSectionValues };
   for (const f of allSchemaFields) {
-    if (!f.required || f.hidden || !isFieldVisible(f, merged)) continue;
+    if (!f.required || f.hidden || !isFieldVisible(f, section, evalCtx)) continue;
     const value = merged[f.key];
     if (value === undefined || value === null || value === "") {
       throw new AppError(`Missing required field '${f.key}' for section '${section}'.`);
@@ -163,17 +172,14 @@ async function validateSectionData(
   return merged;
 }
 
-async function sectionSchemaFields(db: Db, app: InferSelectModel<typeof loanApplications>, section: string) {
+async function resolveFormSchema(db: Db, app: InferSelectModel<typeof loanApplications>) {
   const activeVersion = await resolveActiveSchemaVersion(db, app);
-  if (!activeVersion) return [];
-  let schema;
+  if (!activeVersion) return null;
   try {
-    schema = parseSchema(activeVersion);
+    return parseSchema(activeVersion);
   } catch {
-    return [];
+    return null;
   }
-  const sectionSchema = schema.sections.find((s) => s.key === section);
-  return sectionSchema ? sectionSchema.fields : [];
 }
 
 // S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check at
