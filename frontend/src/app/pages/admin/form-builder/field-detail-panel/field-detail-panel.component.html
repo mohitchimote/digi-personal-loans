@@ -1,0 +1,89 @@
+<div class="field-detail">
+  <div class="form-row">
+    <div class="db-form-group">
+      <label>{{ 'admin.formLabelEn' | translate }}</label>
+      <input class="db-input" [disabled]="disabled" [ngModel]="bilingualValue('label', 'en')" (ngModelChange)="setBilingual('label', 'en', $event)" [placeholder]="field.labelKey ? (field.labelKey | translate) : ''" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.formLabelHe' | translate }}</label>
+      <input class="db-input" dir="rtl" [disabled]="disabled" [ngModel]="bilingualValue('label', 'he')" (ngModelChange)="setBilingual('label', 'he', $event)" />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="db-form-group">
+      <label>{{ 'admin.formTooltipEn' | translate }}</label>
+      <input class="db-input" [disabled]="disabled" [ngModel]="bilingualValue('tooltip', 'en')" (ngModelChange)="setBilingual('tooltip', 'en', $event)" />
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.formTooltipHe' | translate }}</label>
+      <input class="db-input" dir="rtl" [disabled]="disabled" [ngModel]="bilingualValue('tooltip', 'he')" (ngModelChange)="setBilingual('tooltip', 'he', $event)" />
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="db-form-group">
+      <label>{{ 'admin.formHelpTextEn' | translate }}</label>
+      <textarea class="db-textarea" rows="2" [disabled]="disabled" [ngModel]="bilingualValue('helpText', 'en')" (ngModelChange)="setBilingual('helpText', 'en', $event)"></textarea>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'admin.formHelpTextHe' | translate }}</label>
+      <textarea class="db-textarea" rows="2" dir="rtl" [disabled]="disabled" [ngModel]="bilingualValue('helpText', 'he')" (ngModelChange)="setBilingual('helpText', 'he', $event)"></textarea>
+    </div>
+  </div>
+
+  <div class="field-detail__visibility">
+    <label class="db-checkbox">
+      <input type="checkbox" [checked]="!!field.visibility" [disabled]="disabled" (change)="toggleVisibility()" />
+      <span>{{ 'admin.formMakeConditional' | translate }}</span>
+    </label>
+
+    <app-condition-group
+      *ngIf="field.visibility"
+      [group]="asConditionGroup()"
+      [fields]="fieldPickerOptions"
+      [constants]="schema.constants || []"
+      [disabled]="disabled"
+      (changed)="onConditionGroupChanged()"
+    ></app-condition-group>
+  </div>
+
+  <div class="field-detail__options" *ngIf="hasOptions()">
+    <label>{{ 'admin.formOptionsHeader' | translate }}</label>
+    <div class="option-row" *ngFor="let opt of field.options; let oi = index">
+      <input class="db-input" [disabled]="disabled" [ngModel]="opt.value" (ngModelChange)="setOptionField(opt, 'value', $event)" [placeholder]="'admin.formOptionValue' | translate" />
+      <input class="db-input" [disabled]="disabled" [ngModel]="opt.label.en" (ngModelChange)="setOptionField(opt, 'labelEn', $event)" [placeholder]="'admin.formLabelEn' | translate" />
+      <input class="db-input" dir="rtl" [disabled]="disabled" [ngModel]="opt.label.he" (ngModelChange)="setOptionField(opt, 'labelHe', $event)" [placeholder]="'admin.formLabelHe' | translate" />
+      <button type="button" class="icon-btn icon-btn--danger" *ngIf="!disabled" (click)="removeOption(oi)"><span class="material-icons mi-sm">delete</span></button>
+    </div>
+    <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="!disabled" (click)="addOption()">{{ 'admin.formAddOption' | translate }}</button>
+  </div>
+
+  <div class="field-detail__validation" *ngIf="hasValidation()">
+    <label>{{ 'admin.formValidationHeader' | translate }}</label>
+    <div class="form-row" *ngIf="field.type === 'number'">
+      <div class="db-form-group">
+        <label>{{ 'admin.formValidationMin' | translate }}</label>
+        <input class="db-input" type="number" [disabled]="disabled" [ngModel]="field.validation?.min" (ngModelChange)="setValidationField('min', $event)" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.formValidationMax' | translate }}</label>
+        <input class="db-input" type="number" [disabled]="disabled" [ngModel]="field.validation?.max" (ngModelChange)="setValidationField('max', $event)" />
+      </div>
+    </div>
+    <div class="form-row" *ngIf="field.type === 'text' || field.type === 'textarea'">
+      <div class="db-form-group">
+        <label>{{ 'admin.formValidationMinLength' | translate }}</label>
+        <input class="db-input" type="number" [disabled]="disabled" [ngModel]="field.validation?.minLength" (ngModelChange)="setValidationField('minLength', $event)" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.formValidationMaxLength' | translate }}</label>
+        <input class="db-input" type="number" [disabled]="disabled" [ngModel]="field.validation?.maxLength" (ngModelChange)="setValidationField('maxLength', $event)" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.formValidationPattern' | translate }}</label>
+        <input class="db-input" [disabled]="disabled" [ngModel]="field.validation?.pattern" (ngModelChange)="setValidationPattern($event)" />
+      </div>
+    </div>
+  </div>
+</div>

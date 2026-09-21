@@ -76,6 +76,17 @@
     <p class="db-hint" *ngIf="!isEditable()">{{ 'admin.formReadOnlyNotice' | translate }}</p>
   </div>
 
+  <div class="view-mode-toggle mb-16">
+    <button type="button" class="db-btn db-btn--sm" [class.db-btn--primary]="viewMode() === 'list'" [class.db-btn--outline]="viewMode() !== 'list'" (click)="setViewMode('list')">
+      <span class="material-icons mi-sm">table_rows</span> {{ 'admin.formViewList' | translate }}
+    </button>
+    <button type="button" class="db-btn db-btn--sm" [class.db-btn--primary]="viewMode() === 'canvas'" [class.db-btn--outline]="viewMode() !== 'canvas'" (click)="setViewMode('canvas')">
+      <span class="material-icons mi-sm">dashboard_customize</span> {{ 'admin.formViewCanvas' | translate }}
+    </button>
+  </div>
+
+  <ng-container *ngIf="viewMode() === 'list'">
+
   <div class="db-card mb-16 constants-panel">
     <div class="card-header"><h3>{{ 'admin.condConstantsHeader' | translate }}</h3></div>
     <p class="db-hint">{{ 'admin.condConstantsHint' | translate }}</p>
@@ -119,7 +130,7 @@
           <tbody>
             <ng-container *ngFor="let field of fieldsFor(section, sh.key); let ffirst = first; let flast = last">
               <tr [class.field-row--hidden]="field.hidden" [class.field-row--expanded]="isFieldExpanded(field)">
-                <td class="field-row__label-cell" (click)="toggleFieldExpand(field, section)">
+                <td class="field-row__label-cell" (click)="toggleFieldExpand(field)">
                   <span class="material-icons mi-sm field-row__chevron">{{ isFieldExpanded(field) ? 'expand_less' : 'expand_more' }}</span>
                   {{ fieldLabel(field) }}
                   <span class="db-hint field-row__key">{{ field.key }}</span>
@@ -141,95 +152,14 @@
 
               <tr class="field-detail-row" *ngIf="isFieldExpanded(field)">
                 <td colspan="5">
-                  <div class="field-detail">
-                    <div class="form-row">
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formLabelEn' | translate }}</label>
-                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'label', 'en')" (ngModelChange)="setBilingual(field, 'label', 'en', $event)" [placeholder]="field.labelKey ? (field.labelKey | translate) : ''" />
-                      </div>
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formLabelHe' | translate }}</label>
-                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'label', 'he')" (ngModelChange)="setBilingual(field, 'label', 'he', $event)" />
-                      </div>
-                    </div>
-
-                    <div class="form-row">
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formTooltipEn' | translate }}</label>
-                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'tooltip', 'en')" (ngModelChange)="setBilingual(field, 'tooltip', 'en', $event)" />
-                      </div>
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formTooltipHe' | translate }}</label>
-                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'tooltip', 'he')" (ngModelChange)="setBilingual(field, 'tooltip', 'he', $event)" />
-                      </div>
-                    </div>
-
-                    <div class="form-row">
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formHelpTextEn' | translate }}</label>
-                        <textarea class="db-textarea" rows="2" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'helpText', 'en')" (ngModelChange)="setBilingual(field, 'helpText', 'en', $event)"></textarea>
-                      </div>
-                      <div class="db-form-group">
-                        <label>{{ 'admin.formHelpTextHe' | translate }}</label>
-                        <textarea class="db-textarea" rows="2" dir="rtl" [disabled]="!isEditable()" [ngModel]="bilingualValue(field, 'helpText', 'he')" (ngModelChange)="setBilingual(field, 'helpText', 'he', $event)"></textarea>
-                      </div>
-                    </div>
-
-                    <div class="field-detail__visibility">
-                      <label class="db-checkbox">
-                        <input type="checkbox" [checked]="!!field.visibility" [disabled]="!isEditable()" (change)="toggleVisibility(field, sc, section)" />
-                        <span>{{ 'admin.formMakeConditional' | translate }}</span>
-                      </label>
-
-                      <app-condition-group
-                        *ngIf="field.visibility"
-                        [group]="asConditionGroup(field)"
-                        [fields]="fieldsFlatForPicker(sc)"
-                        [constants]="sc.constants || []"
-                        [disabled]="!isEditable()"
-                        (changed)="onConditionGroupChanged()"
-                      ></app-condition-group>
-                    </div>
-
-                    <div class="field-detail__options" *ngIf="hasOptions(field)">
-                      <label>{{ 'admin.formOptionsHeader' | translate }}</label>
-                      <div class="option-row" *ngFor="let opt of field.options; let oi = index">
-                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="opt.value" (ngModelChange)="setOptionField(opt, 'value', $event)" [placeholder]="'admin.formOptionValue' | translate" />
-                        <input class="db-input" [disabled]="!isEditable()" [ngModel]="opt.label.en" (ngModelChange)="setOptionField(opt, 'labelEn', $event)" [placeholder]="'admin.formLabelEn' | translate" />
-                        <input class="db-input" dir="rtl" [disabled]="!isEditable()" [ngModel]="opt.label.he" (ngModelChange)="setOptionField(opt, 'labelHe', $event)" [placeholder]="'admin.formLabelHe' | translate" />
-                        <button type="button" class="icon-btn icon-btn--danger" *ngIf="isEditable()" (click)="removeOption(field, oi)"><span class="material-icons mi-sm">delete</span></button>
-                      </div>
-                      <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="isEditable()" (click)="addOption(field)">{{ 'admin.formAddOption' | translate }}</button>
-                    </div>
-
-                    <div class="field-detail__validation" *ngIf="hasValidation(field)">
-                      <label>{{ 'admin.formValidationHeader' | translate }}</label>
-                      <div class="form-row" *ngIf="field.type === 'number'">
-                        <div class="db-form-group">
-                          <label>{{ 'admin.formValidationMin' | translate }}</label>
-                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.min" (ngModelChange)="setValidationField(field, 'min', $event)" />
-                        </div>
-                        <div class="db-form-group">
-                          <label>{{ 'admin.formValidationMax' | translate }}</label>
-                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.max" (ngModelChange)="setValidationField(field, 'max', $event)" />
-                        </div>
-                      </div>
-                      <div class="form-row" *ngIf="field.type === 'text' || field.type === 'textarea'">
-                        <div class="db-form-group">
-                          <label>{{ 'admin.formValidationMinLength' | translate }}</label>
-                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.minLength" (ngModelChange)="setValidationField(field, 'minLength', $event)" />
-                        </div>
-                        <div class="db-form-group">
-                          <label>{{ 'admin.formValidationMaxLength' | translate }}</label>
-                          <input class="db-input" type="number" [disabled]="!isEditable()" [ngModel]="field.validation?.maxLength" (ngModelChange)="setValidationField(field, 'maxLength', $event)" />
-                        </div>
-                        <div class="db-form-group">
-                          <label>{{ 'admin.formValidationPattern' | translate }}</label>
-                          <input class="db-input" [disabled]="!isEditable()" [ngModel]="field.validation?.pattern" (ngModelChange)="setValidationPattern(field, $event)" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <app-field-detail-panel
+                    [field]="field"
+                    [section]="section"
+                    [schema]="sc"
+                    [fieldPickerOptions]="fieldsFlatForPicker(sc)"
+                    [disabled]="!isEditable()"
+                    (changed)="touch()"
+                  ></app-field-detail-panel>
                 </td>
               </tr>
             </ng-container>
@@ -279,6 +209,81 @@
     </ng-container>
   </div>
 
+  </ng-container>
+
+  <ng-container *ngIf="viewMode() === 'canvas'">
+    <div class="canvas-shell db-card mb-16" cdkDropListGroup>
+      <div class="canvas-rail">
+        <button
+          type="button"
+          class="canvas-rail__item"
+          *ngFor="let section of sc.sections"
+          [class.canvas-rail__item--active]="expandedSection() === section.key"
+          (click)="focusSection(section.key)"
+        >{{ sideMenuLabel(section) }}</button>
+      </div>
+
+      <div class="canvas-drawer" *ngIf="isEditable()">
+        <h4 class="canvas-drawer__title">{{ 'admin.formDrawerTitle' | translate }}</h4>
+        <p class="db-hint">{{ 'admin.formDrawerHint' | translate }}</p>
+        <div class="canvas-palette" cdkDropList [cdkDropListData]="paletteDropData" cdkDropListSortingDisabled>
+          <div class="palette-chip" cdkDrag [cdkDragData]="t" *ngFor="let t of fieldTypes">
+            <span class="material-icons mi-sm">drag_indicator</span>{{ t }}
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-main" *ngIf="focusedSection() as section">
+        <div class="db-alert db-alert--info mb-16" *ngIf="section.key !== livePreviewSectionKey">
+          {{ 'admin.formCanvasNoPreviewNotice' | translate }}
+        </div>
+
+        <div class="canvas-header-group" *ngFor="let header of focusedSectionHeaders()">
+          <div class="canvas-header-group__title">{{ headerLabel(section, header.key) }}</div>
+
+          <div
+            class="canvas-drop-zone"
+            cdkDropList
+            [cdkDropListData]="headerDropData(header)"
+            [cdkDropListDisabled]="!isEditable()"
+            (cdkDropListDropped)="onCanvasDrop($event, section, header)"
+          >
+            <div
+              class="canvas-field-card"
+              *ngFor="let field of fieldsFor(section, header.key)"
+              cdkDrag
+              [cdkDragDisabled]="!isEditable() || field.kind !== 'custom'"
+              [class.canvas-field-card--pinned]="field.kind !== 'custom'"
+              (dblclick)="openFieldModal(field, section)"
+            >
+              <div class="canvas-field-card__handle" *ngIf="field.kind === 'custom' && isEditable()">
+                <span class="material-icons mi-sm">drag_indicator</span>
+              </div>
+
+              <app-dynamic-field
+                *ngIf="isLivePreviewable(section, field); else simpleCard"
+                [field]="field"
+                [control]="canvasControlFor(field)"
+                [sectionKey]="section.key"
+                [evalContext]="canvasEvalContext()"
+              ></app-dynamic-field>
+              <ng-template #simpleCard>
+                <div class="canvas-field-card__simple">
+                  <span>{{ fieldLabel(field) }}</span>
+                  <span class="chip" [class.chip--custom]="field.kind === 'custom'">{{ field.kind === 'custom' ? (field.type || 'custom') : ('admin.formExisting' | translate) }}</span>
+                </div>
+              </ng-template>
+            </div>
+
+            <p class="db-hint canvas-drop-zone__empty" *ngIf="!fieldsFor(section, header.key).length">{{ 'admin.formCanvasDropHint' | translate }}</p>
+          </div>
+        </div>
+
+        <p class="db-hint" *ngIf="!focusedSectionHeaders().length">{{ 'admin.formNoFields' | translate }}</p>
+      </div>
+    </div>
+  </ng-container>
+
   <div class="db-card save-bar" *ngIf="isEditable()">
     <div class="db-form-group">
       <label>{{ 'admin.formChangeNote' | translate }}</label>
@@ -297,6 +302,23 @@
           {{ publishing() ? ('admin.formPublishing' | translate) : ('admin.formPublishConfirmYes' | translate) }}
         </button>
       </ng-container>
+    </div>
+  </div>
+
+  <div class="canvas-modal-backdrop" *ngIf="canvasFieldModal() as modal" (click)="closeFieldModal()">
+    <div class="canvas-modal db-card" (click)="$event.stopPropagation()">
+      <div class="canvas-modal__header">
+        <h3>{{ fieldLabel(modal.field) }}</h3>
+        <button type="button" class="icon-btn" (click)="closeFieldModal()"><span class="material-icons mi-sm">close</span></button>
+      </div>
+      <app-field-detail-panel
+        [field]="modal.field"
+        [section]="modal.section"
+        [schema]="sc"
+        [fieldPickerOptions]="fieldsFlatForPicker(sc)"
+        [disabled]="!isEditable()"
+        (changed)="touch()"
+      ></app-field-detail-panel>
     </div>
   </div>
 

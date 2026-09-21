@@ -1,6 +1,7 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, HostListener, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, FormControl } from '@angular/forms';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import {
   FormBuilderService,
   FormKey,
@@ -9,16 +10,26 @@ import {
   FormVersionFull,
   FormVersionSchema,
   FormSection,
+  FormSectionHeader,
   FormField,
   FieldType,
-  BilingualLabel,
   NamedConstant,
-  ConditionGroup,
 } from '../../../core/services/form-builder.service';
-import { toConditionNode } from '../../../shared/dynamic-field/dynamic-field.component';
-import { ConditionGroupComponent, FieldPickerOption } from './condition-group/condition-group.component';
+import { FieldPickerOption } from './condition-group/condition-group.component';
+import { FieldDetailPanelComponent } from './field-detail-panel/field-detail-panel.component';
+import { DynamicFieldComponent, EvalContext } from '../../../shared/dynamic-field/dynamic-field.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+
+/** What a canvas drop list's `cdkDropListData` carries — either the fixed field-type palette, or
+ * the section header a real field list belongs to. Distinguishes "a new field was dragged in from
+ * the drawer" from "an existing field moved between headers" in onCanvasDrop below. */
+type CanvasDropData = 'palette' | { headerKey: string };
+
+/** The only section wired up to actually render custom fields on the customer side today (see
+ * personal-details.component.ts) — canvas mode only offers the real `app-dynamic-field` preview
+ * there; every other section gets a simplified, non-live card. */
+const LIVE_PREVIEW_SECTION_KEY = 'personalDetails';
 
 interface NewFieldDraft {
   sectionKey: string;
@@ -29,23 +40,18 @@ interface NewFieldDraft {
   required: boolean;
 }
 
-type BilingualProp = 'label' | 'helpText' | 'tooltip';
-
 const FIELD_TYPES: FieldType[] = ['text', 'number', 'date', 'select', 'radio', 'checkbox', 'textarea'];
-const OPTION_TYPES: FieldType[] = ['select', 'radio'];
-const VALIDATION_TYPES: FieldType[] = ['text', 'number', 'textarea'];
 
 @Component({
   selector: 'app-admin-form-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe, ConditionGroupComponent],
+  imports: [CommonModule, FormsModule, DragDropModule, TranslatePipe, FieldDetailPanelComponent, DynamicFieldComponent],
   templateUrl: './admin-form-builder.component.html',
   styleUrl: './admin-form-builder.component.scss',
 })
 export class AdminFormBuilderComponent implements OnInit {
   fieldTypes = FIELD_TYPES;
-  optionTypes = OPTION_TYPES;
-  validationTypes = VALIDATION_TYPES;
+  livePreviewSectionKey = LIVE_PREVIEW_SECTION_KEY;
 
   forms = signal<FormSummary[]>([]);
   versions = signal<FormVersionSummary[]>([]);
@@ -65,16 +71,32 @@ export class AdminFormBuilderComponent implements OnInit {
   expandedFieldKey = signal<string | null>(null);
   newFieldDraft = signal<NewFieldDraft | null>(null);
 
+  // --- Canvas ("try it out") mode: same schema signal above, just a different editing surface.
+  // expandedSection doubles as "which section the canvas side-rail is focused on", so switching
+  // view modes keeps you on the same section. ---
+  viewMode = signal<'list' | 'canvas'>('list');
+  canvasFieldModal = signal<{ field: FormField; section: FormSection } | null>(null);
+  private canvasControls = new Map<string, FormControl>();
+  private canvasValues = signal<Record<string, unknown>>({});
+  canvasEvalContext = computed<EvalContext>(() => ({ constants: this.schema()?.constants ?? [], values: this.canvasValues() }));
+
   isEditable = computed(() => this.activeVersion()?.status === 'DRAFT');
   currentForm = computed(() => this.forms().find((f) => f.formKey === this.selectedFormKey()) ?? null);
   draftVersion = computed(() => this.versions().find((v) => v.status === 'DRAFT') ?? null);
   publishedVersion = computed(() => this.versions().find((v) => v.status === 'PUBLISHED') ?? null);
   archivedVersions = computed(() => this.versions().filter((v) => v.status === 'ARCHIVED'));
+  focusedSection = computed(() => this.schema()?.sections.find((s) => s.key === this.expandedSection()) ?? null);
+  focusedSectionHeaders = computed(() => [...(this.focusedSection()?.sectionHeaders ?? [])].sort((a, b) => a.order - b.order));
 
   constructor(private svc: FormBuilderService, public i18n: I18nService) {}
 
   ngOnInit(): void {
     this.loadForms();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.canvasFieldModal()) this.closeFieldModal();
   }
 
   private loadForms(): void {
@@ -123,6 +145,9 @@ export class AdminFormBuilderComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     this.saved.set(false);
+    this.canvasControls.clear();
+    this.canvasValues.set({});
+    this.canvasFieldModal.set(null);
     this.svc.getVersion(id).subscribe({
       next: (version) => {
         this.activeVersion.set(version);
@@ -364,35 +389,8 @@ export class AdminFormBuilderComponent implements OnInit {
     return this.expandedFieldKey() === field.key;
   }
 
-  toggleFieldExpand(field: FormField, section: FormSection): void {
-    if (this.expandedFieldKey() === field.key) {
-      this.expandedFieldKey.set(null);
-      return;
-    }
-    if (field.kind === 'custom') {
-      if (OPTION_TYPES.includes(field.type!) && !field.options) field.options = [];
-      if (VALIDATION_TYPES.includes(field.type!) && !field.validation) field.validation = {};
-    }
-    this.upgradeLegacyVisibility(field, section.key);
-    this.expandedFieldKey.set(field.key);
-  }
-
-  hasOptions(field: FormField): boolean {
-    return field.kind === 'custom' && !!field.type && OPTION_TYPES.includes(field.type);
-  }
-
-  hasValidation(field: FormField): boolean {
-    return field.kind === 'custom' && !!field.type && VALIDATION_TYPES.includes(field.type);
-  }
-
-  bilingualValue(field: FormField, prop: BilingualProp, lang: 'en' | 'he'): string {
-    return field[prop]?.[lang] ?? '';
-  }
-
-  setBilingual(field: FormField, prop: BilingualProp, lang: 'en' | 'he', value: string): void {
-    const current: BilingualLabel = field[prop] ?? { en: '', he: '' };
-    field[prop] = { ...current, [lang]: value };
-    this.touch();
+  toggleFieldExpand(field: FormField): void {
+    this.expandedFieldKey.set(this.expandedFieldKey() === field.key ? null : field.key);
   }
 
   siblingFields(section: FormSection, excludeKey: string): FormField[] {
@@ -412,45 +410,100 @@ export class AdminFormBuilderComponent implements OnInit {
     return out;
   }
 
-  toggleVisibility(field: FormField, schema: FormVersionSchema, section: FormSection): void {
-    if (field.visibility) {
-      field.visibility = null;
+  // --- Canvas mode: drawer + drag/reorder + double-click popup, editing the same `schema` signal
+  // as List mode above (see fieldsFor/moveField/moveHeader) — just through drag gestures instead
+  // of buttons, plus the ability to drag a brand-new field in from the type palette. ---
+
+  setViewMode(mode: 'list' | 'canvas'): void {
+    this.viewMode.set(mode);
+  }
+
+  focusSection(key: string): void {
+    this.expandedSection.set(key);
+  }
+
+  readonly paletteDropData: CanvasDropData = 'palette';
+
+  headerDropData(header: FormSectionHeader): CanvasDropData {
+    return { headerKey: header.key };
+  }
+
+  isLivePreviewable(section: FormSection, field: FormField): boolean {
+    return section.key === LIVE_PREVIEW_SECTION_KEY && field.kind === 'custom';
+  }
+
+  /** A throwaway, canvas-only FormControl per custom field — never touches the real application
+   * data. Wired to canvasValues so typing/selecting in the canvas actually re-evaluates other
+   * fields' visibility conditions live, mirroring personal-details.component.ts's own
+   * recomputeEvalContext pattern (see dynamic-field.component.ts's EvalContext). */
+  canvasControlFor(field: FormField): FormControl {
+    let control = this.canvasControls.get(field.key);
+    if (!control) {
+      control = new FormControl(field.type === 'checkbox' ? false : '');
+      control.valueChanges.subscribe((value) => {
+        this.canvasValues.set({ ...this.canvasValues(), [`${LIVE_PREVIEW_SECTION_KEY}.${field.key}`]: value });
+      });
+      this.canvasControls.set(field.key, control);
+    }
+    return control;
+  }
+
+  openFieldModal(field: FormField, section: FormSection): void {
+    if (field.kind !== 'custom' || !this.isEditable()) return;
+    this.canvasFieldModal.set({ field, section });
+  }
+
+  closeFieldModal(): void {
+    this.canvasFieldModal.set(null);
+  }
+
+  onCanvasDrop(event: CdkDragDrop<CanvasDropData, CanvasDropData, FieldType>, section: FormSection, header: FormSectionHeader): void {
+    if (!this.isEditable()) return;
+    if (event.previousContainer.data === 'palette') {
+      const type = event.item.data;
+      const key = `field${Date.now()}`;
+      const newField: FormField = {
+        key,
+        sectionHeaderKey: header.key,
+        kind: 'custom',
+        type,
+        label: { en: 'New field', he: 'שדה חדש' },
+        required: false,
+        order: 0,
+      };
+      const siblings = this.fieldsFor(section, header.key);
+      siblings.splice(event.currentIndex, 0, newField);
+      section.fields.push(newField);
+      this.reorderFields(siblings);
+      this.touch();
+      this.openFieldModal(newField, section);
+      return;
+    }
+
+    if (event.previousContainer === event.container) {
+      const siblings = this.fieldsFor(section, header.key);
+      moveItemInArray(siblings, event.previousIndex, event.currentIndex);
+      this.reorderFields(siblings);
       this.touch();
       return;
     }
-    const first = this.fieldsFlatForPicker(schema).find((f) => !(f.sectionKey === section.key && f.fieldKey === field.key));
-    field.visibility = {
-      kind: 'group',
-      op: 'and',
-      conditions: [
-        {
-          kind: 'condition',
-          left: first ? { kind: 'field', sectionKey: first.sectionKey, fieldKey: first.fieldKey } : { kind: 'literal', value: '' },
-          op: 'equals',
-          right: { kind: 'literal', value: true },
-        },
-      ],
-    };
+
+    // Cross-header move within the same section — the connected drop-list group below never
+    // spans sections, so `previousContainer` is always another header of this same section.
+    const fromHeaderKey = (event.previousContainer.data as { headerKey: string }).headerKey;
+    const fromSiblings = this.fieldsFor(section, fromHeaderKey);
+    const [moved] = fromSiblings.splice(event.previousIndex, 1);
+    if (!moved) return;
+    moved.sectionHeaderKey = header.key;
+    const toSiblings = this.fieldsFor(section, header.key);
+    toSiblings.splice(event.currentIndex, 0, moved);
+    this.reorderFields(fromSiblings);
+    this.reorderFields(toSiblings);
     this.touch();
   }
 
-  /** A field's visibility can be the pre-existing single same-section equality rule (kept forever
-   * for backward compatibility, see form-schema-types.ts's legacyVisibilityRuleSchema) — upgrade
-   * it in place to a one-condition group the moment an admin opens it in this editor, so the tree
-   * UI always has a group to render. Untouched fields never go through this and keep validating
-   * against the legacy shape indefinitely. */
-  private upgradeLegacyVisibility(field: FormField, sectionKey: string): void {
-    if (field.visibility && !('kind' in field.visibility)) {
-      field.visibility = { kind: 'group', op: 'and', conditions: [toConditionNode(field.visibility, sectionKey)] };
-    }
-  }
-
-  asConditionGroup(field: FormField): ConditionGroup {
-    return field.visibility as ConditionGroup;
-  }
-
-  onConditionGroupChanged(): void {
-    this.touch();
+  private reorderFields(fields: FormField[]): void {
+    fields.forEach((f, i) => (f.order = i));
   }
 
   // --- Form-level named constants (e.g. "standardRetirementAge") a condition can reference by
@@ -477,38 +530,7 @@ export class AdminFormBuilderComponent implements OnInit {
     this.touch();
   }
 
-  addOption(field: FormField): void {
-    if (!field.options) field.options = [];
-    field.options.push({ value: '', label: { en: '', he: '' } });
-    this.touch();
-  }
-
-  removeOption(field: FormField, index: number): void {
-    field.options?.splice(index, 1);
-    this.touch();
-  }
-
-  setOptionField(opt: { value: string; label: BilingualLabel }, key: 'value' | 'labelEn' | 'labelHe', raw: string): void {
-    if (key === 'value') opt.value = raw;
-    else if (key === 'labelEn') opt.label.en = raw;
-    else opt.label.he = raw;
-    this.touch();
-  }
-
-  setValidationField(field: FormField, key: 'min' | 'max' | 'minLength' | 'maxLength', raw: string): void {
-    if (!field.validation) field.validation = {};
-    const num = raw === '' ? undefined : Number(raw);
-    field.validation = { ...field.validation, [key]: num };
-    this.touch();
-  }
-
-  setValidationPattern(field: FormField, raw: string): void {
-    if (!field.validation) field.validation = {};
-    field.validation = { ...field.validation, pattern: raw || undefined };
-    this.touch();
-  }
-
-  private touch(): void {
+  touch(): void {
     this.saved.set(false);
     // Trigger change detection for the signal by reassigning a shallow copy of the root object.
     const current = this.schema();

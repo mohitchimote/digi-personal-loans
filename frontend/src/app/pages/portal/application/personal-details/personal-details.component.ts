@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, OnInit, signal, computed, WritableSignal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { I18nService } from '../../../../core/i18n/i18n.service';
 import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
 import { DynamicFieldComponent, isFieldVisible, EvalContext } from '../../../../shared/dynamic-field/dynamic-field.component';
 import { FieldHelpComponent } from '../../../../shared/field-help/field-help.component';
-import { FormField, NamedConstant } from '../../../../core/services/form-builder.service';
+import { FormField, FormSectionHeader, NamedConstant } from '../../../../core/services/form-builder.service';
 
 // Mirrors worker/src/lib/sections.ts's SECTION_TO_COLUMN — which section's saved data lives in
 // which JSON column on the application row. Used to flatten every *other* section's last-saved
@@ -85,6 +85,27 @@ export class PersonalDetailsComponent implements OnInit {
   customFieldDefs = signal<FormField[]>([]);
   customFields!: FormGroup;
   needsAttention = signal(false);
+
+  // The personalDetails section's own header list (e.g. "Employment", "Contact") — used only to
+  // group/label groupedCustomFields() below; admins manage these in the Form Builder's canvas.
+  sectionHeaders = signal<FormSectionHeader[]>([]);
+
+  /** Custom fields grouped into one card per section header, sorted by each header's own
+   * `order` and each field's own `order` within it — this is what actually drives what the
+   * customer sees, unlike the raw `customFieldDefs()` array order. */
+  groupedCustomFields = computed(() => {
+    const headers = [...this.sectionHeaders()].sort((a, b) => a.order - b.order);
+    const fields = [...this.customFieldDefs()].sort((a, b) => a.order - b.order);
+    return headers
+      .map((header) => ({ header, fields: fields.filter((f) => f.sectionHeaderKey === header.key) }))
+      .filter((group) => group.fields.length > 0);
+  });
+
+  headerLabel(header: FormSectionHeader): string {
+    if (header.labelKey) return this.i18n.t(header.labelKey);
+    if (header.label) return this.i18n.lang() === 'he' ? header.label.he : header.label.en;
+    return header.key;
+  }
 
   // All resolved personalDetails fields (existing + custom), keyed for <app-field-help> lookups
   // and for applySchemaFieldRules()'s required/visibility wiring — see both below.
@@ -312,8 +333,10 @@ export class PersonalDetailsComponent implements OnInit {
         }
 
         const existingCustomData = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : {};
-        const allFields: FormField[] = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails')?.fields ?? [];
+        const personalDetailsSection = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails');
+        const allFields: FormField[] = personalDetailsSection?.fields ?? [];
         this.allFieldDefs.set(allFields);
+        this.sectionHeaders.set(personalDetailsSection?.sectionHeaders ?? []);
         this.constants = app.formSchema?.constants ?? [];
         this.staticValues = this.buildStaticValues(app);
         this.setUpCustomFields(allFields, existingCustomData);
