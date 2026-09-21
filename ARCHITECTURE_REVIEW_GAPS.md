@@ -171,6 +171,53 @@ to apply by hand in Impress rather than edited programmatically:
   thresholds from rule-service" → "reads its thresholds live from rule-service via a cached client" —
   same target-vs-actual tense fix, cross-referenced to the now-updated open point.
 
+**Deck/doc consistency pass (2026-09-21)**: three weeks of shipped work (S2/S3/S5/S6/S8/S9, N1, Open
+Point #19, G1–G3's container/CI/service-discovery foundation, and the new Form Builder admin feature)
+had never been reflected in either review document since the 2026-09-09/17 sessions — checked directly
+against the doc's actual text rather than assumed from this tracker's own "Done" status.
+
+Fixed in the doc with `python-docx`, inserting new list-paragraph bullets by cloning an existing
+bullet's XML (preserves numbering/bold-label formatting) rather than appending plain text, verified
+visually via headless LibreOffice → PDF → PyMuPDF render of every changed page and structurally via
+`validate.py` (paragraph count +6, all other checks clean). Backup of the pre-edit file kept alongside
+it (`DigiLend_Production_Architecture.backup-2026-09-21.docx`).
+
+- **§2.6** (Admin and back-office configuration): added a **Form builder** bullet — administrators can
+  edit wizard side-menu labels, section headers and field metadata (help text, tooltips, enum options,
+  simple new fields) with a cross-section condition engine for visibility/required-ness, publish a new
+  version, and a submitted application stays frozen to whichever version was live at submit time.
+- **§6.3** (Application-layer safeguards): added five bullets that didn't exist in the doc at all —
+  session revocation (S2), rate limiting (S5, Java-side only, worker/Cloudflare explicitly out of
+  scope per the S5 remainder note above), upload content/signature validation (S3), wizard section
+  shape validation (S8), and opaque identifiers for documents/notifications (S6).
+- **§7.2**: noted that each application now records which published form-schema version applied to it
+  at submission time.
+- **§8.3**: noted the Java backend's containerization/CI/service-discovery foundation (G1–G3) exists
+  but is not yet Docker-engine- or CI-run-verified — doesn't change the sandbox's own gap, but the doc
+  was silent on this foundation work entirely.
+- **§10 and §2.8's status table**: Card payments moved from "planned, not built" to "simulated adapter
+  exists" (N1), with the real-processor decision still called out as the open item.
+- **§9 (client infra) and §11 open points 4, 7, 9**: rate-limiting requirement row updated to reflect
+  the Java-side limiter; malware-scanning open point narrowed to what's still actually missing
+  (AV/quarantine, not type validation); non-functional-requirements open point now cites the first real
+  JMeter load-test numbers (2026-09-17); session-lifecycle open point marked resolved per S2, with the
+  residual (no refresh-token flow) stated explicitly rather than implying nothing was done.
+
+**Deck (not yet applied — needs manual edits, same policy as C6 above)**: `python-pptx` is still not
+used to save this file, per the 2026-09-08 corruption incident. Flagged here for manual application in
+Impress/PowerPoint:
+- **Functional Architecture slide, Third-Party & Integration Services**: the `Card Payments` icon
+  (`Rounded Rectangle 87` fill `#EEEEEE`, `Oval 89` icon fill `#666666`) is still styled as "Planned
+  extension" (grey). Recolor to match the "Simulated for demo" swatch used by the other simulated
+  adapters (e.g. the Document OCR box): rectangle fill `#FFF5CE`, icon fill `#B85C00`.
+- **Functional Architecture slide, ADMIN / BACK-OFFICE box**: add a seventh bullet, "•  Form Builder —
+  wizard fields/labels, versioned, conditional visibility", matching the existing bullet style.
+- **Technical Architecture slide, SECURITY box**: currently four bullets (stateless JWT, RBAC, mandate
+  limits, actor identity from token). Add: "•  Session revocation — role change/disable/logout
+  invalidates prior tokens" and "•  Rate limiting (Java gateway) + upload/wizard-input validation".
+- **Still outstanding from C6 (2026-09-08), unchanged**: the `rule-service (internal)` box still
+  doesn't mention `digibank_rules` — see that note above, not re-flagged in full here.
+
 ---
 
 ## 2. `rule-service` / `integration-service` don't exist as deployable services — sequencing matters here
