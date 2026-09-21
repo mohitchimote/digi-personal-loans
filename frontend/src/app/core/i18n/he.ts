@@ -1288,6 +1288,7 @@ export const HE: Record<string, string> = {
   'admin.formConditional': 'מוצג רק אם',
   'admin.formNoFields': 'טרם נרשמו שדות עבור מקטע זה.',
   'admin.formAddField': '+ הוסף שדה',
+  'admin.formRemoveField': 'הסר שדה',
   'admin.formChangeNote': 'הערת שינוי',
   'admin.formChangeNotePlaceholder': 'מה השתנה בטיוטה זו, ומדוע?',
   'admin.formDiscardDraft': 'מחק טיוטה',

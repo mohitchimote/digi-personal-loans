@@ -256,8 +256,27 @@
               [class.canvas-field-card--pinned]="field.kind !== 'custom'"
               (dblclick)="openFieldModal(field, section)"
             >
-              <div class="canvas-field-card__handle" *ngIf="field.kind === 'custom' && isEditable()">
-                <span class="material-icons mi-sm">drag_indicator</span>
+              <div class="canvas-field-card__top">
+                <div class="canvas-field-card__handle" *ngIf="field.kind === 'custom' && isEditable()" cdkDragHandle>
+                  <span class="material-icons mi-sm">drag_indicator</span>
+                </div>
+                <div class="canvas-field-card__actions" (dblclick)="$event.stopPropagation()">
+                  <label class="db-checkbox canvas-field-card__toggle">
+                    <input type="checkbox" [checked]="field.required" [disabled]="!isEditable()" (change)="toggleRequired(field)" />
+                    <span>{{ 'admin.formFieldRequired' | translate }}</span>
+                  </label>
+                  <label class="db-checkbox canvas-field-card__toggle">
+                    <input type="checkbox" [checked]="!!field.hidden" [disabled]="!isEditable()" (change)="toggleHidden(field)" />
+                    <span>{{ 'admin.formFieldHidden' | translate }}</span>
+                  </label>
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn--danger"
+                    *ngIf="field.kind === 'custom' && isEditable()"
+                    (click)="removeCustomField(section, field)"
+                    [attr.aria-label]="'admin.formRemoveField' | translate"
+                  ><span class="material-icons mi-sm">delete</span></button>
+                </div>
               </div>
 
               <app-dynamic-field

@@ -448,8 +448,12 @@ export class AdminFormBuilderComponent implements OnInit {
     return control;
   }
 
+  // Any field can open the editor here — same as List mode's row-expand, which lets an admin
+  // override an `existing` field's label/tooltip/help text/visibility too. Only *dragging*
+  // (reordering/adding) is custom-only, since an existing field's position is hand-built and
+  // moving it here wouldn't do anything (see isLivePreviewable/cdkDragDisabled above).
   openFieldModal(field: FormField, section: FormSection): void {
-    if (field.kind !== 'custom' || !this.isEditable()) return;
+    if (!this.isEditable()) return;
     this.canvasFieldModal.set({ field, section });
   }
 

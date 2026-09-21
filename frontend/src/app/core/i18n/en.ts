@@ -1288,6 +1288,7 @@ export const EN: Record<string, string> = {
   'admin.formConditional': 'shown only if',
   'admin.formNoFields': 'No fields recorded for this section yet.',
   'admin.formAddField': '+ Add Field',
+  'admin.formRemoveField': 'Remove field',
   'admin.formChangeNote': 'Change note',
   'admin.formChangeNotePlaceholder': 'What changed in this draft, and why?',
   'admin.formDiscardDraft': 'Discard Draft',
