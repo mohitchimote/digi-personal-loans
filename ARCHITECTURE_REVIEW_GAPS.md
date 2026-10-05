@@ -472,6 +472,8 @@ visible next to the review, not just buried in that document's residual-findings
 | S7 | **Spring Boot 3.2.5 is several patch releases behind current** — no CVE research done; recommend a deliberate, tested bump rather than folding into another change, given there's no CI/test suite yet to catch a regression (`PRODUCTION_READINESS.md` §5 finding 8). | P2 | L (re-scoped from S) | Done — runtime-verified, see note below |
 | S8 | **No field/shape validation on wizard section saves** — `PUT /:appRef/section` and `/section-by-underwriter` accepted `data: Record<string, unknown>` (worker) / `Map<String, Object>` (Java) and stored it verbatim: any channel could submit an arbitrary JSON blob under any section key, with no check that it matched that section's actual shape. Raised directly in the 2026-09-09 architecture review (`Architecture Review Notes.docx`, "Field Exposure Controls"/"Channel-Specific Validation") — banking applications undergo intensive pen-testing and unrecognised fields "should not be returned or accepted." | P1 | M | Done — see note below |
 | S9 | **POST-not-GET for banking integrations, and `integration-service`'s ESB placement** — same 2026-09-09 review, "Secure Channel And API Design"/"POST-Based Integration" and "Enterprise Integration And ESB Placement": GET is discouraged for banking calls (use a POST wrapper object); `integration-service` should stay a lightweight internal gateway, not a parallel ESB. | P2 | S | Done — mostly already true, one real gap fixed; see note below |
+| S10 | **No dependency or container vulnerability scanning in CI** — G2's three CI workflows (backend/frontend/worker) build and test on every push but nothing scans for known-vulnerable dependencies (Java/npm) or scans the built container images before they'd ever reach a registry. Surfaced by comparing our own posture against a generic "security by design" checklist a client architect shared (2026-09-28) — not from the architecture review itself, but a real, buildable gap, not sales-slide noise. | P1 | S | Not started |
+| S11 | **No release-artifact integrity practice** — no image digest pinning (services would be tagged `latest` or a branch name, not an immutable digest), no SBOM, no build provenance/signing. Full signing needs an artifact registry and key-management decision that belongs with the client's CI/CD platform (see §6); the digest-pinning and SBOM-generation half doesn't need that decision and can start now. Same source as S10. | P2 | S (pinning/SBOM) · needs a decision for signing | Not started |
 
 **S7 note (2026-09-02) — Done, and actually runtime-verified end-to-end, not just compiled. Scope
 turned out much larger than originally estimated**: checked current release status before touching
@@ -915,6 +917,15 @@ scoped to this sandbox's Cloudflare account has no bearing on the actual product
 dashboard-rule recommendation above stays written down for whoever operates this sandbox, but is no
 longer tracked as a blocking gap.
 
+**S10/S11 note (2026-09-28)**: both surfaced from comparing the reviewed package against a generic
+9-box "Security Through Defense-in-Depth" slide the client architect sent ahead of review, not from
+the architecture review sessions themselves. Deliberately kept to what's actually a real gap and
+buildable — most of that slide's content is either already covered elsewhere in this file, or is a
+client-infra dependency the doc's §9 already lists correctly (WAF, DDoS, KMS, SIEM, multi-AZ). S10
+and S11 are the two items from it that were genuinely missing and are ours to build, not the
+client's. Not started yet — logged here so they don't get silently dropped, not implemented in this
+pass.
+
 ---
 
 ## 5. Quick wins (small, already fully scoped, no dependency)
@@ -995,6 +1006,9 @@ their detail:
 - Accessibility standard and RTL testing scope (doc Open Point 13).
 - **Where case allocation actually belongs** (`ARCHITECTURE.md` §11.5) — `application-service` vs. the workforce/org-structure side. Needs a delivery owner's call before N-anything about case assignment can be built, independent of C3's documentation fix.
 - SSO/ADFS protocol (SAML 2.0 vs. WS-Federation vs. OIDC) and provisioning model (JIT vs. pre-provisioned) — fully designed already in `ARCHITECTURE.md` §11.6, just needs the client's ADFS admin to confirm before build starts.
+- **Deployment model (doc Open Point 17) — resolved 2026-09-28**: client has confirmed going with the doc's own §8.5 recommendation — full stack on-premises inside the client's DMZ, not a split on-prem/cloud estate. This also settles a mismatch surfaced the same day comparing the package against a client architect's AWS-flavoured security slide (AWS Shield, multi-account landing zone): those are now confirmed **not applicable** — the on-prem equivalents (a firewall/WAF appliance and IPS/IDS in the DMZ, the client's own host/patch-management estate in place of a cloud landing zone) are what §9's client-infrastructure checklist actually needs to mean here. §9 itself doesn't need rewording — it was already cloud-agnostic — but worth stating explicitly so it isn't re-litigated at the review.
+- **Operational response / incident ownership** — who owns triage and escalation when a security finding or an outage happens (on-call rotation, escalation path, severity definitions). Not covered by the recovery-objectives open point above, which is about RTO/RPO and failover mechanics, not who acts on an incident. Surfaced the same day as S10/S11, from the same slide comparison — genuinely missing, not yet designed anywhere.
+- **Continuous security-posture / config-drift monitoring for the DMZ estate** — the client-infra checklist (doc §9) lists centralized logging/SIEM and APM/alerting, but nothing that specifically watches for configuration drift or new vulnerabilities on the DMZ hosts themselves once deployed. Worth adding to §9 as its own line at the next doc revision, now that the deployment model above is confirmed as on-prem DMZ rather than left open.
 
 ---
 
