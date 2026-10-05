@@ -162,10 +162,28 @@ async function validateSectionData(
   const crossSectionValues = { ...flattenAllSectionValues(app), ...Object.fromEntries(Object.entries(merged).map(([k, v]) => [`${section}.${k}`, v])) };
   const evalCtx = { constants: resolved?.constants ?? [], values: crossSectionValues };
   for (const f of allSchemaFields) {
-    if (!f.required || f.hidden || !isFieldVisible(f, section, evalCtx)) continue;
+    const visible = !f.hidden && isFieldVisible(f, section, evalCtx);
     const value = merged[f.key];
-    if (value === undefined || value === null || value === "") {
+
+    if (f.required && visible && (value === undefined || value === null || value === "")) {
       throw new AppError(`Missing required field '${f.key}' for section '${section}'.`);
+    }
+
+    // Ordinary input validation, not the (separate, still-paused) backend-dependency-registry
+    // feature: if this field declares an option list, the submitted value must be one of those
+    // options — and if it's also gated by optionsDependOn, one of the subset valid for whatever
+    // the trigger field's just-validated value is. Skipped entirely for a field with no `options`
+    // populated (every field today, and these four before their schema is seeded) — zero
+    // regression risk — and for a currently-hidden/not-visible field, matching the required-check's
+    // own exemption above (a value left over from before the customer backed away from a now-
+    // hidden field shouldn't fail the save).
+    if (visible && f.options?.length && value !== undefined && value !== null && value !== "") {
+      const allowed = f.optionsDependOn
+        ? new Set(f.optionsDependOn.map[String(crossSectionValues[`${section}.${f.optionsDependOn.fieldKey}`] ?? "")] ?? [])
+        : new Set(f.options.map((o) => o.value));
+      if (!allowed.has(String(value))) {
+        throw new AppError(`Invalid value for field '${f.key}' in section '${section}'.`);
+      }
     }
   }
 

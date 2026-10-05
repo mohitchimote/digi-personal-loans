@@ -71,7 +71,7 @@
           <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
           <app-field-help [field]="fieldDef('nationality')" />
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
+            <option *ngFor="let opt of nationalityOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
         </div>
         <div class="db-form-group">
@@ -79,7 +79,7 @@
           <app-field-help [field]="fieldDef('maritalStatus')" />
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
+            <option *ngFor="let opt of maritalStatusOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
           <div class="db-error-msg" *ngIf="f('maritalStatus')?.invalid && f('maritalStatus')?.touched">{{ 'common.required' | translate }}</div>
         </div>
@@ -215,7 +215,7 @@
         <app-field-help [field]="fieldDef('preferredBranch')" />
         <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
           <option value="">{{ 'common.select' | translate }}</option>
-          <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+          <option *ngFor="let opt of branchOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
         </select>
         <div class="db-error-msg" *ngIf="f('preferredBranch')?.invalid && f('preferredBranch')?.touched">{{ 'common.required' | translate }}</div>
       </div>
@@ -225,7 +225,7 @@
         <app-field-help [field]="fieldDef('staffName')" />
         <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
           <option value="">{{ 'common.select' | translate }}</option>
-          <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+          <option *ngFor="let opt of staffOptionsForBranch()" [value]="opt.value">{{ optionLabel(opt) }}</option>
         </select>
         <small class="text-muted">{{ 'personal.staffNameHint' | translate }}</small>
         <div class="db-error-msg" *ngIf="f('staffName')?.invalid && f('staffName')?.touched">{{ 'common.required' | translate }}</div>
@@ -291,14 +291,14 @@
         <div class="db-form-group">
           <label>{{ 'personal.nationalityLabel' | translate }}</label>
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
+            <option *ngFor="let opt of nationalityOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
         </div>
         <div class="db-form-group">
           <label>{{ 'personal.maritalStatusLabel' | translate }}</label>
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
+            <option *ngFor="let opt of maritalStatusOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
         </div>
       </div>
@@ -359,7 +359,7 @@
           <label>{{ 'personal.nationalityLabel' | translate }} <span class="required">*</span></label>
           <app-field-help [field]="fieldDef('nationality')" />
           <select class="db-select" formControlName="nationality">
-            <option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option>
+            <option *ngFor="let opt of nationalityOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
         </div>
         <div class="dense-field">
@@ -367,7 +367,7 @@
           <app-field-help [field]="fieldDef('maritalStatus')" />
           <select class="db-select" formControlName="maritalStatus">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option>
+            <option *ngFor="let opt of maritalStatusOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
           </select>
         </div>
         <div class="dense-field">
@@ -452,7 +452,7 @@
             <app-field-help [field]="fieldDef('preferredBranch')" />
             <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+              <option *ngFor="let opt of branchOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option>
             </select>
             <div class="db-error-msg" *ngIf="f('preferredBranch')?.invalid && f('preferredBranch')?.touched">{{ 'common.required' | translate }}</div>
           </div>
@@ -461,7 +461,7 @@
             <app-field-help [field]="fieldDef('staffName')" />
             <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+              <option *ngFor="let opt of staffOptionsForBranch()" [value]="opt.value">{{ optionLabel(opt) }}</option>
             </select>
             <div class="db-error-msg" *ngIf="f('staffName')?.invalid && f('staffName')?.touched">{{ 'common.required' | translate }}</div>
           </div>
@@ -479,10 +479,10 @@
           <div class="dense-field"><label>{{ 'personal.nationalIdLabel' | translate }} <span class="required">*</span></label><input class="db-input" type="text" formControlName="nationalId" /></div>
           <div class="dense-field"><label>{{ 'personal.idIssueDateLabel' | translate }}</label><input class="db-input" type="date" formControlName="idIssueDate" min="1900-01-01" [max]="todayIso" /></div>
           <div class="dense-field"><label>{{ 'personal.nationalityLabel' | translate }}</label>
-            <select class="db-select" formControlName="nationality"><option *ngFor="let n of nationalities" [value]="n">{{ optLabel('nationality', n) }}</option></select>
+            <select class="db-select" formControlName="nationality"><option *ngFor="let opt of nationalityOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option></select>
           </div>
           <div class="dense-field"><label>{{ 'personal.maritalStatusLabel' | translate }}</label>
-            <select class="db-select" formControlName="maritalStatus"><option value="">{{ 'common.select' | translate }}</option><option *ngFor="let s of maritalStatuses" [value]="s">{{ optLabel('maritalStatus', s) }}</option></select>
+            <select class="db-select" formControlName="maritalStatus"><option value="">{{ 'common.select' | translate }}</option><option *ngFor="let opt of maritalStatusOptions()" [value]="opt.value">{{ optionLabel(opt) }}</option></select>
           </div>
           <div class="dense-field"><label>{{ 'personal.phoneLabel' | translate }}</label><input class="db-input" type="tel" formControlName="phoneNumber" /></div>
           <div class="dense-field"><label>{{ 'personal.emailLabel' | translate }}</label><input class="db-input" type="email" formControlName="email" /></div>

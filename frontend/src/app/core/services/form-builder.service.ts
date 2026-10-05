@@ -19,6 +19,16 @@ export interface FieldOption {
   label: BilingualLabel;
 }
 
+// A field's options can be filtered down based on another field's currently selected value (e.g.
+// staffName depending on preferredBranch) — mirrors worker/src/lib/form-schema-types.ts's
+// optionsDependOnSchema. `map` is keyed by the trigger field's own option value, listing which of
+// THIS field's own option values are valid for that trigger value. Picker-built in the admin UI
+// (field-detail-panel's options-dependency table), never freehand text.
+export interface OptionsDependOn {
+  fieldKey: string;
+  map: Record<string, string[]>;
+}
+
 // --- Visibility condition engine — mirrors worker/src/lib/form-schema-types.ts. Kept in sync
 // by hand since the worker and this app are separate deployable projects with no shared
 // package; see that file for the full design rationale. ---
@@ -94,8 +104,12 @@ export interface FormField {
   hidden?: boolean;
   order: number;
   options?: FieldOption[];
+  optionsDependOn?: OptionsDependOn;
   validation?: FieldValidation;
   visibility?: VisibilityNode | null;
+  errorMessage?: BilingualLabel;
+  successMessage?: BilingualLabel;
+  warningMessage?: BilingualLabel;
 }
 
 export interface FormSectionHeader {

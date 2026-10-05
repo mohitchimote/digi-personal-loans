@@ -9,7 +9,9 @@
 
 .field-detail__visibility,
 .field-detail__options,
-.field-detail__validation {
+.field-detail__options-dependency,
+.field-detail__validation,
+.field-detail__messages {
   border-top: 1px solid var(--light-grey);
   padding-top: 12px;
 }
@@ -21,4 +23,23 @@
   margin-top: 8px;
 
   .db-input { flex: 1; }
+}
+
+.field-detail__options-dependency {
+  .db-form-group { margin-top: 8px; }
+}
+
+.dependency-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.82rem;
+
+  th, td {
+    border: 1px solid var(--light-grey);
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  th:first-child, td:first-child { text-align: left; }
 }

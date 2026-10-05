@@ -13,10 +13,18 @@ import { toConditionNode } from '../../../../shared/dynamic-field/dynamic-field.
 import { ConditionGroupComponent, FieldPickerOption } from '../condition-group/condition-group.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
-type BilingualProp = 'label' | 'helpText' | 'tooltip';
+type BilingualProp = 'label' | 'helpText' | 'tooltip' | 'errorMessage' | 'successMessage' | 'warningMessage';
 
 const OPTION_TYPES: FieldType[] = ['select', 'radio'];
 const VALIDATION_TYPES: FieldType[] = ['text', 'number', 'textarea'];
+
+// Deliberately narrow, hand-picked list — NOT a generic "any existing field can carry options"
+// mechanism. These four personalDetails fields are plain enumerable choices today (hardcoded TS
+// arrays in core/models/index.ts) with no other special behavior, unlike e.g. nationalId (live
+// verification) or previousAddresses (a FormArray) — see the architecture-review discussion this
+// came out of. Extending this list to another existing field is a deliberate decision, not a
+// side effect of adding a new field type.
+const EXISTING_OPTION_FIELD_KEYS = ['maritalStatus', 'nationality', 'preferredBranch', 'staffName'];
 
 // Extracted out of AdminFormBuilderComponent so the same label/tooltip/help-text/visibility/
 // options/validation editor can be reused by both the List view's inline expanded row and the
@@ -52,8 +60,13 @@ export class FieldDetailPanelComponent implements OnChanges {
     }
   }
 
+  isOptionBearing(f: FormField): boolean {
+    return (f.kind === 'custom' && !!f.type && OPTION_TYPES.includes(f.type)) ||
+           (f.kind === 'existing' && EXISTING_OPTION_FIELD_KEYS.includes(f.key));
+  }
+
   hasOptions(): boolean {
-    return this.field.kind === 'custom' && !!this.field.type && OPTION_TYPES.includes(this.field.type);
+    return this.isOptionBearing(this.field);
   }
 
   hasValidation(): boolean {
@@ -106,8 +119,18 @@ export class FieldDetailPanelComponent implements OnChanges {
     this.changed.emit();
   }
 
+  /** Also prunes the removed code out of this field's OWN optionsDependOn map (if it has one) so
+   * a deleted option can't linger as a still-"allowed" value nobody can ever pick again. This is
+   * local, single-field cleanup only — not the (separate, still-paused) cross-schema dependency
+   * registry; see staleTriggerKeys()/clearStaleTriggerKeys() for the other direction (a TRIGGER
+   * field losing an option out from under a field that depends on it). */
   removeOption(index: number): void {
+    const removed = this.field.options?.[index]?.value;
     this.field.options?.splice(index, 1);
+    if (removed && this.field.optionsDependOn) {
+      const map = this.field.optionsDependOn.map;
+      for (const k of Object.keys(map)) map[k] = map[k].filter((v) => v !== removed);
+    }
     this.changed.emit();
   }
 
@@ -115,6 +138,87 @@ export class FieldDetailPanelComponent implements OnChanges {
     if (key === 'value') opt.value = raw;
     else if (key === 'labelEn') opt.label.en = raw;
     else opt.label.he = raw;
+    this.changed.emit();
+  }
+
+  /** Non-blocking client-side warning for a free-typed option value that's blank or reused within
+   * this same field — option values double as comparison/lookup keys (server-side membership
+   * checks, this field's own optionsDependOn map, and any OTHER field's map that targets this
+   * field as its trigger), so a duplicate silently makes those ambiguous. The hard guard is the
+   * worker's formSectionSchema.superRefine (form-schema-types.ts), enforced on every draft save —
+   * this is just early, in-context feedback so an admin doesn't find out only after hitting Save. */
+  duplicateOrEmptyOptionValues(): Set<string> {
+    const counts = new Map<string, number>();
+    for (const o of this.field.options ?? []) counts.set(o.value, (counts.get(o.value) ?? 0) + 1);
+    return new Set([...counts.entries()].filter(([v, n]) => !v || n > 1).map(([v]) => v));
+  }
+
+  /** Same-section, earlier-in-display-order, option-bearing fields only — mirrors the worker's
+   * formSectionSchema.superRefine constraint on optionsDependOn.fieldKey exactly, so nothing an
+   * admin can pick here is ever rejected on save. Deliberately NOT the whole-schema
+   * fieldPickerOptions list the visibility condition-group uses: that flattens every field across
+   * every section for a general boolean condition, but a cascading options map only ever makes
+   * sense against a field the customer has already answered earlier in this same section. */
+  eligibleTriggerFields(): FormField[] {
+    return this.section.fields
+      .filter((f) => f.key !== this.field.key && f.order < this.field.order && this.isOptionBearing(f))
+      .sort((a, b) => a.order - b.order);
+  }
+
+  hasOptionsDependency(): boolean {
+    return !!this.field.optionsDependOn;
+  }
+
+  toggleOptionsDependency(): void {
+    if (this.field.optionsDependOn) {
+      this.field.optionsDependOn = undefined;
+      this.changed.emit();
+      return;
+    }
+    const first = this.eligibleTriggerFields()[0];
+    if (!first) return;
+    this.field.optionsDependOn = { fieldKey: first.key, map: {} };
+    this.changed.emit();
+  }
+
+  /** Resets the map on a trigger change — a map built against the old trigger's option codes
+   * would silently misfire (wrong keys) if just carried over onto a different trigger field. */
+  setDependencyTrigger(fieldKey: string): void {
+    if (!this.field.optionsDependOn) return;
+    this.field.optionsDependOn = { fieldKey, map: {} };
+    this.changed.emit();
+  }
+
+  triggerField(): FormField | undefined {
+    return this.section.fields.find((f) => f.key === this.field.optionsDependOn?.fieldKey);
+  }
+
+  isAllowed(triggerValue: string, ownValue: string): boolean {
+    return (this.field.optionsDependOn?.map[triggerValue] ?? []).includes(ownValue);
+  }
+
+  toggleAllowed(triggerValue: string, ownValue: string): void {
+    if (!this.field.optionsDependOn) return;
+    const current = this.field.optionsDependOn.map[triggerValue] ?? [];
+    this.field.optionsDependOn.map = {
+      ...this.field.optionsDependOn.map,
+      [triggerValue]: current.includes(ownValue) ? current.filter((v) => v !== ownValue) : [...current, ownValue],
+    };
+    this.changed.emit();
+  }
+
+  /** Self-healing, not a hard block: if the trigger field's own options changed since this map
+   * was built (an option renamed/removed there), the map can end up with rows keyed to a code
+   * that no longer exists — harmless (that row's staff just never show, since nothing can ever
+   * select that trigger value again) but worth surfacing so an admin can clean it up. */
+  staleTriggerKeys(): string[] {
+    const liveTriggerValues = new Set((this.triggerField()?.options ?? []).map((o) => o.value));
+    return Object.keys(this.field.optionsDependOn?.map ?? {}).filter((k) => !liveTriggerValues.has(k));
+  }
+
+  clearStaleTriggerKeys(): void {
+    if (!this.field.optionsDependOn) return;
+    for (const k of this.staleTriggerKeys()) delete this.field.optionsDependOn.map[k];
     this.changed.emit();
   }
 

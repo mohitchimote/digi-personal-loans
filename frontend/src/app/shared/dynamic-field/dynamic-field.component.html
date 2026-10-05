@@ -38,7 +38,9 @@
     </label>
   </div>
 
-  <div class="db-error-msg" *ngIf="control.invalid && control.touched">{{ 'common.required' | translate }}</div>
+  <div class="db-error-msg" *ngIf="control.invalid && control.touched">{{ errorMessage }}</div>
+  <div class="db-hint" *ngIf="successMessage && control.valid && control.touched && control.value">{{ successMessage }}</div>
+  <div class="db-alert db-alert--warning" *ngIf="warningMessage">{{ warningMessage }}</div>
 </div>
 
 <div class="db-form-group" *ngIf="isVisible && field.type === 'checkbox'">
@@ -48,4 +50,5 @@
     <span class="material-icons mi-sm field-tooltip" *ngIf="tooltip" [title]="tooltip">info</span>
   </label>
   <p class="db-hint field-help" *ngIf="helpText">{{ helpText }}</p>
+  <div class="db-alert db-alert--warning" *ngIf="warningMessage">{{ warningMessage }}</div>
 </div>

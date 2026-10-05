@@ -7,7 +7,11 @@ import { z } from "zod";
 // their real hardcoded Angular component and validate via their real Zod schema in
 // section-schemas.ts — the schema here only carries their label/required/order/visibility. Only
 // kind: "custom" fields (admin-added, no pre-existing business logic) carry a `type` and render
-// generically via DynamicFieldComponent.
+// generically via DynamicFieldComponent. A small, explicitly-named set of existing fields
+// (personalDetails' maritalStatus/nationality/preferredBranch/staffName) is the one exception:
+// they also carry admin-editable `options`/`optionsDependOn` (see below) while still rendering
+// through their real Angular inputs — the admin UI's own allowlist decides which existing fields
+// this applies to, this schema layer just needs to be able to carry the data when present.
 
 export const FIELD_TYPES = ["text", "number", "date", "select", "radio", "checkbox", "textarea"] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -16,6 +20,16 @@ const bilingualLabelSchema = z.object({ en: z.string(), he: z.string() }).strict
 
 const fieldOptionSchema = z
   .object({ value: z.string(), label: bilingualLabelSchema })
+  .strict();
+
+// A field's options can be filtered down based on another field's *currently selected* value —
+// e.g. staffName's valid choices depend on which preferredBranch was picked. `map` is keyed by
+// the trigger field's own option `value`, listing which of THIS field's own option `value`s are
+// valid for that trigger value. Deliberately picker-driven data, not a condition tree: the admin
+// UI builds this from a table (trigger options x own options), never freehand text, since that's
+// exactly the typo-prone shape the general AND/OR visibility engine would have forced otherwise.
+const optionsDependOnSchema = z
+  .object({ fieldKey: z.string(), map: z.record(z.string(), z.array(z.string())) })
   .strict();
 
 // --- Visibility condition engine ------------------------------------------------------
@@ -242,8 +256,19 @@ export const formFieldSchema = z
     hidden: z.boolean().optional(), // unconditionally hidden — distinct from `visibility`'s conditional rule
     order: z.number(),
     options: z.array(fieldOptionSchema).optional(),
+    optionsDependOn: optionsDependOnSchema.optional(),
     validation: fieldValidationSchema.optional(),
     visibility: visibilityNodeSchema.nullable().optional(),
+    // Admin-authored copy shown alongside the field's own live validity state, in place of the
+    // generic "this field is required" fallback. errorMessage: shown when the control is invalid
+    // and touched. successMessage: shown when the control is valid, touched, and has a value —
+    // a positive confirmation, not shown for an untouched-but-technically-valid empty optional
+    // field. warningMessage: a static admin caution note, shown whenever the field is visible,
+    // independent of validity (e.g. "this will be visible to the credit bureau") — not tied to a
+    // specific rule/condition outcome; that's a larger, separate feature, deliberately deferred.
+    errorMessage: bilingualLabelSchema.optional(),
+    successMessage: bilingualLabelSchema.optional(),
+    warningMessage: bilingualLabelSchema.optional(),
   })
   .strict()
   .refine((f) => f.kind === "existing" || !!f.type, {
@@ -276,7 +301,59 @@ export const formSectionSchema = z
     sectionHeaders: z.array(sectionHeaderSchema),
     fields: z.array(formFieldSchema),
   })
-  .strict();
+  .strict()
+  // Cross-field checks that need every field in the section in scope at once, so they can't live
+  // on formFieldSchema's own .refine: (a) a field's own option codes must be unique/non-empty —
+  // they're used as comparison/lookup keys, a duplicate or blank one would make option-membership
+  // checks (applications.ts's validateSectionData) and cascading maps ambiguous; (b)
+  // optionsDependOn.fieldKey must point at another field in this same section, earlier in display
+  // order — same-section keeps evaluation simple (no cross-section live-value tracking needed),
+  // earlier-order keeps the trigger's own options already meaningful in the admin UI when this
+  // field's picker is opened. Deliberately NOT checked here: whether optionsDependOn.map's keys/
+  // values still match the trigger/own field's *current* options — an admin mid-edit (e.g. adding
+  // a branch row before finishing that branch's staff codes) shouldn't be blocked from saving;
+  // the admin UI surfaces that as a soft, self-healing warning instead (field-detail-panel).
+  .superRefine((section, ctx) => {
+    const fieldsByKey = new Map(section.fields.map((f) => [f.key, f]));
+    section.fields.forEach((field, fieldIndex) => {
+      if (field.options) {
+        const seen = new Map<string, number>();
+        field.options.forEach((opt, optIndex) => {
+          if (!opt.value) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Field '${field.key}': option value must not be empty`,
+              path: ["fields", fieldIndex, "options", optIndex, "value"],
+            });
+          } else if (seen.has(opt.value)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Field '${field.key}': duplicate option value '${opt.value}'`,
+              path: ["fields", fieldIndex, "options", optIndex, "value"],
+            });
+          } else {
+            seen.set(opt.value, optIndex);
+          }
+        });
+      }
+      if (field.optionsDependOn) {
+        const trigger = fieldsByKey.get(field.optionsDependOn.fieldKey);
+        if (!trigger) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Field '${field.key}': optionsDependOn references unknown field '${field.optionsDependOn.fieldKey}'`,
+            path: ["fields", fieldIndex, "optionsDependOn", "fieldKey"],
+          });
+        } else if (trigger.order >= field.order) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Field '${field.key}': optionsDependOn field '${trigger.key}' must come before it in display order`,
+            path: ["fields", fieldIndex, "optionsDependOn", "fieldKey"],
+          });
+        }
+      }
+    });
+  });
 
 export const formVersionSchemaSchema = z
   .object({
@@ -289,6 +366,8 @@ export const formVersionSchemaSchema = z
   .strict();
 
 export type BilingualLabel = z.infer<typeof bilingualLabelSchema>;
+export type FieldOption = z.infer<typeof fieldOptionSchema>;
+export type OptionsDependOn = z.infer<typeof optionsDependOnSchema>;
 export type FormField = z.infer<typeof formFieldSchema>;
 export type FormSectionHeader = z.infer<typeof sectionHeaderSchema>;
 export type FormSection = z.infer<typeof formSectionSchema>;

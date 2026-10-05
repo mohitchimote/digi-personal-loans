@@ -13,7 +13,7 @@ import { I18nService } from '../../../../core/i18n/i18n.service';
 import { yearRangeValidator, idIssueNotBeforeDobValidator } from '../../../../core/validators/date-validators';
 import { DynamicFieldComponent, isFieldVisible, EvalContext } from '../../../../shared/dynamic-field/dynamic-field.component';
 import { FieldHelpComponent } from '../../../../shared/field-help/field-help.component';
-import { FormField, FormSectionHeader, NamedConstant } from '../../../../core/services/form-builder.service';
+import { FormField, FormSectionHeader, NamedConstant, FieldOption } from '../../../../core/services/form-builder.service';
 
 // Mirrors worker/src/lib/sections.ts's SECTION_TO_COLUMN — which section's saved data lives in
 // which JSON column on the application row. Used to flatten every *other* section's last-saved
@@ -53,9 +53,6 @@ export class PersonalDetailsComponent implements OnInit {
   appRef = signal('');
   readOnly = signal(false);
   numberOfApplicants = signal(1);
-  maritalStatuses = MARITAL_STATUSES;
-  nationalities = NATIONALITIES;
-  branches = DIGIBANK_BRANCHES;
   applicant2Error = signal('');
   addressHistoryError = signal('');
 
@@ -368,6 +365,32 @@ export class PersonalDetailsComponent implements OnInit {
     return this.allFieldDefs().find((f) => f.key === key);
   }
 
+  /** Admin Form Builder integration for a small, named set of existing fields (maritalStatus/
+   * nationality/preferredBranch/staffName): prefers the schema's own admin-editable options, and
+   * falls back to the pre-existing hardcoded lists whenever a resolved schema has none populated
+   * yet — e.g. before the Form Builder seed ships, or for any application frozen to an older form
+   * version predating this feature. Never renders broken/empty either way. */
+  private optionsFor(key: string, fallback: readonly string[]): FieldOption[] {
+    const opts = this.fieldDef(key)?.options;
+    return opts?.length ? opts : fallback.map((v) => ({ value: v, label: { en: v, he: v } }));
+  }
+
+  nationalityOptions(): FieldOption[] {
+    return this.optionsFor('nationality', NATIONALITIES);
+  }
+
+  maritalStatusOptions(): FieldOption[] {
+    return this.optionsFor('maritalStatus', MARITAL_STATUSES);
+  }
+
+  branchOptions(): FieldOption[] {
+    return this.optionsFor('preferredBranch', DIGIBANK_BRANCHES);
+  }
+
+  optionLabel(opt: FieldOption): string {
+    return opt.label[this.i18n.lang()] || opt.label.en;
+  }
+
   private resolveControl(key: string): AbstractControl | null {
     return this.form.get(key) ?? this.customFields.get(key);
   }
@@ -442,12 +465,26 @@ export class PersonalDetailsComponent implements OnInit {
     return this.numberOfApplicants() === 2;
   }
 
-  staffOptionsForBranch(): string[] {
-    return DIGIBANK_BRANCH_STAFF[this.f('preferredBranch')?.value] || [];
+  /** Admin Form Builder integration: prefers staffName's own optionsDependOn map (resolved
+   * against the currently-selected preferredBranch), falling back to the pre-existing hardcoded
+   * DIGIBANK_BRANCH_STAFF lookup whenever the schema hasn't been seeded with this data yet. If
+   * staffName declares its own `options` but no dependency mapping, deliberately returns none
+   * rather than every staff member for every branch — a configured-but-incomplete mapping should
+   * read as "nothing valid yet," not silently fall through to showing everyone. */
+  staffOptionsForBranch(): FieldOption[] {
+    const staffField = this.fieldDef('staffName');
+    const branch = this.f('preferredBranch')?.value;
+    if (staffField?.optionsDependOn) {
+      const allowedCodes = staffField.optionsDependOn.map[branch] ?? [];
+      const byCode = new Map((staffField.options ?? []).map((o) => [o.value, o]));
+      return allowedCodes.map((c) => byCode.get(c)).filter((o): o is FieldOption => !!o);
+    }
+    if (staffField?.options?.length) return [];
+    return (DIGIBANK_BRANCH_STAFF[branch] ?? []).map((v) => ({ value: v, label: { en: v, he: v } }));
   }
 
   onBranchChange(): void {
-    if (!this.staffOptionsForBranch().includes(this.f('staffName')?.value)) {
+    if (!this.staffOptionsForBranch().some((o) => o.value === this.f('staffName')?.value)) {
       this.f('staffName')?.setValue('');
     }
   }

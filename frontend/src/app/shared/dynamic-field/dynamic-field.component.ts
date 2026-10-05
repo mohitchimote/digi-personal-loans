@@ -164,6 +164,29 @@ export class DynamicFieldComponent {
     return this.i18n.lang() === 'he' ? this.field.tooltip.he : this.field.tooltip.en;
   }
 
+  /** Admin-authored copy shown instead of the generic 'common.required' fallback when this
+   * field's control is invalid — falls back to that shared key when nothing's configured, so
+   * every field without an override keeps behaving exactly as before. */
+  get errorMessage(): string {
+    if (!this.field.errorMessage) return this.i18n.t('common.required');
+    return this.i18n.lang() === 'he' ? this.field.errorMessage.he : this.field.errorMessage.en;
+  }
+
+  /** Only shown when the admin has actually configured one — unlike errorMessage there's no
+   * generic fallback (silence is the right default for "no success copy configured"). */
+  get successMessage(): string {
+    if (!this.field.successMessage) return '';
+    return this.i18n.lang() === 'he' ? this.field.successMessage.he : this.field.successMessage.en;
+  }
+
+  /** A static admin caution note, shown whenever the field is visible — independent of the
+   * control's validity (e.g. "this will be visible to the credit bureau"), not tied to a specific
+   * rule/condition outcome; that's a larger, separate feature. */
+  get warningMessage(): string {
+    if (!this.field.warningMessage) return '';
+    return this.i18n.lang() === 'he' ? this.field.warningMessage.he : this.field.warningMessage.en;
+  }
+
   get isVisible(): boolean {
     if (this.field.hidden) return false;
     return isFieldVisible(this.field, this.sectionKey, this.evalContext);
