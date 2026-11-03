@@ -455,6 +455,48 @@ provider decision (which processor, PCI scope) stays deferred, same as the doc a
 
 ---
 
+## 3A. Bank Yahav meeting gaps (2026-11-03)
+
+Source: AI-generated notes from the Bank Yahav prospect meeting (banker-originated lending, ~60
+branches, ~60–100k applications/year; a second meeting is already scheduled). Compared against
+the current build by targeted code search, so "Not started" means *no code found*, not a line-by-line
+audit; rows marked "Verify" need a runtime check before being treated as gaps.
+
+**Deliberately excluded**: integration work (DMS/archival transfer, reporting-warehouse feed, SMS
+gateway, scorecard API connectivity, core-banking adapters) — agreed with the client as part of the
+implementation phase, so it is covered by N2/N3 rather than listed here. Only the *configuration
+side* of scorecards (Y6) is tracked below. Deployment model needs no new entry — on-prem DMZ was
+already settled 2026-09-28 (§6).
+
+| # | Item | What's needed | Priority | Effort | Status |
+|---|---|---|---|---|---|
+| Y1 | **Branch / organisational hierarchy** (branch → region → head office) with branch-scoped visibility | No branch concept exists. The banker queue currently shows every in-progress case to every banker (PROJECT_DOCUMENTATION §1.5); with ~60 branches, bankers must see only their own branch. Foundation for Y2–Y4. | P1 | L | Not started |
+| Y2 | **SLA monitoring** — configurable approval-time thresholds (e.g. 24h/72h) shown as red/amber/green, drill-down by hierarchy to branch or individual | Needs Y1 for drill-down. Bank owes us its actual SLAs (meeting follow-up). | P1 | M | Not started |
+| Y3 | **Work reassignment and rule-based routing** (e.g. region → named underwriter; manager reassigns when assignee unavailable) | Overlaps the §6 decision on where case allocation belongs (`ARCHITECTURE.md` §11.5) — needs that call first. | P1 | M | Not started |
+| Y4 | **Branch-staff / branch-manager roles, and mandates with organisational context** | Notes put branch staff at the bottom of the mandate ladder (ours starts at Underwriter) and say limits vary by organisational context. Extends §1.2.2 mandates with a branch/segment dimension. | P1 | M | Not started |
+| Y5 | **Pricing ranges and deviation authority** | Products carry one `annualInterestRate`. Bank wants a rate range plus per-customer margin, with a defined set of roles allowed to approve deviations — likely reusable from the mandates pattern. | P1 | M | Not started |
+| Y6 | **Scorecard model registry and selection rules** (config side only) | Select model by customer type, purpose, product, new vs existing; map returned score to eligibility/amount/pricing/workflow via rules. Bank is building more models. Credit score is currently seeded/synthetic. | P2 | M | Not started |
+| Y7 | **Decline / clarification routes back to the branch, not the customer** | Our send-back targets the customer. Bank wants the branch to own the customer relationship. Make the return target configurable (branch vs customer). | P1 | S | Not started |
+| Y8 | **Conditional approval enforcement** | `CONDITIONALLY_APPROVED` exists. Verify conditions are tracked individually and execution is blocked above the conditional amount until satisfied (salary transfer, card-balance reduction, documents, collateral). | P1 | S | Verify |
+| Y9 | **Bundled multi-product application** (e.g. loan + card in one application) | Only "bundle" in code is the PDF document pack. Needs per-product decisioning inside one case. | P2 | L | Not started |
+| Y10 | **Section-anchored notes and customer worklist** (documents, fees, offer acceptance requested) | Notes exist; verify they attach to a specific section and that the worklist covers fees/offer acceptance. | P2 | S | Verify |
+| Y11 | **Per-role queues and referral chain-of-custody** | Existing known gap from §1.2.2 — now backed by a real prospect expectation of a routed escalation ladder. Pairs with Y1/Y3. | P2 | M | Not started |
+| Y12 | **Collateral / pledge handling** | Referenced as a condition type in the notes; no collateral model in the product. | P2 | M | Not started |
+| Y13 | **Validate affordability and salary calculation against the bank's manual method** | Bank does these by hand today with branch-level inconsistency; our PTI/DTI/DSCR logic must be reconciled with theirs during discovery. | P2 | S | Not started |
+
+**Demo honesty (for the senior-management presentation)**: bureau, OCR, card payment, Open Banking
+and credit score are simulated (ARCHITECTURE.md §6.3). The notes ask for an "accurate"
+demonstration, so label simulated capabilities as such rather than letting them pass as live
+integrations.
+
+**Open scope questions from the notes** (also listed in §6): banker-channel scope is stated both as
+"all private and business customers" and as "start with individuals" — the 6–8 month estimate was
+quoted against the former; pilot scope, success criteria and QA ownership are undefined; the
+volume figures (60–70k/year at central underwriting, ~100k overall) have no peak, concurrency or
+channel split yet.
+
+---
+
 ## 4. Security & reliability residuals (real, confirmed, not yet fixed)
 
 Pulled forward from `PRODUCTION_READINESS.md` §5 and §2 specifically because the reviewed materials
@@ -1007,6 +1049,7 @@ their detail:
 - **Where case allocation actually belongs** (`ARCHITECTURE.md` §11.5) — `application-service` vs. the workforce/org-structure side. Needs a delivery owner's call before N-anything about case assignment can be built, independent of C3's documentation fix.
 - SSO/ADFS protocol (SAML 2.0 vs. WS-Federation vs. OIDC) and provisioning model (JIT vs. pre-provisioned) — fully designed already in `ARCHITECTURE.md` §11.6, just needs the client's ADFS admin to confirm before build starts.
 - **Deployment model (doc Open Point 17) — resolved 2026-09-28**: client has confirmed going with the doc's own §8.5 recommendation — full stack on-premises inside the client's DMZ, not a split on-prem/cloud estate. This also settles a mismatch surfaced the same day comparing the package against a client architect's AWS-flavoured security slide (AWS Shield, multi-account landing zone): those are now confirmed **not applicable** — the on-prem equivalents (a firewall/WAF appliance and IPS/IDS in the DMZ, the client's own host/patch-management estate in place of a cloud landing zone) are what §9's client-infrastructure checklist actually needs to mean here. §9 itself doesn't need rewording — it was already cloud-agnostic — but worth stating explicitly so it isn't re-litigated at the review.
+- **Bank Yahav first-phase scope and pilot (2026-11-03)** — all banker-channel customers (private + business) vs. individuals first; pilot scope, success criteria and QA/testing ownership; confirmed volumes and channel split. Detail in §3A.
 - **Operational response / incident ownership** — who owns triage and escalation when a security finding or an outage happens (on-call rotation, escalation path, severity definitions). Not covered by the recovery-objectives open point above, which is about RTO/RPO and failover mechanics, not who acts on an incident. Surfaced the same day as S10/S11, from the same slide comparison — genuinely missing, not yet designed anywhere.
 - **Continuous security-posture / config-drift monitoring for the DMZ estate** — the client-infra checklist (doc §9) lists centralized logging/SIEM and APM/alerting, but nothing that specifically watches for configuration drift or new vulnerabilities on the DMZ hosts themselves once deployed. Worth adding to §9 as its own line at the next doc revision, now that the deployment model above is confirmed as on-prem DMZ rather than left open.
 
