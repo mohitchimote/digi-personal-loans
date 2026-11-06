@@ -1,0 +1,649 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "staff-decisions",
+  "vectors": [
+    {
+      "name": "underwriter approves within mandate",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED",
+          "stage": "APPROVAL"
+        },
+        "fieldUpdates": {
+          "approvedAmount": 50000,
+          "autoApproved": false,
+          "referredToRole": null
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "DECISION_APPROVED",
+            "section": "general",
+            "text": "Application approved."
+          },
+          {
+            "type": "NOTIFY",
+            "template": "DECISION_APPROVED",
+            "vars": {
+              "approvedAmount": 50000
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "DECISION_APPROVED",
+            "vars": {
+              "approvedAmount": 50000,
+              "reviewedBy": "DigiBank Underwriter"
+            }
+          },
+          {
+            "type": "GENERATE_DOC",
+            "doc": "APPROVAL_LETTER"
+          }
+        ],
+        "log": {
+          "action": "approve",
+          "fromStatus": "UNDER_REVIEW",
+          "toStatus": "APPROVED",
+          "fromStage": "REVIEW",
+          "toStage": "APPROVAL",
+          "actorName": "DigiBank Underwriter",
+          "actorRole": "UNDERWRITER",
+          "at": "2026-11-06T10:00:00.000Z"
+        }
+      },
+      "input": {
+        "approvedAmount": 50000
+      }
+    },
+    {
+      "name": "approval over the mandate is refused with no override",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "OVER_MANDATE"
+      },
+      "input": {
+        "approvedAmount": 150000
+      }
+    },
+    {
+      "name": "approval of exactly the mandate limit is allowed",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 100000
+      }
+    },
+    {
+      "name": "zero amount is refused",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_AMOUNT"
+      },
+      "input": {
+        "approvedAmount": 0
+      }
+    },
+    {
+      "name": "missing amount is refused",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_AMOUNT"
+      },
+      "input": {}
+    },
+    {
+      "name": "no mandate row means no authority",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "OVER_MANDATE"
+      },
+      "input": {
+        "approvedAmount": 1
+      },
+      "facts": {
+        "mandateLimit": null
+      }
+    },
+    {
+      "name": "branch manager has a small mandate",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "approve",
+      "actor": "branch_manager",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "OVER_MANDATE"
+      },
+      "input": {
+        "approvedAmount": 30000
+      },
+      "facts": {
+        "mandateLimit": 25000
+      }
+    },
+    {
+      "name": "branch manager approves within a small mandate",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "approve",
+      "actor": "branch_manager",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 20000
+      },
+      "facts": {
+        "mandateLimit": 25000
+      }
+    },
+    {
+      "name": "banker lacks case.approve",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "cannot approve a draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "cannot re-approve an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "cannot approve a declined case",
+      "kind": "transition",
+      "case": "declined",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "out-of-scope case is a 404 even before the amount is checked",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "CASE_NOT_FOUND"
+      },
+      "input": {
+        "approvedAmount": 999999999
+      },
+      "facts": {
+        "caseVisible": false
+      }
+    },
+    {
+      "name": "conditionally approved case can be fully approved",
+      "kind": "transition",
+      "case": "conditionally_approved",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 40000
+      }
+    },
+    {
+      "name": "underwriter approves with conditions",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve_conditional",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "CONDITIONALLY_APPROVED",
+          "stage": "APPROVAL"
+        },
+        "hostEffects": []
+      }
+    },
+    {
+      "name": "banker cannot approve with conditions",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve_conditional",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "cannot conditionally approve an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "approve_conditional",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "underwriter declines with a reason",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "DECLINED",
+          "stage": "CLOSED"
+        },
+        "fieldUpdates": {
+          "referredToRole": null
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "DECISION_DECLINED",
+            "section": "general",
+            "text": "Income too low"
+          },
+          {
+            "type": "NOTIFY",
+            "template": "DECISION_DECLINED",
+            "vars": {
+              "reason": "Income too low"
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "DECISION_DECLINED",
+            "vars": {
+              "declineReason": "Income too low",
+              "reviewedBy": "DigiBank Underwriter"
+            }
+          }
+        ]
+      },
+      "input": {
+        "reason": "Income too low"
+      }
+    },
+    {
+      "name": "decline needs a reason",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "REASON_REQUIRED"
+      },
+      "input": {
+        "reason": "   "
+      }
+    },
+    {
+      "name": "decline without any input is refused",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "REASON_REQUIRED"
+      },
+      "input": {}
+    },
+    {
+      "name": "branch manager lacks case.decline",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "decline",
+      "actor": "branch_manager",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "cannot decline a draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "cannot decline an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "decline respects org scope",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "CASE_NOT_FOUND"
+      },
+      "input": {
+        "reason": "x"
+      },
+      "facts": {
+        "caseVisible": false
+      }
+    },
+    {
+      "name": "send back requiring a guarantor that is not yet on file routes to guarantor details",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS",
+          "stage": "INTAKE"
+        },
+        "fieldUpdates": {
+          "referredToRole": null,
+          "guarantorRequired": true,
+          "currentSection": "guarantorDetails"
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "SEND_BACK",
+            "section": "general",
+            "text": "Need more docs"
+          },
+          {
+            "type": "NOTIFY",
+            "template": "SEND_BACK",
+            "vars": {
+              "reason": "Need more docs",
+              "requireGuarantor": true,
+              "guarantorDetailsPresent": false
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "SEND_BACK",
+            "vars": {
+              "sendBackReason": "Need more docs",
+              "reviewedBy": "DigiBank Underwriter",
+              "requireGuarantor": true,
+              "guarantorDetailsPresent": false
+            }
+          }
+        ]
+      },
+      "input": {
+        "reason": "Need more docs",
+        "requireGuarantor": true
+      }
+    },
+    {
+      "name": "send back requiring a guarantor already on file returns to review",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        },
+        "fieldUpdates": {
+          "referredToRole": null,
+          "guarantorRequired": true,
+          "currentSection": "reviewSubmit"
+        }
+      },
+      "input": {
+        "reason": "Please confirm",
+        "requireGuarantor": true
+      },
+      "caseOverrides": {
+        "fields": {
+          "guarantorDetailsPresent": true
+        }
+      }
+    },
+    {
+      "name": "plain send back returns to review and does not touch guarantorRequired",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        },
+        "fieldUpdates": {
+          "referredToRole": null,
+          "currentSection": "reviewSubmit"
+        }
+      },
+      "input": {
+        "reason": "Clarify income",
+        "requireGuarantor": false
+      }
+    },
+    {
+      "name": "send back from a referred case clears the referral",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "send_back",
+      "actor": "senior_uw",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        },
+        "fieldUpdates": {
+          "referredToRole": null
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        }
+      },
+      "input": {
+        "reason": "Back to customer"
+      }
+    },
+    {
+      "name": "send back needs a reason",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "REASON_REQUIRED"
+      },
+      "input": {
+        "reason": ""
+      }
+    },
+    {
+      "name": "banker cannot send back",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "send_back",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "cannot send back a draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "cannot send back a declined case",
+      "kind": "transition",
+      "case": "declined",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "reason": "x"
+      }
+    }
+  ]
+}

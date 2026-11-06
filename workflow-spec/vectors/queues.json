@@ -1,0 +1,134 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "queues",
+  "vectors": [
+    {
+      "name": "underwriter sees the pipeline queue",
+      "kind": "queue",
+      "actor": "underwriter",
+      "queue": "pipeline",
+      "expect": {
+        "ok": true,
+        "statuses": [
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "CONDITIONALLY_APPROVED",
+          "REFERRED_TO_SENIOR",
+          "APPROVED"
+        ],
+        "applyScope": true,
+        "hideReferredAbove": true
+      }
+    },
+    {
+      "name": "banker cannot open the pipeline",
+      "kind": "queue",
+      "actor": "banker",
+      "queue": "pipeline",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "banker sees the assistance queue including drafts",
+      "kind": "queue",
+      "actor": "banker",
+      "queue": "banker-queue",
+      "expect": {
+        "ok": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "CONDITIONALLY_APPROVED",
+          "REFERRED_TO_SENIOR",
+          "APPROVED"
+        ]
+      }
+    },
+    {
+      "name": "underwriter cannot open the banker queue",
+      "kind": "queue",
+      "actor": "underwriter",
+      "queue": "banker-queue",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "underwriter gets the staff home tiles",
+      "kind": "queue",
+      "actor": "underwriter",
+      "queue": "home-stats-staff",
+      "expect": {
+        "ok": true,
+        "statuses": [
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "CONDITIONALLY_APPROVED",
+          "REFERRED_TO_SENIOR",
+          "APPROVED",
+          "DECLINED",
+          "IN_PROGRESS"
+        ]
+      }
+    },
+    {
+      "name": "underwriter is excluded from the banker home tiles",
+      "kind": "queue",
+      "actor": "underwriter",
+      "queue": "home-stats-banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "banker gets the banker home tiles",
+      "kind": "queue",
+      "actor": "banker",
+      "queue": "home-stats-banker",
+      "expect": {
+        "ok": true,
+        "statuses": [
+          "DRAFT",
+          "IN_PROGRESS",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "CONDITIONALLY_APPROVED",
+          "REFERRED_TO_SENIOR",
+          "APPROVED",
+          "DECLINED"
+        ]
+      }
+    },
+    {
+      "name": "banker is excluded from the staff home tiles",
+      "kind": "queue",
+      "actor": "banker",
+      "queue": "home-stats-staff",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "unknown queue",
+      "kind": "queue",
+      "actor": "underwriter",
+      "queue": "nope",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "UNKNOWN_QUEUE"
+      }
+    }
+  ]
+}

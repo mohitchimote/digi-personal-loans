@@ -1,0 +1,133 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "auto-approval",
+  "vectors": [
+    {
+      "name": "system auto-approves an under-review case",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "auto_approve",
+      "actor": "system",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        },
+        "fieldUpdates": {
+          "approvedAmount": 25000,
+          "autoApproved": true,
+          "referredToRole": null
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "DECISION_APPROVED",
+            "section": "general",
+            "text": "Application approved."
+          },
+          {
+            "type": "NOTIFY",
+            "template": "DECISION_APPROVED",
+            "vars": {
+              "approvedAmount": 25000
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "DECISION_APPROVED",
+            "vars": {
+              "approvedAmount": 25000,
+              "reviewedBy": "System (Auto-Approval)"
+            }
+          },
+          {
+            "type": "GENERATE_DOC",
+            "doc": "APPROVAL_LETTER"
+          }
+        ]
+      },
+      "input": {
+        "approvedAmount": 25000
+      }
+    },
+    {
+      "name": "auto-approval ignores mandates (system actor)",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "auto_approve",
+      "actor": "system",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 25000
+      },
+      "facts": {
+        "mandateLimit": 0
+      }
+    },
+    {
+      "name": "auto-approval needs a positive amount",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "auto_approve",
+      "actor": "system",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_AMOUNT"
+      },
+      "input": {}
+    },
+    {
+      "name": "a customer cannot trigger auto-approval",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "auto_approve",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "ACTOR_NOT_ALLOWED"
+      },
+      "input": {
+        "approvedAmount": 25000
+      }
+    },
+    {
+      "name": "a staff member cannot trigger auto-approval",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "auto_approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "ACTOR_NOT_ALLOWED"
+      },
+      "input": {
+        "approvedAmount": 25000
+      }
+    },
+    {
+      "name": "auto-approval only from under review",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "auto_approve",
+      "actor": "system",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "approvedAmount": 25000
+      }
+    }
+  ]
+}

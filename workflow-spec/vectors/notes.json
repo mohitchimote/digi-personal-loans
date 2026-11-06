@@ -1,0 +1,236 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "notes",
+  "vectors": [
+    {
+      "name": "underwriter adds an internal note",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "add_note",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "UNDER_REVIEW"
+        },
+        "from": {
+          "status": "UNDER_REVIEW"
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "NOTE",
+            "section": "general",
+            "text": "Called the employer"
+          }
+        ],
+        "fieldUpdates": {}
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "Called the employer"
+      }
+    },
+    {
+      "name": "banker adds a note",
+      "kind": "transition",
+      "case": "in_progress",
+      "action": "add_note",
+      "actor": "banker",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        }
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "Customer called"
+      }
+    },
+    {
+      "name": "notes are allowed on closed cases",
+      "kind": "transition",
+      "case": "declined",
+      "action": "add_note",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "DECLINED"
+        }
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "post-mortem"
+      }
+    },
+    {
+      "name": "customers cannot add staff notes",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "add_note",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "ACTOR_NOT_ALLOWED"
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "x"
+      }
+    },
+    {
+      "name": "notes respect org scope",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "add_note",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "CASE_NOT_FOUND"
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "x"
+      },
+      "facts": {
+        "caseVisible": false
+      }
+    },
+    {
+      "name": "clarification request notifies the customer",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "request_clarification",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "UNDER_REVIEW"
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "CLARIFICATION_REQUEST",
+            "section": "income",
+            "text": "Please explain the gap"
+          },
+          {
+            "type": "NOTIFY",
+            "template": "CLARIFICATION_REQUEST",
+            "vars": {
+              "text": "Please explain the gap",
+              "section": "income"
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "CLARIFICATION_REQUEST",
+            "vars": {
+              "underwriterNote": "Please explain the gap",
+              "section": "income"
+            }
+          }
+        ]
+      },
+      "input": {
+        "section": "income",
+        "text": "Please explain the gap"
+      }
+    },
+    {
+      "name": "document request notifies the customer",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "request_documents",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "UNDER_REVIEW"
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "DOCUMENT_REQUEST",
+            "section": "documents",
+            "text": "Latest payslip"
+          },
+          {
+            "type": "NOTIFY",
+            "template": "DOCUMENT_REQUEST",
+            "vars": {
+              "text": "Latest payslip",
+              "section": "documents"
+            }
+          },
+          {
+            "type": "EMAIL",
+            "event": "DOCUMENT_REQUEST",
+            "vars": {
+              "underwriterNote": "Latest payslip",
+              "section": "documents"
+            }
+          }
+        ]
+      },
+      "input": {
+        "section": "documents",
+        "text": "Latest payslip"
+      }
+    },
+    {
+      "name": "underwriter edits a section as staff",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "edit_section",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "UNDER_REVIEW"
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "EDIT",
+            "section": "income",
+            "text": "Section edited by staff member."
+          }
+        ]
+      },
+      "input": {
+        "section": "income"
+      }
+    },
+    {
+      "name": "banker lacks case.editSection",
+      "kind": "transition",
+      "case": "in_progress",
+      "action": "edit_section",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      },
+      "input": {
+        "section": "income"
+      }
+    }
+  ]
+}

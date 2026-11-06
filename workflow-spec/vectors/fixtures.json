@@ -1,0 +1,416 @@
+{
+  "now": "2026-11-06T10:00:00.000Z",
+  "actors": {
+    "customer": {
+      "type": "CUSTOMER",
+      "userId": 7,
+      "name": "Dana Customer",
+      "role": "CUSTOMER",
+      "rank": null,
+      "entitlements": [],
+      "scope": "ALL"
+    },
+    "banker": {
+      "type": "STAFF",
+      "userId": 3,
+      "name": "Bank Banker",
+      "role": "BANKER",
+      "rank": null,
+      "entitlements": [
+        "portal.banker",
+        "queue.banker",
+        "dashboard.view",
+        "case.addNote",
+        "case.actAsCustomer",
+        "mandates.view"
+      ],
+      "scope": "ALL"
+    },
+    "branch_manager": {
+      "type": "STAFF",
+      "userId": 9,
+      "name": "Ronit Manager",
+      "role": "BRANCH_MANAGER",
+      "rank": 0,
+      "entitlements": [
+        "portal.underwriter",
+        "queue.pipeline",
+        "dashboard.view",
+        "case.addNote",
+        "case.approve",
+        "case.refer",
+        "mandates.view"
+      ],
+      "scope": "ALL"
+    },
+    "underwriter": {
+      "type": "STAFF",
+      "userId": 1,
+      "name": "DigiBank Underwriter",
+      "role": "UNDERWRITER",
+      "rank": 1,
+      "entitlements": [
+        "portal.underwriter",
+        "queue.pipeline",
+        "dashboard.view",
+        "case.addNote",
+        "case.editSection",
+        "case.approve",
+        "case.decline",
+        "case.sendBack",
+        "case.refer",
+        "case.disburse",
+        "case.disburseSecondCheck",
+        "case.resolveVerification",
+        "mandates.view"
+      ],
+      "scope": "ALL"
+    },
+    "senior_uw": {
+      "type": "STAFF",
+      "userId": 5,
+      "name": "Senior Underwriter",
+      "role": "SENIOR_UNDERWRITER",
+      "rank": 2,
+      "entitlements": [
+        "portal.underwriter",
+        "queue.pipeline",
+        "dashboard.view",
+        "case.addNote",
+        "case.editSection",
+        "case.approve",
+        "case.decline",
+        "case.sendBack",
+        "case.refer",
+        "case.disburse",
+        "case.disburseSecondCheck",
+        "case.resolveVerification",
+        "mandates.view"
+      ],
+      "scope": "ALL"
+    },
+    "ceo": {
+      "type": "STAFF",
+      "userId": 8,
+      "name": "Chief Executive Officer",
+      "role": "CEO",
+      "rank": 5,
+      "entitlements": [
+        "portal.underwriter",
+        "queue.pipeline",
+        "dashboard.view",
+        "case.addNote",
+        "case.editSection",
+        "case.approve",
+        "case.decline",
+        "case.sendBack",
+        "case.refer",
+        "case.disburse",
+        "case.disburseSecondCheck",
+        "case.resolveVerification",
+        "mandates.view"
+      ],
+      "scope": "ALL"
+    },
+    "system": {
+      "type": "SYSTEM",
+      "userId": 0,
+      "name": "System (Auto-Approval)",
+      "role": null,
+      "rank": null,
+      "entitlements": [],
+      "scope": "ALL"
+    }
+  },
+  "ladder": [
+    {
+      "code": "BRANCH_MANAGER",
+      "label": "Branch Manager",
+      "rank": 0
+    },
+    {
+      "code": "UNDERWRITER",
+      "label": "Underwriter",
+      "rank": 1
+    },
+    {
+      "code": "SENIOR_UNDERWRITER",
+      "label": "Senior Underwriter",
+      "rank": 2
+    },
+    {
+      "code": "HEAD_OF_LENDING",
+      "label": "Head of Lending",
+      "rank": 3
+    },
+    {
+      "code": "COO",
+      "label": "COO",
+      "rank": 4
+    },
+    {
+      "code": "CEO",
+      "label": "CEO",
+      "rank": 5
+    }
+  ],
+  "defaultFacts": {
+    "caseVisible": true,
+    "isOwner": true,
+    "mandateLimit": 100000
+  },
+  "cases": {
+    "draft": {
+      "tracks": {
+        "case": {
+          "status": "DRAFT",
+          "stage": "INTAKE"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "loanRequirements",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "in_progress": {
+      "tracks": {
+        "case": {
+          "status": "IN_PROGRESS",
+          "stage": "INTAKE"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "personalDetails",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "submitted": {
+      "tracks": {
+        "case": {
+          "status": "SUBMITTED",
+          "stage": "REVIEW"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "under_review": {
+      "tracks": {
+        "case": {
+          "status": "UNDER_REVIEW",
+          "stage": "REVIEW"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "conditionally_approved": {
+      "tracks": {
+        "case": {
+          "status": "CONDITIONALLY_APPROVED",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "referred_to_senior": {
+      "tracks": {
+        "case": {
+          "status": "REFERRED_TO_SENIOR",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": "SENIOR_UNDERWRITER",
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "referred_to_ceo": {
+      "tracks": {
+        "case": {
+          "status": "REFERRED_TO_SENIOR",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": "CEO",
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "approved": {
+      "tracks": {
+        "case": {
+          "status": "APPROVED",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": 50000,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "approved_second_check": {
+      "tracks": {
+        "case": {
+          "status": "APPROVED",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "SECOND_CHECK_PENDING",
+          "stage": "DISBURSEMENT"
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": 50000,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "approved_disbursed": {
+      "tracks": {
+        "case": {
+          "status": "APPROVED",
+          "stage": "APPROVAL"
+        },
+        "disbursement": {
+          "status": "FUNDS_RELEASED",
+          "stage": "DISBURSEMENT"
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": 50000,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "declined": {
+      "tracks": {
+        "case": {
+          "status": "DECLINED",
+          "stage": "CLOSED"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    },
+    "withdrawn": {
+      "tracks": {
+        "case": {
+          "status": "WITHDRAWN",
+          "stage": "CLOSED"
+        },
+        "disbursement": {
+          "status": "NOT_STARTED",
+          "stage": null
+        }
+      },
+      "fields": {
+        "referredToRole": null,
+        "approvedAmount": null,
+        "guarantorRequired": false,
+        "guarantorDetailsPresent": false,
+        "currentSection": "reviewSubmit",
+        "applicationType": "PERSONAL",
+        "orgUnitId": 3
+      }
+    }
+  }
+}

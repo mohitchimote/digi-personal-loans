@@ -1,0 +1,320 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "customer-actions",
+  "vectors": [
+    {
+      "name": "customer saves a section on own draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "save_section",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        },
+        "hostEffects": []
+      }
+    },
+    {
+      "name": "customer saves a section on own in-progress case",
+      "kind": "transition",
+      "case": "in_progress",
+      "action": "save_section",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        }
+      }
+    },
+    {
+      "name": "cannot save a section once submitted",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "save_section",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "customer cannot save a section on someone else's case",
+      "kind": "transition",
+      "case": "draft",
+      "action": "save_section",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "NOT_OWNER"
+      },
+      "facts": {
+        "isOwner": false
+      }
+    },
+    {
+      "name": "banker may assist (holds case.actAsCustomer)",
+      "kind": "transition",
+      "case": "draft",
+      "action": "save_section",
+      "actor": "banker",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        }
+      }
+    },
+    {
+      "name": "underwriter may not act as the customer",
+      "kind": "transition",
+      "case": "draft",
+      "action": "save_section",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "NOT_OWNER"
+      }
+    },
+    {
+      "name": "customer submits",
+      "kind": "transition",
+      "case": "in_progress",
+      "action": "submit",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "SUBMITTED",
+          "stage": "REVIEW"
+        },
+        "fieldUpdates": {
+          "submittedAt": "2026-11-06T10:00:00.000Z",
+          "completionPercentage": 100
+        },
+        "hostEffects": [
+          {
+            "type": "PIN_FORM_VERSION"
+          },
+          {
+            "type": "EMAIL",
+            "event": "SUBMITTED"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cannot submit twice",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "submit",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "cannot submit an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "submit",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "customer selects a product after submitting",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "select_product",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "UNDER_REVIEW"
+        },
+        "hostEffects": [
+          {
+            "type": "RUN_AUTO_APPROVAL"
+          }
+        ]
+      }
+    },
+    {
+      "name": "cannot select a product on a draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "select_product",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "customer pulls back a submitted case",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "withdraw",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        },
+        "fieldUpdates": {
+          "currentSection": "reviewSubmit"
+        },
+        "hostEffects": [
+          {
+            "type": "UNPIN_FORM_VERSION"
+          }
+        ]
+      }
+    },
+    {
+      "name": "customer pulls back an under-review case",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "withdraw",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "IN_PROGRESS"
+        }
+      }
+    },
+    {
+      "name": "cannot pull back an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "withdraw",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "customer cancels a referred case: referral closed and target cleared",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "cancel",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "WITHDRAWN"
+        },
+        "fieldUpdates": {
+          "referredToRole": null
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        }
+      }
+    },
+    {
+      "name": "customer cancels a draft",
+      "kind": "transition",
+      "case": "draft",
+      "action": "cancel",
+      "actor": "customer",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "WITHDRAWN"
+        }
+      }
+    },
+    {
+      "name": "cannot cancel an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "cancel",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "cannot cancel a declined case",
+      "kind": "transition",
+      "case": "declined",
+      "action": "cancel",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "customer cannot cancel someone else's case",
+      "kind": "transition",
+      "case": "draft",
+      "action": "cancel",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "NOT_OWNER"
+      },
+      "facts": {
+        "isOwner": false
+      }
+    },
+    {
+      "name": "customer cannot approve (actor type not allowed)",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "ACTOR_NOT_ALLOWED"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "unknown action",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "teleport",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "UNKNOWN_ACTION"
+      }
+    }
+  ]
+}

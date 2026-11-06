@@ -1,0 +1,48 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "create",
+  "vectors": [
+    {
+      "name": "start creates a DRAFT case with disbursement not started",
+      "kind": "create",
+      "entry": "start",
+      "expect": {
+        "ok": true,
+        "tracks": {
+          "case": {
+            "status": "DRAFT",
+            "stage": "INTAKE"
+          },
+          "disbursement": {
+            "status": "NOT_STARTED",
+            "stage": null
+          }
+        }
+      }
+    },
+    {
+      "name": "start_pre_approved enters at IN_PROGRESS",
+      "kind": "create",
+      "entry": "start_pre_approved",
+      "expect": {
+        "ok": true,
+        "tracks": {
+          "case": {
+            "status": "IN_PROGRESS",
+            "stage": "INTAKE"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown entry point is rejected",
+      "kind": "create",
+      "entry": "teleport",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "UNKNOWN_ENTRY"
+      }
+    }
+  ]
+}

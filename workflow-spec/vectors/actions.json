@@ -1,0 +1,128 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "actions",
+  "vectors": [
+    {
+      "name": "underwriter on an under-review case",
+      "kind": "actions",
+      "case": "under_review",
+      "actor": "underwriter",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "approve",
+          "approve_conditional",
+          "decline",
+          "edit_section",
+          "refer",
+          "request_clarification",
+          "request_documents",
+          "send_back"
+        ],
+        "blocked": {
+          "authorise": "INVALID_STATE",
+          "second_check": "INVALID_STATE"
+        }
+      }
+    },
+    {
+      "name": "underwriter on an approved case can disburse",
+      "kind": "actions",
+      "case": "approved",
+      "actor": "underwriter",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "authorise",
+          "edit_section",
+          "request_clarification",
+          "request_documents",
+          "second_check"
+        ]
+      }
+    },
+    {
+      "name": "referrer sees the decision actions blocked by the referral lock",
+      "kind": "actions",
+      "case": "referred_to_senior",
+      "actor": "underwriter",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "edit_section",
+          "request_clarification",
+          "request_documents"
+        ],
+        "blocked": {
+          "approve": "REFERRAL_LOCKED",
+          "decline": "REFERRAL_LOCKED",
+          "send_back": "REFERRAL_LOCKED",
+          "refer": "REFERRAL_LOCKED",
+          "approve_conditional": "REFERRAL_LOCKED"
+        }
+      }
+    },
+    {
+      "name": "target role sees the decision actions on a referred case",
+      "kind": "actions",
+      "case": "referred_to_senior",
+      "actor": "senior_uw",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "approve",
+          "approve_conditional",
+          "decline",
+          "edit_section",
+          "refer",
+          "request_clarification",
+          "request_documents",
+          "send_back"
+        ]
+      }
+    },
+    {
+      "name": "banker on a draft may save and submit on behalf of the customer",
+      "kind": "actions",
+      "case": "draft",
+      "actor": "banker",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "cancel",
+          "request_clarification",
+          "request_documents",
+          "save_section",
+          "submit"
+        ]
+      }
+    },
+    {
+      "name": "customer on a submitted case can pull it back or cancel",
+      "kind": "actions",
+      "case": "submitted",
+      "actor": "customer",
+      "expect": {
+        "allowed": [
+          "cancel",
+          "select_product",
+          "withdraw"
+        ]
+      }
+    },
+    {
+      "name": "nothing but notes on a declined case for staff",
+      "kind": "actions",
+      "case": "declined",
+      "actor": "underwriter",
+      "expect": {
+        "allowed": [
+          "add_note",
+          "edit_section",
+          "request_clarification",
+          "request_documents"
+        ]
+      }
+    }
+  ]
+}

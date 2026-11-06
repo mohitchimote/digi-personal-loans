@@ -15,6 +15,9 @@
     "db:seed:form-versions:generate": "tsx scripts/seed-form-versions.ts > seed-form-versions.sql",
     "db:seed:form-versions:local": "wrangler d1 execute digibank --local --file=./seed-form-versions.sql",
     "db:seed:form-versions:remote": "wrangler d1 execute digibank --remote --file=./seed-form-versions.sql",
+    "db:seed:org:local": "wrangler d1 execute digibank --local --file=./scripts/seed-org-structure.sql",
+    "db:seed:org:remote": "wrangler d1 execute digibank --remote --file=./scripts/seed-org-structure.sql",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,6 +33,7 @@
     "drizzle-kit": "^0.28.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "vitest": "^3.2.7",
     "wrangler": "^4.0.0"
   }
 }

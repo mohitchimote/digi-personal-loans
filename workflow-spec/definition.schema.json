@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://digibank.local/workflow-spec/definition.schema.json",
+  "title": "Workflow definition (formatVersion 1)",
+  "description": "A configurable case workflow: stages, parallel tracks of statuses, transitions with guards and effects, and queues. Code defines the guard/effect primitives; a definition only wires them together.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "key", "name", "stages", "tracks", "queues"],
+  "properties": {
+    "formatVersion": { "const": 1 },
+    "key": { "$ref": "#/$defs/key" },
+    "name": { "$ref": "#/$defs/label" },
+    "appliesTo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "applicationTypes": { "type": "array", "items": { "enum": ["PERSONAL", "BUSINESS"] }, "minItems": 1, "uniqueItems": true } }
+    },
+    "stages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stage" } },
+    "tracks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/track" } },
+    "queues": { "type": "array", "items": { "$ref": "#/$defs/queue" } }
+  },
+
+  "$defs": {
+    "key": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$" },
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "he"],
+      "properties": { "en": { "type": "string", "minLength": 1 }, "he": { "type": "string", "minLength": 1 } }
+    },
+
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "owner": {
+          "description": "Reserved for P3 routing: roles that own cases in this stage and how the org unit is matched.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "roles": { "type": "array", "items": { "type": "string" } },
+            "unitRule": { "enum": ["ANY", "CASE_UNIT", "CASE_UNIT_OR_ANCESTOR"] }
+          }
+        },
+        "sla": {
+          "description": "Reserved for P3: time allowed in this stage.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hours"],
+          "properties": { "hours": { "type": "number", "exclusiveMinimum": 0 }, "amberAtPercent": { "type": "number", "minimum": 1, "maximum": 100 } }
+        }
+      }
+    },
+
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "statuses", "transitions"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "entryPoints": {
+          "description": "Ways a case can be created into this track, each with its initial status.",
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["key", "status"],
+            "properties": { "key": { "$ref": "#/$defs/key" }, "status": { "$ref": "#/$defs/key" } }
+          }
+        },
+        "initialStatus": { "description": "Status of a track that has no entry point (it starts with the case).", "$ref": "#/$defs/key" },
+        "statuses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/status" } },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } }
+      }
+    },
+
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "stage", "category", "badge", "label"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "stage": { "oneOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }] },
+        "category": { "enum": ["DRAFT", "WAITING_CUSTOMER", "ACTIVE", "TERMINAL"] },
+        "badge": { "enum": ["draft", "in-progress", "review", "approved", "declined"] },
+        "label": { "$ref": "#/$defs/label" }
+      }
+    },
+
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "actors", "from", "guards", "effects"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "actors": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["CUSTOMER", "STAFF", "SYSTEM"] } },
+        "entitlement": { "description": "Required of STAFF actors. SYSTEM is never subject to entitlements.", "type": "string", "pattern": "^[a-z]+\\.[A-Za-z]+$" },
+        "from": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Status keys, or [\"*\"] for any status." },
+        "to": { "description": "Omit for an action that leaves the status unchanged (notes, edits).", "$ref": "#/$defs/key" },
+        "guards": { "type": "array", "items": { "$ref": "#/$defs/guard" } },
+        "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } }
+      }
+    },
+
+    "condition": {
+      "description": "A small boolean expression over facts: input.*, case.*, actor.*, target.*.",
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["fact", "op"],
+          "properties": {
+            "fact": { "type": "string", "pattern": "^(input|case|actor|target)\\.[A-Za-z0-9_.]+$" },
+            "op": { "enum": ["eq", "ne", "truthy", "falsy", "in"] },
+            "value": {}
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["all"], "properties": { "all": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["any"], "properties": { "any": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["not"], "properties": { "not": { "$ref": "#/$defs/condition" } } }
+      ]
+    },
+
+    "vars": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean", "null"] } },
+
+    "guard": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "CASE_VISIBLE" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "OWNER_OR_ASSISTING" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "status"], "properties": { "type": { "const": "REFERRAL_LOCK" }, "status": { "$ref": "#/$defs/key" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "field"], "properties": { "type": { "const": "AMOUNT_POSITIVE" }, "field": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "amountField"], "properties": { "type": { "const": "MANDATE" }, "amountField": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "REASON_REQUIRED" } } },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "track", "statuses"],
+          "properties": { "type": { "const": "TRACK_STATUS_IS" }, "track": { "$ref": "#/$defs/key" }, "statuses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/key" } } }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "REFERRAL_TARGET" } } }
+      ]
+    },
+
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "field", "value"],
+          "properties": {
+            "type": { "const": "SET" },
+            "field": { "enum": ["submittedAt", "completionPercentage", "approvedAmount", "autoApproved", "referredToRole", "guarantorRequired", "currentSection"] },
+            "value": {},
+            "when": { "$ref": "#/$defs/condition" }
+          }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["type", "toRole"], "properties": { "type": { "const": "REFERRAL_OPEN" }, "toRole": { "type": "string" }, "when": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "REFERRAL_CLOSE" }, "when": { "$ref": "#/$defs/condition" } } },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "noteType", "section", "text"],
+          "properties": { "type": { "const": "NOTE" }, "noteType": { "type": "string" }, "section": { "type": "string" }, "text": { "type": "string" }, "when": { "$ref": "#/$defs/condition" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "template"],
+          "properties": { "type": { "const": "NOTIFY" }, "template": { "type": "string" }, "vars": { "$ref": "#/$defs/vars" }, "when": { "$ref": "#/$defs/condition" } }
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["type", "event"],
+          "properties": { "type": { "const": "EMAIL" }, "event": { "type": "string" }, "vars": { "$ref": "#/$defs/vars" }, "when": { "$ref": "#/$defs/condition" } }
+        },
+        { "type": "object", "additionalProperties": false, "required": ["type", "doc"], "properties": { "type": { "const": "GENERATE_DOC" }, "doc": { "enum": ["APPROVAL_LETTER"] }, "when": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type", "mode"], "properties": { "type": { "const": "CARD_PAYMENT" }, "mode": { "enum": ["AUTHORISE"] }, "when": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "PIN_FORM_VERSION" }, "when": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "UNPIN_FORM_VERSION" }, "when": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "const": "RUN_AUTO_APPROVAL" }, "when": { "$ref": "#/$defs/condition" } } }
+      ]
+    },
+
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "track", "statuses", "requiresEntitlement", "applyScope", "hideReferredAbove"],
+      "properties": {
+        "key": { "$ref": "#/$defs/key" },
+        "label": { "$ref": "#/$defs/label" },
+        "track": { "$ref": "#/$defs/key" },
+        "statuses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/key" } },
+        "requiresEntitlement": { "type": "string" },
+        "requiresAlso": { "type": "string" },
+        "excludesEntitlement": { "type": "string" },
+        "applyScope": { "type": "boolean", "description": "Filter by the caller's org-unit visibility scope." },
+        "hideReferredAbove": { "type": "boolean", "description": "Hide cases referred to a role above the caller on the escalation ladder." }
+      }
+    }
+  }
+}

@@ -1,0 +1,417 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "referrals",
+  "vectors": [
+    {
+      "name": "underwriter refers to the next role up",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "REFERRED_TO_SENIOR",
+          "stage": "APPROVAL"
+        },
+        "fieldUpdates": {
+          "referredToRole": "SENIOR_UNDERWRITER"
+        },
+        "referral": {
+          "close": true,
+          "open": {
+            "toRole": "SENIOR_UNDERWRITER"
+          }
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "REFERRED_TO_SENIOR",
+            "section": "general",
+            "text": "Over my limit (referred to Senior Underwriter)"
+          }
+        ]
+      },
+      "input": {
+        "reason": "Over my limit"
+      }
+    },
+    {
+      "name": "underwriter refers to a named higher role",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "REFERRED_TO_SENIOR"
+        },
+        "fieldUpdates": {
+          "referredToRole": "CEO"
+        },
+        "referral": {
+          "close": true,
+          "open": {
+            "toRole": "CEO"
+          }
+        }
+      },
+      "input": {
+        "reason": "Board matter",
+        "toRole": "CEO"
+      }
+    },
+    {
+      "name": "cannot refer to a lower role",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_TARGET"
+      },
+      "input": {
+        "reason": "x",
+        "toRole": "BRANCH_MANAGER"
+      }
+    },
+    {
+      "name": "cannot refer to oneself",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_TARGET"
+      },
+      "input": {
+        "reason": "x",
+        "toRole": "UNDERWRITER"
+      }
+    },
+    {
+      "name": "cannot refer to a role that is not on the ladder",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "INVALID_TARGET"
+      },
+      "input": {
+        "reason": "x",
+        "toRole": "BANKER"
+      }
+    },
+    {
+      "name": "nobody above the CEO",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "ceo",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "NO_HIGHER_LEVEL"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "branch manager (bottom rung) refers up to the underwriter",
+      "kind": "transition",
+      "case": "submitted",
+      "action": "refer",
+      "actor": "branch_manager",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "REFERRED_TO_SENIOR"
+        },
+        "fieldUpdates": {
+          "referredToRole": "UNDERWRITER"
+        }
+      },
+      "input": {
+        "reason": "Above 25k"
+      }
+    },
+    {
+      "name": "senior refers a case sitting with them further up",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "refer",
+      "actor": "senior_uw",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "REFERRED_TO_SENIOR"
+        },
+        "fieldUpdates": {
+          "referredToRole": "HEAD_OF_LENDING"
+        },
+        "referral": {
+          "close": true,
+          "open": {
+            "toRole": "HEAD_OF_LENDING"
+          }
+        }
+      },
+      "input": {
+        "reason": "Needs head of lending"
+      }
+    },
+    {
+      "name": "refer needs a reason",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 400,
+        "code": "REASON_REQUIRED"
+      },
+      "input": {}
+    },
+    {
+      "name": "banker lacks case.refer",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "cannot refer an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "refer respects org scope",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "CASE_NOT_FOUND"
+      },
+      "input": {
+        "reason": "x"
+      },
+      "facts": {
+        "caseVisible": false
+      }
+    },
+    {
+      "name": "the referrer is locked out of a case now with the senior",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "REFERRAL_LOCKED"
+      },
+      "input": {
+        "approvedAmount": 1000
+      }
+    },
+    {
+      "name": "lock blocks decline",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "decline",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "REFERRAL_LOCKED"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "lock blocks send back",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "send_back",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "REFERRAL_LOCKED"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "lock blocks refer",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "refer",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "REFERRAL_LOCKED"
+      },
+      "input": {
+        "reason": "x"
+      }
+    },
+    {
+      "name": "lock blocks approve with conditions",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "approve_conditional",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "REFERRAL_LOCKED"
+      }
+    },
+    {
+      "name": "the target role may act",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "approve",
+      "actor": "senior_uw",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        },
+        "fieldUpdates": {
+          "approvedAmount": 150000,
+          "referredToRole": null
+        },
+        "referral": {
+          "close": true,
+          "open": null
+        }
+      },
+      "input": {
+        "approvedAmount": 150000
+      },
+      "facts": {
+        "mandateLimit": 300000
+      }
+    },
+    {
+      "name": "a role above the target may act",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "approve",
+      "actor": "ceo",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 150000
+      },
+      "facts": {
+        "mandateLimit": 999999999
+      }
+    },
+    {
+      "name": "target role is still bound by its own mandate",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "approve",
+      "actor": "senior_uw",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "OVER_MANDATE"
+      },
+      "input": {
+        "approvedAmount": 400000
+      },
+      "facts": {
+        "mandateLimit": 300000
+      }
+    },
+    {
+      "name": "a role not on the ladder is never locked",
+      "kind": "transition",
+      "case": "referred_to_senior",
+      "action": "add_note",
+      "actor": "banker",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "REFERRED_TO_SENIOR"
+        }
+      },
+      "input": {
+        "noteType": "NOTE",
+        "section": "general",
+        "text": "hi"
+      }
+    },
+    {
+      "name": "the lock only applies while the case is referred",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "approve",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "case",
+        "to": {
+          "status": "APPROVED"
+        }
+      },
+      "input": {
+        "approvedAmount": 1000
+      },
+      "caseOverrides": {
+        "fields": {
+          "referredToRole": "SENIOR_UNDERWRITER"
+        }
+      }
+    }
+  ]
+}

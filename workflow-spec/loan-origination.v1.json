@@ -1,0 +1,330 @@
+{
+  "formatVersion": 1,
+  "key": "loan-origination",
+  "name": { "en": "Loan origination", "he": "מתן הלוואה" },
+  "appliesTo": { "applicationTypes": ["PERSONAL", "BUSINESS"] },
+
+  "stages": [
+    { "key": "INTAKE", "label": { "en": "Application", "he": "הגשת בקשה" } },
+    { "key": "REVIEW", "label": { "en": "Underwriting review", "he": "בדיקת חיתום" } },
+    { "key": "APPROVAL", "label": { "en": "Decision and approval", "he": "החלטה ואישור" } },
+    { "key": "DISBURSEMENT", "label": { "en": "Disbursement", "he": "שחרור כספים" } },
+    { "key": "CLOSED", "label": { "en": "Closed", "he": "סגור" } }
+  ],
+
+  "tracks": [
+    {
+      "key": "case",
+      "label": { "en": "Application", "he": "בקשה" },
+      "entryPoints": [
+        { "key": "start", "status": "DRAFT" },
+        { "key": "start_pre_approved", "status": "IN_PROGRESS" }
+      ],
+      "statuses": [
+        { "key": "DRAFT", "stage": "INTAKE", "category": "DRAFT", "badge": "draft", "label": { "en": "Draft", "he": "טיוטה" } },
+        { "key": "IN_PROGRESS", "stage": "INTAKE", "category": "WAITING_CUSTOMER", "badge": "in-progress", "label": { "en": "In Progress", "he": "בתהליך" } },
+        { "key": "SUBMITTED", "stage": "REVIEW", "category": "ACTIVE", "badge": "in-progress", "label": { "en": "Submitted", "he": "הוגשה" } },
+        { "key": "UNDER_REVIEW", "stage": "REVIEW", "category": "ACTIVE", "badge": "review", "label": { "en": "Under Review", "he": "בבדיקה" } },
+        { "key": "CONDITIONALLY_APPROVED", "stage": "APPROVAL", "category": "ACTIVE", "badge": "review", "label": { "en": "Conditionally Approved", "he": "אושרה בתנאי" } },
+        { "key": "REFERRED_TO_SENIOR", "stage": "APPROVAL", "category": "ACTIVE", "badge": "review", "label": { "en": "Referred to Senior UW", "he": "הועברה לחתם בכיר" } },
+        { "key": "APPROVED", "stage": "APPROVAL", "category": "ACTIVE", "badge": "approved", "label": { "en": "Approved", "he": "אושרה" } },
+        { "key": "DECLINED", "stage": "CLOSED", "category": "TERMINAL", "badge": "declined", "label": { "en": "Declined", "he": "נדחתה" } },
+        { "key": "WITHDRAWN", "stage": "CLOSED", "category": "TERMINAL", "badge": "declined", "label": { "en": "Withdrawn", "he": "נמשכה" } }
+      ],
+      "transitions": [
+        {
+          "key": "save_section",
+          "label": { "en": "Save section", "he": "שמירת שלב" },
+          "actors": ["CUSTOMER", "STAFF"],
+          "from": ["DRAFT", "IN_PROGRESS"],
+          "to": "IN_PROGRESS",
+          "guards": [{ "type": "OWNER_OR_ASSISTING" }],
+          "effects": []
+        },
+        {
+          "key": "submit",
+          "label": { "en": "Submit application", "he": "הגשת בקשה" },
+          "actors": ["CUSTOMER", "STAFF"],
+          "from": ["DRAFT", "IN_PROGRESS"],
+          "to": "SUBMITTED",
+          "guards": [{ "type": "OWNER_OR_ASSISTING" }],
+          "effects": [
+            { "type": "SET", "field": "submittedAt", "value": "{{now}}" },
+            { "type": "SET", "field": "completionPercentage", "value": 100 },
+            { "type": "PIN_FORM_VERSION" },
+            { "type": "EMAIL", "event": "SUBMITTED" }
+          ]
+        },
+        {
+          "key": "select_product",
+          "label": { "en": "Select product", "he": "בחירת מוצר" },
+          "actors": ["CUSTOMER", "STAFF"],
+          "from": ["SUBMITTED", "UNDER_REVIEW"],
+          "to": "UNDER_REVIEW",
+          "guards": [{ "type": "OWNER_OR_ASSISTING" }],
+          "effects": [{ "type": "RUN_AUTO_APPROVAL" }]
+        },
+        {
+          "key": "auto_approve",
+          "label": { "en": "Auto-approve", "he": "אישור אוטומטי" },
+          "actors": ["SYSTEM"],
+          "from": ["UNDER_REVIEW"],
+          "to": "APPROVED",
+          "guards": [{ "type": "AMOUNT_POSITIVE", "field": "approvedAmount" }],
+          "effects": [
+            { "type": "SET", "field": "approvedAmount", "value": "{{input.approvedAmount}}" },
+            { "type": "SET", "field": "autoApproved", "value": true },
+            { "type": "SET", "field": "referredToRole", "value": null },
+            { "type": "NOTE", "noteType": "DECISION_APPROVED", "section": "general", "text": "Application approved." },
+            { "type": "NOTIFY", "template": "DECISION_APPROVED", "vars": { "approvedAmount": "{{input.approvedAmount}}" } },
+            { "type": "EMAIL", "event": "DECISION_APPROVED", "vars": { "approvedAmount": "{{input.approvedAmount}}", "reviewedBy": "{{actor.name}}" } },
+            { "type": "GENERATE_DOC", "doc": "APPROVAL_LETTER" }
+          ]
+        },
+        {
+          "key": "withdraw",
+          "label": { "en": "Pull back application", "he": "משיכת בקשה" },
+          "actors": ["CUSTOMER", "STAFF"],
+          "from": ["SUBMITTED", "UNDER_REVIEW"],
+          "to": "IN_PROGRESS",
+          "guards": [{ "type": "OWNER_OR_ASSISTING" }],
+          "effects": [
+            { "type": "SET", "field": "currentSection", "value": "reviewSubmit" },
+            { "type": "UNPIN_FORM_VERSION" }
+          ]
+        },
+        {
+          "key": "cancel",
+          "label": { "en": "Cancel application", "he": "ביטול בקשה" },
+          "actors": ["CUSTOMER", "STAFF"],
+          "from": ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
+          "to": "WITHDRAWN",
+          "guards": [{ "type": "OWNER_OR_ASSISTING" }],
+          "effects": [
+            { "type": "REFERRAL_CLOSE" },
+            { "type": "SET", "field": "referredToRole", "value": null }
+          ]
+        },
+        {
+          "key": "approve_conditional",
+          "label": { "en": "Approve with conditions", "he": "אישור בתנאי" },
+          "actors": ["STAFF"],
+          "entitlement": "case.approve",
+          "from": ["SUBMITTED", "UNDER_REVIEW", "REFERRED_TO_SENIOR"],
+          "to": "CONDITIONALLY_APPROVED",
+          "guards": [{ "type": "CASE_VISIBLE" }, { "type": "REFERRAL_LOCK", "status": "REFERRED_TO_SENIOR" }],
+          "effects": []
+        },
+        {
+          "key": "approve",
+          "label": { "en": "Approve", "he": "אישור" },
+          "actors": ["STAFF"],
+          "entitlement": "case.approve",
+          "from": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
+          "to": "APPROVED",
+          "guards": [
+            { "type": "CASE_VISIBLE" },
+            { "type": "REFERRAL_LOCK", "status": "REFERRED_TO_SENIOR" },
+            { "type": "AMOUNT_POSITIVE", "field": "approvedAmount" },
+            { "type": "MANDATE", "amountField": "approvedAmount" }
+          ],
+          "effects": [
+            { "type": "SET", "field": "approvedAmount", "value": "{{input.approvedAmount}}" },
+            { "type": "SET", "field": "autoApproved", "value": false },
+            { "type": "SET", "field": "referredToRole", "value": null },
+            { "type": "REFERRAL_CLOSE" },
+            { "type": "NOTE", "noteType": "DECISION_APPROVED", "section": "general", "text": "Application approved." },
+            { "type": "NOTIFY", "template": "DECISION_APPROVED", "vars": { "approvedAmount": "{{input.approvedAmount}}" } },
+            { "type": "EMAIL", "event": "DECISION_APPROVED", "vars": { "approvedAmount": "{{input.approvedAmount}}", "reviewedBy": "{{actor.name}}" } },
+            { "type": "GENERATE_DOC", "doc": "APPROVAL_LETTER" }
+          ]
+        },
+        {
+          "key": "decline",
+          "label": { "en": "Decline", "he": "דחייה" },
+          "actors": ["STAFF"],
+          "entitlement": "case.decline",
+          "from": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
+          "to": "DECLINED",
+          "guards": [{ "type": "CASE_VISIBLE" }, { "type": "REFERRAL_LOCK", "status": "REFERRED_TO_SENIOR" }, { "type": "REASON_REQUIRED" }],
+          "effects": [
+            { "type": "REFERRAL_CLOSE" },
+            { "type": "SET", "field": "referredToRole", "value": null },
+            { "type": "NOTE", "noteType": "DECISION_DECLINED", "section": "general", "text": "{{input.reason}}" },
+            { "type": "NOTIFY", "template": "DECISION_DECLINED", "vars": { "reason": "{{input.reason}}" } },
+            { "type": "EMAIL", "event": "DECISION_DECLINED", "vars": { "declineReason": "{{input.reason}}", "reviewedBy": "{{actor.name}}" } }
+          ]
+        },
+        {
+          "key": "send_back",
+          "label": { "en": "Send back to customer", "he": "החזרה ללקוח" },
+          "actors": ["STAFF"],
+          "entitlement": "case.sendBack",
+          "from": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
+          "to": "IN_PROGRESS",
+          "guards": [{ "type": "CASE_VISIBLE" }, { "type": "REFERRAL_LOCK", "status": "REFERRED_TO_SENIOR" }, { "type": "REASON_REQUIRED" }],
+          "effects": [
+            { "type": "REFERRAL_CLOSE" },
+            { "type": "SET", "field": "referredToRole", "value": null },
+            { "type": "SET", "field": "guarantorRequired", "value": true, "when": { "fact": "input.requireGuarantor", "op": "eq", "value": true } },
+            {
+              "type": "SET", "field": "currentSection", "value": "guarantorDetails",
+              "when": { "all": [{ "fact": "input.requireGuarantor", "op": "eq", "value": true }, { "fact": "case.guarantorDetailsPresent", "op": "falsy" }] }
+            },
+            {
+              "type": "SET", "field": "currentSection", "value": "reviewSubmit",
+              "when": { "not": { "all": [{ "fact": "input.requireGuarantor", "op": "eq", "value": true }, { "fact": "case.guarantorDetailsPresent", "op": "falsy" }] } }
+            },
+            { "type": "NOTE", "noteType": "SEND_BACK", "section": "general", "text": "{{input.reason}}" },
+            {
+              "type": "NOTIFY", "template": "SEND_BACK",
+              "vars": { "reason": "{{input.reason}}", "requireGuarantor": "{{input.requireGuarantor}}", "guarantorDetailsPresent": "{{case.guarantorDetailsPresent}}" }
+            },
+            {
+              "type": "EMAIL", "event": "SEND_BACK",
+              "vars": {
+                "sendBackReason": "{{input.reason}}", "reviewedBy": "{{actor.name}}",
+                "requireGuarantor": "{{input.requireGuarantor}}", "guarantorDetailsPresent": "{{case.guarantorDetailsPresent}}"
+              }
+            }
+          ]
+        },
+        {
+          "key": "refer",
+          "label": { "en": "Refer to senior", "he": "העברה לבכיר" },
+          "actors": ["STAFF"],
+          "entitlement": "case.refer",
+          "from": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
+          "to": "REFERRED_TO_SENIOR",
+          "guards": [
+            { "type": "CASE_VISIBLE" },
+            { "type": "REFERRAL_LOCK", "status": "REFERRED_TO_SENIOR" },
+            { "type": "REASON_REQUIRED" },
+            { "type": "REFERRAL_TARGET" }
+          ],
+          "effects": [
+            { "type": "REFERRAL_CLOSE" },
+            { "type": "REFERRAL_OPEN", "toRole": "{{target.code}}" },
+            { "type": "SET", "field": "referredToRole", "value": "{{target.code}}" },
+            { "type": "NOTE", "noteType": "REFERRED_TO_SENIOR", "section": "general", "text": "{{input.reason}} (referred to {{target.label}})" }
+          ]
+        },
+        {
+          "key": "add_note",
+          "label": { "en": "Add note", "he": "הוספת הערה" },
+          "actors": ["STAFF"],
+          "entitlement": "case.addNote",
+          "from": ["*"],
+          "guards": [{ "type": "CASE_VISIBLE" }],
+          "effects": [{ "type": "NOTE", "noteType": "{{input.noteType}}", "section": "{{input.section}}", "text": "{{input.text}}" }]
+        },
+        {
+          "key": "request_clarification",
+          "label": { "en": "Request clarification", "he": "בקשת הבהרה" },
+          "actors": ["STAFF"],
+          "entitlement": "case.addNote",
+          "from": ["*"],
+          "guards": [{ "type": "CASE_VISIBLE" }],
+          "effects": [
+            { "type": "NOTE", "noteType": "CLARIFICATION_REQUEST", "section": "{{input.section}}", "text": "{{input.text}}" },
+            { "type": "NOTIFY", "template": "CLARIFICATION_REQUEST", "vars": { "text": "{{input.text}}", "section": "{{input.section}}" } },
+            { "type": "EMAIL", "event": "CLARIFICATION_REQUEST", "vars": { "underwriterNote": "{{input.text}}", "section": "{{input.section}}" } }
+          ]
+        },
+        {
+          "key": "request_documents",
+          "label": { "en": "Request documents", "he": "בקשת מסמכים" },
+          "actors": ["STAFF"],
+          "entitlement": "case.addNote",
+          "from": ["*"],
+          "guards": [{ "type": "CASE_VISIBLE" }],
+          "effects": [
+            { "type": "NOTE", "noteType": "DOCUMENT_REQUEST", "section": "{{input.section}}", "text": "{{input.text}}" },
+            { "type": "NOTIFY", "template": "DOCUMENT_REQUEST", "vars": { "text": "{{input.text}}", "section": "{{input.section}}" } },
+            { "type": "EMAIL", "event": "DOCUMENT_REQUEST", "vars": { "underwriterNote": "{{input.text}}", "section": "{{input.section}}" } }
+          ]
+        },
+        {
+          "key": "edit_section",
+          "label": { "en": "Edit section as staff", "he": "עריכת שלב על ידי צוות" },
+          "actors": ["STAFF"],
+          "entitlement": "case.editSection",
+          "from": ["*"],
+          "guards": [{ "type": "CASE_VISIBLE" }],
+          "effects": [{ "type": "NOTE", "noteType": "EDIT", "section": "{{input.section}}", "text": "Section edited by staff member." }]
+        }
+      ]
+    },
+    {
+      "key": "disbursement",
+      "label": { "en": "Disbursement", "he": "שחרור כספים" },
+      "entryPoints": [],
+      "initialStatus": "NOT_STARTED",
+      "statuses": [
+        { "key": "NOT_STARTED", "stage": null, "category": "DRAFT", "badge": "draft", "label": { "en": "Not Started", "he": "לא התחיל" } },
+        { "key": "SECOND_CHECK_PENDING", "stage": "DISBURSEMENT", "category": "ACTIVE", "badge": "review", "label": { "en": "Pending Disbursement", "he": "ממתין לשחרור כספים" } },
+        { "key": "FUNDS_RELEASED", "stage": "DISBURSEMENT", "category": "TERMINAL", "badge": "approved", "label": { "en": "Disbursed", "he": "הכספים שוחררו" } }
+      ],
+      "transitions": [
+        {
+          "key": "second_check",
+          "label": { "en": "Submit for second check", "he": "שליחה לבדיקה שנייה" },
+          "actors": ["STAFF"],
+          "entitlement": "case.disburseSecondCheck",
+          "from": ["NOT_STARTED"],
+          "to": "SECOND_CHECK_PENDING",
+          "guards": [{ "type": "CASE_VISIBLE" }, { "type": "TRACK_STATUS_IS", "track": "case", "statuses": ["APPROVED"] }],
+          "effects": [{ "type": "NOTE", "noteType": "SECOND_CHECK_PENDING", "section": "disbursement", "text": "Submitted for second checks before fund release." }]
+        },
+        {
+          "key": "authorise",
+          "label": { "en": "Authorise fund release", "he": "אישור שחרור כספים" },
+          "actors": ["STAFF"],
+          "entitlement": "case.disburse",
+          "from": ["NOT_STARTED", "SECOND_CHECK_PENDING"],
+          "to": "FUNDS_RELEASED",
+          "guards": [{ "type": "CASE_VISIBLE" }, { "type": "TRACK_STATUS_IS", "track": "case", "statuses": ["APPROVED"] }],
+          "effects": [
+            { "type": "CARD_PAYMENT", "mode": "AUTHORISE" },
+            { "type": "NOTE", "noteType": "DISBURSEMENT_AUTHORISED", "section": "disbursement", "text": "Fund release authorised." },
+            { "type": "NOTIFY", "template": "DISBURSEMENT_AUTHORISED" },
+            { "type": "EMAIL", "event": "DISBURSEMENT_AUTHORISED", "vars": { "reviewedBy": "{{actor.name}}" } }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "queues": [
+    {
+      "key": "pipeline", "label": { "en": "Case pipeline", "he": "תור תיקים" }, "track": "case",
+      "statuses": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"],
+      "requiresEntitlement": "queue.pipeline", "applyScope": true, "hideReferredAbove": true
+    },
+    {
+      "key": "banker-queue", "label": { "en": "Assistance queue", "he": "תור סיוע" }, "track": "case",
+      "statuses": ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"],
+      "requiresEntitlement": "queue.banker", "applyScope": true, "hideReferredAbove": true
+    },
+    {
+      "key": "home-stats-staff", "label": { "en": "Home tiles (underwriting)", "he": "אריחי בית (חיתום)" }, "track": "case",
+      "statuses": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED", "DECLINED", "IN_PROGRESS"],
+      "requiresEntitlement": "dashboard.view", "requiresAlso": "queue.pipeline", "applyScope": true, "hideReferredAbove": true
+    },
+    {
+      "key": "home-stats-banker", "label": { "en": "Home tiles (banker)", "he": "אריחי בית (בנקאי)" }, "track": "case",
+      "statuses": ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED", "DECLINED"],
+      "requiresEntitlement": "dashboard.view", "excludesEntitlement": "queue.pipeline", "applyScope": true, "hideReferredAbove": true
+    },
+    {
+      "key": "activity-staff", "label": { "en": "Activity (underwriting)", "he": "פעילות (חיתום)" }, "track": "case",
+      "statuses": ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED", "IN_PROGRESS"],
+      "requiresEntitlement": "dashboard.view", "requiresAlso": "queue.pipeline", "applyScope": true, "hideReferredAbove": true
+    },
+    {
+      "key": "activity-banker", "label": { "en": "Activity (banker)", "he": "פעילות (בנקאי)" }, "track": "case",
+      "statuses": ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"],
+      "requiresEntitlement": "dashboard.view", "excludesEntitlement": "queue.pipeline", "applyScope": true, "hideReferredAbove": true
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "definition": "loan-origination.v1.json",
+  "description": "disbursement",
+  "vectors": [
+    {
+      "name": "second check on an approved case",
+      "kind": "transition",
+      "case": "approved",
+      "action": "second_check",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "disbursement",
+        "to": {
+          "status": "SECOND_CHECK_PENDING",
+          "stage": "DISBURSEMENT"
+        },
+        "tracks": {
+          "case": {
+            "status": "APPROVED",
+            "stage": "APPROVAL"
+          },
+          "disbursement": {
+            "status": "SECOND_CHECK_PENDING",
+            "stage": "DISBURSEMENT"
+          }
+        },
+        "hostEffects": [
+          {
+            "type": "NOTE",
+            "noteType": "SECOND_CHECK_PENDING",
+            "section": "disbursement",
+            "text": "Submitted for second checks before fund release."
+          }
+        ]
+      }
+    },
+    {
+      "name": "second check is refused before approval",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "second_check",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "second check cannot be repeated",
+      "kind": "transition",
+      "case": "approved_second_check",
+      "action": "second_check",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "authorise funds directly from not started",
+      "kind": "transition",
+      "case": "approved",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "disbursement",
+        "to": {
+          "status": "FUNDS_RELEASED",
+          "stage": "DISBURSEMENT"
+        },
+        "hostEffects": [
+          {
+            "type": "CARD_PAYMENT",
+            "mode": "AUTHORISE"
+          },
+          {
+            "type": "NOTE",
+            "noteType": "DISBURSEMENT_AUTHORISED",
+            "section": "disbursement",
+            "text": "Fund release authorised."
+          },
+          {
+            "type": "NOTIFY",
+            "template": "DISBURSEMENT_AUTHORISED"
+          },
+          {
+            "type": "EMAIL",
+            "event": "DISBURSEMENT_AUTHORISED",
+            "vars": {
+              "reviewedBy": "DigiBank Underwriter"
+            }
+          }
+        ],
+        "log": {
+          "action": "authorise",
+          "track": "disbursement",
+          "fromStatus": "NOT_STARTED",
+          "toStatus": "FUNDS_RELEASED",
+          "fromStage": null,
+          "toStage": "DISBURSEMENT"
+        }
+      }
+    },
+    {
+      "name": "authorise funds after a second check",
+      "kind": "transition",
+      "case": "approved_second_check",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": true,
+        "track": "disbursement",
+        "to": {
+          "status": "FUNDS_RELEASED"
+        }
+      }
+    },
+    {
+      "name": "funds cannot be released twice",
+      "kind": "transition",
+      "case": "approved_disbursed",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "funds cannot be released before approval",
+      "kind": "transition",
+      "case": "under_review",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "funds cannot be released for a declined case",
+      "kind": "transition",
+      "case": "declined",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    },
+    {
+      "name": "banker lacks case.disburse",
+      "kind": "transition",
+      "case": "approved",
+      "action": "authorise",
+      "actor": "banker",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "MISSING_ENTITLEMENT"
+      }
+    },
+    {
+      "name": "disbursement respects org scope",
+      "kind": "transition",
+      "case": "approved",
+      "action": "authorise",
+      "actor": "underwriter",
+      "expect": {
+        "ok": false,
+        "status": 404,
+        "code": "CASE_NOT_FOUND"
+      },
+      "facts": {
+        "caseVisible": false
+      }
+    },
+    {
+      "name": "customer cannot authorise funds",
+      "kind": "transition",
+      "case": "approved",
+      "action": "authorise",
+      "actor": "customer",
+      "expect": {
+        "ok": false,
+        "status": 403,
+        "code": "ACTOR_NOT_ALLOWED"
+      }
+    }
+  ]
+}
