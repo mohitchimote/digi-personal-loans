@@ -13,8 +13,9 @@ import { requireAuth, assertEntitlement, isStaff } from "../middleware/auth";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
 import { caseScopeCondition, assertCaseVisible } from "../lib/org";
 import { resolveMandate, nextRoleUp, roleCodesAbove, referralLockLabel } from "../lib/mandates";
-import { runAction } from "../lib/workflow/host";
-import { loadCase } from "../lib/workflow/store";
+import { resolveQueue, runAction } from "../lib/workflow/host";
+import { loadCase, statusesByCategory } from "../lib/workflow/store";
+import type { QueueDef } from "../lib/workflow/types";
 import type { TransitionInput } from "../lib/workflow/types";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
 import { isFieldVisible } from "../lib/form-schema-types";
@@ -53,17 +54,6 @@ async function referralVisibility(db: Db, c: Context<AppEnv>) {
   return or(ne(loanApplications.status, "REFERRED_TO_SENIOR"), isNull(loanApplications.referredToRole), notInArray(loanApplications.referredToRole, above));
 }
 
-const ACTIVE_STATUSES = ["DRAFT", "IN_PROGRESS"];
-const PIPELINE_STATUSES = ["SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR", "APPROVED"];
-const BANKER_QUEUE_STATUSES = [
-  "DRAFT",
-  "IN_PROGRESS",
-  "SUBMITTED",
-  "UNDER_REVIEW",
-  "CONDITIONALLY_APPROVED",
-  "REFERRED_TO_SENIOR",
-  "APPROVED",
-];
 // Channel-specific field exposure control (2026-09 architecture review, "Field Exposure
 // Controls"/"Channel-Specific Validation"): every section save must match that section's known
 // shape exactly — unrecognised fields are rejected (400), not silently stored or stripped. Returns
@@ -189,7 +179,7 @@ applications.post("/start", async (c) => {
   const [existing] = await db
     .select()
     .from(loanApplications)
-    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, ACTIVE_STATUSES)))
+    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (existing) return c.json(existing);
@@ -221,7 +211,7 @@ applications.post("/start-business", async (c) => {
   const [existing] = await db
     .select()
     .from(loanApplications)
-    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, ACTIVE_STATUSES)))
+    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (existing) return c.json(existing);
@@ -457,45 +447,36 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   return c.json(updated);
 });
 
-applications.get("/pipeline", async (c) => {
-  assertEntitlement(c, "queue.pipeline");
+// Queue status lists, the entitlement that opens each queue, and whether the org-scope and
+// referral-visibility filters apply all come from the workflow definition (workflow-spec).
+async function queueWhere(c: Context<AppEnv>, q: QueueDef) {
   const db = getDb(c.env.DB);
-  const rows = await db
-    .select()
-    .from(loanApplications)
-    .where(and(inArray(loanApplications.status, PIPELINE_STATUSES), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
-    .orderBy(loanApplications.submittedAt);
-  return c.json(rows);
+  return and(
+    inArray(loanApplications.status, q.statuses),
+    q.applyScope ? await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope) : undefined,
+    q.hideReferredAbove ? await referralVisibility(db, c) : undefined,
+  );
+}
+
+applications.get("/pipeline", async (c) => {
+  const q = await resolveQueue(c, ["pipeline"]);
+  const db = getDb(c.env.DB);
+  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(loanApplications.submittedAt));
 });
 
 applications.get("/banker-queue", async (c) => {
-  assertEntitlement(c, "queue.banker");
+  const q = await resolveQueue(c, ["banker-queue"]);
   const db = getDb(c.env.DB);
-  const rows = await db
-    .select()
-    .from(loanApplications)
-    .where(and(inArray(loanApplications.status, BANKER_QUEUE_STATUSES), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
-    .orderBy(desc(loanApplications.updatedAt));
-  return c.json(rows);
+  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt)));
 });
 
 // Broader than /pipeline and /banker-queue (which drive their respective list pages and
-// deliberately exclude closed-out statuses) — the Home dashboard's stat tiles want a "Declined"
-// count too, so this is a dedicated fetch rather than reusing either.
+// deliberately exclude closed-out statuses) - the Home dashboard's stat tiles want a "Declined"
+// count too, and IN_PROGRESS so a sent-back application can appear under "Pending Action Items".
 applications.get("/home-stats", async (c) => {
-  assertEntitlement(c, "dashboard.view");
+  const q = await resolveQueue(c, ["home-stats-staff", "home-stats-banker"]);
   const db = getDb(c.env.DB);
-  const bankerView = !c.get("authRole").entitlements.has("queue.pipeline");
-  // IN_PROGRESS included for every role (not just banker) so the "Pending Action Items" tile's
-  // count/amount — cross-referenced against these rows — can actually include a sent-back
-  // application, matching what /staff-activity already surfaces for the same tile.
-  const statuses = bankerView ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED", "IN_PROGRESS"];
-  const rows = await db
-    .select()
-    .from(loanApplications)
-    .where(and(inArray(loanApplications.status, statuses), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
-    .orderBy(desc(loanApplications.updatedAt));
-  return c.json(rows);
+  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt)));
 });
 
 // Backs the Home dashboard's "Action Items" and "Recent Notifications" panels. There's no
@@ -503,18 +484,11 @@ applications.get("/home-stats", async (c) => {
 // approximated as document/clarification/send-back notes on applications still sitting in
 // IN_PROGRESS — i.e. bounced back to the customer and not yet resubmitted.
 applications.get("/staff-activity", async (c) => {
-  assertEntitlement(c, "dashboard.view");
+  // The activity queues include IN_PROGRESS for every role: a sent-back or document-requested
+  // application waits on the customer in that status, which is exactly what "action items" surfaces.
+  const q = await resolveQueue(c, ["activity-staff", "activity-banker"]);
   const db = getDb(c.env.DB);
-  const bankerView = !c.get("authRole").entitlements.has("queue.pipeline");
-  // IN_PROGRESS is explicitly included even for non-banker roles (PIPELINE_STATUSES normally
-  // excludes it) — a sent-back/document-requested application moves to IN_PROGRESS while it
-  // waits on the customer, which is exactly the case "action items" needs to surface. Leaving it
-  // out here would make every action item invisible the moment it's created.
-  const statuses = bankerView ? BANKER_QUEUE_STATUSES : [...PIPELINE_STATUSES, "IN_PROGRESS"];
-  const apps = await db
-    .select()
-    .from(loanApplications)
-    .where(and(inArray(loanApplications.status, statuses), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)));
+  const apps = await db.select().from(loanApplications).where(await queueWhere(c, q));
   const appByRef = new Map(apps.map((a) => [a.applicationRef, a]));
   if (apps.length === 0) return c.json([]);
 

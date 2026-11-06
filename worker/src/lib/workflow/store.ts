@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { loanApplications, wfCases, wfCaseTracks, wfDefinitions } from "../../db/schema";
 import { AppError } from "../errors";
@@ -120,4 +120,124 @@ export async function loadCase(db: Db, app: LoanRow): Promise<LoadedCase> {
   // Fill any track added to the definition after this case was registered.
   for (const [k, v] of Object.entries(tracksFromMirror(definition, app))) if (!tracks[k]) tracks[k] = v;
   return { definitionId: wc.definitionId, definition, state: { tracks, fields: caseFieldsOf(app) } };
+}
+
+// ---------------------------------------------------------------- definition lifecycle (admin)
+// Same shape as lib/form-versions.ts: DRAFT -> PUBLISHED -> ARCHIVED. One open draft per key keeps
+// the builder simple. A case is pinned to whichever definition was published when it registered,
+// so publishing never changes the rules of a case already in flight.
+
+export async function listDefinitions(db: Db): Promise<(DefinitionRow & { caseCount: number })[]> {
+  const rows = await db.select().from(wfDefinitions).orderBy(wfDefinitions.definitionKey, desc(wfDefinitions.version));
+  const counts = await db.select({ id: wfCases.definitionId, n: sql<number>`count(*)` }).from(wfCases).groupBy(wfCases.definitionId);
+  const byId = new Map(counts.map((c) => [c.id, Number(c.n)]));
+  return rows.map((r) => ({ ...r, caseCount: byId.get(r.id) ?? 0 }));
+}
+
+export async function createDraft(db: Db, key: string, sourceId: number | undefined, actor: string): Promise<{ row: DefinitionRow; existing: boolean }> {
+  const all = await db.select().from(wfDefinitions).where(eq(wfDefinitions.definitionKey, key));
+  if (all.length === 0) throw new AppError(`Unknown workflow: ${key}`, 404);
+  const open = all.find((r) => r.status === "DRAFT");
+  if (open) return { row: open, existing: true };
+
+  const source = sourceId !== undefined ? all.find((r) => r.id === sourceId) : all.filter((r) => r.status === "PUBLISHED")[0];
+  if (!source) throw new AppError(sourceId !== undefined ? "Source version not found." : "Nothing is published to copy from.", 404);
+  const [row] = await db.insert(wfDefinitions).values({
+    definitionKey: key, version: Math.max(...all.map((r) => r.version)) + 1, status: "DRAFT",
+    definitionJson: source.definitionJson, changeNote: null, createdAt: new Date().toISOString(), createdBy: actor,
+  }).returning();
+  return { row, existing: false };
+}
+
+export type SaveResult = { ok: true; row: DefinitionRow } | { ok: false; errors: string[] };
+
+export async function saveDraft(db: Db, id: number, raw: unknown, changeNote: string | null): Promise<SaveResult> {
+  const row = await getDefinitionRow(db, id);
+  if (row.status !== "DRAFT") throw new AppError("Only a draft can be edited.", 409);
+  const checked = validateDefinition(raw, { entitlementKeys: ENTITLEMENT_KEYS });
+  if (!checked.ok) return { ok: false, errors: checked.errors };
+  if (checked.definition.key !== row.definitionKey) return { ok: false, errors: [`key: must stay "${row.definitionKey}"`] };
+  const [saved] = await db.update(wfDefinitions)
+    .set({ definitionJson: JSON.stringify(checked.definition), changeNote })
+    .where(eq(wfDefinitions.id, id)).returning();
+  return { ok: true, row: saved };
+}
+
+export async function discardDraft(db: Db, id: number): Promise<void> {
+  const row = await getDefinitionRow(db, id);
+  if (row.status !== "DRAFT") throw new AppError("Only a draft can be discarded.", 409);
+  await db.delete(wfDefinitions).where(eq(wfDefinitions.id, id));
+}
+
+/** Statuses the new definition drops while live cases are still sitting in them. Those cases'
+ * queues, labels and actions would vanish, so publishing is refused until they are moved. */
+async function strandedStatuses(db: Db, previous: WorkflowDefinition, next: WorkflowDefinition): Promise<string[]> {
+  const problems: string[] = [];
+  for (const t of previous.tracks) {
+    const nextTrack = next.tracks.find((x) => x.key === t.key);
+    for (const s of t.statuses) {
+      if (nextTrack?.statuses.some((n) => n.key === s.key)) continue;
+      const [{ n }] = await db.select({ n: sql<number>`count(*)` }).from(wfCaseTracks)
+        .where(and(eq(wfCaseTracks.trackKey, t.key), eq(wfCaseTracks.status, s.key)));
+      if (Number(n) > 0) problems.push(`${t.key}.${s.key} was removed but ${Number(n)} case(s) are still in it`);
+    }
+  }
+  return problems;
+}
+
+export async function publishDraft(db: Db, id: number, actor: string): Promise<SaveResult> {
+  const row = await getDefinitionRow(db, id);
+  if (row.status !== "DRAFT") throw new AppError("Only a draft can be published.", 409);
+  const checked = validateDefinition(JSON.parse(row.definitionJson), { entitlementKeys: ENTITLEMENT_KEYS });
+  if (!checked.ok) return { ok: false, errors: checked.errors };
+
+  const current = await getPublishedRow(db, row.definitionKey);
+  if (current) {
+    const stranded = await strandedStatuses(db, parseDefinition(current), checked.definition);
+    if (stranded.length) return { ok: false, errors: stranded };
+  }
+  const now = new Date().toISOString();
+  const queries = [
+    ...(current ? [db.update(wfDefinitions).set({ status: "ARCHIVED" }).where(eq(wfDefinitions.id, current.id))] : []),
+    db.update(wfDefinitions).set({ status: "PUBLISHED", publishedAt: now, publishedBy: actor }).where(eq(wfDefinitions.id, id)),
+  ];
+  await db.batch(queries as unknown as [never, ...never[]]);
+  return { ok: true, row: await getDefinitionRow(db, id) };
+}
+
+// ---------------------------------------------------------------- runtime projection (UI)
+
+export interface DefinitionProjection {
+  definitionId: number;
+  key: string;
+  version: number;
+  stages: WorkflowDefinition["stages"];
+  /** track -> status key -> display info. Includes statuses that only older versions define, so
+   * a case pinned to an older version still shows a proper label. */
+  statuses: Record<string, Record<string, { label: { en: string; he: string }; badge: string; category: string; stage: string | null }>>;
+  queues: WorkflowDefinition["queues"];
+}
+
+export async function projectPublished(db: Db): Promise<DefinitionProjection> {
+  const published = await ensureDefaultDefinition(db);
+  const def = parseDefinition(published);
+  const rows = await db.select().from(wfDefinitions)
+    .where(and(eq(wfDefinitions.definitionKey, published.definitionKey), ne(wfDefinitions.status, "DRAFT")))
+    .orderBy(wfDefinitions.version);
+  const statuses: DefinitionProjection["statuses"] = {};
+  for (const r of rows) {
+    for (const t of parseDefinition(r).tracks) {
+      const bucket = (statuses[t.key] ??= {});
+      for (const s of t.statuses) bucket[s.key] = { label: s.label, badge: s.badge, category: s.category, stage: s.stage };
+    }
+  }
+  return { definitionId: published.id, key: def.key, version: published.version, stages: def.stages, statuses, queues: def.queues };
+}
+
+/** Status keys of the case track whose category is one of `categories` (e.g. the statuses in which
+ * the customer is still working on the application). */
+export async function statusesByCategory(db: Db, categories: string[]): Promise<string[]> {
+  const def = parseDefinition(await ensureDefaultDefinition(db));
+  const track = def.tracks.find((t) => t.key === "case") ?? def.tracks[0];
+  return track.statuses.filter((s) => categories.includes(s.category)).map((s) => s.key);
 }

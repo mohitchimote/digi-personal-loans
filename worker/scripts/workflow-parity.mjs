@@ -71,6 +71,7 @@ if (cmd === "diff") {
   };
   walk(a.scenarios, b.scenarios, "scenarios");
   walk(a.emails, b.emails, "emails");
+  walk(a.queues, b.queues, "queues");
   console.log(n ? `\n${n} difference(s)` : "IDENTICAL");
   process.exit(0);
 }
@@ -200,6 +201,22 @@ for (const [label, ref] of Object.entries(refByLabel)) {
   scenarios[label].audit = pick(audit);
   scenarios[label].referrals = pick(refs2);
 }
+// What each staff role sees from each queue endpoint (only the labelled parity cases; anything
+// else in the database is counted, not listed, so seed data cannot cause false differences).
+const queues = {};
+for (const role of ["uw", "sr", "ceo", "banker"]) {
+  queues[role] = {};
+  for (const ep of ["pipeline", "banker-queue", "home-stats", "staff-activity"]) {
+    const r = await http(staff[role], "GET", `/api/applications/${ep}`);
+    if (r.status !== 200) { queues[role][ep] = { http: r.status }; continue; }
+    const refOf = (x) => x.applicationRef;
+    const labelled = r.body.filter((x) => labelOf[refOf(x)]);
+    queues[role][ep] = {
+      http: 200,
+      cases: [...new Set(labelled.map((x) => `${labelOf[refOf(x)]}:${x.applicationStatus ?? x.status}${x.noteType ? "/" + x.noteType : ""}`))].sort(),
+    };
+  }
+}
 await new Promise((r) => setTimeout(r, 1500)); // let waitUntil() email attempts reach the log
 const emails = {};
 if (LOG) {
@@ -213,5 +230,5 @@ if (LOG) {
   }
 }
 for (const k of Object.keys(emails)) emails[k].sort();
-writeFileSync(OUT, JSON.stringify({ scenarios, emails }, null, 2));
+writeFileSync(OUT, JSON.stringify({ scenarios, emails, queues }, null, 2));
 console.log(`wrote ${OUT}: ${Object.keys(scenarios).length} scenarios`);

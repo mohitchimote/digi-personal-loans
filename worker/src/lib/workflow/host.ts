@@ -15,10 +15,10 @@ import { generateOfferPack } from "../document-pack";
 import { authoriseCardPayment } from "../card-payment";
 import { resolveActiveSchemaVersion } from "../form-versions";
 import { logError } from "../log";
-import { evaluate, findTransition } from "./engine";
-import { loadCase } from "./store";
+import { allowedActions, evaluate, findTransition, queueAccess } from "./engine";
+import { ensureDefaultDefinition, loadCase, parseDefinition } from "./store";
 import { buildEmailVars, buildNotification, type Vars } from "./messages";
-import type { Actor, Facts, TransitionInput, TransitionSuccess, WorkflowDefinition } from "./types";
+import type { Actor, Facts, QueueDef, TransitionInput, TransitionSuccess, WorkflowDefinition } from "./types";
 
 // The Worker side of the workflow engine. engine.ts is pure; this resolves the facts it needs,
 // persists its result, and runs the side effects a definition asks for.
@@ -47,6 +47,64 @@ export const SYSTEM_AUTO_APPROVAL: Actor = {
   type: "SYSTEM", userId: 0, name: "System (Auto-Approval)", role: null, rank: null, entitlements: [], scope: "ALL",
 };
 
+/** The signed-in caller as a workflow actor. */
+export function callerActor(c: Context<AppEnv>): Actor {
+  const user = c.get("authUser");
+  const role = c.get("authRole");
+  return {
+    type: role.isStaff ? "STAFF" : "CUSTOMER",
+    userId: user.id, name: displayName(user), role: user.role, rank: role.rank,
+    entitlements: [...role.entitlements], scope: role.scope,
+  };
+}
+
+async function buildFacts(c: Context<AppEnv>, db: Db, app: LoanRow, actor: Actor, needsMandate: boolean): Promise<Facts> {
+  const user = c.get("authUser");
+  const role = c.get("authRole");
+  return {
+    caseVisible: actor.type === "SYSTEM" ? true : await isCaseVisible(db, user, role.scope, app),
+    isOwner: user.id === app.customerId,
+    mandateLimit: actor.type === "STAFF" && needsMandate ? (await resolveMandate(db, user.role, app.orgUnitId, app.applicationType)).limit : null,
+    ladder: (await allRoleConfigs(db)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
+  };
+}
+
+export interface ActionInfo { key: string; track: string; label: { en: string; he: string } }
+export interface ActionsView { allowed: ActionInfo[]; blocked: Record<string, { code: string; label: { en: string; he: string } }> }
+
+/** What the caller can do to this case right now, with labels, for the UI to render buttons from.
+ * Input-dependent rules (amount, reason, mandate) are enforced when the action is actually run. */
+export async function describeActions(c: Context<AppEnv>, appRef: string): Promise<ActionsView> {
+  const db = getDb(c.env.DB);
+  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  if (!app) throw new AppError(`Application not found: ${appRef}`);
+  const actor = callerActor(c);
+  // A customer may only ask about their own case; staff are subject to org scope.
+  if (actor.type === "CUSTOMER" && c.get("authUser").id !== app.customerId) throw new AppError("Application not found.", 404);
+  if (actor.type === "STAFF" && !(await isCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app))) throw new AppError("Application not found.", 404);
+
+  const loaded = await loadCase(db, app);
+  const facts = await buildFacts(c, db, app, actor, false);
+  const r = allowedActions(loaded.definition, { case: loaded.state, actor, facts });
+  const meta = new Map(loaded.definition.tracks.flatMap((t) => t.transitions.map((x) => [x.key, { track: t.key, label: x.label }] as const)));
+  return {
+    allowed: r.allowed.map((k) => ({ key: k, track: meta.get(k)!.track, label: meta.get(k)!.label })),
+    blocked: Object.fromEntries(Object.entries(r.blocked).map(([k, code]) => [k, { code, label: meta.get(k)!.label }])),
+  };
+}
+
+/** The first of `keys` that the caller may open in the published definition. Queue status lists,
+ * required entitlements and the scope/referral filters all come from the definition. */
+export async function resolveQueue(c: Context<AppEnv>, keys: string[]): Promise<QueueDef> {
+  const db = getDb(c.env.DB);
+  const def = parseDefinition(await ensureDefaultDefinition(db));
+  const actor = callerActor(c);
+  for (const key of keys) {
+    if (queueAccess(def, { actor, queue: key }).ok) return def.queues.find((q) => q.key === key)!;
+  }
+  throw new AppError("Forbidden.", 403);
+}
+
 function transitionHasGuard(def: WorkflowDefinition, action: string, type: string): boolean {
   return !!findTransition(def, action)?.transition.guards.some((g) => g.type === type);
 }
@@ -68,23 +126,8 @@ export async function runAction(c: Context<AppEnv>, appRef: string, o: RunOption
   if (!app) throw new AppError(`Application not found: ${appRef}`);
 
   const loaded = await loadCase(db, app);
-  const user = c.get("authUser");
-  const role = c.get("authRole");
-  const actor: Actor = o.actor ?? {
-    type: role.isStaff ? "STAFF" : "CUSTOMER",
-    userId: user.id, name: displayName(user), role: user.role, rank: role.rank,
-    entitlements: [...role.entitlements], scope: role.scope,
-  };
-
-  const facts: Facts = {
-    caseVisible: actor.type === "SYSTEM" ? true : await isCaseVisible(db, user, role.scope, app),
-    isOwner: user.id === app.customerId,
-    mandateLimit:
-      actor.type === "STAFF" && transitionHasGuard(loaded.definition, o.action, "MANDATE")
-        ? (await resolveMandate(db, user.role, app.orgUnitId, app.applicationType)).limit
-        : null,
-    ladder: (await allRoleConfigs(db)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
-  };
+  const actor = o.actor ?? callerActor(c);
+  const facts = await buildFacts(c, db, app, actor, transitionHasGuard(loaded.definition, o.action, "MANDATE"));
 
   const now = new Date().toISOString();
   const result = evaluate(loaded.definition, { case: loaded.state, request: { action: o.action, actor, input: o.input, now }, facts });
