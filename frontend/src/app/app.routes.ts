@@ -150,6 +150,7 @@ export const routes: Routes = [
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
       { path: 'email-templates', loadComponent: () => import('./pages/admin/email-templates/admin-email-templates.component').then(m => m.AdminEmailTemplatesComponent) },
       { path: 'form-builder', loadComponent: () => import('./pages/admin/form-builder/admin-form-builder.component').then(m => m.AdminFormBuilderComponent) },
+      { path: 'workflow', loadComponent: () => import('./pages/admin/workflow-builder/admin-workflow-builder.component').then(m => m.AdminWorkflowBuilderComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

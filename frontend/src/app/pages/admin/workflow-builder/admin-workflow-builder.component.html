@@ -1,0 +1,375 @@
+<div class="page-header mb-16">
+  <div>
+    <h2>{{ 'admin.wf' | translate }}</h2>
+    <p class="page-sub">{{ 'admin.wfSubtitle' | translate }}</p>
+  </div>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="failure()"><span class="material-icons mi-sm">warning</span> {{ failure() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="message()">✓ {{ message() }}</div>
+<div class="loading-row" *ngIf="loading()"><div class="spinner"></div></div>
+
+<ng-container *ngIf="!loading() && def() as d">
+  <!-- ============================ version bar -->
+  <div class="db-card wf-bar mb-16">
+    <div class="wf-bar-group">
+      <label class="wf-bar-label">{{ 'admin.wf.version' | translate }}</label>
+      <select class="db-select" [ngModel]="current()?.id" (ngModelChange)="onVersionPicked($event)">
+        <option *ngFor="let v of versions()" [value]="v.id">{{ versionLabel(v) }}</option>
+      </select>
+      <span class="db-badge" [ngClass]="current()?.status === 'DRAFT' ? 'db-badge--info' : current()?.status === 'PUBLISHED' ? 'db-badge--success' : 'db-badge--draft'">
+        {{ 'admin.wf.status.' + current()?.status | translate }}
+      </span>
+      <span class="text-muted wf-dirty" *ngIf="dirty()">● {{ 'admin.wf.unsaved' | translate }}</span>
+    </div>
+
+    <div class="wf-bar-group wf-bar-actions">
+      <ng-container *ngIf="editable()">
+        <input class="db-input wf-note" [placeholder]="'admin.wf.changeNote' | translate" [(ngModel)]="changeNote" maxlength="300" />
+        <button class="db-btn db-btn--ghost db-btn--sm" (click)="save()" [disabled]="saving() || !dirty()">{{ 'admin.wf.saveDraft' | translate }}</button>
+        <ng-container *ngIf="confirming() !== 'publish'">
+          <button class="db-btn db-btn--primary db-btn--sm" (click)="confirming.set('publish')" [disabled]="saving() || errors().length > 0">{{ 'admin.wf.publish' | translate }}</button>
+        </ng-container>
+        <ng-container *ngIf="confirming() === 'publish'">
+          <span class="wf-confirm">{{ 'admin.wf.publishConfirm' | translate }}</span>
+          <button class="db-btn db-btn--primary db-btn--sm" (click)="publish()" [disabled]="saving()">{{ 'admin.wf.confirmYes' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="confirming.set(null)">{{ 'admin.wf.cancel' | translate }}</button>
+        </ng-container>
+        <ng-container *ngIf="confirming() !== 'discard'">
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="confirming.set('discard')">{{ 'admin.wf.discard' | translate }}</button>
+        </ng-container>
+        <ng-container *ngIf="confirming() === 'discard'">
+          <span class="wf-confirm">{{ 'admin.wf.discardConfirm' | translate }}</span>
+          <button class="db-btn db-btn--danger db-btn--sm" (click)="discard()">{{ 'admin.wf.confirmYes' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="confirming.set(null)">{{ 'admin.wf.cancel' | translate }}</button>
+        </ng-container>
+      </ng-container>
+      <ng-container *ngIf="!editable()">
+        <span class="text-muted">{{ 'admin.wf.readOnly' | translate }}</span>
+        <button class="db-btn db-btn--primary db-btn--sm" (click)="createDraft()" [disabled]="hasDraft()" [title]="hasDraft() ? ('admin.wf.draftExists' | translate) : ''">
+          <span class="material-icons mi-sm">edit</span> {{ 'admin.wf.newDraft' | translate }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+  <div class="wf-layout">
+    <!-- ============================ canvas -->
+    <div class="db-card wf-canvas-card">
+      <div class="wf-canvas-top">
+        <div class="wf-tracks">
+          <button class="wf-track" *ngFor="let t of d.tracks" [class.active]="t.key === trackKey()" (click)="trackKey.set(t.key); selection.set(null)">{{ t.label.en }}</button>
+        </div>
+        <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="editable()" (click)="addStatus()">
+          <span class="material-icons mi-sm">add</span> {{ 'admin.wf.addStatus' | translate }}
+        </button>
+      </div>
+      <p class="wf-hint" *ngIf="editable()">{{ 'admin.wf.canvasHint' | translate }}</p>
+
+      <div class="wf-scroll">
+        <svg #svg class="wf-svg" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h"
+             (pointermove)="onMove($event)" (pointerup)="onUp($event)" (pointerleave)="onCancel()" (pointerdown)="clearSelection()">
+          <defs>
+            <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" class="wf-arrow-head" />
+            </marker>
+          </defs>
+
+          @for (l of laneViews(); track l.key ?? '_none') {
+            <rect class="wf-lane" [attr.x]="l.x" y="0" [attr.width]="laneW - 8" [attr.height]="canvasSize().h" rx="10" />
+            <text class="wf-lane-title" [attr.x]="l.x + 12" y="24">{{ l.label }}</text>
+            @if (l.sla) {
+              <text class="wf-lane-sub" [attr.x]="l.x + 12" y="42">SLA {{ l.sla.hours }}h</text>
+            }
+          }
+
+          @for (e of edges(); track $index) {
+            <path class="wf-edge" [class.selected]="e.selected" [attr.d]="e.path" marker-end="url(#wf-arrow)" />
+            <path class="wf-edge-hit" [attr.d]="e.path" (pointerdown)="$event.stopPropagation()" (click)="selectTransition(e.key)" />
+            <text class="wf-edge-label" [class.selected]="e.selected" [attr.x]="e.lx" [attr.y]="e.ly - 4" text-anchor="middle"
+                  (pointerdown)="$event.stopPropagation()" (click)="selectTransition(e.key)">{{ e.label }}</text>
+          }
+
+          @for (n of drawn(); track n.key) {
+            <g class="wf-node" [class.selected]="selection()?.kind === 'status' && selection()?.key === n.key" [class.virtual]="n.virtual"
+               [attr.transform]="'translate(' + n.x + ',' + n.y + ')'" (pointerdown)="startDrag($event, n)">
+              <rect class="wf-node-box" [ngClass]="'badge-' + n.badge" [attr.width]="nodeW" [attr.height]="nodeH" rx="9" />
+              <text class="wf-node-label" [attr.x]="nodeW / 2" y="20" text-anchor="middle">{{ n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label }}</text>
+              <text class="wf-node-key" [attr.x]="nodeW / 2" y="35" text-anchor="middle">{{ n.virtual ? '*' : n.key }}</text>
+              @if (n.entry) { <text class="wf-node-entry" x="8" y="14">▶</text> }
+              @if (editable() && !n.virtual) {
+                <circle class="wf-handle" [attr.cx]="nodeW" [attr.cy]="nodeH / 2" r="7" (pointerdown)="startConnect($event, n)">
+                  <title>{{ 'admin.wf.connectTip' | translate }}</title>
+                </circle>
+              }
+            </g>
+          }
+
+          @if (connectLine(); as c) {
+            <line class="wf-connect" [attr.x1]="c.x1" [attr.y1]="c.y1" [attr.x2]="c.x2" [attr.y2]="c.y2" />
+          }
+        </svg>
+      </div>
+      <p class="wf-hint" *ngIf="inPlaceActions().length">
+        {{ 'admin.wf.inPlace' | translate }}:
+        <button class="wf-chip" *ngFor="let x of inPlaceActions()" (click)="selectTransition(x.key)">{{ x.label.en }}</button>
+      </p>
+    </div>
+
+    <!-- ============================ side panel -->
+    <div class="db-card wf-panel">
+      <div class="wf-tabs">
+        <button [class.active]="tab() === 'selection'" (click)="tab.set('selection')">{{ 'admin.wf.tab.selection' | translate }}</button>
+        <button [class.active]="tab() === 'stages'" (click)="tab.set('stages')">{{ 'admin.wf.tab.stages' | translate }}</button>
+        <button [class.active]="tab() === 'queues'" (click)="tab.set('queues')">{{ 'admin.wf.tab.queues' | translate }}</button>
+        <button [class.active]="tab() === 'simulate'" (click)="tab.set('simulate')">{{ 'admin.wf.tab.simulate' | translate }}</button>
+        <button [class.active]="tab() === 'problems'" [class.has-errors]="errors().length" (click)="tab.set('problems')">
+          {{ 'admin.wf.tab.problems' | translate }}<span class="wf-count" *ngIf="errors().length">{{ errors().length }}</span>
+        </button>
+      </div>
+
+      <fieldset class="wf-fs" [disabled]="!editable()">
+        <!-- ---------------- selection -->
+        <ng-container *ngIf="tab() === 'selection'">
+          <p class="text-muted" *ngIf="!selectedStatus() && !selectedTransition()">{{ 'admin.wf.nothingSelected' | translate }}</p>
+
+          <!-- status -->
+          <ng-container *ngIf="selectedStatus() as s">
+            <h4 class="wf-h">{{ 'admin.wf.status' | translate }}</h4>
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.key' | translate }}</label>
+              <input class="db-input" [ngModel]="s.key" (change)="renameStatus(s, $any($event.target).value)" />
+              <div class="db-hint">{{ 'admin.wf.keyHint' | translate }}</div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="s.label.en" (ngModelChange)="set(s.label, 'en', $event)" /></div>
+              <div class="db-form-group"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="s.label.he" (ngModelChange)="set(s.label, 'he', $event)" /></div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'admin.wf.stage' | translate }}</label>
+                <select class="db-select" [ngModel]="s.stage" (ngModelChange)="set(s, 'stage', $event)">
+                  <option [ngValue]="null">{{ 'admin.wf.noStage' | translate }}</option>
+                  <option *ngFor="let st of d.stages" [ngValue]="st.key">{{ st.label.en }}</option>
+                </select></div>
+              <div class="db-form-group"><label>{{ 'admin.wf.badge' | translate }}</label>
+                <select class="db-select" [ngModel]="s.badge" (ngModelChange)="set(s, 'badge', $event)"><option *ngFor="let b of badges" [value]="b">{{ b }}</option></select></div>
+            </div>
+            <div class="db-form-group"><label>{{ 'admin.wf.category' | translate }}</label>
+              <select class="db-select" [ngModel]="s.category" (ngModelChange)="set(s, 'category', $event)"><option *ngFor="let c of categories" [value]="c">{{ c }}</option></select>
+              <div class="db-hint">{{ 'admin.wf.categoryHint' | translate }}</div></div>
+
+            <h4 class="wf-h">{{ 'admin.wf.actionsHere' | translate }}</h4>
+            <button class="wf-chip" *ngFor="let x of transitionsTouching()" (click)="selectTransition(x.key)">{{ x.label.en }}</button>
+            <p class="text-muted" *ngIf="!transitionsTouching().length">{{ 'admin.wf.noActions' | translate }}</p>
+
+            <div class="form-actions mt-16"><button class="db-btn db-btn--ghost db-btn--sm" (click)="removeStatus(s.key)"><span class="material-icons mi-sm">delete</span> {{ 'admin.wf.deleteStatus' | translate }}</button></div>
+          </ng-container>
+
+          <!-- transition -->
+          <ng-container *ngIf="selectedTransition() as x">
+            <h4 class="wf-h">{{ 'admin.wf.action' | translate }}</h4>
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.key' | translate }}</label>
+              <input class="db-input" [ngModel]="x.key" (change)="renameTransition(x, $any($event.target).value)" />
+              <div class="db-hint">{{ 'admin.wf.actionKeyHint' | translate }}</div>
+            </div>
+            <div class="form-row">
+              <div class="db-form-group"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="x.label.en" (ngModelChange)="set(x.label, 'en', $event)" /></div>
+              <div class="db-form-group"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="x.label.he" (ngModelChange)="set(x.label, 'he', $event)" /></div>
+            </div>
+
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.actors' | translate }}</label>
+              <div class="wf-checks"><label *ngFor="let a of actorTypes"><input type="checkbox" [checked]="x.actors.includes(a)" (change)="toggleActor(x, a)" /> {{ a }}</label></div>
+            </div>
+
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.entitlement' | translate }}</label>
+              <select class="db-select" [ngModel]="x.entitlement || ''" (ngModelChange)="setEntitlement(x, $event)">
+                <option value="">{{ 'admin.wf.noEntitlement' | translate }}</option>
+                <option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option>
+              </select>
+              <div class="db-hint">{{ 'admin.wf.entitlementHint' | translate }}</div>
+            </div>
+
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.from' | translate }}</label>
+              <div class="wf-checks">
+                <label><input type="checkbox" [checked]="x.from.includes('*')" (change)="toggleFrom(x, '*')" /> {{ 'admin.wf.anyStatus' | translate }}</label>
+                <label *ngFor="let st of track()?.statuses"><input type="checkbox" [checked]="x.from.includes(st.key)" (change)="toggleFrom(x, st.key)" /> {{ st.label.en }}</label>
+              </div>
+            </div>
+
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.to' | translate }}</label>
+              <select class="db-select" [ngModel]="x.to || ''" (ngModelChange)="setTarget(x, $event)">
+                <option value="">{{ 'admin.wf.inPlaceOpt' | translate }}</option>
+                <option *ngFor="let st of track()?.statuses" [value]="st.key">{{ st.label.en }}</option>
+              </select>
+            </div>
+
+            <!-- guards -->
+            <h4 class="wf-h">{{ 'admin.wf.guards' | translate }}</h4>
+            <p class="db-hint">{{ 'admin.wf.guardsHint' | translate }}</p>
+            <div class="wf-item" *ngFor="let g of x.guards; let i = index">
+              <div class="wf-item-head">
+                <strong>{{ g.type }}</strong>
+                <span class="wf-item-tools">
+                  <button class="wf-icon" (click)="move(x.guards, i, -1)" [disabled]="i === 0">↑</button>
+                  <button class="wf-icon" (click)="move(x.guards, i, 1)" [disabled]="i === x.guards.length - 1">↓</button>
+                  <button class="wf-icon" (click)="removeAt(x.guards, i)">✕</button>
+                </span>
+              </div>
+              <div class="wf-param" *ngFor="let p of guardSpec(g.type)">
+                <ng-container *ngTemplateOutlet="param; context: { obj: g, p: p }"></ng-container>
+              </div>
+            </div>
+            <select class="db-select" #gsel (change)="addGuard(x, gsel.value); gsel.value = ''">
+              <option value="">+ {{ 'admin.wf.addGuard' | translate }}</option>
+              <option *ngFor="let g of catalog()?.guards" [value]="g">{{ g }}</option>
+            </select>
+
+            <!-- effects -->
+            <h4 class="wf-h">{{ 'admin.wf.effects' | translate }}</h4>
+            <p class="db-hint">{{ 'admin.wf.effectsHint' | translate }}</p>
+            <div class="wf-item" *ngFor="let e of x.effects; let i = index">
+              <div class="wf-item-head">
+                <strong>{{ e.type }}</strong>
+                <span class="wf-item-tools">
+                  <button class="wf-icon" (click)="move(x.effects, i, -1)" [disabled]="i === 0">↑</button>
+                  <button class="wf-icon" (click)="move(x.effects, i, 1)" [disabled]="i === x.effects.length - 1">↓</button>
+                  <button class="wf-icon" (click)="removeAt(x.effects, i)">✕</button>
+                </span>
+              </div>
+              <div class="wf-param" *ngFor="let p of effectSpec(e.type)">
+                <ng-container *ngTemplateOutlet="param; context: { obj: e, p: p }"></ng-container>
+              </div>
+              <div class="wf-param">
+                <label>{{ 'admin.wf.when' | translate }}</label>
+                <input class="db-input" [ngModel]="whenText(e)" (change)="setWhen(e, $any($event.target).value)" placeholder='{"fact":"input.x","op":"truthy"}' />
+              </div>
+            </div>
+            <select class="db-select" #esel (change)="addEffect(x, esel.value); esel.value = ''">
+              <option value="">+ {{ 'admin.wf.addEffect' | translate }}</option>
+              <option *ngFor="let e of catalog()?.effects" [value]="e">{{ e }}</option>
+            </select>
+
+            <div class="form-actions mt-16"><button class="db-btn db-btn--ghost db-btn--sm" (click)="removeTransition(x.key)"><span class="material-icons mi-sm">delete</span> {{ 'admin.wf.deleteAction' | translate }}</button></div>
+          </ng-container>
+        </ng-container>
+
+        <!-- ---------------- stages -->
+        <ng-container *ngIf="tab() === 'stages'">
+          <p class="db-hint">{{ 'admin.wf.stagesHint' | translate }}</p>
+          <div class="wf-item" *ngFor="let s of d.stages; let i = index">
+            <div class="wf-item-head">
+              <strong>{{ s.label.en }}</strong>
+              <span class="wf-item-tools">
+                <button class="wf-icon" (click)="move(d.stages, i, -1)" [disabled]="i === 0">←</button>
+                <button class="wf-icon" (click)="move(d.stages, i, 1)" [disabled]="i === d.stages.length - 1">→</button>
+                <button class="wf-icon" (click)="removeStage(s.key)">✕</button>
+              </span>
+            </div>
+            <div class="wf-param"><label>{{ 'admin.wf.key' | translate }}</label><input class="db-input" [ngModel]="s.key" (change)="renameStage(s, $any($event.target).value)" /></div>
+            <div class="form-row">
+              <div class="wf-param"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="s.label.en" (ngModelChange)="set(s.label, 'en', $event)" /></div>
+              <div class="wf-param"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="s.label.he" (ngModelChange)="set(s.label, 'he', $event)" /></div>
+            </div>
+            <div class="form-row">
+              <div class="wf-param"><label>{{ 'admin.wf.slaHours' | translate }}</label><input class="db-input" type="number" min="0" [ngModel]="s.sla?.hours" (change)="setSlaHours(s, $any($event.target).value)" /></div>
+              <div class="wf-param"><label>{{ 'admin.wf.amberAt' | translate }}</label><input class="db-input" type="number" min="1" max="100" [ngModel]="s.sla?.amberAtPercent" (change)="setSlaAmber(s, $any($event.target).value)" /></div>
+            </div>
+            <div class="wf-param"><label>{{ 'admin.wf.ownerRoles' | translate }}</label><input class="db-input" [ngModel]="(s.owner?.roles || []).join(', ')" (change)="setOwnerRoles(s, $any($event.target).value)" placeholder="UNDERWRITER, SENIOR_UNDERWRITER" /></div>
+            <div class="wf-param"><label>{{ 'admin.wf.unitRule' | translate }}</label>
+              <select class="db-select" [ngModel]="s.owner?.unitRule || ''" (ngModelChange)="setUnitRule(s, $event)">
+                <option value="">-</option><option *ngFor="let u of unitRules" [value]="u">{{ u }}</option></select></div>
+            <p class="db-hint">{{ 'admin.wf.slaNote' | translate }}</p>
+          </div>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="addStage()"><span class="material-icons mi-sm">add</span> {{ 'admin.wf.addStage' | translate }}</button>
+        </ng-container>
+
+        <!-- ---------------- queues -->
+        <ng-container *ngIf="tab() === 'queues'">
+          <p class="db-hint">{{ 'admin.wf.queuesHint' | translate }}</p>
+          <div class="wf-item" *ngFor="let q of d.queues">
+            <div class="wf-item-head"><strong>{{ q.label.en }}</strong><span class="wf-item-tools"><button class="wf-icon" (click)="removeQueue(q.key)">✕</button></span></div>
+            <div class="wf-param"><label>{{ 'admin.wf.key' | translate }}</label><input class="db-input" [ngModel]="q.key" disabled /></div>
+            <div class="form-row">
+              <div class="wf-param"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="q.label.en" (ngModelChange)="set(q.label, 'en', $event)" /></div>
+              <div class="wf-param"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="q.label.he" (ngModelChange)="set(q.label, 'he', $event)" /></div>
+            </div>
+            <div class="wf-param"><label>{{ 'admin.wf.track' | translate }}</label>
+              <select class="db-select" [ngModel]="q.track" (ngModelChange)="setQueueTrack(q, $event)"><option *ngFor="let t of d.tracks" [value]="t.key">{{ t.label.en }}</option></select></div>
+            <div class="wf-param"><label>{{ 'admin.wf.queueStatuses' | translate }}</label>
+              <div class="wf-checks"><label *ngFor="let s of statusesOfTrack(q.track)"><input type="checkbox" [checked]="q.statuses.includes(s)" (change)="toggleIn(q.statuses, s, q, 'statuses')" /> {{ s }}</label></div></div>
+            <div class="wf-param"><label>{{ 'admin.wf.requires' | translate }}</label>
+              <select class="db-select" [ngModel]="q.requiresEntitlement" (ngModelChange)="set(q, 'requiresEntitlement', $event)"><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+            <div class="wf-param"><label>{{ 'admin.wf.requiresAlso' | translate }}</label>
+              <select class="db-select" [ngModel]="q.requiresAlso || ''" (ngModelChange)="setQueueOptional(q, 'requiresAlso', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+            <div class="wf-param"><label>{{ 'admin.wf.excludes' | translate }}</label>
+              <select class="db-select" [ngModel]="q.excludesEntitlement || ''" (ngModelChange)="setQueueOptional(q, 'excludesEntitlement', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+            <div class="wf-checks">
+              <label><input type="checkbox" [checked]="q.applyScope" (change)="set(q, 'applyScope', !q.applyScope)" /> {{ 'admin.wf.applyScope' | translate }}</label>
+              <label><input type="checkbox" [checked]="q.hideReferredAbove" (change)="set(q, 'hideReferredAbove', !q.hideReferredAbove)" /> {{ 'admin.wf.hideReferred' | translate }}</label>
+            </div>
+          </div>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="addQueue()"><span class="material-icons mi-sm">add</span> {{ 'admin.wf.addQueue' | translate }}</button>
+        </ng-container>
+      </fieldset>
+
+      <!-- ---------------- simulate (read-only, always usable) -->
+      <ng-container *ngIf="tab() === 'simulate'">
+        <p class="db-hint">{{ 'admin.wf.simHint' | translate }}</p>
+        <div class="form-row">
+          <div class="db-form-group"><label>{{ 'admin.wf.sim.actor' | translate }}</label>
+            <select class="db-select" [ngModel]="simActor()" (ngModelChange)="simActor.set($event)"><option value="STAFF">STAFF</option><option value="CUSTOMER">CUSTOMER</option></select></div>
+          <div class="db-form-group" *ngIf="simActor() === 'STAFF'"><label>{{ 'admin.wf.sim.role' | translate }}</label>
+            <select class="db-select" [ngModel]="simRole()" (ngModelChange)="simRole.set($event)"><option *ngFor="let r of roles()" [value]="r.code">{{ r.label }}</option></select></div>
+        </div>
+        <div class="db-form-group"><label>{{ 'admin.wf.sim.status' | translate }}</label>
+          <select class="db-select" [ngModel]="simStatus()" (ngModelChange)="simStatus.set($event)"><option *ngFor="let s of track()?.statuses" [value]="s.key">{{ s.label.en }}</option></select></div>
+
+        <h4 class="wf-h">{{ 'admin.wf.sim.can' | translate }}</h4>
+        <ng-container *ngFor="let a of simulation().actions">
+          <div class="wf-sim" *ngIf="!a.blocked">
+            <strong>{{ a.label }}</strong> <span class="text-muted" *ngIf="a.to">→ {{ a.to }}</span>
+            <div class="db-hint" *ngIf="a.guards">{{ 'admin.wf.sim.alsoChecks' | translate }}: {{ a.guards }}</div>
+          </div>
+        </ng-container>
+        <h4 class="wf-h">{{ 'admin.wf.sim.cannot' | translate }}</h4>
+        <ng-container *ngFor="let a of simulation().actions">
+          <div class="wf-sim wf-sim--no" *ngIf="a.blocked"><strong>{{ a.label }}</strong> <span class="db-hint">{{ a.blocked }}</span></div>
+        </ng-container>
+        <h4 class="wf-h" *ngIf="simActor() === 'STAFF'">{{ 'admin.wf.sim.queues' | translate }}</h4>
+        <div class="wf-sim" *ngFor="let q of simulation().queues">{{ q }}</div>
+      </ng-container>
+
+      <!-- ---------------- problems -->
+      <ng-container *ngIf="tab() === 'problems'">
+        <p class="text-muted" *ngIf="!errors().length">✓ {{ 'admin.wf.noProblems' | translate }}</p>
+        <ul class="wf-errors" *ngIf="errors().length"><li *ngFor="let e of errors()">{{ e }}</li></ul>
+      </ng-container>
+    </div>
+  </div>
+</ng-container>
+
+<!-- one editor for a guard/effect parameter, by kind -->
+<ng-template #param let-obj="obj" let-p="p">
+  <label>{{ p.name }}</label>
+  <ng-container [ngSwitch]="p.kind">
+    <select *ngSwitchCase="'select'" class="db-select" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event)">
+      <option *ngFor="let o of p.options" [value]="o">{{ o }}</option>
+    </select>
+    <select *ngSwitchCase="'status'" class="db-select" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event)">
+      <option *ngFor="let s of track()?.statuses" [value]="s.key">{{ s.label.en }} ({{ s.key }})</option>
+    </select>
+    <select *ngSwitchCase="'track'" class="db-select" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event); obj.statuses = []">
+      <option *ngFor="let t of def()?.tracks" [value]="t.key">{{ t.label.en }}</option>
+    </select>
+    <div *ngSwitchCase="'statuses'" class="wf-checks">
+      <label *ngFor="let s of statusesOfTrack(obj.track)"><input type="checkbox" [checked]="obj.statuses.includes(s)" (change)="toggleIn(obj.statuses, s, obj, 'statuses')" /> {{ s }}</label>
+    </div>
+    <input *ngSwitchCase="'json'" class="db-input" [ngModel]="jsonText(obj[p.name])" (change)="setJson(obj, p.name, $any($event.target).value)" />
+    <input *ngSwitchDefault class="db-input" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event)" />
+  </ng-container>
+</ng-template>
