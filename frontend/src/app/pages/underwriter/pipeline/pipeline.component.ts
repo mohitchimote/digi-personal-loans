@@ -1,5 +1,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { WorkflowService } from '../../../core/services/workflow.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { SlaSummaryComponent } from '../../../shared/sla-summary/sla-summary.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -18,12 +20,14 @@ const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED'
 @Component({
   selector: 'app-uw-pipeline',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, SlaSummaryComponent],
   templateUrl: './pipeline.component.html',
   styleUrl: './pipeline.component.scss'
 })
 export class PipelineComponent implements OnInit {
   private workflow = inject(WorkflowService);
+  private auth = inject(AuthService);
+  ownerFilter = signal<'ALL' | 'ME' | 'NONE'>('ALL');
   applications = signal<LoanApplication[]>([]);
   loading = signal(true);
   activeFilter = signal<string>('ALL');
@@ -49,6 +53,10 @@ export class PipelineComponent implements OnInit {
     } else {
       result = this.applications().filter(a => a.status === filter);
     }
+
+    const owner = this.ownerFilter();
+    if (owner === 'ME') result = result.filter(a => a.workflow?.assigneeUserId != null && a.workflow.assigneeUserId === this.auth.userId);
+    if (owner === 'NONE') result = result.filter(a => a.workflow?.assigneeUserId == null);
 
     const q = this.searchText().trim().toLowerCase();
     if (q) {

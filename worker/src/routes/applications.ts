@@ -486,7 +486,7 @@ applications.get("/banker-queue", async (c) => {
 applications.get("/home-stats", async (c) => {
   const q = await resolveQueue(c, ["home-stats-staff", "home-stats-banker"]);
   const db = getDb(c.env.DB);
-  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt)));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt))));
 });
 
 // Backs the Home dashboard's "Action Items" and "Recent Notifications" panels. There's no

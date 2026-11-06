@@ -404,11 +404,17 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     this.touch();
   }
 
-  setOwnerRoles(s: any, text: string): void {
-    const roles = text.split(',').map(r => r.trim()).filter(Boolean);
-    s.owner = { ...(s.owner ?? {}), roles: roles.length ? roles : undefined };
-    if (!s.owner.roles) delete s.owner.roles;
+  toggleOwnerRole(s: any, code: string): void {
+    const current: string[] = s.owner?.roles ?? [];
+    const roles = current.includes(code) ? current.filter(r => r !== code) : [...current, code];
+    s.owner = { ...(s.owner ?? {}), roles };
+    if (!roles.length) delete s.owner.roles;
     if (!Object.keys(s.owner).length) delete s.owner;
+    this.touch();
+  }
+
+  setRouting(s: any, mode: string): void {
+    if (mode === 'MANUAL') delete s.routing; else s.routing = { mode };
     this.touch();
   }
 

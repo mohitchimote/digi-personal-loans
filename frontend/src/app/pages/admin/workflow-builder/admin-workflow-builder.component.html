@@ -279,10 +279,17 @@
               <div class="wf-param"><label>{{ 'admin.wf.slaHours' | translate }}</label><input class="db-input" type="number" min="0" [ngModel]="s.sla?.hours" (change)="setSlaHours(s, $any($event.target).value)" /></div>
               <div class="wf-param"><label>{{ 'admin.wf.amberAt' | translate }}</label><input class="db-input" type="number" min="1" max="100" [ngModel]="s.sla?.amberAtPercent" (change)="setSlaAmber(s, $any($event.target).value)" /></div>
             </div>
-            <div class="wf-param"><label>{{ 'admin.wf.ownerRoles' | translate }}</label><input class="db-input" [ngModel]="(s.owner?.roles || []).join(', ')" (change)="setOwnerRoles(s, $any($event.target).value)" placeholder="UNDERWRITER, SENIOR_UNDERWRITER" /></div>
+            <div class="wf-param"><label>{{ 'admin.wf.ownerRoles' | translate }}</label>
+              <div class="wf-checks"><label *ngFor="let r of roles()"><input type="checkbox" [checked]="(s.owner?.roles || []).includes(r.code)" (change)="toggleOwnerRole(s, r.code)" /> {{ r.label }}</label></div></div>
             <div class="wf-param"><label>{{ 'admin.wf.unitRule' | translate }}</label>
               <select class="db-select" [ngModel]="s.owner?.unitRule || ''" (ngModelChange)="setUnitRule(s, $event)">
                 <option value="">-</option><option *ngFor="let u of unitRules" [value]="u">{{ u }}</option></select></div>
+            <div class="wf-param"><label>{{ 'admin.wf.routing' | translate }}</label>
+              <select class="db-select" [ngModel]="s.routing?.mode || 'MANUAL'" (ngModelChange)="setRouting(s, $event)">
+                <option value="MANUAL">{{ 'admin.wf.routing.MANUAL' | translate }}</option>
+                <option value="ROUND_ROBIN">{{ 'admin.wf.routing.ROUND_ROBIN' | translate }}</option>
+                <option value="LEAST_LOADED">{{ 'admin.wf.routing.LEAST_LOADED' | translate }}</option>
+              </select></div>
             <p class="db-hint">{{ 'admin.wf.slaNote' | translate }}</p>
           </div>
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="addStage()"><span class="material-icons mi-sm">add</span> {{ 'admin.wf.addStage' | translate }}</button>

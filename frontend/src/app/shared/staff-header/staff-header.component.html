@@ -47,6 +47,11 @@
         </div>
       </div>
 
+      <label class="staff-available" *ngIf="ownsCases" [title]="'own.availableHint' | translate">
+        <input type="checkbox" [checked]="available()" (change)="toggleAvailable()" />
+        {{ 'own.available' | translate }}
+      </label>
+
       <app-language-switcher />
 
       <div class="header-user">

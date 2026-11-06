@@ -3,6 +3,8 @@
   <p class="page-sub">{{ 'uw.pipelineSubtitle' | translate }}</p>
 </div>
 
+<app-sla-summary />
+
 <div class="db-card filter-panel mb-24">
   <div class="db-form-group">
     <input class="db-input" type="text" [(ngModel)]="searchText" [placeholder]="'uw.searchPlaceholder' | translate" />
@@ -15,6 +17,14 @@
         <option *ngFor="let s of statuses()" [value]="s">{{ statusLabel(s) }}</option>
         <option value="PENDING_DISBURSEMENT">{{ 'uw.pendingDisbursement' | translate }}</option>
         <option value="DISBURSED">{{ 'uw.disbursed' | translate }}</option>
+      </select>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'own.owner' | translate }}</label>
+      <select class="db-select" [ngModel]="ownerFilter()" (ngModelChange)="ownerFilter.set($event)">
+        <option value="ALL">{{ 'uw.tileAll' | translate }}</option>
+        <option value="ME">{{ 'own.mine' | translate }}</option>
+        <option value="NONE">{{ 'own.unassigned' | translate }}</option>
       </select>
     </div>
     <div class="db-form-group">
@@ -49,6 +59,8 @@
         <th>{{ 'reviewSubmit.purpose' | translate }}</th>
         <th>{{ 'reviewSubmit.loanTerm' | translate }}</th>
         <th>{{ 'dashboard.status' | translate }}</th>
+        <th>{{ 'own.owner' | translate }}</th>
+        <th>{{ 'own.sla' | translate }}</th>
         <th class="sortable-header" (click)="toggleSort()">{{ 'uw.submitted' | translate }} <span class="material-icons mi-sm">{{ sortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span></th>
         <th>{{ 'dashboard.action' | translate }}</th>
       </tr>
@@ -66,6 +78,11 @@
         <td>
           <span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span>
           <span class="db-badge db-badge--stp" *ngIf="app.autoApproved" [title]="'uw.autoApprovedTitle' | translate">{{ 'uw.autoApprovedBadge' | translate }}</span>
+        </td>
+        <td>{{ app.workflow?.assigneeName || ('own.unassigned' | translate) }}</td>
+        <td>
+          <span class="sla-chip" *ngIf="app.workflow && app.workflow.sla.state !== 'NONE'" [ngClass]="'sla-' + app.workflow.sla.state.toLowerCase()">{{ 'own.sla.' + app.workflow.sla.state | translate }}</span>
+          <span class="text-muted" *ngIf="!app.workflow || app.workflow.sla.state === 'NONE'">—</span>
         </td>
         <td class="text-muted" style="font-size:0.82rem">{{ app.submittedAt | date:'dd MMM yyyy HH:mm' }}</td>
         <td>

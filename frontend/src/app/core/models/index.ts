@@ -75,7 +75,15 @@ export interface LoginOtpInitiatedResponse {
   otpExpiresInSeconds: number;
 }
 
+/** Stage, owner and SLA clock of a case, from the workflow definition. */
+export interface CaseWorkflowInfo {
+  track: string; status: string; stage: string | null; stageLabel: { en: string; he: string } | null; enteredAt: string;
+  assigneeUserId: number | null; assigneeName: string | null; assignedAt: string | null;
+  sla: { state: 'NONE' | 'GREEN' | 'AMBER' | 'RED'; hours: number | null; dueAt: string | null; percentUsed: number | null };
+}
+
 export interface LoanApplication {
+  workflow?: CaseWorkflowInfo | null;
   id: number;
   applicationRef: string;
   customerId: number;

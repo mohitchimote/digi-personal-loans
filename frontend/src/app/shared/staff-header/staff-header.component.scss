@@ -261,3 +261,5 @@
   .staff-bell-item-note { color: var(--dark-text); }
   .staff-bell-item-time { color: var(--mid-grey); font-size: 0.7rem; }
 }
+
+.staff-available { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }

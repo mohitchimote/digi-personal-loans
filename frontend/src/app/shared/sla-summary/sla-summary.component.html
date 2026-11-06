@@ -1,0 +1,37 @@
+<div class="db-card sla-card mb-24" *ngIf="data() as d">
+  <button class="sla-head" type="button" (click)="open.set(!open())">
+    <span class="material-icons mi-sm">{{ open() ? 'expand_more' : 'chevron_right' }}</span>
+    <strong>{{ 'sla.title' | translate }}</strong>
+    <span class="sla-pill sla-red" *ngIf="d.noUnit.red + totalRed(d) > 0">{{ d.noUnit.red + totalRed(d) }} {{ 'sla.breached' | translate }}</span>
+  </button>
+
+  <table class="db-table" *ngIf="open()">
+    <thead>
+      <tr><th>{{ 'sla.unit' | translate }}</th><th>{{ 'sla.open' | translate }}</th><th>{{ 'sla.green' | translate }}</th><th>{{ 'sla.amber' | translate }}</th><th>{{ 'sla.red' | translate }}</th><th>{{ 'sla.unassigned' | translate }}</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of rows()">
+        <td [style.padding-inline-start.px]="12 + r.depth * 22">
+          <button type="button" class="sla-toggle" *ngIf="r.hasChildren" (click)="toggle(r.unit.unitId)">
+            <span class="material-icons mi-sm">{{ expanded().has(r.unit.unitId) ? 'expand_more' : 'chevron_right' }}</span>
+          </button>
+          <span class="sla-spacer" *ngIf="!r.hasChildren"></span>
+          {{ r.unit.name }}
+        </td>
+        <td>{{ r.unit.total.total }}</td>
+        <td>{{ r.unit.total.green }}</td>
+        <td [class.sla-amber-text]="r.unit.total.amber">{{ r.unit.total.amber }}</td>
+        <td [class.sla-red-text]="r.unit.total.red">{{ r.unit.total.red }}</td>
+        <td>{{ r.unit.total.unassigned }}</td>
+      </tr>
+      <tr *ngIf="d.noUnit.total > 0">
+        <td>{{ 'sla.noUnit' | translate }}</td>
+        <td>{{ d.noUnit.total }}</td><td>{{ d.noUnit.green }}</td>
+        <td [class.sla-amber-text]="d.noUnit.amber">{{ d.noUnit.amber }}</td>
+        <td [class.sla-red-text]="d.noUnit.red">{{ d.noUnit.red }}</td>
+        <td>{{ d.noUnit.unassigned }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="text-muted sla-empty" *ngIf="open() && rows().length === 0 && d.noUnit.total === 0">{{ 'sla.none' | translate }}</p>
+</div>

@@ -1,8 +1,9 @@
-import { Component, Input, OnInit, computed, signal } from '@angular/core';
+import { Component, Input, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { WorkflowService } from '../../core/services/workflow.service';
 import { ApplicationService } from '../../core/services/application.service';
 import { LoanApplication, StaffActivityItem } from '../../core/models';
 import { TranslatePipe } from '../pipes/translate.pipe';
@@ -36,6 +37,17 @@ export class StaffHeaderComponent implements OnInit {
   @Input() navItems: StaffNavItem[] = [];
   @Input() caseDetailBasePath = '/underwriter/case';
 
+  private workflow = inject(WorkflowService);
+  /** Whether new cases may be routed to this person automatically. */
+  available = signal(true);
+  get ownsCases(): boolean { return !!this.auth.currentUser()?.entitlements?.includes('portal.underwriter'); }
+
+  toggleAvailable(): void {
+    const next = !this.available();
+    this.available.set(next);
+    this.workflow.setAvailability(next).subscribe({ error: () => this.available.set(!next) });
+  }
+
   now = signal(new Date());
   searchQuery = signal('');
   searchOpen = signal(false);
@@ -63,6 +75,7 @@ export class StaffHeaderComponent implements OnInit {
   ngOnInit(): void {
     this.refreshCache();
     this.refreshActivity();
+    if (this.ownsCases) this.workflow.availability().subscribe({ next: a => this.available.set(a.available), error: () => {} });
     setInterval(() => this.now.set(new Date()), 60_000);
   }
 

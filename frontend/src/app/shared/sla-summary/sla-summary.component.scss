@@ -1,0 +1,9 @@
+.sla-card { padding: 8px 12px; }
+.sla-head { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 8px 4px; cursor: pointer; font: inherit; color: inherit; text-align: start; }
+.sla-pill { padding: 1px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+.sla-red { background: #fbe4e4; color: #a02020; }
+.sla-toggle { border: 0; background: transparent; cursor: pointer; padding: 0; vertical-align: middle; color: inherit; }
+.sla-spacer { display: inline-block; width: 20px; }
+.sla-red-text { color: #a02020; font-weight: 700; }
+.sla-amber-text { color: #8a5a00; font-weight: 700; }
+.sla-empty { padding: 8px 12px; }

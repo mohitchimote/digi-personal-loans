@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { API_BASE } from './api-base';
 import { AuthService } from './auth.service';
 import { I18nService } from '../i18n/i18n.service';
+import { CaseWorkflowInfo } from '../models';
+import { Observable } from 'rxjs';
 
 export interface Bilingual { en: string; he: string }
 export interface StatusInfo { label: Bilingual; badge: string; category: string; stage: string | null }
@@ -20,6 +22,11 @@ export interface WorkflowDefinitionView {
   queues: QueueMeta[];
   actions: Record<string, ActionMeta>;
 }
+
+export interface EligibleStaff { userId: number; name: string; role: string; available: boolean; load: number; lastAssignedAt: string | null }
+export interface SlaCounts { green: number; amber: number; red: number; unassigned: number; total: number }
+export interface SlaUnit { unitId: number; name: string; code: string; parentId: number | null; own: SlaCounts; total: SlaCounts }
+export interface SlaSummary { units: SlaUnit[]; noUnit: SlaCounts }
 
 /** What the signed-in caller may do to one case right now (GET /api/workflow/cases/:ref/actions). */
 export interface CaseActions {
@@ -99,4 +106,14 @@ export class WorkflowService {
   caseActions(appRef: string) {
     return this.http.get<CaseActions>(`${API_BASE}/api/workflow/cases/${appRef}/actions`);
   }
+
+  // ---- ownership, availability and SLA
+  caseState(appRef: string): Observable<CaseWorkflowInfo> { return this.http.get<CaseWorkflowInfo>(`${API_BASE}/api/workflow/cases/${appRef}/state`); }
+  claim(appRef: string): Observable<CaseWorkflowInfo> { return this.http.post<CaseWorkflowInfo>(`${API_BASE}/api/workflow/cases/${appRef}/claim`, {}); }
+  release(appRef: string): Observable<CaseWorkflowInfo> { return this.http.post<CaseWorkflowInfo>(`${API_BASE}/api/workflow/cases/${appRef}/release`, {}); }
+  assign(appRef: string, userId: number): Observable<CaseWorkflowInfo> { return this.http.post<CaseWorkflowInfo>(`${API_BASE}/api/workflow/cases/${appRef}/assign`, { userId }); }
+  eligible(appRef: string): Observable<EligibleStaff[]> { return this.http.get<EligibleStaff[]>(`${API_BASE}/api/workflow/cases/${appRef}/eligible`); }
+  availability(): Observable<{ available: boolean }> { return this.http.get<{ available: boolean }>(`${API_BASE}/api/workflow/availability`); }
+  setAvailability(available: boolean): Observable<{ available: boolean }> { return this.http.put<{ available: boolean }>(`${API_BASE}/api/workflow/availability`, { available }); }
+  slaSummary(): Observable<SlaSummary> { return this.http.get<SlaSummary>(`${API_BASE}/api/workflow/sla-summary`); }
 }

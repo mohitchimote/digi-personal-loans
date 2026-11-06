@@ -1,4 +1,5 @@
 <div *ngIf="!loading() && application()">
+  <app-case-ownership [appRef]="application()!.applicationRef" />
   <div class="uw-case-strip">
     <div class="uw-case-strip-item">
       <span>{{ 'uw.applicant' | translate }}</span>

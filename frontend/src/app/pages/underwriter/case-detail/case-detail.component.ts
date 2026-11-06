@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
+import { CaseOwnershipComponent } from '../../../shared/case-ownership/case-ownership.component';
 import { WorkflowService, CaseActions } from '../../../core/services/workflow.service';
 import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -17,7 +18,7 @@ type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVe
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent],
   templateUrl: './case-detail.component.html',
   styleUrl: './case-detail.component.scss'
 })

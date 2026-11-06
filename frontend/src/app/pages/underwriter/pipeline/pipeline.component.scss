@@ -30,3 +30,8 @@
   .material-icons { font-size: 14px; vertical-align: middle; }
   &:hover { color: var(--tcs-blue, #003F79); }
 }
+
+.sla-chip { display: inline-block; padding: 1px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; }
+.sla-green { background: #e0f4e6; color: #1b6b32; }
+.sla-amber { background: #fff1d6; color: #8a5a00; }
+.sla-red { background: #fbe4e4; color: #a02020; }

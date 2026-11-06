@@ -1,0 +1,29 @@
+<div class="own" *ngIf="info() as i">
+  <div class="own-item"><span>{{ 'own.stage' | translate }}</span><strong>{{ stageName() }}</strong></div>
+  <div class="own-item">
+    <span>{{ 'own.owner' | translate }}</span>
+    <strong>{{ i.assigneeName || ('own.unassigned' | translate) }}</strong>
+  </div>
+  <div class="own-item" *ngIf="i.sla.state !== 'NONE'">
+    <span>{{ 'own.sla' | translate }}</span>
+    <strong><span class="sla-chip" [ngClass]="'sla-' + i.sla.state.toLowerCase()">{{ slaText(i) }}</span>
+      <span class="text-muted own-due" *ngIf="i.sla.dueAt">{{ 'own.due' | translate }} {{ i.sla.dueAt | date:'d MMM, HH:mm' }}</span></strong>
+  </div>
+
+  <div class="own-actions">
+    <button class="db-btn db-btn--primary db-btn--sm" *ngIf="!i.assigneeUserId" (click)="claim()" [disabled]="busy()">{{ 'own.claim' | translate }}</button>
+    <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="isMine() || (i.assigneeUserId && canAssign())" (click)="release()" [disabled]="busy()">{{ 'own.release' | translate }}</button>
+    <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="canAssign() && !assigning()" (click)="openAssign()" [disabled]="busy()">{{ (i.assigneeUserId ? 'own.reassign' : 'own.assign') | translate }}</button>
+  </div>
+
+  <div class="own-assign" *ngIf="assigning()">
+    <select class="db-select" [(ngModel)]="pick">
+      <option value="">{{ 'own.choose' | translate }}</option>
+      <option *ngFor="let p of eligible()" [value]="p.userId">{{ p.name }} · {{ p.load }} {{ 'own.open' | translate }}{{ p.available ? '' : ' · ' + ('own.away' | translate) }}</option>
+    </select>
+    <button class="db-btn db-btn--primary db-btn--sm" (click)="assign()" [disabled]="!pick || busy()">{{ 'own.confirm' | translate }}</button>
+    <button class="db-btn db-btn--ghost db-btn--sm" (click)="assigning.set(false)">{{ 'own.cancel' | translate }}</button>
+  </div>
+
+  <div class="db-error-msg own-error" *ngIf="error()">{{ error() }}</div>
+</div>
