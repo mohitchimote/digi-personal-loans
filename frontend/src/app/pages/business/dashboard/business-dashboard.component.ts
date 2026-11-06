@@ -1,4 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
+import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -15,6 +16,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
   styleUrl: './business-dashboard.component.scss'
 })
 export class BusinessDashboardComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   applications = signal<LoanApplication[]>([]);
   startingApplication = signal(false);
 
@@ -50,7 +52,7 @@ export class BusinessDashboardComponent implements OnInit {
       CONDITIONALLY_APPROVED: 'db-badge--review', REFERRED_TO_SENIOR: 'db-badge--review',
       APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined', WITHDRAWN: 'db-badge--declined',
     };
-    return map[status] || 'db-badge--draft';
+    return this.workflow.badgeClass(status, map[status] || 'db-badge--draft');
   }
 
   statusLabel(status: string): string {

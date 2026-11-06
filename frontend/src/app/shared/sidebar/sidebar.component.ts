@@ -1,4 +1,5 @@
-import { Component, Input, OnInit, signal } from '@angular/core';
+import { Component, Input, OnInit, signal, inject } from '@angular/core';
+import { WorkflowService } from '../../core/services/workflow.service';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -31,6 +32,7 @@ export interface NavItem {
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   @Input() application: LoanApplication | null = null;
   @Input() collapsed = false;
 
@@ -151,7 +153,7 @@ export class SidebarComponent implements OnInit {
   /** The wizard steps always edit the customer's current draft/in-progress application —
    * once an application is submitted/decided, those links no longer apply to it. */
   get isEditableApplication(): boolean {
-    return this.application?.status === 'DRAFT' || this.application?.status === 'IN_PROGRESS';
+    return this.workflow.isEditable(this.application?.status ?? '');
   }
 
   contactAdvisor(): void {

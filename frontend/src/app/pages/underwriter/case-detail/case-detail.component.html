@@ -703,10 +703,10 @@
             <span class="material-icons mi-sm">info</span> {{ 'guarantor.alreadyRequiredNote' | translate }}
           </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || lockedByReferral || isApproved || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
-            <button class="db-btn db-btn--outline" *ngIf="!caseMandate() || caseMandate()!.nextRole" (click)="referToSenior()" [disabled]="submittingAction() || lockedByReferral"><span class="material-icons mi-sm">arrow_upward</span> {{ caseMandate()?.nextRole ? ('mandate.referTo' | translate:{ role: caseMandate()!.nextRole!.label }) : ('uw.referToSenior' | translate) }}</button>
-            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction() || lockedByReferral"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
-            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction() || lockedByReferral" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
+            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || !can('approve') || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
+            <button class="db-btn db-btn--outline" *ngIf="!caseMandate() || caseMandate()!.nextRole" (click)="referToSenior()" [disabled]="submittingAction() || !can('refer')"><span class="material-icons mi-sm">arrow_upward</span> {{ caseMandate()?.nextRole ? ('mandate.referTo' | translate:{ role: caseMandate()!.nextRole!.label }) : ('uw.referToSenior' | translate) }}</button>
+            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction() || !can('send_back')"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
+            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction() || !can('decline')" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
           </div>
         </div>
 
@@ -734,10 +734,10 @@
             </div>
           </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="authoriseFundRelease()" [disabled]="submittingAction() || disbursementStatus === 'FUNDS_RELEASED'">
+            <button class="db-btn db-btn--accent" (click)="authoriseFundRelease()" [disabled]="submittingAction() || !can('authorise')">
               <span class="material-icons mi-sm">payments</span> {{ 'uw.authoriseFundRelease' | translate }}
             </button>
-            <button class="db-btn db-btn--outline" (click)="submitForSecondCheck()" [disabled]="submittingAction() || disbursementStatus === 'FUNDS_RELEASED'">
+            <button class="db-btn db-btn--outline" (click)="submitForSecondCheck()" [disabled]="submittingAction() || !can('second_check')">
               <span class="material-icons mi-sm">autorenew</span> {{ 'uw.submitSecondCheck' | translate }}
             </button>
           </div>

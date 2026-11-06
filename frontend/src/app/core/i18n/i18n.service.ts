@@ -16,6 +16,15 @@ const TOKEN_KEY = 'db_token';
 export class I18nService {
   lang = signal<Lang>(this.loadLang());
 
+  /** Labels supplied by the workflow definition (status names and the like). They win over the
+   * built-in dictionary so an admin renaming a status changes every screen. Read as a signal, so
+   * pages using the (impure) translate pipe re-render when the definition arrives. */
+  private overlay = signal<Record<string, { en: string; he: string }>>({});
+
+  setOverlay(entries: Record<string, { en: string; he: string }>): void {
+    this.overlay.set(entries);
+  }
+
   constructor(private http: HttpClient) {
     this.applyDocumentDirection(this.lang());
   }
@@ -40,7 +49,8 @@ export class I18nService {
 
   t(key: string, params?: Record<string, string | number>): string {
     const dict = DICTS[this.lang()];
-    let text = dict[key] ?? EN[key] ?? key;
+    const fromDefinition = this.overlay()[key];
+    let text = fromDefinition ? fromDefinition[this.lang()] : (dict[key] ?? EN[key] ?? key);
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         text = text.replace(`{{${k}}}`, String(v));

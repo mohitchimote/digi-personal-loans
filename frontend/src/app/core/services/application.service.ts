@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { WorkflowService } from './workflow.service';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
@@ -9,10 +10,10 @@ import { AssistContextService } from './assist-context.service';
 import { AuthService } from './auth.service';
 
 const API = `${API_BASE}/api/applications`;
-const EDITABLE_STATUSES = ['DRAFT', 'IN_PROGRESS'];
 
 @Injectable({ providedIn: 'root' })
 export class ApplicationService {
+  private workflow = inject(WorkflowService);
   constructor(
     private http: HttpClient,
     private router: Router,
@@ -50,7 +51,7 @@ export class ApplicationService {
       : this.getCurrent(customerId).pipe(catchError(() => this.startOrResume(customerId, customerEmail)));
     return source.pipe(
       switchMap(app => {
-        if (isAssisting || EDITABLE_STATUSES.includes(app.status)) return of(app);
+        if (isAssisting || this.workflow.isEditable(app.status)) return of(app);
         this.router.navigate(['/portal/view-application', app.applicationRef]);
         return EMPTY;
       })
@@ -64,7 +65,7 @@ export class ApplicationService {
       : this.getCurrent(customerId).pipe(catchError(() => this.startOrResumeBusiness(customerId, customerEmail)));
     return source.pipe(
       switchMap(app => {
-        if (isAssisting || EDITABLE_STATUSES.includes(app.status)) return of(app);
+        if (isAssisting || this.workflow.isEditable(app.status)) return of(app);
         this.router.navigate(['/business/view-application', app.applicationRef]);
         return EMPTY;
       })
@@ -75,7 +76,7 @@ export class ApplicationService {
    * assisted wizard steps to decide whether to render read-only once resolveEditable(Business)
    * has stopped redirecting them away for a decided application. */
   isEditableStatus(status: string): boolean {
-    return EDITABLE_STATUSES.includes(status);
+    return this.workflow.isEditable(status);
   }
 
   /** While a Banker is assisting, logs an audit note on every section save so there's a record
@@ -253,7 +254,7 @@ export class ApplicationService {
   getResumeRoute(app: LoanApplication): string {
     const isBusiness = app.applicationType === 'BUSINESS';
     const base = isBusiness ? '/business' : '/portal';
-    if (app.status === 'DRAFT' || app.status === 'IN_PROGRESS') {
+    if (this.workflow.isEditable(app.status)) {
       const routes = isBusiness ? this.businessSectionRoutes : this.sectionRoutes;
       return routes[app.currentSection] || (isBusiness ? '/business/apply/company-details' : '/portal/apply/loan-requirements');
     }

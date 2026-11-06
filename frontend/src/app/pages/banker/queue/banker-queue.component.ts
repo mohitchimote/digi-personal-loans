@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -10,6 +11,7 @@ import { applicantDisplayName } from '../../../core/utils/application-display';
 
 // Broader than the banker's day-to-day working set — also needs Declined for deep-links from the
 // Home dashboard's tiles, so it fetches the same home-stats scope rather than /banker-queue.
+// Used until the workflow definition loads; afterwards the filter list comes from its queues.
 const QUEUE_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR', 'APPROVED', 'DECLINED'];
 
 @Component({
@@ -20,6 +22,7 @@ const QUEUE_STATUSES = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'CO
   styleUrl: './banker-queue.component.scss'
 })
 export class BankerQueueComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   applications = signal<LoanApplication[]>([]);
   loading = signal(true);
 
@@ -27,7 +30,7 @@ export class BankerQueueComponent implements OnInit {
   searchText = signal('');
   startDate = signal('');
   endDate = signal('');
-  statuses = QUEUE_STATUSES;
+  statuses = computed(() => this.workflow.queueStatuses('home-stats-banker', QUEUE_STATUSES));
 
   filteredApplications = computed(() => {
     let result = this.applications();

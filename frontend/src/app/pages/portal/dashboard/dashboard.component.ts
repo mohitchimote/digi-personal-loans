@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -25,6 +26,7 @@ interface StatementRow {
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   applications = signal<LoanApplication[]>([]);
   feedbackByAppRef = signal<Record<string, UnderwritingNote[]>>({});
   startingApplication = signal(false);
@@ -299,13 +301,13 @@ export class DashboardComponent implements OnInit {
       CONDITIONALLY_APPROVED: 'db-badge--review', REFERRED_TO_SENIOR: 'db-badge--review',
       APPROVED: 'db-badge--approved', DECLINED: 'db-badge--declined', WITHDRAWN: 'db-badge--declined',
     };
-    return map[status] || 'db-badge--draft';
+    return this.workflow.badgeClass(status, map[status] || 'db-badge--draft');
   }
 
   private readonly cancellableStatuses = ['DRAFT', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR'];
 
   canCancel(app: LoanApplication): boolean {
-    return this.cancellableStatuses.includes(app.status);
+    return this.workflow.canDo('cancel', app.status, this.cancellableStatuses.includes(app.status));
   }
 
   cancelling = signal<string | null>(null);

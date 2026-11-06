@@ -216,6 +216,9 @@ export interface DefinitionProjection {
    * a case pinned to an older version still shows a proper label. */
   statuses: Record<string, Record<string, { label: { en: string; he: string }; badge: string; category: string; stage: string | null }>>;
   queues: WorkflowDefinition["queues"];
+  /** action key -> where it applies, so list pages can answer "can this status be cancelled?"
+   * without a request per case. `from` may contain "*" (any status). */
+  actions: Record<string, { track: string; label: { en: string; he: string }; from: string[]; to: string | null; actors: string[] }>;
 }
 
 export async function projectPublished(db: Db): Promise<DefinitionProjection> {
@@ -231,7 +234,9 @@ export async function projectPublished(db: Db): Promise<DefinitionProjection> {
       for (const s of t.statuses) bucket[s.key] = { label: s.label, badge: s.badge, category: s.category, stage: s.stage };
     }
   }
-  return { definitionId: published.id, key: def.key, version: published.version, stages: def.stages, statuses, queues: def.queues };
+  const actions: DefinitionProjection["actions"] = {};
+  for (const t of def.tracks) for (const x of t.transitions) actions[x.key] = { track: t.key, label: x.label, from: x.from, to: x.to ?? null, actors: x.actors };
+  return { definitionId: published.id, key: def.key, version: published.version, stages: def.stages, statuses, queues: def.queues, actions };
 }
 
 /** Status keys of the case track whose category is one of `categories` (e.g. the statuses in which

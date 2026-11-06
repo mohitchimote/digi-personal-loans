@@ -12,7 +12,7 @@
       <label>{{ 'dashboard.status' | translate }}</label>
       <select class="db-select" [ngModel]="activeFilter()" (ngModelChange)="setFilter($event)">
         <option value="ALL">{{ 'uw.tileAll' | translate }}</option>
-        <option *ngFor="let s of statuses" [value]="s">{{ statusLabel(s) }}</option>
+        <option *ngFor="let s of statuses()" [value]="s">{{ statusLabel(s) }}</option>
         <option value="PENDING_DISBURSEMENT">{{ 'uw.pendingDisbursement' | translate }}</option>
         <option value="DISBURSED">{{ 'uw.disbursed' | translate }}</option>
       </select>

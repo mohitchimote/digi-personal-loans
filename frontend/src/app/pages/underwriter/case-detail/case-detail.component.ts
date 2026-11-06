@@ -1,10 +1,11 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
+import { WorkflowService, CaseActions } from '../../../core/services/workflow.service';
 import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -21,6 +22,7 @@ type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVe
   styleUrl: './case-detail.component.scss'
 })
 export class CaseDetailComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   application = signal<LoanApplication | null>(null);
   notes = signal<UnderwritingNote[]>([]);
   generatedDocs = signal<GeneratedDocument[]>([]);
@@ -239,7 +241,19 @@ export class CaseDetailComponent implements OnInit {
   /** True when the case has been referred above the signed-in approver - every decision action is
    * refused server-side, so the buttons are disabled to match. */
   get lockedByReferral(): boolean {
-    return !!this.caseMandate()?.lockedTo;
+    return this.caseActions()?.blocked['approve']?.code === 'REFERRAL_LOCKED' || !!this.caseMandate()?.lockedTo;
+  }
+
+  /** What the signed-in approver can do to this case right now, from the workflow definition. Until
+   * it has loaded nothing is blocked client-side (the server enforces every action regardless). */
+  caseActions = signal<CaseActions | null>(null);
+  can(action: string): boolean {
+    const a = this.caseActions();
+    return a ? a.allowed.some(x => x.key === action) : true;
+  }
+
+  private loadActions(): void {
+    this.workflow.caseActions(this.appRef).subscribe({ next: a => this.caseActions.set(a), error: () => {} });
   }
 
   /** The open (unresolved) referral, if the case is currently sitting with a senior role. */
@@ -252,6 +266,7 @@ export class CaseDetailComponent implements OnInit {
   }
 
   private load(): void {
+    this.loadActions();
     this.appSvc.getApplication(this.appRef).subscribe({
       next: app => {
         this.application.set(app);

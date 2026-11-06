@@ -1,4 +1,5 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
+import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
@@ -16,6 +17,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
   styleUrl: './business-view-application.component.scss'
 })
 export class BusinessViewApplicationComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   application = signal<LoanApplication | null>(null);
   notes = signal<UnderwritingNote[]>([]);
   loading = signal(true);
@@ -77,7 +79,7 @@ export class BusinessViewApplicationComponent implements OnInit {
 
   get canPullBack(): boolean {
     const status = this.application()?.status;
-    return status === 'SUBMITTED' || status === 'UNDER_REVIEW';
+    return this.workflow.canDo('withdraw', status ?? '', status === 'SUBMITTED' || status === 'UNDER_REVIEW');
   }
 
   pullBack(): void {

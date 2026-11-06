@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -11,6 +12,7 @@ import { applicantDisplayName } from '../../../core/utils/application-display';
 // Broader than the underwriter's day-to-day working set (which excludes closed-out outcomes) —
 // this page also needs to show Declined cases when filtered/deep-linked to from the Home
 // dashboard's tiles, so it fetches the same home-stats scope rather than /pipeline.
+// Used until the workflow definition loads; afterwards the filter list comes from its queues.
 const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED', 'REFERRED_TO_SENIOR', 'APPROVED', 'DECLINED'];
 
 @Component({
@@ -21,6 +23,7 @@ const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED'
   styleUrl: './pipeline.component.scss'
 })
 export class PipelineComponent implements OnInit {
+  private workflow = inject(WorkflowService);
   applications = signal<LoanApplication[]>([]);
   loading = signal(true);
   activeFilter = signal<string>('ALL');
@@ -30,7 +33,8 @@ export class PipelineComponent implements OnInit {
   startDate = signal('');
   endDate = signal('');
 
-  statuses = PIPELINE_STATUSES;
+  /** Filter options: the home-stats scope of the definition (the pipeline plus declined and in-progress). */
+  statuses = computed(() => this.workflow.queueStatuses('home-stats-staff', PIPELINE_STATUSES).filter(s => s !== 'IN_PROGRESS'));
 
   filteredApplications = computed(() => {
     const filter = this.activeFilter();
