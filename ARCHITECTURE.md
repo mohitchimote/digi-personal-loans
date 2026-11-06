@@ -491,6 +491,18 @@ schema's comment on `auditLog`). Extending this to a new service: copy `Complian
 give it that service's own name as the `service` column value, call `record(...)` at the point of
 state change.
 
+### 6.10 Configurable case workflow (2026-11-06)
+
+Case workflow used to be hand-coded in each handler (three parallel mini state machines: `status`, `disbursementStatus`, `currentSection`; status lists duplicated across backend and frontend). It is now a component driven by a versioned **definition**; the wizard's `currentSection` stays with the form builder.
+
+- **One spec, two engines.** `workflow-spec/` (repo root) holds the engine contract (`README.md`), the definition JSON Schema, the default definition (`loan-origination.v1.json`), the list of deliberate behaviour changes (`CORRECTIONS.md`) and **conformance vectors** (`vectors/*.json`, 120). The Worker engine is implemented and passes them (vitest). The Java on-prem target gets a `workflow-service` that must pass the same vectors; until then the Java stack keeps its hand-coded transitions. A transition is not finished until both engines agree.
+- **Pure engine, host around it.** `worker/src/lib/workflow/engine.ts` is pure (`createCase`, `evaluate`, `allowedActions`, `queueAccess`): fixed evaluation order (unknown action, actor type, entitlement, from-status, guards in order, effects). `host.ts` resolves the facts it needs (visibility, mandate, escalation ladder), persists the result in one D1 batch (status mirror columns on `loan_applications`, `wf_case_tracks`, the immutable `wf_transitions` log, referral rows) and runs host-level effects (notes, notifications, email, documents, auto-approval). Route handlers in `applications.ts` call `runAction`; the HTTP API is unchanged.
+- **Code defines primitives, config wires them.** Guard and effect *types* are a finite registry in code; the definition decides which are attached to which action. A new primitive is one code change; reconfiguring a workflow is none (same principle as the entitlement catalog, §5).
+- **Versioning and pinning.** `wf_definitions` (DRAFT, PUBLISHED, ARCHIVED, validated on save and publish) and `wf_cases` (the version each case is pinned to, registered lazily). `status` and `disbursement_status` on `loan_applications` remain as a **mirror written only from engine results**, so existing readers keep working.
+- **Ownership, routing and SLA** are host-level, not engine rules (`lib/workflow/assignment.ts`): the owner and `assigned_at` live on `wf_case_tracks`, `users.is_available` feeds routing, and stage `owner`, `routing` and `sla` in the definition drive them. `chooseAssignee` and `slaStatus` are pure and unit-tested so the Java service can implement the same rules. A case entering a stage is routed in the same write as the move.
+- **Runtime and admin APIs** (`routes/workflow.ts`, `routes/admin-workflow.ts`) serve the published definition, per-case allowed actions, ownership operations and the SLA-by-unit summary; the frontend (`WorkflowService`) renders status labels, queue filters and buttons from them, with the old rules as a fallback until the definition loads. The visual builder is `pages/admin/workflow-builder` (hand-rolled SVG, no new dependency).
+- **Tables:** `wf_definitions`, `wf_cases`, `wf_case_tracks`, `wf_transitions` (migrations 0014, 0015).
+
 ## 7. Frontend architecture
 
 - **Standalone components throughout** (no NgModules), signals for local component state,
@@ -834,6 +846,8 @@ from whoever owns delivery of this feature, not be assumed here:
 - **Argument for the workforce side**: allocation is fundamentally about staff capacity/eligibility
   — an org-structure/availability computation that happens to act on case IDs — and could apply to
   more than loan applications if this platform ever grows other case types.
+
+**Resolved for the Worker (2026-11-06):** allocation (ownership, routing rules, availability and SLA) sits with the workflow component (§6.10), reading org structure and role data as inputs. The same placement is planned for the Java `workflow-service`.
 
 Whichever side it lands on, it depends on the other via the established `client/`-package pattern —
 this doesn't change the integration shape, only which service owns the allocation *decision* versus

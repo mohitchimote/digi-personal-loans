@@ -128,3 +128,14 @@ A runner passes when every vector in every file matches. Both engines ship a run
 ## Changing a definition
 
 The Worker and Java engines both validate definitions on save and on publish (schema, then cross-references: stages, statuses, tracks, queue statuses, entitlements in the catalog, status reachability, `target.*` only with a `REFERRAL_TARGET` guard, globally unique transition keys). Editing `loan-origination.v1.json` means re-running the vectors; adding a new guard or effect type means a schema change, an implementation in both engines, and vectors.
+
+## Ownership, routing and SLA (host-level contract)
+
+These are not engine rules (the engine's results do not depend on them), but a second implementation must behave the same, so the contract is recorded here. Stage fields in a definition: `owner.roles`, `owner.unitRule` (`ANY`, `CASE_UNIT`, `CASE_UNIT_OR_ANCESTOR`), `routing.mode` (`MANUAL` default, `ROUND_ROBIN`, `LEAST_LOADED`) and `sla.hours` / `sla.amberAtPercent` (default 75).
+
+- **Owner.** One owner per track row. A track that changes **stage** loses its owner; if the new stage routes automatically a new owner is chosen in the same write as the move. A status change inside a stage keeps the owner. Closed (TERMINAL) cases cannot be assigned.
+- **Eligible** = enabled staff whose role is in `owner.roles` (with none configured: roles holding `queue.pipeline`), matching `owner.unitRule` against the case's org unit (a case with no unit matches anyone), and able to see the case under their own role's scope.
+- **chooseAssignee(candidates, mode)**: `MANUAL` returns nobody; unavailable people are never chosen; `ROUND_ROBIN` picks the earliest `lastAssignedAt` (never-assigned first); `LEAST_LOADED` picks the lowest open-case count, ties broken as round robin; final tie goes to the lowest user id.
+- **slaStatus(stage, enteredAt, now)**: no SLA configured or closed gives `NONE`; `percent = elapsed / (hours * 3600000) * 100`; `RED` at 100 and over, `AMBER` from `amberAtPercent`, else `GREEN`. Calendar hours.
+- **Operations.** Claim: caller must be eligible; own case is idempotent; someone else's is `409`. Assign: needs `case.assign`; the target must be eligible (`400`). Release: the owner, or anyone with `case.assign`. Each is audited (`CASE_CLAIMED`, `CASE_ASSIGNED`, `CASE_REASSIGNED`, `CASE_RELEASED`, `CASE_AUTO_ASSIGNED`).
+- **Unit tests.** `worker/test/assignment.test.ts` pins the two pure functions; the Java service must reproduce those cases.
