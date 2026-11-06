@@ -1,34 +1,21 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, inArray, isNull, ne, notInArray, or } from "drizzle-orm";
-import type { AppEnv, Env } from "../types";
+import type { AppEnv } from "../types";
 import { getDb, type Db } from "../db/client";
 import { loanApplications, underwritingNotes, caseReferrals } from "../db/schema";
 import { AppError } from "../lib/errors";
-import {
-  ALL_SECTIONS,
-  columnForSection,
-  calculateCompletion,
-  nextSection,
-  sectionLabel,
-  generateApplicationRef,
-  flattenAllSectionValues,
-} from "../lib/sections";
-import { sendNotification, getPreferredLanguage } from "../lib/notifications";
-import { sendTemplatedEmail } from "../lib/email";
-import { greeting, loanPurpose } from "../lib/app-format";
+import { columnForSection, calculateCompletion, nextSection, generateApplicationRef, flattenAllSectionValues } from "../lib/sections";
+import { loanPurpose } from "../lib/app-format";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
-import { getAutoApprovalThreshold } from "../lib/affordability-rules";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
 import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
-import { generateOfferPack } from "../lib/document-pack";
-import { authoriseCardPayment } from "../lib/card-payment";
-import { logError } from "../lib/log";
-import { recordAudit } from "../lib/audit";
-import { requireAuth, assertRole, assertEntitlement, isStaff } from "../middleware/auth";
+import { requireAuth, assertEntitlement, isStaff } from "../middleware/auth";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
 import { caseScopeCondition, assertCaseVisible } from "../lib/org";
-import { resolveMandate, nextRoleUp, roleCodesAbove, assertCanActOnReferral, referralLockLabel, closeReferrals } from "../lib/mandates";
-import { allRoleConfigs } from "../lib/roles";
+import { resolveMandate, nextRoleUp, roleCodesAbove, referralLockLabel } from "../lib/mandates";
+import { runAction } from "../lib/workflow/host";
+import { loadCase } from "../lib/workflow/store";
+import type { TransitionInput } from "../lib/workflow/types";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
 import { isFieldVisible } from "../lib/form-schema-types";
 import type { InferSelectModel } from "drizzle-orm";
@@ -56,24 +43,6 @@ function actorName(c: Context<AppEnv>): string {
   return user.fullName?.trim() || user.email || user.role;
 }
 
-// Re-derives the limit from the AUTHENTICATED user's role (never a client-supplied field) and the
-// CASE's own org unit / application type, so the audit trail's approval can't be spoofed into
-// exceeding a mandate. Limits are admin-configured rows (see lib/mandates.ts); no row = no authority.
-async function assertWithinMandate(
-  db: Db,
-  role: string,
-  approvedAmount: number,
-  app: { orgUnitId: number | null; applicationType: string | null }
-): Promise<void> {
-  const { limit } = await resolveMandate(db, role, app.orgUnitId, app.applicationType);
-  if (approvedAmount > limit) {
-    throw new AppError(
-      `Approved amount (${approvedAmount}) exceeds the ${role} mandate limit (${limit}) for this case. Refer it to a higher approval level - there is no override.`,
-      403
-    );
-  }
-}
-
 // Phase 3 - a case referred up the ladder leaves the queues of roles below its target. Roles not
 // on the ladder (rank null) are unrestricted.
 async function referralVisibility(db: Db, c: Context<AppEnv>) {
@@ -95,8 +64,6 @@ const BANKER_QUEUE_STATUSES = [
   "REFERRED_TO_SENIOR",
   "APPROVED",
 ];
-const CANCELLABLE_STATUSES = ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"];
-
 // Channel-specific field exposure control (2026-09 architecture review, "Field Exposure
 // Controls"/"Channel-Specific Validation"): every section save must match that section's known
 // shape exactly — unrecognised fields are rejected (400), not silently stored or stripped. Returns
@@ -207,190 +174,12 @@ function originOrgUnitId(c: Context<AppEnv>): number | null {
   return isStaff(c) ? u.orgUnitId : null;
 }
 
+const waitUntilOf = (c: Context<AppEnv>): WaitUntil => (p) => c.executionCtx.waitUntil(p);
+
 async function getByRef(db: Db, appRef: string) {
   const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
   if (!app) throw new AppError(`Application not found: ${appRef}`);
   return app;
-}
-
-async function addNote(
-  db: Db,
-  env: Env,
-  appRef: string,
-  section: string,
-  note: string,
-  noteType: string,
-  createdBy: string,
-  waitUntil: WaitUntil
-) {
-  const app = await getByRef(db, appRef);
-  const [saved] = await db
-    .insert(underwritingNotes)
-    .values({
-      applicationRef: appRef,
-      section,
-      note,
-      noteType,
-      createdBy,
-      createdAt: new Date().toISOString(),
-    })
-    .returning();
-
-  // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — every decisioning action funnels through this
-  // one function, so this is the single hook point for all of them (decline/send-back/approve/
-  // refer/disbursement/second-check/edit/note), same shape as the Java side's AuditTrailService.
-  await recordAudit(db, {
-    eventType: noteType,
-    subjectType: "LoanApplication",
-    subjectId: appRef,
-    actor: createdBy,
-    detail: note,
-  });
-
-  if (noteType === "CLARIFICATION_REQUEST" || noteType === "DOCUMENT_REQUEST") {
-    const isDocRequest = noteType === "DOCUMENT_REQUEST";
-    const lang = await getPreferredLanguage(db, app.customerId);
-    const title = lang === "he"
-      ? (isDocRequest ? "נדרש מסמך עבור בקשת ההלוואה שלך" : "נדרש הבהרה בנוגע לבקשת ההלוואה שלך")
-      : (isDocRequest ? "Document Required for Your Loan Application" : "Clarification Needed on Your Loan Application");
-    const message = lang === "he"
-      ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
-        `צוות החיתום שלנו בודק את פרטי ${sectionLabel(section, lang)} שלך וזקוק ל` +
-        `${isDocRequest ? "מסמך נוסף" : "הבהרה מסוימת"} לפני שנוכל להמשיך.\n\n` +
-        `הערת החתם: ${note}\n\n` +
-        `השלבים הבאים: ${
-          isDocRequest
-            ? "אנא התחבר/י לפורטל דיגילנד והעלה/י את המסמך הנדרש בעמוד המסמכים."
-            : "אנא התחבר/י לפורטל דיגילנד, בדוק/י את הבקשה שלך, ועדכן/י את הפרק הרלוונטי."
-        } לאחר מכן, הבקשה שלך תחזור לתור החיתום.`
-      : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
-        `Our underwriting team is reviewing your ${sectionLabel(section)} details and needs ` +
-        `${isDocRequest ? "an additional document" : "some clarification"} before we can proceed.\n\n` +
-        `Underwriter's note: ${note}\n\n` +
-        `Next steps: ${
-          isDocRequest
-            ? "Please log in to your DigiBank portal and upload the requested document from the Documents section."
-            : "Please log in to your DigiBank portal, review your application, and update the relevant section."
-        } Once done, your application will be back in the underwriting queue.`;
-    await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
-    waitUntil(
-      sendTemplatedEmail(db, env, noteType, app, {
-        underwriterNote: note,
-        sectionName: sectionLabel(section),
-      })
-    );
-  }
-
-  return saved;
-}
-
-// Generates the full final-approval offer pack (cover letter + Key Facts Statement + Repayment
-// Schedule, re-run against the actually-approved amount) — wrapped in a swallow-all try/catch,
-// since document generation failure (including R2 not being enabled yet) should never block an
-// underwriting decision.
-async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
-  try {
-    const app = await getByRef(db, appRef);
-    const isBusiness = app.applicationType === "BUSINESS";
-    // Business applications never populate loanRequirementsJson — the loan amount for a business
-    // loan lives in companyDetailsJson instead (see BusinessApprovalComponent / banker-queue's
-    // loanRequirementsSource for the same personal-vs-business source split).
-    const loanSource = isBusiness ? app.companyDetailsJson : app.loanRequirementsJson;
-    if (!app.selectedProductJson || !loanSource) return;
-
-    const product = JSON.parse(app.selectedProductJson);
-    const loan = JSON.parse(loanSource);
-    const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null;
-    const company = app.companyDetailsJson ? JSON.parse(app.companyDetailsJson) : null;
-    const customerName = isBusiness
-      ? (company?.companyName ?? app.customerEmail)
-      : (personal ? `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() : app.customerEmail);
-    const approvedAmount = app.approvedAmount ?? loan.loanAmount ?? 0;
-
-    await generateOfferPack(
-      db,
-      env,
-      {
-        applicationRef: app.applicationRef,
-        customerId: app.customerId,
-        customerName,
-        loanAmount: approvedAmount,
-        productName: product.productName ?? "",
-        interestRate: product.interestRate ?? product.apr ?? 0,
-        termMonths: product.termMonths ?? 0,
-        monthlyRepayment: product.monthlyRepayment ?? 0,
-      },
-      true
-    );
-  } catch (e) {
-    logError("generateFinalApprovalLetter failed (non-fatal)", e, { appRef });
-  }
-}
-
-async function approveApplicationByUnderwriter(
-  db: Db,
-  env: Env,
-  appRef: string,
-  reviewedBy: string,
-  approvedAmount: number | null,
-  autoApproved: boolean,
-  waitUntil: WaitUntil
-) {
-  const app = await getByRef(db, appRef);
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ status: "APPROVED", approvedAmount, autoApproved, referredToRole: null, updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-
-  await addNote(db, env, appRef, "general", "Application approved.", "DECISION_APPROVED", reviewedBy, waitUntil);
-  {
-    const lang = await getPreferredLanguage(db, app.customerId);
-    const title = lang === "he" ? "בקשת ההלוואה שלך אושרה!" : "Your Loan Application Has Been Approved!";
-    const message = lang === "he"
-      ? `${greeting(app, lang)} מזל טוב! בקשתך להלוואה פרטית עבור ${loanPurpose(app, lang)} ` +
-        "נבדקה ואושרה על ידי צוות החיתום שלנו.\n\n" +
-        "השלבים הבאים: אנא התחבר/י לפורטל דיגילנד לצפייה במכתב האישור ובמסמכי הסכם ההלוואה בעמוד המסמכים."
-      : `${greeting(app)} Congratulations! Your personal loan application for ${loanPurpose(app)} ` +
-        "has been reviewed and approved by our underwriting team.\n\n" +
-        "Next steps: Please log in to your DigiBank portal to view your approval letter and loan agreement documents in the Documents section.";
-    await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
-  }
-  waitUntil(
-    sendTemplatedEmail(db, env, "DECISION_APPROVED", app, {
-      approvedAmount: approvedAmount != null ? String(approvedAmount) : "",
-      reviewedBy,
-    })
-  );
-  await generateFinalApprovalLetter(db, env, appRef);
-  return updated;
-}
-
-async function maybeAutoApprove(db: Db, env: Env, app: typeof loanApplications.$inferSelect, waitUntil: WaitUntil) {
-  try {
-    // Business loans always go to manual underwriter review for now — the auto-approval threshold
-    // is sized for personal-loan amounts/risk and reads loanRequirementsJson, which business
-    // applications never populate.
-    if (app.applicationType === "BUSINESS") return;
-    if (!app.affordabilityResultJson) return;
-    const result = JSON.parse(app.affordabilityResultJson);
-    if (result.passed !== true) return;
-
-    const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null;
-    const jointApplication = !!(personal && personal.applicant2 != null);
-
-    const threshold = await getAutoApprovalThreshold(db, jointApplication);
-    if (threshold == null) return;
-
-    const loan = app.loanRequirementsJson ? JSON.parse(app.loanRequirementsJson) : null;
-    const loanAmount = Number(loan?.loanAmount ?? 0);
-    if (loanAmount > threshold) return;
-
-    await approveApplicationByUnderwriter(db, env, app.applicationRef, "System (Auto-Approval)", loanAmount, true, waitUntil);
-  } catch (e) {
-    // Auto-approval is a convenience; failures fall back to manual underwriter review.
-    logError("maybeAutoApprove failed (non-fatal)", e, { appRef: app.applicationRef });
-  }
 }
 
 applications.post("/start", async (c) => {
@@ -421,6 +210,7 @@ applications.post("/start", async (c) => {
       updatedAt: now,
     })
     .returning();
+  await loadCase(db, created);
   return c.json(created);
 });
 
@@ -452,6 +242,7 @@ applications.post("/start-business", async (c) => {
       updatedAt: now,
     })
     .returning();
+  await loadCase(db, created);
   return c.json(created);
 });
 
@@ -621,6 +412,7 @@ applications.post("/start-pre-approved", async (c) => {
     .returning();
 
   await consumePreApprovedOffer(db, nationalId);
+  await loadCase(db, created);
   return c.json(created);
 });
 
@@ -638,25 +430,17 @@ applications.put("/:appRef/section", async (c) => {
   const newCurrentSection = nextSection(section, merged as any);
   const completionPercentage = calculateCompletion(merged as any);
 
-  const [updated] = await db
-    .update(loanApplications)
-    .set({
-      [column]: JSON.stringify(validated),
-      status: "IN_PROGRESS",
-      currentSection: newCurrentSection,
-      completionPercentage,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
+  const { app: updated } = await runAction(c, appRef, {
+    action: "save_section",
+    extraColumns: { [column]: JSON.stringify(validated), currentSection: newCurrentSection, completionPercentage },
+    waitUntil: waitUntilOf(c),
+  });
   return c.json(updated);
 });
 
 applications.put("/:appRef/section-by-underwriter", async (c) => {
-  assertEntitlement(c, "case.editSection");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const editedBy = actorName(c);
   const { section, data } = await c.req.json<{ section: string; data: Record<string, unknown> }>();
 
   const app = await getByRef(db, appRef);
@@ -664,13 +448,12 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   if (!column) throw new AppError(`Unknown section: ${section}`);
   const validated = await validateSectionData(db, app, section, data);
 
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ [column]: JSON.stringify(validated), updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-
-  await addNote(db, c.env, appRef, section, "Section edited by staff member.", "EDIT", editedBy, (p) => c.executionCtx.waitUntil(p));
+  const { app: updated } = await runAction(c, appRef, {
+    action: "edit_section",
+    input: { section },
+    extraColumns: { [column]: JSON.stringify(validated) },
+    waitUntil: waitUntilOf(c),
+  });
   return c.json(updated);
 });
 
@@ -832,12 +615,16 @@ applications.get("/:appRef/notes", async (c) => {
 });
 
 applications.post("/:appRef/notes", async (c) => {
-  assertEntitlement(c, "case.addNote");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const body = await c.req.json<{ section: string; note: string; noteType?: string }>();
-  const saved = await addNote(db, c.env, appRef, body.section, body.note, body.noteType ?? "NOTE", actorName(c), (p) => c.executionCtx.waitUntil(p));
-  return c.json(saved);
+  const noteType = body.noteType ?? "NOTE";
+  // The note types that ask the customer for something are workflow actions of their own.
+  const action = noteType === "CLARIFICATION_REQUEST" ? "request_clarification" : noteType === "DOCUMENT_REQUEST" ? "request_documents" : "add_note";
+  const { note } = await runAction(c, c.req.param("appRef"), {
+    action,
+    input: { section: body.section, text: body.note, noteType },
+    waitUntil: waitUntilOf(c),
+  });
+  return c.json(note);
 });
 
 // Generic GET must come after the more specific /:appRef/* routes above so Hono's router doesn't
@@ -862,309 +649,51 @@ applications.put("/:appRef/affordability-result", async (c) => {
   return c.json(updated);
 });
 
-applications.post("/:appRef/withdraw", async (c) => {
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
-  if (app.status !== "SUBMITTED" && app.status !== "UNDER_REVIEW") {
-    throw new AppError(`Only submitted applications can be pulled back: ${appRef}`);
-  }
-  const [updated] = await db
-    .update(loanApplications)
-    // Un-freezes formVersionId back to null: a withdrawn application is editable again, so it
-    // should resume live-resolving against whatever is currently published, same as any other
-    // in-flight application — not stay pinned to a version from a submission that no longer stands.
-    .set({ status: "IN_PROGRESS", currentSection: "reviewSubmit", formVersionId: null, updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  return c.json(updated);
-});
+// Every lifecycle and decision action below is a workflow transition: which statuses it is allowed
+// from, who may do it, its guards (visibility, referral lock, mandate, ...) and its side effects
+// (notes, notifications, emails, documents) are defined by the workflow definition, not here.
+const act = (c: Context<AppEnv>, action: string, input?: TransitionInput, extraColumns?: Record<string, unknown>) =>
+  runAction(c, c.req.param("appRef")!, { action, input, extraColumns, waitUntil: waitUntilOf(c) }).then((r) => r.app);
 
-applications.post("/:appRef/cancel", async (c) => {
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
-  if (!CANCELLABLE_STATUSES.includes(app.status)) {
-    throw new AppError(`Application cannot be cancelled in its current status: ${appRef}`);
-  }
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ status: "WITHDRAWN", updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  return c.json(updated);
-});
-
-applications.post("/:appRef/submit", async (c) => {
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
-  const now = new Date().toISOString();
-  // Admin Form Builder traceability: freeze whichever form_versions row is PUBLISHED right now —
-  // this is the one and only write to formVersionId (see lib/form-versions.ts's
-  // resolveActiveSchemaVersion doc comment). From this point on this application is judged against
-  // this exact version forever, regardless of any later publish.
-  const activeVersion = await resolveActiveSchemaVersion(db, app);
-  const [updated] = await db
-    .update(loanApplications)
-    .set({
-      status: "SUBMITTED",
-      submittedAt: now,
-      completionPercentage: 100,
-      updatedAt: now,
-      formVersionId: activeVersion?.id ?? null,
-    })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  c.executionCtx.waitUntil(sendTemplatedEmail(db, c.env, "SUBMITTED", updated, {}));
-  return c.json(updated);
-});
+applications.post("/:appRef/withdraw", async (c) => c.json(await act(c, "withdraw")));
+applications.post("/:appRef/cancel", async (c) => c.json(await act(c, "cancel")));
+applications.post("/:appRef/submit", async (c) => c.json(await act(c, "submit")));
 
 applications.post("/:appRef/select-product", async (c) => {
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const productData = await c.req.json<Record<string, unknown>>();
-  await getByRef(db, appRef);
-
-  const [updated] = await db
-    .update(loanApplications)
-    .set({
-      selectedProductId: String(productData.productId ?? ""),
-      selectedProductJson: JSON.stringify(productData),
-      status: "UNDER_REVIEW",
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-
-  await maybeAutoApprove(db, c.env, updated, (p) => c.executionCtx.waitUntil(p));
-  const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
-  return c.json(fresh);
+  return c.json(await act(c, "select_product", undefined, {
+    selectedProductId: String(productData.productId ?? ""),
+    selectedProductJson: JSON.stringify(productData),
+  }));
 });
 
-applications.post("/:appRef/approve", async (c) => {
-  assertEntitlement(c, "case.approve");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
-  if (app.status !== "APPROVED") {
-    const [updated] = await db
-      .update(loanApplications)
-      .set({ status: "CONDITIONALLY_APPROVED", updatedAt: new Date().toISOString() })
-      .where(eq(loanApplications.applicationRef, appRef))
-      .returning();
-    return c.json(updated);
-  }
-  return c.json(app);
-});
+applications.post("/:appRef/approve", async (c) => c.json(await act(c, "approve_conditional")));
 
 applications.post("/:appRef/decline", async (c) => {
-  assertEntitlement(c, "case.decline");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string }>();
-  const reviewedBy = actorName(c);
-  const app = await getByRef(db, appRef);
-  await assertCanActOnReferral(db, app, c.get("authRole"));
-  await closeReferrals(db, appRef);
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ status: "DECLINED", referredToRole: null, updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-
-  await addNote(db, c.env, appRef, "general", body.reason, "DECISION_DECLINED", reviewedBy, (p) => c.executionCtx.waitUntil(p));
-  {
-    const lang = await getPreferredLanguage(db, app.customerId);
-    const title = lang === "he" ? "עדכון לגבי בקשת ההלוואה שלך" : "Update on Your Loan Application";
-    const message = lang === "he"
-      ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
-        "לאחר בדיקה מעמיקה, לא נוכל לאשר את בקשתך בשלב זה.\n\n" +
-        `סיבה: ${body.reason}\n\n` +
-        "השלבים הבאים: מוזמן/ת ליצור קשר עם יועץ דיגילנד שלך לפרטים נוספים, או להגיש בקשה חדשה בעתיד אם הנסיבות ישתנו."
-      : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
-        "After careful review, we are unable to approve your application at this time.\n\n" +
-        `Reason: ${body.reason}\n\n` +
-        "Next steps: You're welcome to contact your DigiBank advisor for more detail, or reapply in the future if your circumstances change.";
-    await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
-  }
-  c.executionCtx.waitUntil(
-    sendTemplatedEmail(db, c.env, "DECISION_DECLINED", app, {
-      declineReason: body.reason,
-      reviewedBy,
-    })
-  );
-  return c.json(updated);
+  return c.json(await act(c, "decline", { reason: body.reason }));
 });
 
 applications.post("/:appRef/send-back", async (c) => {
-  assertEntitlement(c, "case.sendBack");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; requireGuarantor?: string }>();
-  const reviewedBy = actorName(c);
-  const requireGuarantor = String(body.requireGuarantor).toLowerCase() === "true";
-
-  const app = await getByRef(db, appRef);
-  await assertCanActOnReferral(db, app, c.get("authRole"));
-  await closeReferrals(db, appRef);
-  const guarantorNewlyNeeded = requireGuarantor && app.guarantorDetailsJson == null;
-
-  const [updated] = await db
-    .update(loanApplications)
-    .set({
-      status: "IN_PROGRESS",
-      guarantorRequired: requireGuarantor ? true : app.guarantorRequired,
-      currentSection: guarantorNewlyNeeded ? "guarantorDetails" : "reviewSubmit",
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-
-  await addNote(db, c.env, appRef, "general", body.reason, "SEND_BACK", reviewedBy, (p) => c.executionCtx.waitUntil(p));
-
-  const lang = await getPreferredLanguage(db, app.customerId);
-  const guarantorNote = guarantorNewlyNeeded
-    ? (lang === "he"
-        ? " כעת נדרש ערב עבור בקשה זו — אנא מלא/י את פרק פרטי הערב החדש, כולל מסמך תומך עבור הערב, לפני ההגשה מחדש."
-        : " A guarantor is now required for this application — please complete the new Guarantor Details section, " +
-          "including a supporting document for your guarantor, before resubmitting.")
-    : "";
-  const title = lang === "he" ? "נדרשת פעולה בבקשת ההלוואה שלך" : "Action Needed on Your Loan Application";
-  const message = lang === "he"
-    ? `${greeting(app, lang)} תודה שהגשת בקשה להלוואה פרטית עבור ${loanPurpose(app, lang)} בדיגילנד. ` +
-      "צוות החיתום שלנו בדק את בקשתך והחזיר אותה לצורך פרטים נוספים לפני שנוכל להמשיך.\n\n" +
-      `הערת החתם: ${body.reason}\n\n` +
-      "השלבים הבאים: אנא התחבר/י לפורטל דיגילנד, עיין/י במשוב על בקשתך, עדכן/י את הפרק/ים הרלוונטיים, " +
-      "העלה/י מסמכים תומכים אם התבקש, והגש/י מחדש לבדיקה." +
-      guarantorNote
-    : `${greeting(app)} Thank you for applying for a personal loan for ${loanPurpose(app)} with DigiBank. ` +
-      "Our underwriting team has reviewed your application and sent it back for a few additional details before we can proceed.\n\n" +
-      `Underwriter's note: ${body.reason}\n\n` +
-      "Next steps: Please log in to your DigiBank portal, review the feedback on your application, update the relevant section(s), " +
-      "upload any supporting documents if requested, and resubmit for review." +
-      guarantorNote;
-  await sendNotification(db, app.customerId, title, message, "APPLICATION_UPDATE", appRef);
-  c.executionCtx.waitUntil(
-    sendTemplatedEmail(db, c.env, "SEND_BACK", app, {
-      sendBackReason: body.reason,
-      reviewedBy,
-      guarantorRequiredNote: guarantorNote,
-    })
-  );
-  return c.json(updated);
+  return c.json(await act(c, "send_back", { reason: body.reason, requireGuarantor: String(body.requireGuarantor).toLowerCase() === "true" }));
 });
 
 applications.post("/:appRef/approve-by-underwriter", async (c) => {
-  assertEntitlement(c, "case.approve");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const body = await c.req.json<{ approvedAmount?: string | number | null }>();
   // The Angular client sends this as a JS number (or omits it); ported from Java code that read
   // it as a String, so accept either shape defensively rather than assuming one.
-  const approvedAmount =
-    body.approvedAmount != null && String(body.approvedAmount).trim() !== "" ? Number(body.approvedAmount) : null;
-  // Mirrors the client's own validation (an approved amount must be entered), but this is the
-  // enforcement of record, not the client's.
-  if (approvedAmount == null || !(approvedAmount > 0)) {
-    throw new AppError("Approved amount must be greater than zero.", 400);
-  }
-  // The mandate check uses the AUTHENTICATED caller's role (from the verified JWT) and the
-  // recorded reviewer is the AUTHENTICATED caller's own name — neither is ever taken from a
-  // client-supplied field, so this can't be spoofed into exceeding a mandate or misattributing
-  // who made the decision.
-  const authUser = c.get("authUser");
-  const caseRow = await getByRef(db, appRef);
-  await assertCaseVisible(db, authUser, c.get("authRole").scope, caseRow);
-  await assertCanActOnReferral(db, caseRow, c.get("authRole"));
-  await assertWithinMandate(db, authUser.role, approvedAmount, caseRow);
-  const updated = await approveApplicationByUnderwriter(
-    db,
-    c.env,
-    appRef,
-    actorName(c),
-    approvedAmount,
-    false,
-    (p) => c.executionCtx.waitUntil(p)
-  );
-  await closeReferrals(db, appRef);
-  return c.json(updated);
+  const approvedAmount = body.approvedAmount != null && String(body.approvedAmount).trim() !== "" ? Number(body.approvedAmount) : undefined;
+  return c.json(await act(c, "approve", { approvedAmount }));
 });
 
 applications.post("/:appRef/refer-to-senior", async (c) => {
-  assertEntitlement(c, "case.refer");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; toRole?: string }>();
-  const app = await getByRef(db, appRef);
-  const user = c.get("authUser");
-  const role = c.get("authRole");
-  await assertCaseVisible(db, user, role.scope, app);
-  await assertCanActOnReferral(db, app, role);
-
-  // Target = the role directly above the caller on the escalation ladder, unless the caller names
-  // a specific higher one. Either way it must be ranked and strictly above the caller.
-  const ladder = await allRoleConfigs(db);
-  const target = body.toRole ? ladder.find((r) => r.code === body.toRole) : await nextRoleUp(db, role.rank);
-  if (!target || target.rank == null) throw new AppError("There is no higher approval level to refer this case to.", 400);
-  if (target.rank <= (role.rank ?? -1)) throw new AppError("A case can only be referred to a role above your own.", 400);
-
-  await closeReferrals(db, appRef);
-  const now = new Date().toISOString();
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ status: "REFERRED_TO_SENIOR", referredToRole: target.code, updatedAt: now })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  await db.insert(caseReferrals).values({
-    applicationRef: appRef, fromRole: user.role, fromUserId: user.id, fromName: actorName(c),
-    toRole: target.code, reason: body.reason ?? null, createdAt: now,
-  });
-  await addNote(db, c.env, appRef, "general", `${body.reason} (referred to ${target.label})`, "REFERRED_TO_SENIOR", actorName(c), (p) => c.executionCtx.waitUntil(p));
-  return c.json(updated);
+  return c.json(await act(c, "refer", { reason: body.reason, toRole: body.toRole }));
 });
 
-applications.post("/:appRef/disbursement/authorise", async (c) => {
-  assertEntitlement(c, "case.disburse");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  const reviewedBy = actorName(c);
-  const app = await getByRef(db, appRef);
-  // N1 — generate-once-then-persist, same convention as businessFinancialsAnalysisJson: a repeat
-  // authorise call on the same application doesn't regenerate the synthetic transaction.
-  const cardPaymentResultJson = app.cardPaymentResultJson
-    ?? JSON.stringify(authoriseCardPayment(appRef, app.approvedAmount));
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ disbursementStatus: "FUNDS_RELEASED", cardPaymentResultJson, updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  await addNote(db, c.env, appRef, "disbursement", "Fund release authorised.", "DISBURSEMENT_AUTHORISED", reviewedBy, (p) => c.executionCtx.waitUntil(p));
-  {
-    const lang = await getPreferredLanguage(db, app.customerId);
-    const title = lang === "he" ? "כספי ההלוואה שלך שוחררו" : "Your Loan Funds Have Been Released";
-    const message = lang === "he"
-      ? `${greeting(app, lang)} בשורה טובה — כספי ההלוואה שלך עבור ${loanPurpose(app, lang)} אושרו לשחרור ויועברו לחשבון שציינת בקרוב.`
-      : `${greeting(app)} Great news — your loan funds for ${loanPurpose(app)} have been authorised for release and will be transferred to your nominated account shortly.`;
-    await sendNotification(db, app.customerId, title, message, "APPROVAL", appRef);
-  }
-  c.executionCtx.waitUntil(sendTemplatedEmail(db, c.env, "DISBURSEMENT_AUTHORISED", app, { reviewedBy }));
-  return c.json(updated);
-});
-
-applications.post("/:appRef/disbursement/second-check", async (c) => {
-  assertEntitlement(c, "case.disburseSecondCheck");
-  const db = getDb(c.env.DB);
-  const appRef = c.req.param("appRef");
-  await getByRef(db, appRef);
-  const [updated] = await db
-    .update(loanApplications)
-    .set({ disbursementStatus: "SECOND_CHECK_PENDING", updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
-    .returning();
-  await addNote(db, c.env, appRef, "disbursement", "Submitted for second checks before fund release.", "SECOND_CHECK_PENDING", actorName(c), (p) => c.executionCtx.waitUntil(p));
-  return c.json(updated);
-});
+applications.post("/:appRef/disbursement/authorise", async (c) => c.json(await act(c, "authorise")));
+applications.post("/:appRef/disbursement/second-check", async (c) => c.json(await act(c, "second_check")));
 
 // generate-if-absent: computed once per application, persisted, never regenerated — stable
 // across reloads and survives the underwriter editing other sections later.

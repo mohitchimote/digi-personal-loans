@@ -99,6 +99,13 @@
       "when": 1793973182895,
       "tag": "0013_condemned_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1793978507909,
+      "tag": "0014_living_blink",
+      "breakpoints": true
     }
   ]
 }

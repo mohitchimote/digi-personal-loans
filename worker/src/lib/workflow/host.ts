@@ -1,0 +1,243 @@
+import { and, eq, isNull } from "drizzle-orm";
+import type { Context } from "hono";
+import { getDb, type Db } from "../../db/client";
+import { caseReferrals, loanApplications, underwritingNotes, wfCaseTracks, wfTransitions } from "../../db/schema";
+import type { AppEnv, Env } from "../../types";
+import { AppError } from "../errors";
+import { isCaseVisible } from "../org";
+import { resolveMandate } from "../mandates";
+import { allRoleConfigs } from "../roles";
+import { recordAudit } from "../audit";
+import { sendNotification, getPreferredLanguage } from "../notifications";
+import { sendTemplatedEmail } from "../email";
+import { getAutoApprovalThreshold } from "../affordability-rules";
+import { generateOfferPack } from "../document-pack";
+import { authoriseCardPayment } from "../card-payment";
+import { resolveActiveSchemaVersion } from "../form-versions";
+import { logError } from "../log";
+import { evaluate, findTransition } from "./engine";
+import { loadCase } from "./store";
+import { buildEmailVars, buildNotification, type Vars } from "./messages";
+import type { Actor, Facts, TransitionInput, TransitionSuccess, WorkflowDefinition } from "./types";
+
+// The Worker side of the workflow engine. engine.ts is pure; this resolves the facts it needs,
+// persists its result, and runs the side effects a definition asks for.
+
+type LoanRow = typeof loanApplications.$inferSelect;
+type NoteRow = typeof underwritingNotes.$inferSelect;
+type WaitUntil = (promise: Promise<unknown>) => void;
+
+export interface RunOptions {
+  action: string;
+  input?: TransitionInput;
+  /** Overrides the authenticated caller (used for SYSTEM actions such as auto-approval). */
+  actor?: Actor;
+  /** Application data the route has already validated, written in the same batch as the state. */
+  extraColumns?: Record<string, unknown>;
+  waitUntil: WaitUntil;
+}
+
+// Fields the engine may write on the application row (anything else in a definition is rejected
+// at validation time, so this is a second line of defence).
+const WRITABLE_FIELDS = new Set(["submittedAt", "completionPercentage", "approvedAmount", "autoApproved", "referredToRole", "guarantorRequired", "currentSection"]);
+
+const displayName = (u: { fullName: string | null; email: string; role: string }) => u.fullName?.trim() || u.email || u.role;
+
+export const SYSTEM_AUTO_APPROVAL: Actor = {
+  type: "SYSTEM", userId: 0, name: "System (Auto-Approval)", role: null, rank: null, entitlements: [], scope: "ALL",
+};
+
+function transitionHasGuard(def: WorkflowDefinition, action: string, type: string): boolean {
+  return !!findTransition(def, action)?.transition.guards.some((g) => g.type === type);
+}
+
+async function insertNote(db: Db, appRef: string, section: string, note: string, noteType: string, createdBy: string): Promise<NoteRow> {
+  const [saved] = await db.insert(underwritingNotes).values({ applicationRef: appRef, section, note, noteType, createdBy, createdAt: new Date().toISOString() }).returning();
+  // Open Point #19: every decisioning action is audited through its note, as it always was.
+  await recordAudit(db, { eventType: noteType, subjectType: "LoanApplication", subjectId: appRef, actor: createdBy, detail: note });
+  return saved;
+}
+
+export interface RunResult { app: LoanRow; /** The last note this action recorded, if any. */ note: NoteRow | null }
+
+/** Runs one workflow action on a case end to end. Throws AppError (with the engine's HTTP status)
+ * when the action is not allowed; otherwise persists the new state and returns the fresh row. */
+export async function runAction(c: Context<AppEnv>, appRef: string, o: RunOptions): Promise<RunResult> {
+  const db = getDb(c.env.DB);
+  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  if (!app) throw new AppError(`Application not found: ${appRef}`);
+
+  const loaded = await loadCase(db, app);
+  const user = c.get("authUser");
+  const role = c.get("authRole");
+  const actor: Actor = o.actor ?? {
+    type: role.isStaff ? "STAFF" : "CUSTOMER",
+    userId: user.id, name: displayName(user), role: user.role, rank: role.rank,
+    entitlements: [...role.entitlements], scope: role.scope,
+  };
+
+  const facts: Facts = {
+    caseVisible: actor.type === "SYSTEM" ? true : await isCaseVisible(db, user, role.scope, app),
+    isOwner: user.id === app.customerId,
+    mandateLimit:
+      actor.type === "STAFF" && transitionHasGuard(loaded.definition, o.action, "MANDATE")
+        ? (await resolveMandate(db, user.role, app.orgUnitId, app.applicationType)).limit
+        : null,
+    ladder: (await allRoleConfigs(db)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
+  };
+
+  const now = new Date().toISOString();
+  const result = evaluate(loaded.definition, { case: loaded.state, request: { action: o.action, actor, input: o.input, now }, facts });
+  if (!result.ok) throw new AppError(result.message, result.status);
+
+  await persist(db, app, loaded.definitionId, loaded.definition, result, o, actor, now);
+  const note = await runHostEffects(c, db, app, result, o, actor);
+
+  const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  return { app: fresh, note };
+}
+
+async function persist(
+  db: Db, app: LoanRow, definitionId: number, def: WorkflowDefinition, r: TransitionSuccess, o: RunOptions, actor: Actor, now: string,
+) {
+  const transition = findTransition(def, r.action)!.transition;
+  const statusChanged = r.from.status !== r.to.status;
+  const set: Record<string, unknown> = { ...(o.extraColumns ?? {}) };
+
+  if (statusChanged) {
+    if (r.track === "case") set.status = r.to.status;
+    if (r.track === "disbursement") set.disbursementStatus = r.to.status === "NOT_STARTED" ? null : r.to.status;
+  }
+  for (const [k, v] of Object.entries(r.fieldUpdates)) if (WRITABLE_FIELDS.has(k)) set[k] = v;
+  // Freeze / release the form version in the same write as the status change.
+  if (r.hostEffects.some((e) => e.type === "PIN_FORM_VERSION")) set.formVersionId = (await resolveActiveSchemaVersion(db, app))?.id ?? null;
+  if (r.hostEffects.some((e) => e.type === "UNPIN_FORM_VERSION")) set.formVersionId = null;
+  // select-product re-enters the same status; nothing to write unless something else changed.
+  if (Object.keys(set).length > 0) set.updatedAt = now;
+
+  const queries: unknown[] = [];
+  if (Object.keys(set).length > 0) queries.push(db.update(loanApplications).set(set).where(eq(loanApplications.applicationRef, app.applicationRef)));
+  if (statusChanged) {
+    queries.push(
+      db.insert(wfCaseTracks)
+        .values({ applicationRef: app.applicationRef, trackKey: r.track, status: r.to.status, stage: r.to.stage, enteredAt: now })
+        .onConflictDoUpdate({ target: [wfCaseTracks.applicationRef, wfCaseTracks.trackKey], set: { status: r.to.status, stage: r.to.stage, enteredAt: now } }),
+    );
+  }
+  // History records real workflow moves, not notes or staff edits (those have no target status).
+  if (transition.to) {
+    queries.push(db.insert(wfTransitions).values({
+      applicationRef: app.applicationRef, trackKey: r.track, action: r.log.action,
+      fromStatus: r.log.fromStatus, toStatus: r.log.toStatus, fromStage: r.log.fromStage, toStage: r.log.toStage,
+      actorType: r.log.actorType, actorUserId: r.log.actorUserId, actorName: r.log.actorName, actorRole: r.log.actorRole,
+      reason: r.log.reason, at: r.log.at, definitionId,
+    }));
+  }
+  if (r.referral.close) {
+    queries.push(db.update(caseReferrals).set({ resolvedAt: now }).where(and(eq(caseReferrals.applicationRef, app.applicationRef), isNull(caseReferrals.resolvedAt))));
+  }
+  if (r.referral.open) {
+    queries.push(db.insert(caseReferrals).values({
+      applicationRef: app.applicationRef, fromRole: actor.role ?? "SYSTEM", fromUserId: actor.userId, fromName: actor.name,
+      toRole: r.referral.open.toRole, reason: r.log.reason, createdAt: now,
+    }));
+  }
+  // One atomic write for state, history and referral rows (D1 batch = a single transaction).
+  if (queries.length > 0) await db.batch(queries as unknown as [never, ...never[]]);
+}
+
+async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: TransitionSuccess, o: RunOptions, actor: Actor): Promise<NoteRow | null> {
+  let lastNote: NoteRow | null = null;
+  let lang: "en" | "he" | null = null;
+  const language = async () => (lang ??= await getPreferredLanguage(db, app.customerId));
+
+  for (const e of r.hostEffects) {
+    switch (e.type) {
+      case "NOTE":
+        lastNote = await insertNote(db, app.applicationRef, String(e.section ?? "general"), String(e.text ?? ""), String(e.noteType ?? "NOTE"), actor.name);
+        break;
+      case "NOTIFY": {
+        const spec = buildNotification(String(e.template), app, await language(), (e.vars ?? {}) as Vars);
+        if (spec) await sendNotification(db, app.customerId, spec.title, spec.message, spec.type, app.applicationRef);
+        break;
+      }
+      case "EMAIL":
+        o.waitUntil(sendTemplatedEmail(db, c.env, String(e.event), app, buildEmailVars(String(e.event), (e.vars ?? {}) as Vars, await language())));
+        break;
+      case "GENERATE_DOC":
+        await generateFinalApprovalLetter(db, c.env, app.applicationRef);
+        break;
+      case "CARD_PAYMENT": {
+        // N1 - generate once, then persist: a repeat call never regenerates the synthetic transaction.
+        const json = app.cardPaymentResultJson ?? JSON.stringify(authoriseCardPayment(app.applicationRef, app.approvedAmount));
+        await db.update(loanApplications).set({ cardPaymentResultJson: json }).where(eq(loanApplications.applicationRef, app.applicationRef));
+        break;
+      }
+      case "RUN_AUTO_APPROVAL":
+        await maybeAutoApprove(c, db, app, o.waitUntil);
+        break;
+      // PIN_FORM_VERSION / UNPIN_FORM_VERSION were applied in persist().
+    }
+  }
+  return lastNote;
+}
+
+/** Auto-approval is a convenience; failures fall back to manual underwriter review. */
+async function maybeAutoApprove(c: Context<AppEnv>, db: Db, app: LoanRow, waitUntil: WaitUntil) {
+  try {
+    const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, app.applicationRef)).limit(1);
+    const a = fresh ?? app;
+    // Business loans always go to manual review for now: the threshold is sized for personal loans
+    // and reads loanRequirementsJson, which business applications never populate.
+    if (a.applicationType === "BUSINESS") return;
+    if (!a.affordabilityResultJson) return;
+    if (JSON.parse(a.affordabilityResultJson).passed !== true) return;
+
+    const personal = a.personalDetailsJson ? JSON.parse(a.personalDetailsJson) : null;
+    const threshold = await getAutoApprovalThreshold(db, !!(personal && personal.applicant2 != null));
+    if (threshold == null) return;
+
+    const loan = a.loanRequirementsJson ? JSON.parse(a.loanRequirementsJson) : null;
+    const loanAmount = Number(loan?.loanAmount ?? 0);
+    if (loanAmount > threshold) return;
+
+    await runAction(c, a.applicationRef, { action: "auto_approve", actor: SYSTEM_AUTO_APPROVAL, input: { approvedAmount: loanAmount }, waitUntil });
+  } catch (e) {
+    logError("maybeAutoApprove failed (non-fatal)", e, { appRef: app.applicationRef });
+  }
+}
+
+// Generates the full final-approval offer pack (cover letter + Key Facts Statement + Repayment
+// Schedule, re-run against the actually-approved amount). Swallow-all: document generation failure
+// (including R2 not being enabled yet) must never block an underwriting decision.
+async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
+  try {
+    const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+    if (!app) return;
+    const isBusiness = app.applicationType === "BUSINESS";
+    // Business applications never populate loanRequirementsJson; their loan amount lives in companyDetailsJson.
+    const loanSource = isBusiness ? app.companyDetailsJson : app.loanRequirementsJson;
+    if (!app.selectedProductJson || !loanSource) return;
+
+    const product = JSON.parse(app.selectedProductJson);
+    const loan = JSON.parse(loanSource);
+    const personal = app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null;
+    const company = app.companyDetailsJson ? JSON.parse(app.companyDetailsJson) : null;
+    const customerName = isBusiness
+      ? (company?.companyName ?? app.customerEmail)
+      : (personal ? `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() : app.customerEmail);
+    const approvedAmount = app.approvedAmount ?? loan.loanAmount ?? 0;
+
+    await generateOfferPack(
+      db, env,
+      {
+        applicationRef: app.applicationRef, customerId: app.customerId, customerName, loanAmount: approvedAmount,
+        productName: product.productName ?? "", interestRate: product.interestRate ?? product.apr ?? 0,
+        termMonths: product.termMonths ?? 0, monthlyRepayment: product.monthlyRepayment ?? 0,
+      },
+      true,
+    );
+  } catch (e) {
+    logError("generateFinalApprovalLetter failed (non-fatal)", e, { appRef });
+  }
+}

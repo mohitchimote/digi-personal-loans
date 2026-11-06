@@ -113,6 +113,59 @@ export const roleEntitlements = sqliteTable("role_entitlements", {
   entitlement: text("entitlement").notNull(),
 }, (t) => ({ pk: primaryKey({ columns: [t.roleCode, t.entitlement] }) }));
 
+// Workflow engine (workflow-spec/README.md). Definitions are versioned like form_versions
+// (DRAFT -> PUBLISHED -> ARCHIVED); a case is pinned to the definition that was published when it
+// was registered, so workflow semantics never change under an in-flight case.
+export const wfDefinitions = sqliteTable("wf_definitions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  definitionKey: text("definition_key").notNull(),
+  version: integer("version").notNull(),
+  status: text("status").notNull().default("DRAFT"),
+  definitionJson: text("definition_json").notNull(),
+  changeNote: text("change_note"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+  publishedAt: text("published_at"),
+  publishedBy: text("published_by"),
+});
+
+export const wfCases = sqliteTable("wf_cases", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationRef: text("application_ref").notNull().unique(),
+  definitionId: integer("definition_id").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+// One row per track (case, disbursement, ...): where the case is now and since when.
+export const wfCaseTracks = sqliteTable("wf_case_tracks", {
+  applicationRef: text("application_ref").notNull(),
+  trackKey: text("track_key").notNull(),
+  status: text("status").notNull(),
+  stage: text("stage"),
+  enteredAt: text("entered_at").notNull(),
+  assigneeUserId: integer("assignee_user_id"),
+}, (t) => ({ pk: primaryKey({ columns: [t.applicationRef, t.trackKey] }) }));
+
+// Immutable history of every workflow action. Replaces reading free-text notes to answer
+// "how long was it in review, and who moved it".
+export const wfTransitions = sqliteTable("wf_transitions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationRef: text("application_ref").notNull(),
+  trackKey: text("track_key").notNull(),
+  action: text("action").notNull(),
+  fromStatus: text("from_status").notNull(),
+  toStatus: text("to_status").notNull(),
+  fromStage: text("from_stage"),
+  toStage: text("to_stage"),
+  actorType: text("actor_type").notNull(),
+  actorUserId: integer("actor_user_id").notNull(),
+  actorName: text("actor_name").notNull(),
+  actorRole: text("actor_role"),
+  reason: text("reason"),
+  at: text("at").notNull(),
+  definitionId: integer("definition_id").notNull(),
+});
+
 export const loanApplications = sqliteTable("loan_applications", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull().unique(),

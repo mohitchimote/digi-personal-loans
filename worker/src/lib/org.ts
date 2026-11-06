@@ -44,8 +44,11 @@ export async function caseScopeCondition(db: Db, user: AuthUser, scope: Scope): 
 }
 
 /** Throws 404 (not 403 — don't confirm existence) if the case is outside the user's scope. */
-export async function assertCaseVisible(db: Db, user: AuthUser, scope: Scope, app: { orgUnitId: number | null }): Promise<void> {
+export async function isCaseVisible(db: Db, user: AuthUser, scope: Scope, app: { orgUnitId: number | null }): Promise<boolean> {
   const ids = await visibleOrgUnitIds(db, user, scope);
-  if (ids === null || app.orgUnitId == null) return;
-  if (!ids.includes(app.orgUnitId)) throw new AppError("Application not found.", 404);
+  return ids === null || app.orgUnitId == null || ids.includes(app.orgUnitId);
+}
+
+export async function assertCaseVisible(db: Db, user: AuthUser, scope: Scope, app: { orgUnitId: number | null }): Promise<void> {
+  if (!(await isCaseVisible(db, user, scope, app))) throw new AppError("Application not found.", 404);
 }
