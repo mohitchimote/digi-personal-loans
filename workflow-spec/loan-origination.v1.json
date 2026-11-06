@@ -6,9 +6,12 @@
 
   "stages": [
     { "key": "INTAKE", "label": { "en": "Application", "he": "הגשת בקשה" } },
-    { "key": "REVIEW", "label": { "en": "Underwriting review", "he": "בדיקת חיתום" } },
-    { "key": "APPROVAL", "label": { "en": "Decision and approval", "he": "החלטה ואישור" } },
-    { "key": "DISBURSEMENT", "label": { "en": "Disbursement", "he": "שחרור כספים" } },
+    { "key": "REVIEW", "label": { "en": "Underwriting review", "he": "בדיקת חיתום" },
+      "owner": { "roles": ["UNDERWRITER", "SENIOR_UNDERWRITER"], "unitRule": "ANY" }, "sla": { "hours": 48, "amberAtPercent": 75 }, "routing": { "mode": "MANUAL" } },
+    { "key": "APPROVAL", "label": { "en": "Decision and approval", "he": "החלטה ואישור" },
+      "sla": { "hours": 24, "amberAtPercent": 75 } },
+    { "key": "DISBURSEMENT", "label": { "en": "Disbursement", "he": "שחרור כספים" },
+      "sla": { "hours": 24, "amberAtPercent": 75 } },
     { "key": "CLOSED", "label": { "en": "Closed", "he": "סגור" } }
   ],
 

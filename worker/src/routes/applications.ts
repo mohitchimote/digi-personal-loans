@@ -15,6 +15,7 @@ import { caseScopeCondition, assertCaseVisible } from "../lib/org";
 import { resolveMandate, nextRoleUp, roleCodesAbove, referralLockLabel } from "../lib/mandates";
 import { resolveQueue, runAction } from "../lib/workflow/host";
 import { loadCase, statusesByCategory } from "../lib/workflow/store";
+import { withWorkflowInfo } from "../lib/workflow/assignment";
 import type { QueueDef } from "../lib/workflow/types";
 import type { TransitionInput } from "../lib/workflow/types";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
@@ -458,16 +459,25 @@ async function queueWhere(c: Context<AppEnv>, q: QueueDef) {
   );
 }
 
+// Queue rows carry `workflow` (stage, owner, SLA clock). ?owner=me or ?owner=unassigned narrows the list.
+async function queueRows(c: Context<AppEnv>, rows: (typeof loanApplications.$inferSelect)[]) {
+  const withInfo = await withWorkflowInfo(getDb(c.env.DB), rows);
+  const owner = c.req.query("owner");
+  if (owner === "me") return withInfo.filter((r) => r.workflow?.assigneeUserId === c.get("authUser").id);
+  if (owner === "unassigned") return withInfo.filter((r) => r.workflow?.assigneeUserId == null);
+  return withInfo;
+}
+
 applications.get("/pipeline", async (c) => {
   const q = await resolveQueue(c, ["pipeline"]);
   const db = getDb(c.env.DB);
-  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(loanApplications.submittedAt));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(loanApplications.submittedAt)));
 });
 
 applications.get("/banker-queue", async (c) => {
   const q = await resolveQueue(c, ["banker-queue"]);
   const db = getDb(c.env.DB);
-  return c.json(await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt)));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt))));
 });
 
 // Broader than /pipeline and /banker-queue (which drive their respective list pages and

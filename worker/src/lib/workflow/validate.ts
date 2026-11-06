@@ -58,6 +58,7 @@ const stage = z.object({
   label,
   owner: z.object({ roles: z.array(z.string()).optional(), unitRule: z.enum(["ANY", "CASE_UNIT", "CASE_UNIT_OR_ANCESTOR"]).optional() }).strict().optional(),
   sla: z.object({ hours: z.number().positive(), amberAtPercent: z.number().min(1).max(100).optional() }).strict().optional(),
+  routing: z.object({ mode: z.enum(["MANUAL", "ROUND_ROBIN", "LEAST_LOADED"]) }).strict().optional(),
 }).strict();
 
 const status = z.object({

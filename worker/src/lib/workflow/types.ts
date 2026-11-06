@@ -12,6 +12,8 @@ export interface StageDef {
   label: Label;
   owner?: { roles?: string[]; unitRule?: "ANY" | "CASE_UNIT" | "CASE_UNIT_OR_ANCESTOR" };
   sla?: { hours: number; amberAtPercent?: number };
+  /** How a case entering this stage is given an owner. Absent = MANUAL (people claim it). */
+  routing?: { mode: "MANUAL" | "ROUND_ROBIN" | "LEAST_LOADED" };
 }
 
 export interface StatusDef {

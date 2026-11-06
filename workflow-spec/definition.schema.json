@@ -37,7 +37,7 @@
         "key": { "$ref": "#/$defs/key" },
         "label": { "$ref": "#/$defs/label" },
         "owner": {
-          "description": "Reserved for P3 routing: roles that own cases in this stage and how the org unit is matched.",
+          "description": "Roles that own cases in this stage (who may claim them and who routing may pick) and how the org unit is matched.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -46,11 +46,18 @@
           }
         },
         "sla": {
-          "description": "Reserved for P3: time allowed in this stage.",
+          "description": "Time allowed in this stage; drives the green / amber / red clock.",
           "type": "object",
           "additionalProperties": false,
           "required": ["hours"],
           "properties": { "hours": { "type": "number", "exclusiveMinimum": 0 }, "amberAtPercent": { "type": "number", "minimum": 1, "maximum": 100 } }
+        },
+        "routing": {
+          "description": "How a case entering this stage gets an owner. MANUAL (default): people claim it. ROUND_ROBIN: the eligible person who was assigned longest ago. LEAST_LOADED: the eligible person with the fewest open cases. Unavailable staff are skipped.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": { "mode": { "enum": ["MANUAL", "ROUND_ROBIN", "LEAST_LOADED"] } }
         }
       }
     },

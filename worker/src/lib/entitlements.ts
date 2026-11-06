@@ -25,6 +25,7 @@ export const ENTITLEMENT_CATALOG: EntitlementDef[] = [
   { key: "case.refer", group: "Case actions", label: "Refer to senior", description: "Escalate an application up the approval chain." },
   { key: "case.disburse", group: "Case actions", label: "Authorise fund release", description: "First authorisation of disbursement." },
   { key: "case.disburseSecondCheck", group: "Case actions", label: "Second-check fund release", description: "Second (four-eyes) authorisation of disbursement." },
+  { key: "case.assign", group: "Case actions", label: "Assign and reassign cases", description: "Assign a case to a colleague, move it between people, and see who is eligible." },
   { key: "case.resolveVerification", group: "Case actions", label: "Resolve data-verification flags", description: "Accept or reject data-verification rule results." },
   { key: "case.actAsCustomer", group: "Case actions", label: "Act on a customer's behalf", description: "Open and edit a customer's application, and register customers (assisted origination)." },
 

@@ -16,6 +16,7 @@ import { authoriseCardPayment } from "../card-payment";
 import { resolveActiveSchemaVersion } from "../form-versions";
 import { logError } from "../log";
 import { allowedActions, evaluate, findTransition, queueAccess } from "./engine";
+import { routeOnEntry } from "./assignment";
 import { ensureDefaultDefinition, loadCase, parseDefinition } from "./store";
 import { buildEmailVars, buildNotification, type Vars } from "./messages";
 import type { Actor, Facts, QueueDef, TransitionInput, TransitionSuccess, WorkflowDefinition } from "./types";
@@ -158,13 +159,19 @@ async function persist(
   // select-product re-enters the same status; nothing to write unless something else changed.
   if (Object.keys(set).length > 0) set.updatedAt = now;
 
+  // A case entering a new stage loses its previous owner and, if that stage routes automatically,
+  // is handed to the next eligible person in the same atomic write as the move.
+  const stageChanged = statusChanged && r.from.stage !== r.to.stage;
+  const routed = stageChanged ? await routeOnEntry(db, def, app, r.to.stage, r.track) : null;
+  const ownerSet = stageChanged ? { assigneeUserId: routed?.userId ?? null, assignedAt: routed ? now : null } : {};
+
   const queries: unknown[] = [];
   if (Object.keys(set).length > 0) queries.push(db.update(loanApplications).set(set).where(eq(loanApplications.applicationRef, app.applicationRef)));
   if (statusChanged) {
     queries.push(
       db.insert(wfCaseTracks)
-        .values({ applicationRef: app.applicationRef, trackKey: r.track, status: r.to.status, stage: r.to.stage, enteredAt: now })
-        .onConflictDoUpdate({ target: [wfCaseTracks.applicationRef, wfCaseTracks.trackKey], set: { status: r.to.status, stage: r.to.stage, enteredAt: now } }),
+        .values({ applicationRef: app.applicationRef, trackKey: r.track, status: r.to.status, stage: r.to.stage, enteredAt: now, ...ownerSet })
+        .onConflictDoUpdate({ target: [wfCaseTracks.applicationRef, wfCaseTracks.trackKey], set: { status: r.to.status, stage: r.to.stage, enteredAt: now, ...ownerSet } }),
     );
   }
   // History records real workflow moves, not notes or staff edits (those have no target status).
@@ -187,6 +194,9 @@ async function persist(
   }
   // One atomic write for state, history and referral rows (D1 batch = a single transaction).
   if (queries.length > 0) await db.batch(queries as unknown as [never, ...never[]]);
+  if (routed) {
+    await recordAudit(db, { eventType: "CASE_AUTO_ASSIGNED", subjectType: "LoanApplication", subjectId: app.applicationRef, actor: "System (Routing)", detail: `${routed.name} (${r.to.stage})` });
+  }
 }
 
 async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: TransitionSuccess, o: RunOptions, actor: Actor): Promise<NoteRow | null> {

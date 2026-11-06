@@ -19,6 +19,8 @@ export const users = sqliteTable("users", {
   createdAt: text("created_at").notNull(),
   lastLogin: text("last_login"),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  // Staff availability for automatic case routing (off = skipped by round-robin / least-loaded).
+  isAvailable: integer("is_available", { mode: "boolean" }).notNull().default(true),
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   otpCode: text("otp_code"),
   otpExpiresAt: text("otp_expires_at"),
@@ -144,6 +146,7 @@ export const wfCaseTracks = sqliteTable("wf_case_tracks", {
   stage: text("stage"),
   enteredAt: text("entered_at").notNull(),
   assigneeUserId: integer("assignee_user_id"),
+  assignedAt: text("assigned_at"),
 }, (t) => ({ pk: primaryKey({ columns: [t.applicationRef, t.trackKey] }) }));
 
 // Immutable history of every workflow action. Replaces reading free-text notes to answer
