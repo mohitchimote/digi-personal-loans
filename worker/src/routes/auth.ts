@@ -9,7 +9,7 @@ import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { generateAndAssignOtp, verifyOtpForUser, OTP_VALIDITY_SECONDS } from "../lib/otp";
 import { buildAuthResponse, toCustomerProfile } from "../lib/user-mappers";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireEntitlement } from "../middleware/auth";
 
 export const auth = new Hono<AppEnv>();
 
@@ -90,11 +90,11 @@ auth.post("/register", zValidator("json", registerSchema), async (c) => {
 
 // Banker-assisted registration: identity already confirmed in person/by phone, so the account
 // is created enabled/verified straight away — no email-OTP round trip.
-auth.post("/register-by-staff", requireAuth, requireRole("BANKER"), zValidator("json", registerSchema), async (c) => {
+auth.post("/register-by-staff", requireAuth, requireEntitlement("case.actAsCustomer"), zValidator("json", registerSchema), async (c) => {
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
   const saved = await createUser(db, body, { enabled: true, emailVerified: true });
-  const response = await buildAuthResponse(saved, c.env.JWT_SECRET);
+  const response = await buildAuthResponse(db, saved, c.env.JWT_SECRET);
   return success(c, "Customer account created.", response, 201);
 });
 
@@ -115,7 +115,7 @@ auth.post(
       .where(eq(users.id, verified.id))
       .returning();
 
-    const response = await buildAuthResponse(updated, c.env.JWT_SECRET);
+    const response = await buildAuthResponse(db, updated, c.env.JWT_SECRET);
     return success(c, "Registration successful. Welcome to DigiBank.", response);
   }
 );
@@ -172,7 +172,7 @@ auth.post(
         .where(eq(users.id, verified.id))
         .returning();
 
-      const response = { ...(await buildAuthResponse(updated, c.env.JWT_SECRET)), previousLogin };
+      const response = { ...(await buildAuthResponse(db, updated, c.env.JWT_SECRET)), previousLogin };
       return success(c, "Login successful.", response);
     } catch (e) {
       const message = e instanceof AppError ? e.message : "Login failed.";
@@ -183,7 +183,7 @@ auth.post(
 
 // Banker-only: lets a Banker assisting a customer prefill wizard sections with data the customer
 // already gave at account creation — never the Banker's own identity.
-auth.get("/customer-profile/:id", requireAuth, requireRole("BANKER"), async (c) => {
+auth.get("/customer-profile/:id", requireAuth, requireEntitlement("case.actAsCustomer"), async (c) => {
   const db = getDb(c.env.DB);
   const id = Number(c.req.param("id"));
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);

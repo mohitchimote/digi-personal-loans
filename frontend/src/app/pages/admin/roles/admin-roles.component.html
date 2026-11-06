@@ -1,0 +1,77 @@
+<div class="page-header mb-24">
+  <div>
+    <h2>{{ 'admin.roles' | translate }}</h2>
+    <p class="page-sub">{{ 'admin.rolesSubtitle' | translate }}</p>
+  </div>
+  <button class="db-btn db-btn--primary db-btn--sm" (click)="openNew()">
+    <span class="material-icons mi-sm">add</span> {{ 'admin.roles.addRole' | translate }}
+  </button>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.roles.saved' | translate }}</div>
+<div class="loading-row" *ngIf="loading()"><div class="spinner"></div></div>
+
+<div class="roles-layout" *ngIf="!loading()">
+  <div class="db-card roles-list">
+    <button class="role-item" *ngFor="let r of roles()" [class.active]="editing() === r.code" (click)="open(r)">
+      <span class="role-item-name">{{ roleName(r) }}</span>
+      <span class="role-item-meta">
+        <span class="db-badge db-badge--info" *ngIf="r.locked">{{ 'admin.roles.builtIn' | translate }}</span>
+        {{ r.userCount }} {{ 'admin.roles.users' | translate }}
+      </span>
+    </button>
+  </div>
+
+  <div class="db-card role-editor" *ngIf="editing() !== null">
+    <p class="text-muted mb-16" *ngIf="isLocked"><span class="material-icons mi-sm">lock</span> {{ 'admin.roles.locked' | translate }}</p>
+
+    <div class="editor-grid">
+      <div class="db-form-group" *ngIf="editing() === ''">
+        <label>{{ 'admin.roles.code' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" maxlength="32" [(ngModel)]="draft.code" placeholder="REGIONAL_MANAGER" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.roles.label' | translate }} <span class="required">*</span></label>
+        <input class="db-input" type="text" [(ngModel)]="draft.label" [disabled]="isLocked" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.roles.scope' | translate }}</label>
+        <select class="db-input" [(ngModel)]="draft.scope" [disabled]="isLocked">
+          <option *ngFor="let s of scopes()" [value]="s">{{ 'admin.roles.scope.' + s | translate }}</option>
+        </select>
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.roles.rank' | translate }}</label>
+        <input class="db-input" type="number" min="0" max="100" [(ngModel)]="draft.escalationRank" [disabled]="isLocked" />
+        <div class="db-hint">{{ 'admin.roles.rankHint' | translate }}</div>
+      </div>
+    </div>
+
+    <h3 class="mt-16 mb-8">{{ 'admin.roles.entitlements' | translate }}</h3>
+    <div class="ent-group" *ngFor="let g of groups()">
+      <div class="ent-group-name">{{ g.name }}</div>
+      <label class="ent-row" *ngFor="let e of g.items">
+        <input type="checkbox" [checked]="isLocked || draft.entitlements.has(e.key)" [disabled]="isLocked" (change)="toggle(e.key)" />
+        <span>
+          <span class="ent-label">{{ e.label }}</span>
+          <span class="ent-desc">{{ e.description }}</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="form-actions mt-16" *ngIf="!isLocked">
+      <ng-container *ngIf="editing() !== '' && !current?.isSystem">
+        <button class="db-btn db-btn--ghost" *ngIf="!confirmingDelete()" (click)="confirmingDelete.set(true)">
+          <span class="material-icons mi-sm">delete_outline</span>
+        </button>
+        <ng-container *ngIf="confirmingDelete()">
+          <span class="delete-confirm-text">{{ 'admin.roles.confirmDelete' | translate }}</span>
+          <button class="db-btn db-btn--danger db-btn--sm" (click)="remove()">{{ 'admin.deleteRecord' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="confirmingDelete.set(false)">{{ 'common.cancel' | translate }}</button>
+        </ng-container>
+      </ng-container>
+      <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">{{ 'common.save' | translate }}</button>
+    </div>
+  </div>
+</div>

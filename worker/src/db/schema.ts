@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
 
 // Money fields use `real()` (float) rather than a fixed-point type — D1/SQLite
 // has no native DECIMAL. Acceptable for a sandbox demo at these amounts; if
@@ -37,7 +37,81 @@ export const users = sqliteTable("users", {
   // user's own logout-everywhere action, so a stolen token or a role/disable change takes effect on
   // the next request rather than waiting out the token's full 24h natural expiry.
   sessionsRevokedAt: text("sessions_revoked_at"),
+  // Y1 — staff only. The org unit (branch/region/head office) this user belongs to. Null = not
+  // assigned: such a user keeps the pre-hierarchy behaviour (sees every case), so existing
+  // users and the demo are unaffected until an admin assigns units.
+  orgUnitId: integer("org_unit_id"),
 });
+
+// Y1 — admin-defined levels of the organisational hierarchy (e.g. 1 Head Office, 2 Region,
+// 3 Branch). `depth` orders the levels; names and count are configuration, not code.
+export const orgLevels = sqliteTable("org_levels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  depth: integer("depth").notNull(),
+});
+
+// Y1 — a node in the hierarchy. parentId null = root. A unit's level must be deeper than its
+// parent's (enforced in routes/admin-org.ts, not in SQL).
+export const orgUnits = sqliteTable("org_units", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  levelId: integer("level_id").notNull(),
+  parentId: integer("parent_id"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull(),
+});
+
+// Phase 2 - admin-defined staff roles. Customer roles (CUSTOMER, BUSINESS_OWNER) are built in and
+// deliberately absent. `scope` is the case-visibility rule: ALL | UNIT_TREE (own org unit and
+// everything beneath it) | UNIT_ONLY (own org unit only). `locked` roles (ADMIN) always hold
+// every entitlement and cannot be edited or deleted, so nobody can lock themselves out of config.
+export const roles = sqliteTable("roles", {
+  code: text("code").primaryKey(),
+  label: text("label").notNull(),
+  description: text("description"),
+  scope: text("scope").notNull().default("ALL"),
+  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+  locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+  // Phase 3 - position on the approval/escalation ladder (lower = more junior). Null = not part
+  // of the ladder. A referral goes to the next-higher rank; ranks are unique.
+  escalationRank: integer("escalation_rank"),
+  createdAt: text("created_at").notNull(),
+});
+
+// Phase 3 - approval limits with organisational context. A row applies to a role, optionally
+// narrowed to an org unit (and everything beneath it) and/or an application type. The most
+// specific matching row wins (nearest org unit first, then type); a row with neither is the
+// role's default. Replaces the fixed five-column mandate_rules table (left in place, unused).
+export const mandates = sqliteTable("mandates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  roleCode: text("role_code").notNull(),
+  orgUnitId: integer("org_unit_id"),
+  applicationType: text("application_type"),
+  maxAmount: real("max_amount").notNull(),
+});
+
+// Phase 3 - chain of custody for escalations. One row per referral hop; resolvedAt is set when the
+// case is next decided, sent back, or referred further.
+export const caseReferrals = sqliteTable("case_referrals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  applicationRef: text("application_ref").notNull(),
+  fromRole: text("from_role").notNull(),
+  fromUserId: integer("from_user_id").notNull(),
+  fromName: text("from_name").notNull(),
+  toRole: text("to_role").notNull(),
+  reason: text("reason"),
+  createdAt: text("created_at").notNull(),
+  resolvedAt: text("resolved_at"),
+});
+
+// Entitlement keys come from the catalog in lib/entitlements.ts (code defines what can be
+// checked; this table decides which role holds which).
+export const roleEntitlements = sqliteTable("role_entitlements", {
+  roleCode: text("role_code").notNull(),
+  entitlement: text("entitlement").notNull(),
+}, (t) => ({ pk: primaryKey({ columns: [t.roleCode, t.entitlement] }) }));
 
 export const loanApplications = sqliteTable("loan_applications", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -98,6 +172,11 @@ export const loanApplications = sqliteTable("loan_applications", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at"),
   submittedAt: text("submitted_at"),
+  // Y1 — owning org unit, stamped from the originating banker's unit. Null for digital
+  // self-service cases (no branch yet) — those stay visible to every staff role.
+  orgUnitId: integer("org_unit_id"),
+  // Phase 3 - the role currently holding a referred case; null when not referred.
+  referredToRole: text("referred_to_role"),
 });
 
 export const underwritingNotes = sqliteTable("underwriting_notes", {

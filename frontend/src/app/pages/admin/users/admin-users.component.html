@@ -56,6 +56,13 @@
           <option *ngFor="let r of staffRoles" [value]="r">{{ roleLabel(r) }}</option>
         </select>
       </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.org.unit' | translate }}</label>
+        <select class="db-input" [(ngModel)]="newUser.orgUnitId">
+          <option [ngValue]="null">{{ 'admin.org.unassigned' | translate }}</option>
+          <option *ngFor="let o of orgUnits()" [ngValue]="o.id">{{ o.name }} ({{ o.code }})</option>
+        </select>
+      </div>
     </div>
     <div class="form-actions mt-16">
       <button class="db-btn db-btn--ghost" (click)="cancelCreate()">{{ 'common.cancel' | translate }}</button>
@@ -77,6 +84,7 @@
           <th>{{ 'admin.email' | translate }}</th>
           <th>{{ 'admin.nationalId' | translate }}</th>
           <th>{{ 'admin.role' | translate }}</th>
+          <th>{{ 'admin.org.unit' | translate }}</th>
           <th>{{ 'dashboard.status' | translate }}</th>
           <th>{{ 'admin.lastLogin' | translate }}</th>
           <th>{{ 'admin.actions' | translate }}</th>
@@ -84,7 +92,7 @@
       </thead>
       <tbody>
         <tr *ngIf="staff().length === 0">
-          <td colspan="7" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.noStaff' | translate }}</td>
+          <td colspan="8" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.noStaff' | translate }}</td>
         </tr>
         <tr *ngFor="let u of staff()">
           <td>{{ u.fullName }}</td>
@@ -93,6 +101,12 @@
           <td>
             <select class="db-input" style="width:auto" [ngModel]="u.role" (ngModelChange)="changeRole(u, $event)">
               <option *ngFor="let r of staffRoles" [value]="r">{{ roleLabel(r) }}</option>
+            </select>
+          </td>
+          <td>
+            <select class="db-input" style="width:auto" [ngModel]="u.orgUnitId ?? null" (ngModelChange)="changeOrgUnit(u, $event)">
+              <option [ngValue]="null">{{ 'admin.org.unassigned' | translate }}</option>
+              <option *ngFor="let o of orgUnits()" [ngValue]="o.id">{{ o.name }} ({{ o.code }})</option>
             </select>
           </td>
           <td>

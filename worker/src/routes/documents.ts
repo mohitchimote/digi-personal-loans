@@ -6,7 +6,6 @@ import { generatedDocuments, uploadedDocuments } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { generateOfferPack } from "../lib/document-pack";
 import { requireAuth } from "../middleware/auth";
-import { STAFF_ROLES } from "../lib/roles";
 import { isAllowedUpload } from "../lib/file-signature";
 import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
@@ -15,7 +14,7 @@ documents.use("*", requireAuth);
 
 function assertOwnsDocument(c: any, documentCustomerId: number) {
   const authUser = c.get("authUser");
-  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (c.get("authRole")?.isStaff) return;
   if (authUser.id !== documentCustomerId) {
     throw new AppError("Forbidden.", 403);
   }

@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AdminService, UserSummary } from '../../../core/services/admin.service';
+import { AdminService, UserSummary, OrgUnit, RoleRow } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -15,17 +15,20 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 export class AdminUsersComponent implements OnInit {
   activeTab = signal<'staff' | 'customers'>('staff');
 
+  orgUnits = signal<OrgUnit[]>([]);
   staff = signal<UserSummary[]>([]);
   customers = signal<UserSummary[]>([]);
   loadingStaff = signal(true);
   loadingCustomers = signal(true);
   error = signal('');
 
-  readonly staffRoles = ['BANKER', 'UNDERWRITER', 'SENIOR_UNDERWRITER', 'HEAD_OF_LENDING', 'COO', 'CEO', 'ADMIN'];
+  /** Staff roles come from the admin-configured roles table, not a hard-coded list. */
+  roleRows = signal<RoleRow[]>([]);
+  get staffRoles(): string[] { return this.roleRows().map(r => r.code); }
 
   showCreateForm = signal(false);
   creating = signal(false);
-  newUser = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER' };
+  newUser: { email: string; fullName: string; nationalId: string; phoneNumber: string; role: string; orgUnitId: number | null } = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER', orgUnitId: null };
 
   deleteConfirmId = signal<number | null>(null);
   deleting = signal(false);
@@ -35,6 +38,8 @@ export class AdminUsersComponent implements OnInit {
   ngOnInit(): void {
     this.loadStaff();
     this.loadCustomers();
+    this.adminSvc.getOrg().subscribe({ next: o => this.orgUnits.set(o.units.filter(u => u.active)) });
+    this.adminSvc.getRoles().subscribe({ next: r => this.roleRows.set(r.roles) });
   }
 
   private loadStaff(): void {
@@ -67,6 +72,13 @@ export class AdminUsersComponent implements OnInit {
     });
   }
 
+  changeOrgUnit(user: UserSummary, orgUnitId: number | null): void {
+    this.adminSvc.setUserOrgUnit(user.id, orgUnitId).subscribe({
+      next: () => { user.orgUnitId = orgUnitId; },
+      error: (err: any) => this.error.set(err?.error?.message || this.i18n.t('admin.org.errSave'))
+    });
+  }
+
   toggleEnabled(user: UserSummary, list: 'staff' | 'customers'): void {
     const next = !user.enabled;
     this.adminSvc.setEnabled(user.id, next).subscribe({
@@ -83,7 +95,7 @@ export class AdminUsersComponent implements OnInit {
       next: () => {
         this.creating.set(false);
         this.showCreateForm.set(false);
-        this.newUser = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER' };
+        this.newUser = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER', orgUnitId: null };
         this.loadStaff();
       },
       error: (err: any) => {
@@ -95,7 +107,7 @@ export class AdminUsersComponent implements OnInit {
 
   cancelCreate(): void {
     this.showCreateForm.set(false);
-    this.newUser = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER' };
+    this.newUser = { email: '', fullName: '', nationalId: '', phoneNumber: '', role: 'BANKER', orgUnitId: null };
     this.error.set('');
   }
 
@@ -123,6 +135,6 @@ export class AdminUsersComponent implements OnInit {
   }
 
   roleLabel(role: string): string {
-    return this.i18n.t('role.' + role);
+    return this.i18n.roleName(role, this.roleRows().find(r => r.code === role)?.label);
   }
 }

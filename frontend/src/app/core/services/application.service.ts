@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, finalize, shareReplay, switchMap, tap } from 'rxjs/operators';
-import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis, StaffActivityItem } from '../models';
+import { LoanApplication, UnderwritingNote, DataVerificationSummary, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis, StaffActivityItem } from '../models';
 import { API_BASE } from './api-base';
 import { AssistContextService } from './assist-context.service';
 import { AuthService } from './auth.service';
@@ -217,12 +217,12 @@ export class ApplicationService {
     return this.http.get<BusinessFinancialsAnalysis>(`${API}/${appRef}/business-financials-analysis`);
   }
 
-  getMandateRules(): Observable<MandateRules> {
-    return this.http.get<MandateRules>(`${API}/mandate-rules`);
+  getCaseMandate(appRef: string): Observable<CaseMandate> {
+    return this.http.get<CaseMandate>(`${API}/${appRef}/mandate`);
   }
 
-  updateMandateRules(rules: MandateRules): Observable<MandateRules> {
-    return this.http.put<MandateRules>(`${API}/mandate-rules`, rules);
+  getReferrals(appRef: string): Observable<CaseReferral[]> {
+    return this.http.get<CaseReferral[]>(`${API}/${appRef}/referrals`);
   }
 
   private readonly sectionRoutes: Record<string, string> = {

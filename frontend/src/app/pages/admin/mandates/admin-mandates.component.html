@@ -1,48 +1,83 @@
 <div class="page-header mb-24">
-  <h2>{{ 'admin.mandates' | translate }}</h2>
-  <p class="page-sub">{{ 'admin.mandatesSubtitle' | translate }}</p>
+  <div>
+    <h2>{{ 'admin.mandates' | translate }}</h2>
+    <p class="page-sub">{{ 'admin.mandatesSubtitle' | translate }}</p>
+  </div>
+  <button class="db-btn db-btn--primary db-btn--sm" (click)="openAdd()" *ngIf="editingId() === null && ladder().length">
+    <span class="material-icons mi-sm">add</span> {{ 'admin.mandates.add' | translate }}
+  </button>
 </div>
 
 <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
-<div class="db-alert db-alert--info mb-16" *ngIf="saved()">✓ {{ 'admin.rulesUpdated' | translate }}</div>
+<div class="loading-row" *ngIf="loading()"><div class="spinner"></div></div>
 
-<div class="loading-row" *ngIf="loading()">
-  <div class="spinner"></div><span>{{ 'admin.loadingRules' | translate }}</span>
-</div>
-
-<div class="db-card" *ngIf="!loading() && rules()">
-  <p class="text-muted mb-16" style="font-size:0.85rem;">{{ 'admin.mandatesIntro' | translate }}</p>
-
-  <div class="db-form-group">
-    <label>{{ 'role.UNDERWRITER' | translate }}</label>
-    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.underwriterLimit" />
-    <div class="db-hint">{{ 'admin.mandateLimitHint' | translate }}</div>
+<ng-container *ngIf="!loading()">
+  <div class="db-card mb-24">
+    <div class="card-header"><h3>{{ 'admin.mandates.ladder' | translate }}</h3></div>
+    <p class="text-muted" *ngIf="!ladder().length">{{ 'admin.mandates.ladderNone' | translate }}</p>
+    <div class="ladder" *ngIf="ladder().length">
+      <ng-container *ngFor="let l of ladder(); let last = last">
+        <span class="ladder-step">{{ l.label }}</span><span class="ladder-arrow" *ngIf="!last">→</span>
+      </ng-container>
+    </div>
+    <p class="text-muted mt-16" style="font-size:0.85rem">{{ 'admin.mandates.howItWorks' | translate }}</p>
   </div>
 
-  <div class="db-form-group">
-    <label>{{ 'role.SENIOR_UNDERWRITER' | translate }}</label>
-    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.seniorUnderwriterLimit" />
+  <div class="db-card mb-24" *ngIf="editingId() !== null">
+    <div class="create-form-grid">
+      <div class="db-form-group">
+        <label>{{ 'admin.mandates.role' | translate }}</label>
+        <select class="db-input" [(ngModel)]="draft.roleCode">
+          <option *ngFor="let l of ladder()" [value]="l.code">{{ l.label }}</option>
+        </select>
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.mandates.unit' | translate }}</label>
+        <select class="db-input" [(ngModel)]="draft.orgUnitId">
+          <option [ngValue]="null">{{ 'admin.mandates.anyUnit' | translate }}</option>
+          <option *ngFor="let u of units()" [ngValue]="u.id">{{ u.name }} ({{ u.code }})</option>
+        </select>
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.mandates.type' | translate }}</label>
+        <select class="db-input" [(ngModel)]="draft.applicationType">
+          <option [ngValue]="null">{{ 'admin.mandates.anyType' | translate }}</option>
+          <option value="PERSONAL">{{ 'admin.mandates.personal' | translate }}</option>
+          <option value="BUSINESS">{{ 'admin.mandates.business' | translate }}</option>
+        </select>
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'admin.mandates.max' | translate }}</label>
+        <input class="db-input" type="number" min="0" step="1000" [(ngModel)]="draft.maxAmount" />
+      </div>
+    </div>
+    <div class="form-actions mt-16">
+      <button class="db-btn db-btn--ghost" (click)="cancel()">{{ 'common.cancel' | translate }}</button>
+      <button class="db-btn db-btn--primary" (click)="save()">{{ 'common.save' | translate }}</button>
+    </div>
   </div>
 
-  <div class="db-form-group">
-    <label>{{ 'role.HEAD_OF_LENDING' | translate }}</label>
-    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.headOfLendingLimit" />
+  <div class="db-card">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>{{ 'admin.mandates.role' | translate }}</th><th>{{ 'admin.mandates.unit' | translate }}</th>
+          <th>{{ 'admin.mandates.type' | translate }}</th><th>{{ 'admin.mandates.max' | translate }}</th><th>{{ 'admin.actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of sorted()">
+          <td>{{ roleLabel(m.roleCode) }}</td>
+          <td>{{ m.orgUnitId != null ? unitName(m.orgUnitId) : ('admin.mandates.anyUnit' | translate) }}</td>
+          <td>{{ m.applicationType === 'PERSONAL' ? ('admin.mandates.personal' | translate) : m.applicationType === 'BUSINESS' ? ('admin.mandates.business' | translate) : ('admin.mandates.anyType' | translate) }}
+            <span class="db-badge db-badge--info" *ngIf="m.orgUnitId == null && m.applicationType == null">{{ 'admin.mandates.default' | translate }}</span></td>
+          <td>₪{{ m.maxAmount | number }}</td>
+          <td>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="openEdit(m)"><span class="material-icons mi-sm">edit</span></button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="remove(m)"><span class="material-icons mi-sm">delete_outline</span></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
-
-  <div class="db-form-group">
-    <label>{{ 'role.COO' | translate }}</label>
-    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.cooLimit" />
-  </div>
-
-  <div class="db-form-group">
-    <label>{{ 'role.CEO' | translate }}</label>
-    <input class="db-input" type="number" step="1000" [(ngModel)]="rules()!.ceoLimit" />
-    <div class="db-hint">{{ 'admin.ceoLimitHint' | translate }}</div>
-  </div>
-
-  <div class="form-actions">
-    <button class="db-btn db-btn--primary" (click)="save()" [disabled]="saving()">
-      {{ saving() ? ('admin.savingRules' | translate) : ('admin.saveRules' | translate) }}
-    </button>
-  </div>
-</div>
+</ng-container>

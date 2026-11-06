@@ -1,4 +1,5 @@
 import type { users } from "./db/schema";
+import type { RoleConfig } from "./lib/roles";
 
 export interface Env {
   DB: D1Database;
@@ -16,5 +17,6 @@ export type AppEnv = {
   Bindings: Env;
   Variables: {
     authUser: AuthUser;
+    authRole: RoleConfig;
   };
 };

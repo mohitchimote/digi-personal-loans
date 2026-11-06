@@ -1,8 +1,8 @@
 import { Hono, type Context } from "hono";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, notInArray, or } from "drizzle-orm";
 import type { AppEnv, Env } from "../types";
 import { getDb, type Db } from "../db/client";
-import { loanApplications, underwritingNotes, mandateRules } from "../db/schema";
+import { loanApplications, underwritingNotes, caseReferrals } from "../db/schema";
 import { AppError } from "../lib/errors";
 import {
   ALL_SECTIONS,
@@ -24,16 +24,14 @@ import { generateOfferPack } from "../lib/document-pack";
 import { authoriseCardPayment } from "../lib/card-payment";
 import { logError } from "../lib/log";
 import { recordAudit } from "../lib/audit";
-import { requireAuth, assertRole } from "../middleware/auth";
-import { cached, invalidate } from "../lib/cache";
+import { requireAuth, assertRole, assertEntitlement, isStaff } from "../middleware/auth";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
-import { STAFF_ROLES } from "../lib/roles";
+import { caseScopeCondition, assertCaseVisible } from "../lib/org";
+import { resolveMandate, nextRoleUp, roleCodesAbove, assertCanActOnReferral, referralLockLabel, closeReferrals } from "../lib/mandates";
+import { allRoleConfigs } from "../lib/roles";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
 import { isFieldVisible } from "../lib/form-schema-types";
 import type { InferSelectModel } from "drizzle-orm";
-
-const MANDATE_RULES_CACHE_KEY = "mandate-rules";
-const MANDATE_RULES_TTL_MS = 30_000;
 
 // Notification emails go through Resend (a real outbound network call — see lib/email.ts) and
 // have no bearing on the correctness of the state change they're attached to, so every call site
@@ -45,20 +43,6 @@ type WaitUntil = (promise: Promise<unknown>) => void;
 
 export const applications = new Hono<AppEnv>();
 applications.use("*", requireAuth);
-
-// The five-tier underwriting hierarchy's approval mandate limits, enforced server-side at the
-// point of decision per DigiLend_Production_Architecture.docx §5.2 ("there is no override; the
-// case must instead be referred to a senior tier"). BANKER and ADMIN are staff roles for other
-// purposes (assisted origination, back-office config) but hold no approval mandate of their own,
-// so they're absent here and fall back to a limit of 0 — they can never approve a loan through
-// this endpoint, matching the Feature Catalogue's UW->SrUW->HeadOfLending->COO->CEO hierarchy.
-const MANDATE_LIMIT_FIELD_BY_ROLE: Partial<Record<string, keyof typeof mandateRules.$inferSelect>> = {
-  UNDERWRITER: "underwriterLimit",
-  SENIOR_UNDERWRITER: "seniorUnderwriterLimit",
-  HEAD_OF_LENDING: "headOfLendingLimit",
-  COO: "cooLimit",
-  CEO: "ceoLimit",
-};
 
 // Every staff action that changes application state (approve, decline, refer, send-back,
 // disburse, edit, resolve) must record the AUTHENTICATED caller's identity, never a
@@ -72,27 +56,32 @@ function actorName(c: Context<AppEnv>): string {
   return user.fullName?.trim() || user.email || user.role;
 }
 
-async function getMandateRules(db: Db) {
-  return cached(MANDATE_RULES_CACHE_KEY, MANDATE_RULES_TTL_MS, async () => {
-    const [row] = await db.select().from(mandateRules).where(eq(mandateRules.id, 1)).limit(1);
-    return row ?? null;
-  });
-}
-
-// Was previously enforced client-side only (a known, flagged gap) — the button was disabled, but
-// nothing stopped a direct API call with a role that had no business approving that amount. This
-// re-derives the limit from the AUTHENTICATED user's role (never a client-supplied field), so the
-// audit trail's approval action can't be spoofed into exceeding a mandate.
-async function assertWithinMandate(db: Db, role: string, approvedAmount: number): Promise<void> {
-  const field = MANDATE_LIMIT_FIELD_BY_ROLE[role];
-  const rules = await getMandateRules(db);
-  const limit = field && rules ? rules[field] : 0;
+// Re-derives the limit from the AUTHENTICATED user's role (never a client-supplied field) and the
+// CASE's own org unit / application type, so the audit trail's approval can't be spoofed into
+// exceeding a mandate. Limits are admin-configured rows (see lib/mandates.ts); no row = no authority.
+async function assertWithinMandate(
+  db: Db,
+  role: string,
+  approvedAmount: number,
+  app: { orgUnitId: number | null; applicationType: string | null }
+): Promise<void> {
+  const { limit } = await resolveMandate(db, role, app.orgUnitId, app.applicationType);
   if (approvedAmount > limit) {
     throw new AppError(
-      `Approved amount (${approvedAmount}) exceeds the ${role} mandate limit (${limit}). Refer this case to a senior tier — there is no override.`,
+      `Approved amount (${approvedAmount}) exceeds the ${role} mandate limit (${limit}) for this case. Refer it to a higher approval level - there is no override.`,
       403
     );
   }
+}
+
+// Phase 3 - a case referred up the ladder leaves the queues of roles below its target. Roles not
+// on the ladder (rank null) are unrestricted.
+async function referralVisibility(db: Db, c: Context<AppEnv>) {
+  const rank = c.get("authRole").rank;
+  if (rank == null) return undefined;
+  const above = await roleCodesAbove(db, rank);
+  if (above.length === 0) return undefined;
+  return or(ne(loanApplications.status, "REFERRED_TO_SENIOR"), isNull(loanApplications.referredToRole), notInArray(loanApplications.referredToRole, above));
 }
 
 const ACTIVE_STATUSES = ["DRAFT", "IN_PROGRESS"];
@@ -205,10 +194,17 @@ async function resolveFormSchema(db: Db, app: InferSelectModel<typeof loanApplic
 // customerId. Same fix shape as documents.ts's assertOwnsDocument (S1).
 function assertOwnsCustomerId(c: Context<AppEnv>, customerId: number) {
   const authUser = c.get("authUser");
-  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (isStaff(c)) return;
   if (authUser.id !== customerId) {
     throw new AppError("Forbidden.", 403);
   }
+}
+
+// Y1 - a case opened by staff (banker-assisted origination) belongs to that staff member's org
+// unit; a customer's own digital application has no branch yet.
+function originOrgUnitId(c: Context<AppEnv>): number | null {
+  const u = c.get("authUser");
+  return isStaff(c) ? u.orgUnitId : null;
 }
 
 async function getByRef(db: Db, appRef: string) {
@@ -343,7 +339,7 @@ async function approveApplicationByUnderwriter(
   const app = await getByRef(db, appRef);
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "APPROVED", approvedAmount, autoApproved, updatedAt: new Date().toISOString() })
+    .set({ status: "APPROVED", approvedAmount, autoApproved, referredToRole: null, updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
@@ -420,6 +416,7 @@ applications.post("/start", async (c) => {
       currentSection: "loanRequirements",
       completionPercentage: 0,
       applicationType: "PERSONAL",
+      orgUnitId: originOrgUnitId(c),
       createdAt: now,
       updatedAt: now,
     })
@@ -450,6 +447,7 @@ applications.post("/start-business", async (c) => {
       currentSection: "companyDetails",
       completionPercentage: 0,
       applicationType: "BUSINESS",
+      orgUnitId: originOrgUnitId(c),
       createdAt: now,
       updatedAt: now,
     })
@@ -655,7 +653,7 @@ applications.put("/:appRef/section", async (c) => {
 });
 
 applications.put("/:appRef/section-by-underwriter", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.editSection");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const editedBy = actorName(c);
@@ -677,23 +675,23 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
 });
 
 applications.get("/pipeline", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "queue.pipeline");
   const db = getDb(c.env.DB);
   const rows = await db
     .select()
     .from(loanApplications)
-    .where(inArray(loanApplications.status, PIPELINE_STATUSES))
+    .where(and(inArray(loanApplications.status, PIPELINE_STATUSES), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
     .orderBy(loanApplications.submittedAt);
   return c.json(rows);
 });
 
 applications.get("/banker-queue", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "queue.banker");
   const db = getDb(c.env.DB);
   const rows = await db
     .select()
     .from(loanApplications)
-    .where(inArray(loanApplications.status, BANKER_QUEUE_STATUSES))
+    .where(and(inArray(loanApplications.status, BANKER_QUEUE_STATUSES), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
     .orderBy(desc(loanApplications.updatedAt));
   return c.json(rows);
 });
@@ -702,17 +700,17 @@ applications.get("/banker-queue", async (c) => {
 // deliberately exclude closed-out statuses) — the Home dashboard's stat tiles want a "Declined"
 // count too, so this is a dedicated fetch rather than reusing either.
 applications.get("/home-stats", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "dashboard.view");
   const db = getDb(c.env.DB);
-  const role = c.get("authUser").role;
+  const bankerView = !c.get("authRole").entitlements.has("queue.pipeline");
   // IN_PROGRESS included for every role (not just banker) so the "Pending Action Items" tile's
   // count/amount — cross-referenced against these rows — can actually include a sent-back
   // application, matching what /staff-activity already surfaces for the same tile.
-  const statuses = role === "BANKER" ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED", "IN_PROGRESS"];
+  const statuses = bankerView ? [...BANKER_QUEUE_STATUSES, "DECLINED"] : [...PIPELINE_STATUSES, "DECLINED", "IN_PROGRESS"];
   const rows = await db
     .select()
     .from(loanApplications)
-    .where(inArray(loanApplications.status, statuses))
+    .where(and(inArray(loanApplications.status, statuses), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)))
     .orderBy(desc(loanApplications.updatedAt));
   return c.json(rows);
 });
@@ -722,18 +720,18 @@ applications.get("/home-stats", async (c) => {
 // approximated as document/clarification/send-back notes on applications still sitting in
 // IN_PROGRESS — i.e. bounced back to the customer and not yet resubmitted.
 applications.get("/staff-activity", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "dashboard.view");
   const db = getDb(c.env.DB);
-  const role = c.get("authUser").role;
+  const bankerView = !c.get("authRole").entitlements.has("queue.pipeline");
   // IN_PROGRESS is explicitly included even for non-banker roles (PIPELINE_STATUSES normally
   // excludes it) — a sent-back/document-requested application moves to IN_PROGRESS while it
   // waits on the customer, which is exactly the case "action items" needs to surface. Leaving it
   // out here would make every action item invisible the moment it's created.
-  const statuses = role === "BANKER" ? BANKER_QUEUE_STATUSES : [...PIPELINE_STATUSES, "IN_PROGRESS"];
+  const statuses = bankerView ? BANKER_QUEUE_STATUSES : [...PIPELINE_STATUSES, "IN_PROGRESS"];
   const apps = await db
     .select()
     .from(loanApplications)
-    .where(inArray(loanApplications.status, statuses));
+    .where(and(inArray(loanApplications.status, statuses), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope), await referralVisibility(db, c)));
   const appByRef = new Map(apps.map((a) => [a.applicationRef, a]));
   if (apps.length === 0) return c.json([]);
 
@@ -768,30 +766,32 @@ applications.get("/staff-activity", async (c) => {
   return c.json(enriched);
 });
 
-applications.get("/mandate-rules", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+// What the caller may approve on THIS case (role + the case's org unit / type), and where a
+// referral from them would go. Drives the Decision tab.
+applications.get("/:appRef/mandate", async (c) => {
+  assertEntitlement(c, "mandates.view");
   const db = getDb(c.env.DB);
-  const rules = await getMandateRules(db);
-  return c.json(rules);
+  const app = await getByRef(db, c.req.param("appRef"));
+  await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
+  const role = c.get("authRole");
+  const mandate = await resolveMandate(db, role.code, app.orgUnitId, app.applicationType);
+  const next = await nextRoleUp(db, role.rank);
+  return c.json({
+    limit: mandate.limit,
+    nextRole: next ? { code: next.code, label: next.label } : null,
+    // Non-null when the case is referred above the caller: every decision action is then refused.
+    lockedTo: await referralLockLabel(db, app, role),
+  });
 });
 
-applications.put("/mandate-rules", async (c) => {
-  assertRole(c, "ADMIN");
+applications.get("/:appRef/referrals", async (c) => {
+  if (!isStaff(c)) throw new AppError("Forbidden.", 403);
   const db = getDb(c.env.DB);
-  const body = await c.req.json<Record<string, number>>();
-  const [updated] = await db
-    .update(mandateRules)
-    .set({
-      underwriterLimit: body.underwriterLimit,
-      seniorUnderwriterLimit: body.seniorUnderwriterLimit,
-      headOfLendingLimit: body.headOfLendingLimit,
-      cooLimit: body.cooLimit,
-      ceoLimit: body.ceoLimit,
-    })
-    .where(eq(mandateRules.id, 1))
-    .returning();
-  invalidate(MANDATE_RULES_CACHE_KEY);
-  return c.json(updated);
+  const appRef = c.req.param("appRef");
+  const app = await getByRef(db, appRef);
+  await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
+  const rows = await db.select().from(caseReferrals).where(eq(caseReferrals.applicationRef, appRef)).orderBy(caseReferrals.createdAt);
+  return c.json(rows);
 });
 
 applications.get("/customer/:customerId", async (c) => {
@@ -832,7 +832,7 @@ applications.get("/:appRef/notes", async (c) => {
 });
 
 applications.post("/:appRef/notes", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.addNote");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ section: string; note: string; noteType?: string }>();
@@ -845,6 +845,7 @@ applications.post("/:appRef/notes", async (c) => {
 applications.get("/:appRef", async (c) => {
   const db = getDb(c.env.DB);
   const app = await getByRef(db, c.req.param("appRef"));
+  await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   return c.json(await withResolvedFormVersion(db, app));
 });
 
@@ -942,7 +943,7 @@ applications.post("/:appRef/select-product", async (c) => {
 });
 
 applications.post("/:appRef/approve", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.approve");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const app = await getByRef(db, appRef);
@@ -958,15 +959,17 @@ applications.post("/:appRef/approve", async (c) => {
 });
 
 applications.post("/:appRef/decline", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.decline");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string }>();
   const reviewedBy = actorName(c);
   const app = await getByRef(db, appRef);
+  await assertCanActOnReferral(db, app, c.get("authRole"));
+  await closeReferrals(db, appRef);
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "DECLINED", updatedAt: new Date().toISOString() })
+    .set({ status: "DECLINED", referredToRole: null, updatedAt: new Date().toISOString() })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
 
@@ -995,7 +998,7 @@ applications.post("/:appRef/decline", async (c) => {
 });
 
 applications.post("/:appRef/send-back", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.sendBack");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ reason: string; requireGuarantor?: string }>();
@@ -1003,6 +1006,8 @@ applications.post("/:appRef/send-back", async (c) => {
   const requireGuarantor = String(body.requireGuarantor).toLowerCase() === "true";
 
   const app = await getByRef(db, appRef);
+  await assertCanActOnReferral(db, app, c.get("authRole"));
+  await closeReferrals(db, appRef);
   const guarantorNewlyNeeded = requireGuarantor && app.guarantorDetailsJson == null;
 
   const [updated] = await db
@@ -1051,7 +1056,7 @@ applications.post("/:appRef/send-back", async (c) => {
 });
 
 applications.post("/:appRef/approve-by-underwriter", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.approve");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const body = await c.req.json<{ approvedAmount?: string | number | null }>();
@@ -1069,7 +1074,10 @@ applications.post("/:appRef/approve-by-underwriter", async (c) => {
   // client-supplied field, so this can't be spoofed into exceeding a mandate or misattributing
   // who made the decision.
   const authUser = c.get("authUser");
-  await assertWithinMandate(db, authUser.role, approvedAmount);
+  const caseRow = await getByRef(db, appRef);
+  await assertCaseVisible(db, authUser, c.get("authRole").scope, caseRow);
+  await assertCanActOnReferral(db, caseRow, c.get("authRole"));
+  await assertWithinMandate(db, authUser.role, approvedAmount, caseRow);
   const updated = await approveApplicationByUnderwriter(
     db,
     c.env,
@@ -1079,26 +1087,45 @@ applications.post("/:appRef/approve-by-underwriter", async (c) => {
     false,
     (p) => c.executionCtx.waitUntil(p)
   );
+  await closeReferrals(db, appRef);
   return c.json(updated);
 });
 
 applications.post("/:appRef/refer-to-senior", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.refer");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const body = await c.req.json<{ reason: string }>();
-  await getByRef(db, appRef);
+  const body = await c.req.json<{ reason: string; toRole?: string }>();
+  const app = await getByRef(db, appRef);
+  const user = c.get("authUser");
+  const role = c.get("authRole");
+  await assertCaseVisible(db, user, role.scope, app);
+  await assertCanActOnReferral(db, app, role);
+
+  // Target = the role directly above the caller on the escalation ladder, unless the caller names
+  // a specific higher one. Either way it must be ranked and strictly above the caller.
+  const ladder = await allRoleConfigs(db);
+  const target = body.toRole ? ladder.find((r) => r.code === body.toRole) : await nextRoleUp(db, role.rank);
+  if (!target || target.rank == null) throw new AppError("There is no higher approval level to refer this case to.", 400);
+  if (target.rank <= (role.rank ?? -1)) throw new AppError("A case can only be referred to a role above your own.", 400);
+
+  await closeReferrals(db, appRef);
+  const now = new Date().toISOString();
   const [updated] = await db
     .update(loanApplications)
-    .set({ status: "REFERRED_TO_SENIOR", updatedAt: new Date().toISOString() })
+    .set({ status: "REFERRED_TO_SENIOR", referredToRole: target.code, updatedAt: now })
     .where(eq(loanApplications.applicationRef, appRef))
     .returning();
-  await addNote(db, c.env, appRef, "general", body.reason, "REFERRED_TO_SENIOR", actorName(c), (p) => c.executionCtx.waitUntil(p));
+  await db.insert(caseReferrals).values({
+    applicationRef: appRef, fromRole: user.role, fromUserId: user.id, fromName: actorName(c),
+    toRole: target.code, reason: body.reason ?? null, createdAt: now,
+  });
+  await addNote(db, c.env, appRef, "general", `${body.reason} (referred to ${target.label})`, "REFERRED_TO_SENIOR", actorName(c), (p) => c.executionCtx.waitUntil(p));
   return c.json(updated);
 });
 
 applications.post("/:appRef/disbursement/authorise", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.disburse");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const reviewedBy = actorName(c);
@@ -1126,7 +1153,7 @@ applications.post("/:appRef/disbursement/authorise", async (c) => {
 });
 
 applications.post("/:appRef/disbursement/second-check", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.disburseSecondCheck");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   await getByRef(db, appRef);
@@ -1156,7 +1183,7 @@ applications.get("/:appRef/data-verification", async (c) => {
 });
 
 applications.post("/:appRef/data-verification/resolve", async (c) => {
-  assertRole(c, ...STAFF_ROLES);
+  assertEntitlement(c, "case.resolveVerification");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const app = await getByRef(db, appRef);

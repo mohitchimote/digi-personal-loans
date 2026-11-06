@@ -78,6 +78,27 @@
       "when": 1789757837801,
       "tag": "0010_open_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793964265382,
+      "tag": "0011_quiet_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793972169248,
+      "tag": "0012_sparkling_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1793973182895,
+      "tag": "0013_condemned_bishop",
+      "breakpoints": true
     }
   ]
 }

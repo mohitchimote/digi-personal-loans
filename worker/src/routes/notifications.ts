@@ -5,7 +5,6 @@ import { getDb } from "../db/client";
 import { notifications } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { requireAuth } from "../middleware/auth";
-import { STAFF_ROLES } from "../lib/roles";
 import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
 export const notificationsRoute = new Hono<AppEnv>();
@@ -16,7 +15,7 @@ notificationsRoute.use("*", requireAuth);
 // Same fix shape as documents.ts's assertOwnsDocument (S1).
 function assertOwnsCustomerId(c: any, customerId: number) {
   const authUser = c.get("authUser");
-  if (STAFF_ROLES.includes(authUser.role)) return;
+  if (c.get("authRole")?.isStaff) return;
   if (authUser.id !== customerId) {
     throw new AppError("Forbidden.", 403);
   }

@@ -46,7 +46,7 @@ export class StaffDashboardComponent implements OnInit {
   constructor(public auth: AuthService, private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute, private router: Router) {}
 
   get isBanker(): boolean {
-    return this.auth.role === 'BANKER';
+    return this.auth.isBanker && !this.auth.isUnderwriter;
   }
 
   get caseListRoute(): string {

@@ -13,12 +13,12 @@ export class EntitlementsService {
 
   /** Can open and edit another customer's in-progress application (the Banker "assist" flow). */
   get canActAsCustomer(): boolean {
-    return this.auth.role === 'BANKER';
+    return this.auth.has('case.actAsCustomer');
   }
 
   /** Can jump directly to any wizard section instead of following the customer's sequential,
    * progress-gated step order. */
   get canFreelyNavigateSections(): boolean {
-    return this.auth.role === 'BANKER';
+    return this.auth.has('case.actAsCustomer');
   }
 }

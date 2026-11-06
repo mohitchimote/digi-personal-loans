@@ -53,7 +53,7 @@
         <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
         <div>
           <span class="header-name">{{ auth.userFullName }}</span>
-          <span class="header-role">{{ ('role.' + auth.role) | translate }}</span>
+          <span class="header-role">{{ i18n.roleName(auth.role, auth.roleLabel) }}</span>
         </div>
       </div>
       <button class="db-btn db-btn--ghost db-btn--sm" (click)="auth.logout()">{{ 'common.signOut' | translate }}</button>

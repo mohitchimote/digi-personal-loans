@@ -670,6 +670,19 @@
             <input class="db-input" type="number" min="1" [(ngModel)]="approvedAmount" [disabled]="isApproved" />
             <div class="db-hint">{{ 'uw.approvedAmountHint' | translate }}</div>
           </div>
+          <div class="db-alert db-alert--info mb-16" *ngIf="openReferral as ref">
+            <span class="material-icons mi-sm">arrow_upward</span>
+            {{ 'mandate.referredNote' | translate:{ to: roleName(ref.toRole), from: ref.fromName } }}<span *ngIf="ref.reason">: {{ ref.reason }}</span>
+          </div>
+          <div class="db-alert db-alert--info mb-16" *ngIf="lockedByReferral">
+            <span class="material-icons mi-sm">lock</span> {{ 'mandate.lockedNote' | translate:{ role: caseMandate()!.lockedTo! } }}
+          </div>
+          <div class="review-item mb-16" *ngIf="referrals().length > 1">
+            <span>{{ 'mandate.history' | translate }}</span>
+            <strong>
+              <span *ngFor="let r of referrals(); let last = last">{{ roleName(r.fromRole) }} → {{ roleName(r.toRole) }}<span *ngIf="!last"> · </span></span>
+            </strong>
+          </div>
           <div class="db-alert db-alert--error mb-16" *ngIf="isOverMandate()">
             <span class="material-icons mi-sm">block</span> {{ 'mandate.overLimitNote' | translate }}
           </div>
@@ -690,10 +703,10 @@
             <span class="material-icons mi-sm">info</span> {{ 'guarantor.alreadyRequiredNote' | translate }}
           </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || isApproved || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
-            <button class="db-btn db-btn--outline" (click)="referToSenior()" [disabled]="submittingAction()"><span class="material-icons mi-sm">arrow_upward</span> {{ 'uw.referToSenior' | translate }}</button>
-            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction()"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
-            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction()" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
+            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || lockedByReferral || isApproved || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
+            <button class="db-btn db-btn--outline" *ngIf="!caseMandate() || caseMandate()!.nextRole" (click)="referToSenior()" [disabled]="submittingAction() || lockedByReferral"><span class="material-icons mi-sm">arrow_upward</span> {{ caseMandate()?.nextRole ? ('mandate.referTo' | translate:{ role: caseMandate()!.nextRole!.label }) : ('uw.referToSenior' | translate) }}</button>
+            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction() || lockedByReferral"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
+            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction() || lockedByReferral" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
           </div>
         </div>
 

@@ -4,25 +4,23 @@ import { z } from "zod";
 import { eq, inArray, asc } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { users, faqs } from "../db/schema";
+import { users, faqs, orgUnits } from "../db/schema";
 import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { toUserSummary } from "../lib/user-mappers";
 import { requireAuth, requireRole } from "../middleware/auth";
-import { STAFF_ROLES } from "../lib/roles";
+import { CUSTOMER_ROLES, staffRoleCodes } from "../lib/roles";
 import { recordAudit } from "../lib/audit";
 
 export const admin = new Hono<AppEnv>();
 admin.use("*", requireAuth, requireRole("ADMIN"));
-
-const CUSTOMER_ROLES = ["CUSTOMER", "BUSINESS_OWNER"];
 
 admin.get("/users", async (c) => {
   const db = getDb(c.env.DB);
   const type = c.req.query("type");
   const rows =
     type === "staff"
-      ? await db.select().from(users).where(inArray(users.role, STAFF_ROLES))
+      ? await db.select().from(users).where(inArray(users.role, await staffRoleCodes(db)))
       : type === "customers"
         ? await db.select().from(users).where(inArray(users.role, CUSTOMER_ROLES))
         : await db.select().from(users);
@@ -35,6 +33,7 @@ admin.put("/users/:id/role", zValidator("json", z.object({ role: z.string() })),
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new AppError(`User not found: ${id}`);
   const { role } = c.req.valid("json");
+  if (!(await staffRoleCodes(db)).includes(role) && !CUSTOMER_ROLES.includes(role)) throw new AppError("Unknown role.");
   // S2 — a role change invalidates any token already issued for this user; without this, the old
   // role's permissions stay live in the token's claims until natural (24h) expiry.
   const [updated] = await db
@@ -52,6 +51,36 @@ admin.put("/users/:id/role", zValidator("json", z.object({ role: z.string() })),
     detail: `${user.role} -> ${role}`,
   });
   return success(c, "Role updated.", toUserSummary(updated));
+});
+
+// Y1 - assign (or clear) a staff member's org unit. Bumps sessionsRevokedAt like a role change:
+// the user's case visibility changes, so their next request must re-resolve it.
+admin.put("/users/:id/org-unit", zValidator("json", z.object({ orgUnitId: z.number().int().nullable() })), async (c) => {
+  const db = getDb(c.env.DB);
+  const id = Number(c.req.param("id"));
+  const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  if (!user) throw new AppError(`User not found: ${id}`);
+  if (!(await staffRoleCodes(db)).includes(user.role)) throw new AppError("Only staff users can be assigned to an org unit.");
+  const { orgUnitId } = c.req.valid("json");
+  if (orgUnitId != null) {
+    const [unit] = await db.select().from(orgUnits).where(eq(orgUnits.id, orgUnitId)).limit(1);
+    if (!unit) throw new AppError("Unknown org unit.");
+  }
+  const [updated] = await db
+    .update(users)
+    .set({ orgUnitId, sessionsRevokedAt: new Date().toISOString() })
+    .where(eq(users.id, id))
+    .returning();
+  const actor = c.get("authUser");
+  await recordAudit(db, {
+    eventType: "USER_ORG_UNIT_CHANGED",
+    subjectType: "User",
+    subjectId: String(id),
+    actor: actor.fullName?.trim() || actor.email,
+    actorRole: actor.role,
+    detail: `${user.orgUnitId ?? "none"} -> ${orgUnitId ?? "none"}`,
+  });
+  return success(c, "Org unit updated.", toUserSummary(updated));
 });
 
 admin.put("/users/:id/enabled", zValidator("json", z.object({ enabled: z.boolean() })), async (c) => {
@@ -84,6 +113,7 @@ const createStaffSchema = z.object({
   nationalId: z.string().regex(/^\d{9}$/),
   phoneNumber: z.string().optional().nullable(),
   role: z.string(),
+  orgUnitId: z.number().int().nullable().optional(),
 });
 
 admin.post("/users", zValidator("json", createStaffSchema), async (c) => {
@@ -95,8 +125,12 @@ admin.post("/users", zValidator("json", createStaffSchema), async (c) => {
   if ((await db.select().from(users).where(eq(users.nationalId, body.nationalId)).limit(1)).length > 0) {
     return fail(c, "National ID already in use.");
   }
-  if (!STAFF_ROLES.includes(body.role)) {
+  if (!(await staffRoleCodes(db)).includes(body.role)) {
     return fail(c, "Invalid staff role.");
+  }
+  if (body.orgUnitId != null) {
+    const [unit] = await db.select().from(orgUnits).where(eq(orgUnits.id, body.orgUnitId)).limit(1);
+    if (!unit) return fail(c, "Unknown org unit.");
   }
   const [saved] = await db
     .insert(users)
@@ -107,6 +141,7 @@ admin.post("/users", zValidator("json", createStaffSchema), async (c) => {
       nationalId: body.nationalId,
       phoneNumber: body.phoneNumber ?? null,
       role: body.role,
+      orgUnitId: body.orgUnitId ?? null,
       createdAt: new Date().toISOString(),
       enabled: true,
       emailVerified: true,

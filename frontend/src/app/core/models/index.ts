@@ -8,6 +8,11 @@ export interface AuthResponse {
   fullName: string;
   phoneNumber?: string;
   role: string;
+  /** Admin-configured display name of a staff role (null for customers). */
+  roleLabel?: string | null;
+  /** Entitlement keys the role holds - UI gating only; the server enforces every one itself. */
+  entitlements?: string[];
+  scope?: 'ALL' | 'UNIT_TREE' | 'UNIT_ONLY';
   expiresIn: number;
   companyName?: string;
   companyRegistrationNumber?: string;
@@ -281,14 +286,24 @@ export interface CreditDeclarations {
   creditScore: number;
 }
 
-/** Admin-editable approval mandate limits per role in the hierarchy
- * UW -> Senior UW -> Head of Lending -> COO -> CEO. See PROJECT_DOCUMENTATION.md. */
-export interface MandateRules {
-  underwriterLimit: number;
-  seniorUnderwriterLimit: number;
-  headOfLendingLimit: number;
-  cooLimit: number;
-  ceoLimit: number;
+/** What the signed-in approver may approve on one specific case (their role's mandate, resolved
+ * against the case's org unit and type) and which role a referral from them would reach. */
+export interface CaseMandate {
+  limit: number;
+  nextRole: { code: string; label: string } | null;
+  /** Label of the role the case is referred to, when that is above the caller (case is locked). */
+  lockedTo?: string | null;
+}
+
+/** One hop of a case's escalation chain of custody. */
+export interface CaseReferral {
+  id: number;
+  fromRole: string;
+  fromName: string;
+  toRole: string;
+  reason: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
 }
 
 /** Only collected when an underwriter has flagged guarantorRequired via Send Back — never asked

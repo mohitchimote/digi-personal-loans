@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, MandateRules, BusinessFinancialsAnalysis } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ficoToLenderGrade, dnbScoreToLenderGrade, dnbScoreToRiskClass } from '../../../core/utils/credit-score.util';
@@ -172,19 +172,11 @@ export class CaseDetailComponent implements OnInit {
   /** Approval Mandates (UW -> Senior UW -> Head of Lending -> COO -> CEO): admin-editable limits
    * per role, fetched once on load. If the requested/approved amount exceeds the logged-in
    * approver's own mandate, they cannot Approve at all — only Refer to Senior. */
-  mandateRules = signal<MandateRules | null>(null);
+  caseMandate = signal<CaseMandate | null>(null);
+  referrals = signal<CaseReferral[]>([]);
 
-  myMandateLimit = computed(() => {
-    const rules = this.mandateRules();
-    if (!rules) return null;
-    switch (this.auth.role) {
-      case 'SENIOR_UNDERWRITER': return rules.seniorUnderwriterLimit;
-      case 'HEAD_OF_LENDING':    return rules.headOfLendingLimit;
-      case 'COO':                return rules.cooLimit;
-      case 'CEO':                return rules.ceoLimit;
-      default:                   return rules.underwriterLimit;
-    }
-  });
+  /** Admin-configured limit for this role on THIS case (role + the case's org unit / type). */
+  myMandateLimit = computed(() => this.caseMandate()?.limit ?? null);
 
   /** Plain method, not computed() — approvedAmount is a plain ngModel-bound property, not a
    * signal, so a computed() here would go stale exactly like the underwriter search bug earlier
@@ -233,10 +225,30 @@ export class CaseDetailComponent implements OnInit {
     this.appRef = this.route.snapshot.paramMap.get('appRef') || '';
     if (!this.appRef) return;
     this.load();
-    this.appSvc.getMandateRules().subscribe({
-      next: rules => this.mandateRules.set(rules),
+    this.appSvc.getCaseMandate(this.appRef).subscribe({
+      next: m => this.caseMandate.set(m),
       error: () => {}
     });
+    this.loadReferrals();
+  }
+
+  private loadReferrals(): void {
+    this.appSvc.getReferrals(this.appRef).subscribe({ next: r => this.referrals.set(r), error: () => {} });
+  }
+
+  /** True when the case has been referred above the signed-in approver - every decision action is
+   * refused server-side, so the buttons are disabled to match. */
+  get lockedByReferral(): boolean {
+    return !!this.caseMandate()?.lockedTo;
+  }
+
+  /** The open (unresolved) referral, if the case is currently sitting with a senior role. */
+  get openReferral(): CaseReferral | null {
+    return this.referrals().filter(r => !r.resolvedAt).slice(-1)[0] ?? null;
+  }
+
+  roleName(code: string): string {
+    return this.i18n.roleName(code, this.caseMandate()?.nextRole?.code === code ? this.caseMandate()?.nextRole?.label : null);
   }
 
   private load(): void {

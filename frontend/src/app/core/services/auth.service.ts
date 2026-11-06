@@ -10,6 +10,12 @@ const API = `${API_BASE}/api/auth`;
 const TOKEN_KEY = 'db_token';
 const USER_KEY  = 'db_user';
 
+const APPROVER_LEGACY = ['portal.underwriter', 'queue.pipeline', 'dashboard.view', 'case.addNote', 'case.editSection', 'case.approve', 'case.decline', 'case.sendBack', 'case.refer', 'case.disburse', 'case.disburseSecondCheck', 'case.resolveVerification', 'mandates.view'];
+const LEGACY_ENTITLEMENTS: Record<string, string[]> = {
+  BANKER: ['portal.banker', 'queue.banker', 'dashboard.view', 'case.addNote', 'case.actAsCustomer', 'mandates.view'],
+  UNDERWRITER: APPROVER_LEGACY, SENIOR_UNDERWRITER: APPROVER_LEGACY, HEAD_OF_LENDING: APPROVER_LEGACY, COO: APPROVER_LEGACY, CEO: APPROVER_LEGACY,
+};
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   currentUser = signal<AuthResponse | null>(this.loadUser());
@@ -114,11 +120,29 @@ export class AuthService {
     return this.currentUser()?.role ?? null;
   }
 
-  /** Covers the whole approval-mandate hierarchy (UW -> Senior UW -> Head of Lending -> COO ->
-   * CEO) — all five roles share the same Underwriter shell/pipeline/case-detail UI for this demo
-   * (see PROJECT_DOCUMENTATION.md's Mandates section for why no per-role shells were built). */
+  /** Entitlements granted to the signed-in user's role (admin-configured, delivered at login).
+   * A session stored before entitlements existed has none - fall back to the legacy role map so
+   * it keeps working until the user next signs in. */
+  get entitlements(): string[] {
+    const u = this.currentUser();
+    if (!u) return [];
+    if (u.entitlements) return u.entitlements;
+    return LEGACY_ENTITLEMENTS[u.role] ?? [];
+  }
+
+  has(key: string): boolean {
+    return this.entitlements.includes(key);
+  }
+
+  /** Display name of the user's role: the admin-configured label for staff. */
+  get roleLabel(): string | null {
+    return this.currentUser()?.roleLabel ?? null;
+  }
+
+  /** Lands in the Underwriter shell: any role holding the underwriting-portal entitlement
+   * (the five approval-mandate roles by default, plus any role the admin configures that way). */
   get isUnderwriter(): boolean {
-    return ['UNDERWRITER', 'SENIOR_UNDERWRITER', 'HEAD_OF_LENDING', 'COO', 'CEO'].includes(this.role || '');
+    return this.has('portal.underwriter');
   }
 
   get isAdmin(): boolean {
@@ -130,7 +154,7 @@ export class AuthService {
   }
 
   get isBanker(): boolean {
-    return this.role === 'BANKER';
+    return this.has('portal.banker');
   }
 
   get companyName(): string | null {

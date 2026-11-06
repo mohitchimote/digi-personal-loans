@@ -1,0 +1,116 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.org' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.orgSubtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+
+<div class="loading-row" *ngIf="loading()"><div class="spinner"></div></div>
+
+<ng-container *ngIf="!loading()">
+  <!-- LEVELS -->
+  <div class="db-card mb-24">
+    <div class="card-header"><h3>{{ 'admin.org.levels' | translate }}</h3></div>
+    <p class="text-muted mb-16" style="font-size:0.85rem">{{ 'admin.org.levelsIntro' | translate }}</p>
+    <table class="db-table">
+      <thead><tr><th>{{ 'admin.org.depth' | translate }}</th><th>{{ 'admin.name' | translate }}</th><th>{{ 'admin.actions' | translate }}</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let l of levels()">
+          <ng-container *ngIf="editingLevelId() === l.id; else levelView">
+            <td><input class="db-input" type="number" min="1" style="width:80px" [(ngModel)]="levelDraft.depth" /></td>
+            <td><input class="db-input" type="text" [(ngModel)]="levelDraft.name" /></td>
+            <td>
+              <button class="db-btn db-btn--primary db-btn--sm" (click)="saveLevel(l)">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="editingLevelId.set(null)">{{ 'common.cancel' | translate }}</button>
+            </td>
+          </ng-container>
+          <ng-template #levelView>
+            <td>{{ l.depth }}</td>
+            <td>{{ l.name }}</td>
+            <td>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="editLevel(l)"><span class="material-icons mi-sm">edit</span></button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="removeLevel(l)"><span class="material-icons mi-sm">delete_outline</span></button>
+            </td>
+          </ng-template>
+        </tr>
+        <tr>
+          <td><input class="db-input" type="number" min="1" style="width:80px" [(ngModel)]="newLevel.depth" /></td>
+          <td><input class="db-input" type="text" [(ngModel)]="newLevel.name" [placeholder]="'admin.org.newLevelName' | translate" /></td>
+          <td><button class="db-btn db-btn--primary db-btn--sm" (click)="addLevel()">{{ 'admin.org.addLevel' | translate }}</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- UNITS -->
+  <div class="db-card">
+    <div class="card-header">
+      <h3>{{ 'admin.org.units' | translate }}</h3>
+      <button class="db-btn db-btn--primary db-btn--sm" (click)="openCreateUnit()" *ngIf="!showUnitForm()">
+        <span class="material-icons mi-sm">add</span> {{ 'admin.org.addUnit' | translate }}
+      </button>
+    </div>
+
+    <div class="unit-form" *ngIf="showUnitForm()">
+      <div class="create-form-grid">
+        <div class="db-form-group">
+          <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" maxlength="32" [(ngModel)]="unitDraft.code" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.name' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" [(ngModel)]="unitDraft.name" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.org.level' | translate }} <span class="required">*</span></label>
+          <select class="db-input" [(ngModel)]="unitDraft.levelId">
+            <option *ngFor="let l of levels()" [ngValue]="l.id">{{ l.name }}</option>
+          </select>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.org.parent' | translate }}</label>
+          <select class="db-input" [(ngModel)]="unitDraft.parentId">
+            <option [ngValue]="null">{{ 'admin.org.noParent' | translate }}</option>
+            <ng-container *ngFor="let r of rows()">
+              <option *ngIf="r.unit.id !== editingUnitId()" [ngValue]="r.unit.id">{{ r.levelName }} - {{ r.unit.name }}</option>
+            </ng-container>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions mt-16">
+        <button class="db-btn db-btn--ghost" (click)="cancelUnit()">{{ 'common.cancel' | translate }}</button>
+        <button class="db-btn db-btn--primary" (click)="saveUnit()">{{ 'common.save' | translate }}</button>
+      </div>
+    </div>
+
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>{{ 'admin.name' | translate }}</th><th>{{ 'admin.org.code' | translate }}</th>
+          <th>{{ 'admin.org.level' | translate }}</th><th>{{ 'dashboard.status' | translate }}</th><th>{{ 'admin.actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="rows().length === 0">
+          <td colspan="5" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.org.noUnits' | translate }}</td>
+        </tr>
+        <tr *ngFor="let r of rows()">
+          <td [style.padding-inline-start.px]="16 + r.indent * 24">{{ r.unit.name }}</td>
+          <td>{{ r.unit.code }}</td>
+          <td>{{ r.levelName }}</td>
+          <td>
+            <span class="db-badge" [class.db-badge--approved]="r.unit.active" [class.db-badge--declined]="!r.unit.active">
+              {{ r.unit.active ? ('admin.active' | translate) : ('admin.org.inactive' | translate) }}
+            </span>
+          </td>
+          <td>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="openCreateUnit(r.unit)" [title]="'admin.org.addChild' | translate"><span class="material-icons mi-sm">subdirectory_arrow_right</span></button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="openEditUnit(r.unit)"><span class="material-icons mi-sm">edit</span></button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleActive(r.unit)">{{ r.unit.active ? ('admin.org.deactivate' | translate) : ('admin.org.activate' | translate) }}</button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="removeUnit(r.unit)"><span class="material-icons mi-sm">delete_outline</span></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>

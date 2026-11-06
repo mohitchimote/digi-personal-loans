@@ -49,6 +49,15 @@ export class I18nService {
     return text;
   }
 
+  /** Display name for a role code: a built-in translation when one exists (system roles),
+   * otherwise the admin-configured label, otherwise the raw code. */
+  roleName(code: string | null | undefined, fallback?: string | null): string {
+    if (!code) return '';
+    const key = 'role.' + code;
+    const v = this.t(key);
+    return v !== key ? v : (fallback || code);
+  }
+
   get isRtl(): boolean {
     return this.lang() === 'he';
   }

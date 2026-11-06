@@ -58,7 +58,7 @@ export class StaffHeaderComponent implements OnInit {
     return this.activity().filter(a => new Date(a.createdAt).getTime() > sinceTime).length;
   });
 
-  constructor(public auth: AuthService, private appSvc: ApplicationService, private router: Router, private i18n: I18nService) {}
+  constructor(public auth: AuthService, private appSvc: ApplicationService, private router: Router, public i18n: I18nService) {}
 
   ngOnInit(): void {
     this.refreshCache();

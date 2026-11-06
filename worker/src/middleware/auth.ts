@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { users } from "../db/schema";
 import { verifyJwt } from "../lib/jwt";
 import { AppError } from "../lib/errors";
+import { resolveRole } from "../lib/roles";
 import type { AppEnv } from "../types";
 
 // Mirrors JwtAuthenticationFilter + SecurityConfig's `anyRequest().authenticated()`
@@ -37,6 +38,9 @@ export async function requireAuth(c: Context<AppEnv>, next: Next) {
   }
 
   c.set("authUser", user);
+  // Phase 2 - resolve the role's admin-configured entitlements/scope once per request (cached),
+  // so every later check is a plain synchronous lookup.
+  c.set("authRole", await resolveRole(db, user.role));
   await next();
 }
 
@@ -50,6 +54,26 @@ export function requireRole(...roles: string[]) {
     }
     await next();
   };
+}
+
+// Phase 2 - gate a route on an admin-configurable entitlement instead of a hard-coded role list.
+export function requireEntitlement(key: string) {
+  return async (c: Context<AppEnv>, next: Next) => {
+    assertEntitlement(c, key);
+    await next();
+  };
+}
+
+export function assertEntitlement(c: Context<AppEnv>, key: string) {
+  const role = c.get("authRole");
+  if (!role || !role.entitlements.has(key)) {
+    throw new AppError("Forbidden.", 403);
+  }
+}
+
+/** Any staff role (holds a row in the roles table) - the replacement for STAFF_ROLES.includes. */
+export function isStaff(c: Context<AppEnv>): boolean {
+  return !!c.get("authRole")?.isStaff;
 }
 
 // Same check as requireRole, called as a plain guard at the top of a handler body instead of as
