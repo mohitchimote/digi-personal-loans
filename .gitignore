@@ -57,3 +57,6 @@ loadtest/results.jtl
 loadtest/report/
 loadtest/*.log
 /jmeter.log
+
+# Generated architecture diagrams
+.archify/
