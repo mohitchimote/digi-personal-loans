@@ -36,7 +36,7 @@ export class AdminRolesComponent implements OnInit {
     return [...out.entries()].map(([name, items]) => ({ name, items }));
   });
 
-  constructor(private adminSvc: AdminService, private i18n: I18nService) {}
+  constructor(private adminSvc: AdminService, public i18n: I18nService) {}
 
   ngOnInit(): void { this.reload(); }
 

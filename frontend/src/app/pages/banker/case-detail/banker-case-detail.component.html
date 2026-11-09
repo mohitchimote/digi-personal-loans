@@ -31,6 +31,9 @@
         </div>
       </div>
 
+      <!-- Whatever the workflow offers this banker on the case right now (buttons come from the definition). -->
+      <app-workflow-actions [appRef]="app.applicationRef" [refreshKey]="app.status + '|' + app.disbursementStatus" queueUrl="/banker/queue" (done)="reload()" />
+
       <div class="db-card mb-16">
         <div class="card-header"><h3>{{ 'banker.callNotesTitle' | translate }}</h3></div>
         <div class="uw-notes" *ngIf="notesFor('general').length">

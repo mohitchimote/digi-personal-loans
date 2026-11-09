@@ -7,6 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { LoanApplication, UnderwritingNote } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { WorkflowActionsComponent } from '../../../shared/workflow-actions/workflow-actions.component';
 import { CaseSectionNavComponent } from '../../../shared/case-section-nav/case-section-nav.component';
 import { PERSONAL_CASE_SECTIONS, BUSINESS_CASE_SECTIONS, CaseSectionDef } from '../../../shared/case-section-nav/case-sections.const';
 
@@ -18,7 +19,7 @@ import { PERSONAL_CASE_SECTIONS, BUSINESS_CASE_SECTIONS, CaseSectionDef } from '
 @Component({
   selector: 'app-banker-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, WorkflowActionsComponent],
   templateUrl: './banker-case-detail.component.html',
   styleUrl: './banker-case-detail.component.scss'
 })
@@ -44,6 +45,9 @@ export class BankerCaseDetailComponent implements OnInit {
     this.appRef = this.route.snapshot.paramMap.get('appRef') || '';
     this.load();
   }
+
+  /** Reload the case after a workflow action ran from the actions card. */
+  reload(): void { this.load(); }
 
   private load(): void {
     this.appSvc.getApplication(this.appRef).subscribe({

@@ -29,8 +29,13 @@ export interface SlaUnit { unitId: number; name: string; code: string; parentId:
 export interface SlaSummary { units: SlaUnit[]; noUnit: SlaCounts }
 
 /** What the signed-in caller may do to one case right now (GET /api/workflow/cases/:ref/actions). */
+export interface ActionInput { field: string; kind: 'text' | 'number' | 'role' | 'boolean'; required: boolean }
+/** Presentation resolved by the server (defaults applied): where the button goes and how it looks. */
+export interface ActionUi { area: 'decision' | 'disbursement' | 'general'; style: 'primary' | 'secondary' | 'danger'; icon: string | null; after: 'pipeline' | null }
+export interface CaseAction { key: string; track: string; label: Bilingual; event: string; inputs: ActionInput[]; ui: ActionUi }
+
 export interface CaseActions {
-  allowed: { key: string; track: string; label: Bilingual }[];
+  allowed: CaseAction[];
   blocked: Record<string, { code: string; label: Bilingual }>;
 }
 
@@ -105,6 +110,12 @@ export class WorkflowService {
 
   caseActions(appRef: string) {
     return this.http.get<CaseActions>(`${API_BASE}/api/workflow/cases/${appRef}/actions`);
+  }
+
+  /** Runs any action the workflow defines on a case. The server applies the same guards, entitlements,
+   * events and audit as every dedicated route; it answers with the fresh case and its next actions. */
+  runAction(appRef: string, action: string, input: Record<string, unknown> = {}) {
+    return this.http.post<{ application: unknown; actions: CaseActions | null }>(`${API_BASE}/api/workflow/cases/${appRef}/actions/${action}`, { input });
   }
 
   // ---- ownership, availability and SLA

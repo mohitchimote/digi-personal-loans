@@ -6,11 +6,14 @@ import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { CaseOwnershipComponent } from '../../../shared/case-ownership/case-ownership.component';
-import { WorkflowService, CaseActions } from '../../../core/services/workflow.service';
+import { WorkflowService, CaseActions, CaseAction } from '../../../core/services/workflow.service';
 import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ficoToLenderGrade, dnbScoreToLenderGrade, dnbScoreToRiskClass } from '../../../core/utils/credit-score.util';
+import { buttonClassOf, doneMessage, fieldLabelOf, labelOf, missingInputMessage, parseNumber } from '../../../shared/workflow-actions/workflow-actions.util';
+import { WorkflowActionsComponent } from '../../../shared/workflow-actions/workflow-actions.component';
+import { HAND_WIRED_ACTIONS } from '../../../shared/workflow-actions/workflow-actions.const';
 import { CaseSectionNavComponent } from '../../../shared/case-section-nav/case-section-nav.component';
 
 type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVerification' | 'decision' | 'disbursement';
@@ -18,7 +21,7 @@ type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVe
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent, WorkflowActionsComponent],
   templateUrl: './case-detail.component.html',
   styleUrl: './case-detail.component.scss'
 })
@@ -38,7 +41,6 @@ export class CaseDetailComponent implements OnInit {
     return types.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
   });
   loading = signal(true);
-  submittingAction = signal(false);
   error = signal('');
   actionMessage = signal('');
   appRef = '';
@@ -245,16 +247,122 @@ export class CaseDetailComponent implements OnInit {
     return this.caseActions()?.blocked['approve']?.code === 'REFERRAL_LOCKED' || !!this.caseMandate()?.lockedTo;
   }
 
-  /** What the signed-in approver can do to this case right now, from the workflow definition. Until
-   * it has loaded nothing is blocked client-side (the server enforces every action regardless). */
+  /** What the signed-in approver can do to this case right now, from the workflow definition. The
+   * Decision and Disbursement buttons are built from this, so a failed load is reported, not silent. */
   caseActions = signal<CaseActions | null>(null);
-  can(action: string): boolean {
-    const a = this.caseActions();
-    return a ? a.allowed.some(x => x.key === action) : true;
+
+  // ---- actions the workflow defines that this screen has no hand-written control for (see HAND_WIRED_ACTIONS):
+  // everything else the engine offers the caller gets a generic button, so an action added in the workflow
+  // builder works without code.
+  /** Where each action's button goes comes from the definition's `ui.area` (defaults resolved by the
+   * server): the Decision tab, the Disbursement tab, or the general card at the top. */
+  private offered = computed(() => (this.caseActions()?.allowed ?? []).filter(a => this.hasTarget(a)));
+  disbursementActions = computed(() => this.offered().filter(a => a.ui.area === 'disbursement'));
+  decisionActions = computed(() => this.offered().filter(a => a.ui.area === 'decision' && !HAND_WIRED_ACTIONS.has(a.key)));
+
+  /** An action that hands the case to another role (it has a `toRole` input) is only worth offering
+   * when there is a role above the user to hand it to. Until the mandate has loaded, assume there is. */
+  private takesTarget(a: CaseAction): boolean { return a.inputs.some(f => f.field === 'toRole'); }
+  private hasTarget(a: CaseAction): boolean {
+    const m = this.caseMandate();
+    return !this.takesTarget(a) || !m || !!m.nextRole;
+  }
+
+  /** The button's text: a role-handing action names the role it will go to ("Refer to Senior Underwriter"). */
+  actionText(a: CaseAction): string {
+    const next = this.caseMandate()?.nextRole;
+    return this.takesTarget(a) && next ? this.i18n.t('mandate.referTo', { role: this.i18n.roleName(next.code, next.label) }) : this.actionLabel(a);
+  }
+
+  /** The Decision tab owns two widgets, the Reason box and the "require a guarantor" checkbox. Its
+   * actions read those instead of showing a copy of their own. */
+  usesSharedInput(a: CaseAction, field: string): boolean {
+    return a.ui.area === 'decision' && (field === 'reason' || field === 'requireGuarantor' || field === 'approvedAmount');
+  }
+
+  /** An action that grants an amount is an approval: the mandate limit and the exception-notes rule apply to it. */
+  grantsAmount(a: CaseAction): boolean { return a.ui.area === 'decision' && a.inputs.some(f => f.field === 'approvedAmount'); }
+
+  /** Why the button cannot be pressed right now: busy, over the user's mandate, or red data checks without exception notes. */
+  blocked(a: CaseAction): boolean {
+    if (this.runningExtra() !== '') return true;
+    return this.grantsAmount(a) && (this.isOverMandate() || (this.hasUnresolvedRed() && !this.exceptionNotes.trim()));
+  }
+
+  /** Inputs the screen decides for the person: in the Decision tab a referral goes to the next role up. */
+  isImplicit(a: CaseAction, field: string): boolean { return a.ui.area === 'decision' && field === 'toRole'; }
+
+  /** True when any Decision action takes this input, so the shared widget is worth showing. */
+  decisionHas(field: string): boolean { return this.decisionActions().some(a => a.inputs.some(f => f.field === field)); }
+
+  buttonClass(a: CaseAction): string { return buttonClassOf(a); }
+
+  /** What the user typed for each generic action's inputs, keyed `action.field`. */
+  extraInput: Record<string, string> = {};
+  runningExtra = signal('');
+
+  actionLabel(a: { label: { en: string; he: string } }): string { return labelOf(a, this.i18n); }
+
+  fieldLabel(f: { field: string }): string { return fieldLabelOf(f, this.i18n); }
+
+  /** What the person has entered for one input: from the Decision tab's shared widgets, or this action's own box. */
+  private rawValue(a: CaseAction, field: string): string {
+    if (this.usesSharedInput(a, field)) {
+      if (field === 'approvedAmount') return this.approvedAmount == null ? '' : String(this.approvedAmount);
+      return this.decisionReason;
+    }
+    return this.extraInput[`${a.key}.${field}`] ?? '';
+  }
+
+  runExtra(a: CaseAction): void {
+    if (this.grantsAmount(a)) {
+      if (this.isOverMandate()) { this.error.set(this.i18n.t('mandate.errOverLimit')); return; }
+      if (this.hasUnresolvedRed() && !this.exceptionNotes.trim()) { this.error.set(this.i18n.t('dataVerification.errExceptionNotesRequired')); return; }
+    }
+    const input: Record<string, unknown> = {};
+    for (const f of a.inputs) {
+      if (f.kind === 'boolean') {
+        input[f.field] = this.usesSharedInput(a, f.field) ? this.requireGuarantor : this.extraInput[`${a.key}.${f.field}`] === 'true';
+        continue;
+      }
+      const raw = this.rawValue(a, f.field).trim();
+      if (f.kind === 'number') {
+        const n = parseNumber(raw);
+        if (raw && n === null) { this.error.set(this.i18n.t('uw.extra.badNumber', { field: this.fieldLabel(f) })); return; }
+        if (f.required && !(n !== null && n > 0)) { this.error.set(missingInputMessage(a, f, this.i18n)); return; }
+        if (n !== null) input[f.field] = n;
+        continue;
+      }
+      if (!raw) {
+        if (f.required) { this.error.set(missingInputMessage(a, f, this.i18n)); return; }
+        continue;
+      }
+      input[f.field] = raw;
+    }
+    const exceptionNotes = this.grantsAmount(a) && this.hasUnresolvedRed() ? this.exceptionNotes.trim() : '';
+    this.runningExtra.set(a.key);
+    this.error.set('');
+    this.actionMessage.set('');
+    this.workflow.runAction(this.appRef, a.key, input).subscribe({
+      next: () => {
+        this.runningExtra.set('');
+        this.actionMessage.set(doneMessage(a, this.i18n));
+        for (const f of a.inputs) delete this.extraInput[`${a.key}.${f.field}`];
+        // An approval taken over unresolved red checks also records why, as before.
+        if (exceptionNotes) {
+          this.appSvc.addNote(this.appRef, 'general', exceptionNotes, 'DECISION_APPROVED_WITH_EXCEPTION', this.auth.userFullName || 'Underwriter').subscribe();
+        }
+        // Some actions take the case out of the user's hands: back to the queue, as the old buttons did.
+        if (a.ui.after === 'pipeline') { this.router.navigate(['/underwriter/pipeline']); return; }
+        this.load();
+        this.loadReferrals();
+      },
+      error: e => { this.runningExtra.set(''); this.error.set(e?.error?.message || this.i18n.t('uw.extra.failed')); }
+    });
   }
 
   private loadActions(): void {
-    this.workflow.caseActions(this.appRef).subscribe({ next: a => this.caseActions.set(a), error: () => {} });
+    this.workflow.caseActions(this.appRef).subscribe({ next: a => this.caseActions.set(a), error: () => this.error.set(this.i18n.t('uw.extra.loadFailed')) });
   }
 
   /** The open (unresolved) referral, if the case is currently sitting with a senior role. */
@@ -265,6 +373,9 @@ export class CaseDetailComponent implements OnInit {
   roleName(code: string): string {
     return this.i18n.roleName(code, this.caseMandate()?.nextRole?.code === code ? this.caseMandate()?.nextRole?.label : null);
   }
+
+  /** The shared actions card ran an action: reload the case and its referrals. */
+  afterWorkflowAction(): void { this.load(); this.loadReferrals(); }
 
   private load(): void {
     this.loadActions();
@@ -503,71 +614,5 @@ export class CaseDetailComponent implements OnInit {
     });
   }
 
-  approve(): void {
-    if (!this.approvedAmount || this.approvedAmount <= 0) { this.error.set(this.i18n.t('uw.errApprovedAmount')); return; }
-    if (this.isOverMandate()) { this.error.set(this.i18n.t('mandate.errOverLimit')); return; }
-    if (this.hasUnresolvedRed() && !this.exceptionNotes.trim()) {
-      this.error.set(this.i18n.t('dataVerification.errExceptionNotesRequired'));
-      return;
-    }
-    this.submittingAction.set(true);
-    this.error.set('');
-    const exceptionNotes = this.exceptionNotes.trim();
-    this.appSvc.approveByUnderwriter(this.appRef, this.auth.userFullName || 'Underwriter', this.approvedAmount).subscribe({
-      next: () => {
-        this.submittingAction.set(false);
-        this.actionMessage.set(this.i18n.t('uw.caseApproved'));
-        if (exceptionNotes) {
-          this.appSvc.addNote(this.appRef, 'general', exceptionNotes, 'DECISION_APPROVED_WITH_EXCEPTION', this.auth.userFullName || 'Underwriter').subscribe();
-        }
-        this.load();
-      },
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errApprove')); }
-    });
-  }
 
-  decline(): void {
-    if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errDeclineReason')); return; }
-    this.submittingAction.set(true);
-    this.appSvc.decline(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter').subscribe({
-      next: () => this.router.navigate(['/underwriter/pipeline']),
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errDecline')); }
-    });
-  }
-
-  referToSenior(): void {
-    if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errReferReason')); return; }
-    this.submittingAction.set(true);
-    this.appSvc.referToSenior(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter').subscribe({
-      next: () => this.router.navigate(['/underwriter/pipeline']),
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errRefer')); }
-    });
-  }
-
-  sendBack(): void {
-    if (!this.decisionReason.trim()) { this.error.set(this.i18n.t('uw.errSendBackReason')); return; }
-    this.submittingAction.set(true);
-    this.appSvc.sendBack(this.appRef, this.decisionReason.trim(), this.auth.userFullName || 'Underwriter', this.requireGuarantor).subscribe({
-      next: () => this.router.navigate(['/underwriter/pipeline']),
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errSendBack')); }
-    });
-  }
-
-  authoriseFundRelease(): void {
-    this.submittingAction.set(true);
-    this.error.set('');
-    this.appSvc.authoriseFundRelease(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
-      next: () => { this.submittingAction.set(false); this.actionMessage.set(this.i18n.t('uw.fundsReleased')); this.load(); },
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errDisbursement')); }
-    });
-  }
-
-  submitForSecondCheck(): void {
-    this.submittingAction.set(true);
-    this.error.set('');
-    this.appSvc.submitForSecondCheck(this.appRef, this.auth.userFullName || 'Underwriter').subscribe({
-      next: () => { this.submittingAction.set(false); this.actionMessage.set(this.i18n.t('uw.secondCheckSubmitted')); this.load(); },
-      error: () => { this.submittingAction.set(false); this.error.set(this.i18n.t('uw.errDisbursement')); }
-    });
-  }
 }

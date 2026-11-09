@@ -170,17 +170,7 @@ export class ApplicationService {
     return this.http.get<StaffActivityItem[]>(`${API}/staff-activity`);
   }
 
-  decline(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/decline`, { reason, reviewedBy });
-  }
 
-  sendBack(appRef: string, reason: string, reviewedBy: string, requireGuarantor = false): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/send-back`, { reason, reviewedBy, requireGuarantor: String(requireGuarantor) });
-  }
-
-  approveByUnderwriter(appRef: string, reviewedBy: string, approvedAmount?: number): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/approve-by-underwriter`, { reviewedBy, approvedAmount });
-  }
 
   addNote(appRef: string, section: string, note: string, noteType: string, createdBy: string): Observable<UnderwritingNote> {
     return this.http.post<UnderwritingNote>(`${API}/${appRef}/notes`, { section, note, noteType, createdBy });
@@ -194,17 +184,7 @@ export class ApplicationService {
     return this.http.put<LoanApplication>(`${API}/${appRef}/affordability-result`, result);
   }
 
-  referToSenior(appRef: string, reason: string, reviewedBy: string): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/refer-to-senior`, { reason, reviewedBy });
-  }
 
-  authoriseFundRelease(appRef: string, reviewedBy: string): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/authorise`, { reviewedBy });
-  }
-
-  submitForSecondCheck(appRef: string, reviewedBy: string): Observable<LoanApplication> {
-    return this.http.post<LoanApplication>(`${API}/${appRef}/disbursement/second-check`, { reviewedBy });
-  }
 
   getDataVerification(appRef: string): Observable<DataVerificationSummary> {
     return this.http.get<DataVerificationSummary>(`${API}/${appRef}/data-verification`);

@@ -68,6 +68,16 @@ export class I18nService {
     return v !== key ? v : (fallback || code);
   }
 
+  /** Text for an entitlement from the server's catalog (always English): the translation when one
+   * exists (`ent.<key>`, `entdesc.<key>`, `entgroup.<Group>`), otherwise the server's own text, so a
+   * newly added entitlement still shows before it has been translated. */
+  entitlementText(kind: 'label' | 'description' | 'group', key: string, fallback: string): string {
+    const prefix = kind === 'label' ? 'ent.' : kind === 'description' ? 'entdesc.' : 'entgroup.';
+    const k = prefix + key.replace(/\s+/g, '_');
+    const v = this.t(k);
+    return v !== k ? v : fallback;
+  }
+
   get isRtl(): boolean {
     return this.lang() === 'he';
   }

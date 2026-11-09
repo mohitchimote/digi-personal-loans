@@ -1,5 +1,5 @@
 <div *ngIf="!loading() && application()">
-  <app-case-ownership [appRef]="application()!.applicationRef" />
+  <app-case-ownership [appRef]="application()!.applicationRef" [refreshKey]="application()!.status" />
   <div class="uw-case-strip">
     <div class="uw-case-strip-item">
       <span>{{ 'uw.applicant' | translate }}</span>
@@ -53,6 +53,30 @@
 
   <div class="db-alert db-alert--success mb-8" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
   <div class="db-alert db-alert--error mb-8" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+  <!-- General workflow actions: whatever the workflow offers this person on the case right now. -->
+  <app-workflow-actions [appRef]="application()!.applicationRef" [refreshKey]="application()!.status + '|' + application()!.disbursementStatus" (done)="afterWorkflowAction()" />
+
+  <!-- One generic action: its inputs (from the workflow's guards) and a button labelled from the definition. -->
+  <ng-template #actionRow let-a>
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+      <ng-container *ngFor="let f of a.inputs">
+        <ng-container *ngIf="!usesSharedInput(a, f.field) && !isImplicit(a, f.field)">
+          <label class="db-checkbox" style="margin:0;" *ngIf="f.kind === 'boolean'">
+            <input type="checkbox" [checked]="extraInput[a.key + '.' + f.field] === 'true'" (change)="extraInput[a.key + '.' + f.field] = $any($event.target).checked ? 'true' : ''" />
+            <span>{{ fieldLabel(f) }}</span>
+          </label>
+          <div class="db-form-group" style="margin:0;" *ngIf="f.kind !== 'boolean'">
+            <label>{{ fieldLabel(f) }}<span class="required" *ngIf="f.required"> *</span></label>
+            <input class="db-input" [type]="f.kind === 'number' ? 'number' : 'text'" [ngModel]="extraInput[a.key + '.' + f.field] || ''" (ngModelChange)="extraInput[a.key + '.' + f.field] = $event" />
+          </div>
+        </ng-container>
+      </ng-container>
+      <button class="db-btn" [ngClass]="buttonClass(a)" [style.color]="a.ui.style === 'danger' ? '#c62828' : null" [attr.data-action]="a.key" [disabled]="blocked(a)" (click)="runExtra(a)">
+        <span class="material-icons mi-sm" *ngIf="a.ui.icon">{{ a.ui.icon }}</span> {{ actionText(a) }}
+      </button>
+    </div>
+  </ng-template>
+
   <div class="db-alert db-alert--warning mb-16" *ngIf="dataVerification()">
     <span class="material-icons mi-sm">fact_check</span>
     {{ 'dataVerification.bannerSummary' | translate:{ red: redCount(), amber: amberCount(), green: greenCount() } }}
@@ -666,7 +690,7 @@
             <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }} ({{ 'uw.requested' | translate }})</span><strong>₪{{ (isBusiness ? company.loanAmount : loanReqs.loanAmount) | number }}</strong></div>
             <div class="review-item" *ngIf="myMandateLimit() != null"><span>{{ 'mandate.yourLimit' | translate }}</span><strong>₪{{ myMandateLimit() | number }}</strong></div>
           </div>
-          <div class="db-form-group">
+          <div class="db-form-group" *ngIf="decisionHas('approvedAmount') || isApproved">
             <label>{{ 'uw.approvedAmountLabel' | translate }} <span class="required">*</span></label>
             <input class="db-input" type="number" min="1" [(ngModel)]="approvedAmount" [disabled]="isApproved" />
             <div class="db-hint">{{ 'uw.approvedAmountHint' | translate }}</div>
@@ -691,12 +715,12 @@
             <label>{{ 'uw.reasonComments' | translate }}</label>
             <textarea class="db-input" rows="3" [(ngModel)]="decisionReason" [placeholder]="'uw.reasonPlaceholder' | translate"></textarea>
           </div>
-          <div class="db-form-group" *ngIf="hasUnresolvedRed()">
+          <div class="db-form-group" *ngIf="hasUnresolvedRed() && decisionHas('approvedAmount')">
             <label>{{ 'dataVerification.exceptionNotesLabel' | translate }} <span class="required">*</span></label>
             <textarea class="db-input" rows="2" [(ngModel)]="exceptionNotes"></textarea>
             <div class="db-hint">{{ 'dataVerification.exceptionNotesHint' | translate }}</div>
           </div>
-          <label class="db-checkbox mb-16" *ngIf="!application()?.guarantorRequired">
+          <label class="db-checkbox mb-16" *ngIf="!application()?.guarantorRequired && decisionHas('requireGuarantor')">
             <input type="checkbox" [(ngModel)]="requireGuarantor" />
             <span>{{ 'guarantor.requireOnSendBack' | translate }}</span>
           </label>
@@ -704,10 +728,8 @@
             <span class="material-icons mi-sm">info</span> {{ 'guarantor.alreadyRequiredNote' | translate }}
           </div>
           <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="approve()" [disabled]="submittingAction() || !can('approve') || isOverMandate() || (hasUnresolvedRed() && !exceptionNotes.trim())">✓ {{ 'uw.approve' | translate }}</button>
-            <button class="db-btn db-btn--outline" *ngIf="!caseMandate() || caseMandate()!.nextRole" (click)="referToSenior()" [disabled]="submittingAction() || !can('refer')"><span class="material-icons mi-sm">arrow_upward</span> {{ caseMandate()?.nextRole ? ('mandate.referTo' | translate:{ role: caseMandate()!.nextRole!.label }) : ('uw.referToSenior' | translate) }}</button>
-            <button class="db-btn db-btn--outline" (click)="sendBack()" [disabled]="submittingAction() || !can('send_back')"><span class="material-icons mi-sm">undo</span> {{ 'uw.sendBack' | translate }}</button>
-            <button class="db-btn db-btn--ghost" (click)="decline()" [disabled]="submittingAction() || !can('decline')" style="color:#c62828;"><span class="material-icons mi-sm">close</span> {{ 'uw.decline' | translate }}</button>
+            <!-- Decision actions the workflow places on this tab (e.g. Decline); they read the shared reason above. -->
+            <ng-container *ngFor="let a of decisionActions()"><ng-container *ngTemplateOutlet="actionRow; context: { $implicit: a }" /></ng-container>
           </div>
         </div>
 
@@ -734,13 +756,10 @@
               </strong>
             </div>
           </div>
-          <div class="uw-decision-actions">
-            <button class="db-btn db-btn--accent" (click)="authoriseFundRelease()" [disabled]="submittingAction() || !can('authorise')">
-              <span class="material-icons mi-sm">payments</span> {{ 'uw.authoriseFundRelease' | translate }}
-            </button>
-            <button class="db-btn db-btn--outline" (click)="submitForSecondCheck()" [disabled]="submittingAction() || !can('second_check')">
-              <span class="material-icons mi-sm">autorenew</span> {{ 'uw.submitSecondCheck' | translate }}
-            </button>
+          <!-- The disbursement actions the workflow offers this person right now. -->
+          <div class="uw-decision-actions" data-testid="disbursement-actions">
+            <ng-container *ngFor="let a of disbursementActions()"><ng-container *ngTemplateOutlet="actionRow; context: { $implicit: a }" /></ng-container>
+            <span class="text-muted" *ngIf="!disbursementActions().length">{{ 'uw.extra.noneNow' | translate }}</span>
           </div>
         </div>
 

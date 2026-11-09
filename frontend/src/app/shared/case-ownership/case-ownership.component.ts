@@ -19,6 +19,8 @@ import { I18nService } from '../../core/i18n/i18n.service';
 })
 export class CaseOwnershipComponent implements OnChanges {
   @Input({ required: true }) appRef = '';
+  /** Change this (e.g. to the case's status) to make the strip reload after the case has moved. */
+  @Input() refreshKey: unknown = null;
 
   private workflow = inject(WorkflowService);
   private auth = inject(AuthService);

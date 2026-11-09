@@ -70,39 +70,54 @@
         <svg #svg class="wf-svg" [attr.width]="canvasSize().w" [attr.height]="canvasSize().h"
              (pointermove)="onMove($event)" (pointerup)="onUp($event)" (pointerleave)="onCancel()" (pointerdown)="clearSelection()">
           <defs>
-            <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0 0 L10 5 L0 10 z" class="wf-arrow-head" />
-            </marker>
+            @for (a of ['staff', 'customer', 'system']; track a) {
+              <marker [id]="'wf-arrow-' + a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0 0 L10 5 L0 10 z" [attr.class]="'wf-arrow-head wf-' + a" />
+              </marker>
+            }
           </defs>
 
           @for (l of laneViews(); track l.key ?? '_none') {
-            <rect class="wf-lane" [attr.x]="l.x" y="0" [attr.width]="laneW - 8" [attr.height]="canvasSize().h" rx="10" />
-            <text class="wf-lane-title" [attr.x]="l.x + 12" y="24">{{ l.label }}</text>
+            <rect class="wf-lane" [attr.x]="l.x + 4" y="0" [attr.width]="laneW - 8" [attr.height]="canvasSize().h" rx="10" />
+            <text class="wf-lane-title" [attr.x]="l.x + 14" y="24">{{ l.label }}</text>
             @if (l.sla) {
-              <text class="wf-lane-sub" [attr.x]="l.x + 12" y="42">SLA {{ l.sla.hours }}h</text>
+              <text class="wf-lane-sub" [attr.x]="l.x + 14" y="42">SLA {{ l.sla.hours }}h</text>
             }
           }
 
-          @for (e of edges(); track $index) {
-            <path class="wf-edge" [class.selected]="e.selected" [attr.d]="e.path" marker-end="url(#wf-arrow)" />
-            <path class="wf-edge-hit" [attr.d]="e.path" (pointerdown)="$event.stopPropagation()" (click)="selectTransition(e.key)" />
-            <text class="wf-edge-label" [class.selected]="e.selected" [attr.x]="e.lx" [attr.y]="e.ly - 4" text-anchor="middle"
-                  (pointerdown)="$event.stopPropagation()" (click)="selectTransition(e.key)">{{ e.label }}</text>
+          @for (e of edges(); track e.id) {
+            <path class="wf-edge" [ngClass]="'wf-' + e.actor" [class.selected]="e.selected" [class.hot]="e.hot" [class.dim]="e.dim" [attr.d]="e.path" [attr.marker-end]="'url(#wf-arrow-' + e.actor + ')'" />
+            <path class="wf-edge-hit" [attr.d]="e.path" (pointerdown)="$event.stopPropagation()" (pointerenter)="hoverKey.set(e.key)" (pointerleave)="hoverKey.set(null)" (click)="selectTransition(e.key)" />
+          }
+
+          @for (d of dots(); track d.id) {
+            <circle class="wf-dot" [ngClass]="'wf-' + d.actor" [class.dim]="d.dim" [attr.cx]="d.x" [attr.cy]="d.y" r="3.4" />
           }
 
           @for (n of drawn(); track n.key) {
-            <g class="wf-node" [class.selected]="selection()?.kind === 'status' && selection()?.key === n.key" [class.virtual]="n.virtual"
+            <g class="wf-node" [class.selected]="selection()?.kind === 'status' && selection()?.key === n.key"
                [attr.transform]="'translate(' + n.x + ',' + n.y + ')'" (pointerdown)="startDrag($event, n)">
-              <rect class="wf-node-box" [ngClass]="'badge-' + n.badge" [attr.width]="nodeW" [attr.height]="nodeH" rx="9" />
-              <text class="wf-node-label" [attr.x]="nodeW / 2" y="20" text-anchor="middle">{{ n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label }}</text>
-              <text class="wf-node-key" [attr.x]="nodeW / 2" y="35" text-anchor="middle">{{ n.virtual ? '*' : n.key }}</text>
+              <rect class="wf-node-box" [ngClass]="'badge-' + n.badge" [attr.width]="nodeW" [attr.height]="n.h" rx="9" />
+              <text class="wf-node-label" [attr.x]="nodeW / 2" [attr.y]="n.h / 2 - 3" text-anchor="middle">{{ n.label.length > 22 ? n.label.slice(0, 21) + '…' : n.label }}</text>
+              <text class="wf-node-key" [attr.x]="nodeW / 2" [attr.y]="n.h / 2 + 12" text-anchor="middle">{{ n.key }}</text>
               @if (n.entry) { <text class="wf-node-entry" x="8" y="14">▶</text> }
-              @if (editable() && !n.virtual) {
-                <circle class="wf-handle" [attr.cx]="nodeW" [attr.cy]="nodeH / 2" r="7" (pointerdown)="startConnect($event, n)">
+              @if (editable()) {
+                <circle class="wf-handle" [attr.cx]="nodeW" [attr.cy]="n.h / 2" r="7" (pointerdown)="startConnect($event, n)">
                   <title>{{ 'admin.wf.connectTip' | translate }}</title>
                 </circle>
               }
             </g>
+          }
+
+          <!-- labels sit above arrows and boxes so they are always readable -->
+          @for (e of edges(); track e.id) {
+            @if (e.label; as lb) {
+              <g class="wf-label" [class.floating]="lb.floating" [class.selected]="e.selected || e.hot" [class.dim]="e.dim" (pointerdown)="$event.stopPropagation()" (pointerenter)="hoverKey.set(e.key)" (pointerleave)="hoverKey.set(null)" (click)="selectTransition(e.key)">
+                <rect [attr.x]="lb.x - lb.w / 2" [attr.y]="lb.y - 8" [attr.width]="lb.w" height="16" rx="8" />
+                <text [attr.x]="lb.x" [attr.y]="lb.y + 4" text-anchor="middle">{{ lb.text }}</text>
+                <title>{{ lb.full }} · {{ eventTitle(e.key) }}</title>
+              </g>
+            }
           }
 
           @if (connectLine(); as c) {
@@ -110,6 +125,16 @@
           }
         </svg>
       </div>
+      <div class="wf-legend">
+        <span><i class="wf-key wf-staff"></i>{{ 'admin.wf.legend.staff' | translate }}</span>
+        <span><i class="wf-key wf-customer"></i>{{ 'admin.wf.legend.customer' | translate }}</span>
+        <span><i class="wf-key wf-system"></i>{{ 'admin.wf.legend.system' | translate }}</span>
+        <span class="text-muted">{{ 'admin.wf.legend.merged' | translate }}</span>
+      </div>
+      <p class="wf-hint" *ngIf="anyStatusActions().length">
+        {{ 'admin.wf.fromAny' | translate }}:
+        <button class="wf-chip" *ngFor="let x of anyStatusActions()" (click)="selectTransition(x.key)">{{ x.label.en }} → {{ statusLabel(x.to) }}</button>
+      </p>
       <p class="wf-hint" *ngIf="inPlaceActions().length">
         {{ 'admin.wf.inPlace' | translate }}:
         <button class="wf-chip" *ngFor="let x of inPlaceActions()" (click)="selectTransition(x.key)">{{ x.label.en }}</button>
@@ -122,6 +147,7 @@
         <button [class.active]="tab() === 'selection'" (click)="tab.set('selection')">{{ 'admin.wf.tab.selection' | translate }}</button>
         <button [class.active]="tab() === 'stages'" (click)="tab.set('stages')">{{ 'admin.wf.tab.stages' | translate }}</button>
         <button [class.active]="tab() === 'queues'" (click)="tab.set('queues')">{{ 'admin.wf.tab.queues' | translate }}</button>
+        <button [class.active]="tab() === 'events'" (click)="tab.set('events')">{{ 'admin.wf.tab.events' | translate }}</button>
         <button [class.active]="tab() === 'simulate'" (click)="tab.set('simulate')">{{ 'admin.wf.tab.simulate' | translate }}</button>
         <button [class.active]="tab() === 'problems'" [class.has-errors]="errors().length" (click)="tab.set('problems')">
           {{ 'admin.wf.tab.problems' | translate }}<span class="wf-count" *ngIf="errors().length">{{ errors().length }}</span>
@@ -179,15 +205,56 @@
             </div>
 
             <div class="db-form-group">
+              <label>{{ 'admin.wf.event' | translate }}</label>
+              <input class="db-input" [ngModel]="x.event || ''" (change)="setEvent(x, $any($event.target).value)" [placeholder]="eventName(trackKey(), x)" />
+              <div class="db-hint">{{ 'admin.wf.event.hint' | translate }}</div>
+              <div class="wf-subs">
+                <span class="wf-sub-title">{{ 'admin.wf.event.subscribers' | translate }}</span>
+                <div class="wf-sub" *ngFor="let s of subscribersOf(trackKey(), x)">
+                  <span class="wf-sub-kind" [ngClass]="'k-' + s.kind">{{ s.name }}</span>
+                  <span class="wf-sub-detail">{{ s.detail }}</span>
+                  <span class="wf-sub-cond" *ngIf="s.conditional">{{ 'admin.wf.event.conditional' | translate }}</span>
+                </div>
+                <div class="db-hint">{{ 'admin.wf.event.subsHint' | translate }}</div>
+              </div>
+            </div>
+
+            <div class="db-form-group">
               <label>{{ 'admin.wf.actors' | translate }}</label>
               <div class="wf-checks"><label *ngFor="let a of actorTypes"><input type="checkbox" [checked]="x.actors.includes(a)" (change)="toggleActor(x, a)" /> {{ a }}</label></div>
+            </div>
+
+            <div class="db-form-group">
+              <label>{{ 'admin.wf.ui.title' | translate }}</label>
+              <div class="form-row">
+                <div class="wf-param"><label>{{ 'admin.wf.ui.area' | translate }}</label>
+                  <select class="db-select" [ngModel]="x.ui?.area || ''" (ngModelChange)="setUi(x, 'area', $event)">
+                    <option value="">{{ 'admin.wf.ui.areaDefault' | translate }}</option>
+                    <option *ngFor="let o of uiAreas" [value]="o">{{ 'admin.wf.ui.area.' + o | translate }}</option>
+                  </select></div>
+                <div class="wf-param"><label>{{ 'admin.wf.ui.style' | translate }}</label>
+                  <select class="db-select" [ngModel]="x.ui?.style || ''" (ngModelChange)="setUi(x, 'style', $event)">
+                    <option value="">{{ 'admin.wf.ui.styleDefault' | translate }}</option>
+                    <option *ngFor="let o of uiStyles" [value]="o">{{ 'admin.wf.ui.style.' + o | translate }}</option>
+                  </select></div>
+              </div>
+              <div class="form-row">
+                <div class="wf-param"><label>{{ 'admin.wf.ui.icon' | translate }}</label>
+                  <input class="db-input" [ngModel]="x.ui?.icon || ''" (change)="setUi(x, 'icon', $any($event.target).value.trim())" placeholder="close" /></div>
+                <div class="wf-param"><label>{{ 'admin.wf.ui.after' | translate }}</label>
+                  <select class="db-select" [ngModel]="x.ui?.after || ''" (ngModelChange)="setUi(x, 'after', $event)">
+                    <option value="">{{ 'admin.wf.ui.afterStay' | translate }}</option>
+                    <option value="pipeline">{{ 'admin.wf.ui.afterPipeline' | translate }}</option>
+                  </select></div>
+              </div>
+              <div class="db-hint">{{ 'admin.wf.ui.hint' | translate }}</div>
             </div>
 
             <div class="db-form-group">
               <label>{{ 'admin.wf.entitlement' | translate }}</label>
               <select class="db-select" [ngModel]="x.entitlement || ''" (ngModelChange)="setEntitlement(x, $event)">
                 <option value="">{{ 'admin.wf.noEntitlement' | translate }}</option>
-                <option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option>
+                <option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ entLabel(e) }} ({{ e.key }})</option>
               </select>
               <div class="db-hint">{{ 'admin.wf.entitlementHint' | translate }}</div>
             </div>
@@ -220,7 +287,7 @@
                   <button class="wf-icon" (click)="removeAt(x.guards, i)">✕</button>
                 </span>
               </div>
-              <div class="wf-param" *ngFor="let p of guardSpec(g.type)">
+              <div class="wf-param" *ngFor="let p of guardSpec(g.type); trackBy: paramTrack">
                 <ng-container *ngTemplateOutlet="param; context: { obj: g, p: p }"></ng-container>
               </div>
             </div>
@@ -241,7 +308,7 @@
                   <button class="wf-icon" (click)="removeAt(x.effects, i)">✕</button>
                 </span>
               </div>
-              <div class="wf-param" *ngFor="let p of effectSpec(e.type)">
+              <div class="wf-param" *ngFor="let p of effectSpec(e.type); trackBy: paramTrack">
                 <ng-container *ngTemplateOutlet="param; context: { obj: e, p: p }"></ng-container>
               </div>
               <div class="wf-param">
@@ -300,7 +367,7 @@
           <p class="db-hint">{{ 'admin.wf.queuesHint' | translate }}</p>
           <div class="wf-item" *ngFor="let q of d.queues">
             <div class="wf-item-head"><strong>{{ q.label.en }}</strong><span class="wf-item-tools"><button class="wf-icon" (click)="removeQueue(q.key)">✕</button></span></div>
-            <div class="wf-param"><label>{{ 'admin.wf.key' | translate }}</label><input class="db-input" [ngModel]="q.key" disabled /></div>
+            <div class="wf-param"><label>{{ 'admin.wf.key' | translate }}</label><input class="db-input" [ngModel]="q.key" [disabled]="queueKeyLocked(q)" [title]="queueKeyLocked(q) ? ('admin.wf.queueKey.locked' | translate) : ''" (change)="setQueueKey(q, $any($event.target).value); $any($event.target).value = q.key" /></div>
             <div class="form-row">
               <div class="wf-param"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="q.label.en" (ngModelChange)="set(q.label, 'en', $event)" /></div>
               <div class="wf-param"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="q.label.he" (ngModelChange)="set(q.label, 'he', $event)" /></div>
@@ -310,11 +377,11 @@
             <div class="wf-param"><label>{{ 'admin.wf.queueStatuses' | translate }}</label>
               <div class="wf-checks"><label *ngFor="let s of statusesOfTrack(q.track)"><input type="checkbox" [checked]="q.statuses.includes(s)" (change)="toggleIn(q.statuses, s, q, 'statuses')" /> {{ s }}</label></div></div>
             <div class="wf-param"><label>{{ 'admin.wf.requires' | translate }}</label>
-              <select class="db-select" [ngModel]="q.requiresEntitlement" (ngModelChange)="set(q, 'requiresEntitlement', $event)"><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+              <select class="db-select" [ngModel]="q.requiresEntitlement" (ngModelChange)="set(q, 'requiresEntitlement', $event)"><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ entLabel(e) }} ({{ e.key }})</option></select></div>
             <div class="wf-param"><label>{{ 'admin.wf.requiresAlso' | translate }}</label>
-              <select class="db-select" [ngModel]="q.requiresAlso || ''" (ngModelChange)="setQueueOptional(q, 'requiresAlso', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+              <select class="db-select" [ngModel]="q.requiresAlso || ''" (ngModelChange)="setQueueOptional(q, 'requiresAlso', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ entLabel(e) }} ({{ e.key }})</option></select></div>
             <div class="wf-param"><label>{{ 'admin.wf.excludes' | translate }}</label>
-              <select class="db-select" [ngModel]="q.excludesEntitlement || ''" (ngModelChange)="setQueueOptional(q, 'excludesEntitlement', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ e.label }} ({{ e.key }})</option></select></div>
+              <select class="db-select" [ngModel]="q.excludesEntitlement || ''" (ngModelChange)="setQueueOptional(q, 'excludesEntitlement', $event)"><option value="">-</option><option *ngFor="let e of catalogEntitlements" [value]="e.key">{{ entLabel(e) }} ({{ e.key }})</option></select></div>
             <div class="wf-checks">
               <label><input type="checkbox" [checked]="q.applyScope" (change)="set(q, 'applyScope', !q.applyScope)" /> {{ 'admin.wf.applyScope' | translate }}</label>
               <label><input type="checkbox" [checked]="q.hideReferredAbove" (change)="set(q, 'hideReferredAbove', !q.hideReferredAbove)" /> {{ 'admin.wf.hideReferred' | translate }}</label>
@@ -349,6 +416,16 @@
         </ng-container>
         <h4 class="wf-h" *ngIf="simActor() === 'STAFF'">{{ 'admin.wf.sim.queues' | translate }}</h4>
         <div class="wf-sim" *ngFor="let q of simulation().queues">{{ q }}</div>
+      </ng-container>
+
+      <!-- ---------------- events (read-only overview) -->
+      <ng-container *ngIf="tab() === 'events'">
+        <p class="db-hint">{{ 'admin.wf.event.overviewHint' | translate }}</p>
+        <div class="wf-ev" *ngFor="let ev of allEvents()" (click)="openEvent(ev.track, ev.key)">
+          <div class="wf-ev-head"><code>{{ ev.event }}</code><span class="text-muted">{{ ev.label }}</span></div>
+          <div class="wf-ev-meta">{{ ev.trackLabel }} · {{ ev.actors }} · {{ ev.from }}<ng-container *ngIf="ev.to"> → {{ ev.to }}</ng-container></div>
+          <div class="wf-ev-subs"><span class="wf-sub-kind" *ngFor="let s of ev.subs" [ngClass]="'k-' + s.kind" [title]="s.detail">{{ s.name }}</span></div>
+        </div>
       </ng-container>
 
       <!-- ---------------- problems -->

@@ -50,12 +50,12 @@
 
     <h3 class="mt-16 mb-8">{{ 'admin.roles.entitlements' | translate }}</h3>
     <div class="ent-group" *ngFor="let g of groups()">
-      <div class="ent-group-name">{{ g.name }}</div>
+      <div class="ent-group-name">{{ i18n.entitlementText('group', g.name, g.name) }}</div>
       <label class="ent-row" *ngFor="let e of g.items">
         <input type="checkbox" [checked]="isLocked || draft.entitlements.has(e.key)" [disabled]="isLocked" (change)="toggle(e.key)" />
         <span>
-          <span class="ent-label">{{ e.label }}</span>
-          <span class="ent-desc">{{ e.description }}</span>
+          <span class="ent-label">{{ i18n.entitlementText('label', e.key, e.label) }}</span>
+          <span class="ent-desc">{{ i18n.entitlementText('description', e.key, e.description) }}</span>
         </span>
       </label>
     </div>

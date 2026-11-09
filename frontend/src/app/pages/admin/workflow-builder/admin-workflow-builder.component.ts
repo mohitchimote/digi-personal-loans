@@ -6,15 +6,18 @@ import { AdminService, RoleRow } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
-// ------------------------------------------------------------------ layout constants
-const LANE_W = 230, NODE_W = 156, NODE_H = 46, ROW_H = 84, TOP = 64, LEFT_PAD = 12;
+import { route, NODE_W, NODE_H, LANE_W, TOP } from './workflow-router';
 
 type ParamKind = 'text' | 'select' | 'status' | 'statuses' | 'track' | 'json';
 interface ParamSpec { name: string; kind: ParamKind; options?: string[] }
 
 /** Nodes and edges are derived from the definition for drawing. */
-interface NodeView { key: string; label: string; x: number; y: number; stage: string | null; badge: string; entry: boolean; virtual?: boolean }
-interface EdgeView { key: string; label: string; path: string; lx: number; ly: number; selected: boolean; actors: string }
+interface NodeView { key: string; label: string; x: number; y: number; h: number; stage: string | null; badge: string; entry: boolean }
+interface EdgeView {
+  id: string; key: string; from: string; to: string; path: string; selected: boolean; dim: boolean; hot: boolean;
+  actor: 'customer' | 'staff' | 'system';
+  label?: { x: number; y: number; w: number; text: string; full: string; floating?: boolean };
+}
 
 /** The visual workflow builder: statuses are nodes in stage lanes, transitions are arrows. Everything
  * edits a DRAFT definition through the admin API; publishing makes it the version new cases use
@@ -42,7 +45,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
   loading = signal(true);
   trackKey = signal('');
   selection = signal<{ kind: 'status' | 'transition'; key: string } | null>(null);
-  tab = signal<'selection' | 'stages' | 'queues' | 'simulate' | 'problems'>('selection');
+  tab = signal<'selection' | 'stages' | 'queues' | 'events' | 'simulate' | 'problems'>('selection');
   errors = signal<string[]>([]);
   dirty = signal(false);
   saving = signal(false);
@@ -58,6 +61,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
   // ---- canvas interaction
   private dragging: { key: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null = null;
   dragPos = signal<{ key: string; x: number; y: number } | null>(null);
+  hoverKey = signal<string | null>(null);
   connecting = signal<{ from: string; x: number; y: number } | null>(null);
   private validateTimer: any;
 
@@ -276,29 +280,36 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
   setTarget(x: any, v: string): void { if (v) x.to = v; else delete x.to; this.touch(); }
 
   // ---- guards and effects: generic, driven by the parameter specs below
-  guardSpec(type: string): ParamSpec[] {
-    switch (type) {
-      case 'REFERRAL_LOCK': return [{ name: 'status', kind: 'status' }];
-      case 'AMOUNT_POSITIVE': return [{ name: 'field', kind: 'text' }];
-      case 'MANDATE': return [{ name: 'amountField', kind: 'text' }];
-      case 'TRACK_STATUS_IS': return [{ name: 'track', kind: 'track' }, { name: 'statuses', kind: 'statuses' }];
-      default: return [];
-    }
-  }
+  // The specs MUST have stable identity: the template iterates them with *ngFor, and a fresh array of
+  // fresh objects on every change-detection pass makes Angular recreate every parameter input each
+  // pass, each recreation schedules another pass, and the tab freezes (this was the "hang" when
+  // selecting an action that has effects).
+  private static readonly GUARD_SPECS: Record<string, ParamSpec[]> = {
+    REFERRAL_LOCK: [{ name: 'status', kind: 'status' }],
+    AMOUNT_POSITIVE: [{ name: 'field', kind: 'text' }],
+    MANDATE: [{ name: 'amountField', kind: 'text' }],
+    TRACK_STATUS_IS: [{ name: 'track', kind: 'track' }, { name: 'statuses', kind: 'statuses' }],
+  };
+  private static readonly NO_SPEC: ParamSpec[] = [];
 
-  effectSpec(type: string): ParamSpec[] {
+  guardSpec(type: string): ParamSpec[] { return AdminWorkflowBuilderComponent.GUARD_SPECS[type] ?? AdminWorkflowBuilderComponent.NO_SPEC; }
+
+  private effectSpecs = computed<Record<string, ParamSpec[]>>(() => {
     const c = this.catalog();
-    switch (type) {
-      case 'SET': return [{ name: 'field', kind: 'select', options: c?.setFields ?? [] }, { name: 'value', kind: 'json' }];
-      case 'REFERRAL_OPEN': return [{ name: 'toRole', kind: 'text' }];
-      case 'NOTE': return [{ name: 'noteType', kind: 'text' }, { name: 'section', kind: 'text' }, { name: 'text', kind: 'text' }];
-      case 'NOTIFY': return [{ name: 'template', kind: 'select', options: c?.notifyTemplates ?? [] }, { name: 'vars', kind: 'json' }];
-      case 'EMAIL': return [{ name: 'event', kind: 'select', options: c?.emailEvents ?? [] }, { name: 'vars', kind: 'json' }];
-      case 'GENERATE_DOC': return [{ name: 'doc', kind: 'select', options: ['APPROVAL_LETTER'] }];
-      case 'CARD_PAYMENT': return [{ name: 'mode', kind: 'select', options: ['AUTHORISE'] }];
-      default: return [];
-    }
-  }
+    return {
+      SET: [{ name: 'field', kind: 'select', options: c?.setFields ?? [] }, { name: 'value', kind: 'json' }],
+      REFERRAL_OPEN: [{ name: 'toRole', kind: 'text' }],
+      NOTE: [{ name: 'noteType', kind: 'text' }, { name: 'section', kind: 'text' }, { name: 'text', kind: 'text' }],
+      NOTIFY: [{ name: 'template', kind: 'select', options: c?.notifyTemplates ?? [] }, { name: 'vars', kind: 'json' }],
+      EMAIL: [{ name: 'event', kind: 'select', options: c?.emailEvents ?? [] }, { name: 'vars', kind: 'json' }],
+      GENERATE_DOC: [{ name: 'doc', kind: 'select', options: ['APPROVAL_LETTER'] }],
+      CARD_PAYMENT: [{ name: 'mode', kind: 'select', options: ['AUTHORISE'] }],
+    };
+  });
+
+  effectSpec(type: string): ParamSpec[] { return this.effectSpecs()[type] ?? AdminWorkflowBuilderComponent.NO_SPEC; }
+
+  paramTrack = (_: number, p: ParamSpec) => p.name;
 
   private defaultsFor(specs: ParamSpec[]): Record<string, any> {
     const out: Record<string, any> = {};
@@ -365,6 +376,69 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     try { e.when = JSON.parse(t); this.touch(); }
     catch { this.failure.set(this.i18n.t('admin.wf.badJson')); }
   }
+
+  // ---- presentation: where an action's button appears and how it looks (the engine ignores it)
+  readonly uiAreas = ['decision', 'disbursement', 'general'];
+  readonly uiStyles = ['primary', 'secondary', 'danger'];
+
+  setUi(x: any, prop: 'area' | 'style' | 'icon' | 'after', value: string): void {
+    if (prop === 'icon' && value && !/^[a-z][a-z0-9_]*$/.test(value)) { this.failure.set(this.i18n.t('admin.wf.ui.iconBad')); return; }
+    this.failure.set('');
+    const ui = { ...(x.ui ?? {}) };
+    if (value) ui[prop] = value; else delete ui[prop];
+    if (Object.keys(ui).length) x.ui = ui; else delete x.ui;
+    this.touch();
+  }
+
+  // ---- events: every action emits one; subscribers are what the action wires to it
+  static readonly EVENT_RE = /^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9_]*)+$/;
+
+  eventName(trackKey: string, x: any): string { return x.event ?? `${trackKey}.${x.key}`; }
+
+  setEvent(x: any, raw: string): void {
+    const v = raw.trim();
+    if (!v) { delete x.event; this.touch(); return; }
+    if (!AdminWorkflowBuilderComponent.EVENT_RE.test(v)) { this.failure.set(this.i18n.t('admin.wf.event.bad')); return; }
+    const clash = this.def().tracks.some((t: any) => t.transitions.some((o: any) => o !== x && this.eventName(t.key, o) === v));
+    if (clash) { this.failure.set(this.i18n.t('admin.wf.event.dupe')); return; }
+    this.failure.set('');
+    x.event = v;
+    this.touch();
+  }
+
+  /** What listens to an action's event today. The audit trail always does; the rest are the action's
+   * notification / email / document / note / payment effects. */
+  subscribersOf(trackKey: string, x: any): { kind: string; name: string; detail: string; conditional: boolean }[] {
+    const t = (k: string) => this.i18n.t(k);
+    const out = [{ kind: 'AUDIT', name: t('admin.wf.event.sub.AUDIT'), detail: this.eventName(trackKey, x), conditional: false }];
+    for (const e of x.effects as any[]) {
+      const cond = !!e.when;
+      switch (e.type) {
+        case 'NOTIFY': out.push({ kind: 'NOTIFY', name: t('admin.wf.event.sub.NOTIFY'), detail: e.template, conditional: cond }); break;
+        case 'EMAIL': out.push({ kind: 'EMAIL', name: t('admin.wf.event.sub.EMAIL'), detail: e.event, conditional: cond }); break;
+        case 'GENERATE_DOC': out.push({ kind: 'DOC', name: t('admin.wf.event.sub.DOC'), detail: e.doc, conditional: cond }); break;
+        case 'NOTE': out.push({ kind: 'NOTE', name: t('admin.wf.event.sub.NOTE'), detail: e.noteType || e.section || '', conditional: cond }); break;
+        case 'CARD_PAYMENT': out.push({ kind: 'PAY', name: t('admin.wf.event.sub.PAY'), detail: e.mode, conditional: cond }); break;
+      }
+    }
+    return out;
+  }
+
+  /** Every event in the workflow with its subscribers: the "who hears what" overview. */
+  allEvents = computed(() => {
+    this.rev();
+    const d = this.def();
+    if (!d) return [] as any[];
+    return d.tracks.flatMap((tr: any) => tr.transitions.map((x: any) => ({
+      event: this.eventName(tr.key, x), track: tr.key, trackLabel: tr.label.en, key: x.key, label: x.label.en,
+      actors: (x.actors as string[]).join(' / '), from: (x.from as string[]).includes('*') ? '*' : (x.from as string[]).join(', '), to: x.to ?? '',
+      subs: this.subscribersOf(tr.key, x),
+    })));
+  });
+
+  eventTitle(key: string): string { return this.allEvents().find((e: any) => e.key === key)?.event ?? key; }
+
+  openEvent(track: string, key: string): void { this.trackKey.set(track); this.selectTransition(key); }
 
   // ---- stages
   addStage(): void {
@@ -437,6 +511,22 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     this.touch();
   }
 
+  /** Queues the host looks up by key (worker/src/routes/applications.ts). Renaming one would break a screen. */
+  private static readonly BUILT_IN_QUEUES = new Set(['pipeline', 'banker-queue', 'home-stats-staff', 'home-stats-banker', 'activity-staff', 'activity-banker']);
+  queueKeyLocked(q: any): boolean { return AdminWorkflowBuilderComponent.BUILT_IN_QUEUES.has(q.key); }
+
+  setQueueKey(q: any, raw: string): void {
+    if (this.queueKeyLocked(q)) return;
+    const v = raw.trim();
+    if (v === q.key) return;
+    if (!/^[a-z][a-z0-9_-]*$/.test(v)) { this.failure.set(this.i18n.t('admin.wf.queueKey.bad')); return; }
+    if (this.def().queues.some((o: any) => o !== q && o.key === v)) { this.failure.set(this.i18n.t('admin.wf.queueKey.dupe')); return; }
+    if (AdminWorkflowBuilderComponent.BUILT_IN_QUEUES.has(v)) { this.failure.set(this.i18n.t('admin.wf.queueKey.reserved')); return; }
+    this.failure.set('');
+    q.key = v;
+    this.touch();
+  }
+
   removeQueue(key: string): void {
     const d = this.def(); if (!d) return;
     d.queues = d.queues.filter((q: any) => q.key !== key);
@@ -461,86 +551,92 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     return out;
   });
 
-  laneViews = computed(() => this.lanes().map((l, i) => ({ ...l, x: LEFT_PAD + i * LANE_W })));
+  laneViews = computed(() => this.lanes().map((l, i) => ({ ...l, x: i * LANE_W })));
 
-  nodes = computed<NodeView[]>(() => {
+  /** One routing pass produces the node positions AND the arrows, so they always agree. */
+  private routed = computed(() => {
     this.rev();
     const t = this.track();
-    if (!t) return [];
+    if (!t) return null;
     const lanes = this.lanes();
     const rowByLane = new Map<string | null, number>();
-    const entry = new Set<string>([...(t.entryPoints ?? []).map((e: any) => e.status), ...(t.initialStatus ? [t.initialStatus] : [])]);
-    const out: NodeView[] = [];
-    for (const s of t.statuses) {
-      const li = Math.max(0, lanes.findIndex(l => l.key === (s.stage ?? null)));
+    const statuses = (t.statuses as any[]).map(s => {
+      const lane = Math.max(0, lanes.findIndex(l => l.key === (s.stage ?? null)));
       const row = rowByLane.get(s.stage ?? null) ?? 0;
       rowByLane.set(s.stage ?? null, row + 1);
-      out.push({ key: s.key, label: s.label.en, x: LEFT_PAD + li * LANE_W + (LANE_W - NODE_W) / 2, y: TOP + row * ROW_H, stage: s.stage ?? null, badge: s.badge, entry: entry.has(s.key) });
-    }
-    return out;
+      return { key: s.key as string, lane, row };
+    });
+    const transitions = (t.transitions as any[])
+      .filter(x => x.to && !x.from.includes('*'))
+      .map(x => ({ key: x.key as string, label: x.label.en as string, actors: x.actors as string[], from: x.from as string[], to: x.to as string }));
+    return { r: route(statuses, transitions, lanes.length), transitions };
   });
 
-  private hasWildcard = computed(() => !!this.track()?.transitions.some((x: any) => x.from.includes('*') && x.to));
+  nodes = computed<NodeView[]>(() => {
+    const t = this.track();
+    const routed = this.routed();
+    if (!t || !routed) return [];
+    const entry = new Set<string>([...(t.entryPoints ?? []).map((e: any) => e.status), ...(t.initialStatus ? [t.initialStatus] : [])]);
+    const at = new Map(routed.r.nodes.map(n => [n.key, n]));
+    return (t.statuses as any[]).map(s => {
+      const n = at.get(s.key)!;
+      return { key: s.key, label: s.label.en, x: n.x, y: n.y, h: n.h, stage: s.stage ?? null, badge: s.badge, entry: entry.has(s.key) };
+    });
+  });
 
-  /** Nodes as drawn: the one being dragged follows the pointer; "any status" is a virtual node. */
+  /** Nodes as drawn: the one being dragged follows the pointer. */
   drawn = computed<NodeView[]>(() => {
     const dp = this.dragPos();
-    const base = this.nodes().map(n => (dp && dp.key === n.key ? { ...n, x: dp.x, y: dp.y } : n));
-    if (this.hasWildcard()) {
-      base.push({ key: '*', label: this.i18n.t('admin.wf.anyStatus'), x: LEFT_PAD + this.lanes().length * LANE_W + 12, y: TOP, stage: null, badge: 'draft', entry: false, virtual: true });
-    }
-    return base;
+    return this.nodes().map(n => (dp && dp.key === n.key ? { ...n, x: dp.x, y: dp.y } : n));
   });
 
   canvasSize = computed(() => {
-    const ns = this.drawn();
-    return { w: Math.max(600, ...ns.map(n => n.x + NODE_W + 40)), h: Math.max(360, ...ns.map(n => n.y + NODE_H + 60)) };
+    const r = this.routed()?.r;
+    return { w: Math.max(600, (r?.width ?? 0) + 8), h: Math.max(360, (r?.height ?? 0) + 8) };
   });
 
   edges = computed<EdgeView[]>(() => {
-    this.rev();
-    const t = this.track();
-    if (!t) return [];
-    const byKey = new Map(this.drawn().map(n => [n.key, n]));
+    const routed = this.routed();
+    if (!routed) return [];
     const sel = this.selection();
-    const groupCount = new Map<string, number>();
-    const out: EdgeView[] = [];
-    for (const x of t.transitions) {
-      if (!x.to) continue;
-      const target = byKey.get(x.to);
-      if (!target) continue;
-      for (const f of x.from as string[]) {
-        const src = byKey.get(f);
-        if (!src) continue;
-        const gk = `${f}>${x.to}`;
-        const idx = groupCount.get(gk) ?? 0;
-        groupCount.set(gk, idx + 1);
-        out.push({ ...this.curve(src, target, idx), key: x.key, label: x.label.en, selected: sel?.kind === 'transition' && sel.key === x.key, actors: (x.actors as string[]).join('/') });
-      }
-    }
-    return out;
+    const byKey = new Map(routed.transitions.map(x => [x.key, x]));
+    this.hoverKey();
+    const out: EdgeView[] = routed.r.edges.map((e, i) => {
+      const x = byKey.get(e.key)!;
+      const actor: EdgeView['actor'] = x.actors.includes('SYSTEM') && !x.actors.includes('STAFF') && !x.actors.includes('CUSTOMER') ? 'system'
+        : x.actors.includes('CUSTOMER') && !x.actors.includes('STAFF') ? 'customer' : 'staff';
+      const hov = this.hoverKey();
+      const touches = sel?.kind === 'transition' ? sel.key === e.key : sel?.kind === 'status' ? (e.from === sel.key || e.to === sel.key) : hov ? e.key === hov : true;
+      return { id: `${e.key}:${e.from}:${i}`, key: e.key, from: e.from, to: e.to, path: e.path, label: e.label, actor,
+        selected: sel?.kind === 'transition' && sel.key === e.key, dim: !touches, hot: this.hoverKey() === e.key };
+    });
+    // Selected arrows are drawn last so they sit on top.
+    return out.sort((a, b) => Number(a.selected || a.hot) - Number(b.selected || b.hot));
   });
 
-  private curve(a: NodeView, b: NodeView, idx: number): { path: string; lx: number; ly: number } {
-    const acx = a.x + NODE_W / 2, acy = a.y + NODE_H / 2, bcx = b.x + NODE_W / 2, bcy = b.y + NODE_H / 2;
-    if (a.key === b.key) {
-      const x0 = a.x + NODE_W * 0.3, x1 = a.x + NODE_W * 0.7, y0 = a.y, r = 34 + idx * 14;
-      return { path: `M ${x0} ${y0} C ${x0 - 10} ${y0 - r}, ${x1 + 10} ${y0 - r}, ${x1} ${y0}`, lx: acx, ly: y0 - r * 0.75 - 4 };
-    }
-    const mx = (acx + bcx) / 2, my = (acy + bcy) / 2;
-    const dx = bcx - acx, dy = bcy - acy, len = Math.hypot(dx, dy) || 1;
-    // Offset sideways so parallel arrows between the same pair do not overlap; grows with index.
-    const side = idx === 0 ? 18 : (idx % 2 ? -1 : 1) * (18 + Math.ceil(idx / 2) * 26);
-    const cx = mx + (-dy / len) * side * 2, cy = my + (dx / len) * side * 2;
-    const s = this.clip(a, cx, cy), e = this.clip(b, cx, cy);
-    return { path: `M ${s.x} ${s.y} Q ${cx} ${cy} ${e.x} ${e.y}`, lx: 0.25 * s.x + 0.5 * cx + 0.25 * e.x, ly: 0.25 * s.y + 0.5 * cy + 0.25 * e.y };
-  }
+  /** Junction dots (several wires of one action meeting), styled like their wires. */
+  dots = computed(() => {
+    const routed = this.routed();
+    if (!routed) return [];
+    const sel = this.selection(), hov = this.hoverKey();
+    const byKey = new Map(routed.transitions.map(x => [x.key, x]));
+    return routed.r.dots.map((d, i) => {
+      const x = byKey.get(d.key)!;
+      const actor = x.actors.includes('SYSTEM') && !x.actors.includes('STAFF') && !x.actors.includes('CUSTOMER') ? 'system'
+        : x.actors.includes('CUSTOMER') && !x.actors.includes('STAFF') ? 'customer' : 'staff';
+      const touches = sel?.kind === 'transition' ? sel.key === d.key : sel?.kind === 'status' ? (x.from.includes(sel.key) || x.to === sel.key) : hov ? d.key === hov : true;
+      return { id: `${d.key}:${i}`, x: d.x, y: d.y, actor, dim: !touches };
+    });
+  });
 
-  private clip(n: NodeView, px: number, py: number): { x: number; y: number } {
-    const cx = n.x + NODE_W / 2, cy = n.y + NODE_H / 2, dx = px - cx, dy = py - cy;
-    const k = 1 / Math.max(Math.abs(dx) / (NODE_W / 2 + 3), Math.abs(dy) / (NODE_H / 2 + 3), 0.0001);
-    return { x: cx + dx * k, y: cy + dy * k };
-  }
+  /** Actions allowed from ANY status (cancel, add note...) are not drawn as arrows from every box;
+   * they are listed under the canvas with the status they lead to. */
+  anyStatusActions = computed(() => {
+    this.rev();
+    return (this.track()?.transitions ?? []).filter((x: any) => x.from.includes('*') && x.to);
+  });
+
+  statusLabel(key: string): string { return this.track()?.statuses.find((s: any) => s.key === key)?.label.en ?? key; }
 
   readonly nodeW = NODE_W;
   readonly nodeH = NODE_H;
@@ -550,7 +646,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     const c = this.connecting();
     if (!c) return null;
     const n = this.drawn().find(x => x.key === c.from);
-    return n ? { x1: n.x + NODE_W, y1: n.y + NODE_H / 2, x2: c.x, y2: c.y } : null;
+    return n ? { x1: n.x + NODE_W, y1: n.y + n.h / 2, x2: c.x, y2: c.y } : null;
   });
 
   // ---- pointer handling
@@ -560,12 +656,11 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
   }
 
   private nodeAt(p: { x: number; y: number }): NodeView | undefined {
-    return this.nodes().find(n => p.x >= n.x && p.x <= n.x + NODE_W && p.y >= n.y && p.y <= n.y + NODE_H);
+    return this.nodes().find(n => p.x >= n.x && p.x <= n.x + NODE_W && p.y >= n.y && p.y <= n.y + n.h);
   }
 
   startDrag(e: PointerEvent, n: NodeView): void {
     e.stopPropagation();
-    if (n.virtual) return;
     const p = this.point(e);
     this.dragging = { key: n.key, sx: p.x, sy: p.y, ox: n.x, oy: n.y, moved: false };
   }
@@ -603,7 +698,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     if (d.moved && this.editable()) {
       // Dropping a status in another lane moves it to that stage.
       const lanes = this.lanes();
-      const li = Math.floor((p.x - LEFT_PAD) / LANE_W);
+      const li = Math.floor(p.x / LANE_W);
       const lane = lanes[Math.min(Math.max(li, 0), lanes.length - 1)];
       const s = this.track()?.statuses.find((x: any) => x.key === d.key);
       if (s && lane && (s.stage ?? null) !== lane.key) { s.stage = lane.key; this.touch(); }
@@ -668,6 +763,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
   });
 
   get catalogEntitlements() { return this.catalog()?.entitlements ?? []; }
+  entLabel(e: { key: string; label: string }): string { return this.i18n.entitlementText('label', e.key, e.label); }
   badges = ['draft', 'in-progress', 'review', 'approved', 'declined'];
   categories = ['DRAFT', 'WAITING_CUSTOMER', 'ACTIVE', 'TERMINAL'];
   actorTypes = ['CUSTOMER', 'STAFF', 'SYSTEM'];
