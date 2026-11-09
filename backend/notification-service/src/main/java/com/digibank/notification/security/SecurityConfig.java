@@ -1,5 +1,6 @@
 package com.digibank.notification.security;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -30,6 +31,18 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
+    }
+
+    /**
+     * The token filter is a @Component, so Boot would also register it as a plain servlet filter,
+     * outside the security chain, where its authentication can be discarded. Disabling that
+     * registration makes it run exactly once, inside the chain, where it is meant to.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

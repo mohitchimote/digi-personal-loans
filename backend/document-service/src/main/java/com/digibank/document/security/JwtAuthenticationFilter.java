@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -19,7 +18,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.security.Key;
 import java.util.Date;
-import java.util.List;
 
 /**
  * Validates the JWT issued by auth-service. This service owns no user table, so — unlike
@@ -63,19 +61,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String role = claims.get("role", String.class);
+            AuthenticatedUser principal = AuthenticatedUser.fromClaims(claims);
             Long userId = claims.get("userId", Long.class);
             // S2 — reject if this token was issued before the user's last revocation.
             if (claims.getIssuedAt() != null && sessionRevocationCache.isRevoked(userId, claims.getIssuedAt().toInstant())) {
                 filterChain.doFilter(request, response);
                 return;
             }
-            if (role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                AuthenticatedUser principal = new AuthenticatedUser(
-                        claims.getSubject(), userId, role);
+            if (principal != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // ROLE_x plus a PERM_x per entitlement held.
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal, null, principal.authorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }

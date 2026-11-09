@@ -3,7 +3,7 @@ package com.digibank.document.generation;
 import com.digibank.document.generation.dto.DocumentGenerationRequest;
 import com.digibank.document.security.AuthenticatedUser;
 import com.digibank.document.security.CurrentUser;
-import com.digibank.document.security.StaffRoles;
+import com.digibank.document.security.OwnershipCheck;
 import com.digibank.document.util.OpaqueId;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,11 +21,7 @@ import java.util.List;
 public class GenerationController {
 
     private static void assertOwnsDocument(Long documentCustomerId) {
-        AuthenticatedUser user = CurrentUser.get();
-        if (StaffRoles.STAFF_ROLES.contains(user.role())) return;
-        if (!user.userId().equals(documentCustomerId)) {
-            throw new AccessDeniedException("Forbidden.");
-        }
+        OwnershipCheck.assertOwnsCustomer(CurrentUser.get(), documentCustomerId);
     }
 
     private final GenerationService generationService;

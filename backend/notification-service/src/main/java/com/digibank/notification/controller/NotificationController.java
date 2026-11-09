@@ -1,7 +1,7 @@
 package com.digibank.notification.controller;
 
 import com.digibank.notification.model.Notification;
-import com.digibank.notification.security.AuthenticatedUser;
+import com.digibank.notification.security.OwnershipCheck;
 import com.digibank.notification.security.CurrentUser;
 import com.digibank.notification.service.NotificationService;
 import com.digibank.notification.util.OpaqueId;
@@ -11,23 +11,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
-    // Same duplicated list as the other services (tracked as Q2) — staff can act on any
-    // customer's notifications; a customer may only reach their own (S6).
-    private static final Set<String> STAFF_ROLES = Set.of(
-            "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN");
-
+    // Staff can act on any customer's notifications; a customer may reach only their own (S6).
+    // "Staff" comes from the token, not a hard-coded list of role names (see OwnershipCheck).
     private static void assertOwnsCustomerId(Long customerId) {
-        AuthenticatedUser user = CurrentUser.get();
-        if (STAFF_ROLES.contains(user.role())) return;
-        if (!user.userId().equals(customerId)) {
-            throw new AccessDeniedException("Forbidden.");
-        }
+        OwnershipCheck.assertOwnsCustomer(CurrentUser.get(), customerId);
     }
 
     private final NotificationService notificationService;
