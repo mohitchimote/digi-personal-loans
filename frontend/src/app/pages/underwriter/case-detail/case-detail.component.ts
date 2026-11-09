@@ -311,7 +311,7 @@ export class CaseDetailComponent implements OnInit {
       if (field === 'approvedAmount') return this.approvedAmount == null ? '' : String(this.approvedAmount);
       return this.decisionReason;
     }
-    return this.extraInput[`${a.key}.${field}`] ?? '';
+    return String(this.extraInput[`${a.key}.${field}`] ?? '');
   }
 
   runExtra(a: CaseAction): void {
@@ -350,7 +350,9 @@ export class CaseDetailComponent implements OnInit {
         for (const f of a.inputs) delete this.extraInput[`${a.key}.${f.field}`];
         // An approval taken over unresolved red checks also records why, as before.
         if (exceptionNotes) {
-          this.appSvc.addNote(this.appRef, 'general', exceptionNotes, 'DECISION_APPROVED_WITH_EXCEPTION', this.auth.userFullName || 'Underwriter').subscribe();
+          this.appSvc.addNote(this.appRef, 'general', exceptionNotes, 'DECISION_APPROVED_WITH_EXCEPTION', this.auth.userFullName || 'Underwriter').subscribe({
+            error: () => this.error.set(this.i18n.t('uw.extra.noteFailed')),
+          });
         }
         // Some actions take the case out of the user's hands: back to the queue, as the old buttons did.
         if (a.ui.after === 'pipeline') { this.router.navigate(['/underwriter/pipeline']); return; }
@@ -361,8 +363,13 @@ export class CaseDetailComponent implements OnInit {
     });
   }
 
+  private actionsSeq = 0;
   private loadActions(): void {
-    this.workflow.caseActions(this.appRef).subscribe({ next: a => this.caseActions.set(a), error: () => this.error.set(this.i18n.t('uw.extra.loadFailed')) });
+    const seq = ++this.actionsSeq;
+    this.workflow.caseActions(this.appRef).subscribe({
+      next: a => { if (seq === this.actionsSeq) this.caseActions.set(a); },
+      error: () => { if (seq === this.actionsSeq) this.error.set(this.i18n.t('uw.extra.loadFailed')); },
+    });
   }
 
   /** The open (unresolved) referral, if the case is currently sitting with a senior role. */

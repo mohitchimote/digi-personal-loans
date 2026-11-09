@@ -58,7 +58,7 @@
     <div class="db-card wf-canvas-card">
       <div class="wf-canvas-top">
         <div class="wf-tracks">
-          <button class="wf-track" *ngFor="let t of d.tracks" [class.active]="t.key === trackKey()" (click)="trackKey.set(t.key); selection.set(null)">{{ t.label.en }}</button>
+          <button class="wf-track" *ngFor="let t of d.tracks" [class.active]="t.key === trackKey()" (click)="trackKey.set(t.key); selection.set(null)">{{ lbl(t) }}</button>
         </div>
         <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="editable()" (click)="addStatus()">
           <span class="material-icons mi-sm">add</span> {{ 'admin.wf.addStatus' | translate }}
@@ -133,11 +133,11 @@
       </div>
       <p class="wf-hint" *ngIf="anyStatusActions().length">
         {{ 'admin.wf.fromAny' | translate }}:
-        <button class="wf-chip" *ngFor="let x of anyStatusActions()" (click)="selectTransition(x.key)">{{ x.label.en }} → {{ statusLabel(x.to) }}</button>
+        <button class="wf-chip" *ngFor="let x of anyStatusActions()" (click)="selectTransition(x.key)">{{ lbl(x) }} → {{ statusLabel(x.to) }}</button>
       </p>
       <p class="wf-hint" *ngIf="inPlaceActions().length">
         {{ 'admin.wf.inPlace' | translate }}:
-        <button class="wf-chip" *ngFor="let x of inPlaceActions()" (click)="selectTransition(x.key)">{{ x.label.en }}</button>
+        <button class="wf-chip" *ngFor="let x of inPlaceActions()" (click)="selectTransition(x.key)">{{ lbl(x) }}</button>
       </p>
     </div>
 
@@ -175,7 +175,7 @@
               <div class="db-form-group"><label>{{ 'admin.wf.stage' | translate }}</label>
                 <select class="db-select" [ngModel]="s.stage" (ngModelChange)="set(s, 'stage', $event)">
                   <option [ngValue]="null">{{ 'admin.wf.noStage' | translate }}</option>
-                  <option *ngFor="let st of d.stages" [ngValue]="st.key">{{ st.label.en }}</option>
+                  <option *ngFor="let st of d.stages" [ngValue]="st.key">{{ lbl(st) }}</option>
                 </select></div>
               <div class="db-form-group"><label>{{ 'admin.wf.badge' | translate }}</label>
                 <select class="db-select" [ngModel]="s.badge" (ngModelChange)="set(s, 'badge', $event)"><option *ngFor="let b of badges" [value]="b">{{ b }}</option></select></div>
@@ -185,7 +185,7 @@
               <div class="db-hint">{{ 'admin.wf.categoryHint' | translate }}</div></div>
 
             <h4 class="wf-h">{{ 'admin.wf.actionsHere' | translate }}</h4>
-            <button class="wf-chip" *ngFor="let x of transitionsTouching()" (click)="selectTransition(x.key)">{{ x.label.en }}</button>
+            <button class="wf-chip" *ngFor="let x of transitionsTouching()" (click)="selectTransition(x.key)">{{ lbl(x) }}</button>
             <p class="text-muted" *ngIf="!transitionsTouching().length">{{ 'admin.wf.noActions' | translate }}</p>
 
             <div class="form-actions mt-16"><button class="db-btn db-btn--ghost db-btn--sm" (click)="removeStatus(s.key)"><span class="material-icons mi-sm">delete</span> {{ 'admin.wf.deleteStatus' | translate }}</button></div>
@@ -263,7 +263,7 @@
               <label>{{ 'admin.wf.from' | translate }}</label>
               <div class="wf-checks">
                 <label><input type="checkbox" [checked]="x.from.includes('*')" (change)="toggleFrom(x, '*')" /> {{ 'admin.wf.anyStatus' | translate }}</label>
-                <label *ngFor="let st of track()?.statuses"><input type="checkbox" [checked]="x.from.includes(st.key)" (change)="toggleFrom(x, st.key)" /> {{ st.label.en }}</label>
+                <label *ngFor="let st of track()?.statuses"><input type="checkbox" [checked]="x.from.includes(st.key)" (change)="toggleFrom(x, st.key)" /> {{ lbl(st) }}</label>
               </div>
             </div>
 
@@ -271,7 +271,7 @@
               <label>{{ 'admin.wf.to' | translate }}</label>
               <select class="db-select" [ngModel]="x.to || ''" (ngModelChange)="setTarget(x, $event)">
                 <option value="">{{ 'admin.wf.inPlaceOpt' | translate }}</option>
-                <option *ngFor="let st of track()?.statuses" [value]="st.key">{{ st.label.en }}</option>
+                <option *ngFor="let st of track()?.statuses" [value]="st.key">{{ lbl(st) }}</option>
               </select>
             </div>
 
@@ -330,7 +330,7 @@
           <p class="db-hint">{{ 'admin.wf.stagesHint' | translate }}</p>
           <div class="wf-item" *ngFor="let s of d.stages; let i = index">
             <div class="wf-item-head">
-              <strong>{{ s.label.en }}</strong>
+              <strong>{{ lbl(s) }}</strong>
               <span class="wf-item-tools">
                 <button class="wf-icon" (click)="move(d.stages, i, -1)" [disabled]="i === 0">←</button>
                 <button class="wf-icon" (click)="move(d.stages, i, 1)" [disabled]="i === d.stages.length - 1">→</button>
@@ -366,14 +366,14 @@
         <ng-container *ngIf="tab() === 'queues'">
           <p class="db-hint">{{ 'admin.wf.queuesHint' | translate }}</p>
           <div class="wf-item" *ngFor="let q of d.queues">
-            <div class="wf-item-head"><strong>{{ q.label.en }}</strong><span class="wf-item-tools"><button class="wf-icon" (click)="removeQueue(q.key)">✕</button></span></div>
+            <div class="wf-item-head"><strong>{{ lbl(q) }}</strong><span class="wf-item-tools"><button class="wf-icon" (click)="removeQueue(q.key)">✕</button></span></div>
             <div class="wf-param"><label>{{ 'admin.wf.key' | translate }}</label><input class="db-input" [ngModel]="q.key" [disabled]="queueKeyLocked(q)" [title]="queueKeyLocked(q) ? ('admin.wf.queueKey.locked' | translate) : ''" (change)="setQueueKey(q, $any($event.target).value); $any($event.target).value = q.key" /></div>
             <div class="form-row">
               <div class="wf-param"><label>{{ 'admin.wf.labelEn' | translate }}</label><input class="db-input" [ngModel]="q.label.en" (ngModelChange)="set(q.label, 'en', $event)" /></div>
               <div class="wf-param"><label>{{ 'admin.wf.labelHe' | translate }}</label><input class="db-input" dir="rtl" [ngModel]="q.label.he" (ngModelChange)="set(q.label, 'he', $event)" /></div>
             </div>
             <div class="wf-param"><label>{{ 'admin.wf.track' | translate }}</label>
-              <select class="db-select" [ngModel]="q.track" (ngModelChange)="setQueueTrack(q, $event)"><option *ngFor="let t of d.tracks" [value]="t.key">{{ t.label.en }}</option></select></div>
+              <select class="db-select" [ngModel]="q.track" (ngModelChange)="setQueueTrack(q, $event)"><option *ngFor="let t of d.tracks" [value]="t.key">{{ lbl(t) }}</option></select></div>
             <div class="wf-param"><label>{{ 'admin.wf.queueStatuses' | translate }}</label>
               <div class="wf-checks"><label *ngFor="let s of statusesOfTrack(q.track)"><input type="checkbox" [checked]="q.statuses.includes(s)" (change)="toggleIn(q.statuses, s, q, 'statuses')" /> {{ s }}</label></div></div>
             <div class="wf-param"><label>{{ 'admin.wf.requires' | translate }}</label>
@@ -401,7 +401,7 @@
             <select class="db-select" [ngModel]="simRole()" (ngModelChange)="simRole.set($event)"><option *ngFor="let r of roles()" [value]="r.code">{{ r.label }}</option></select></div>
         </div>
         <div class="db-form-group"><label>{{ 'admin.wf.sim.status' | translate }}</label>
-          <select class="db-select" [ngModel]="simStatus()" (ngModelChange)="simStatus.set($event)"><option *ngFor="let s of track()?.statuses" [value]="s.key">{{ s.label.en }}</option></select></div>
+          <select class="db-select" [ngModel]="simStatus()" (ngModelChange)="simStatus.set($event)"><option *ngFor="let s of track()?.statuses" [value]="s.key">{{ lbl(s) }}</option></select></div>
 
         <h4 class="wf-h">{{ 'admin.wf.sim.can' | translate }}</h4>
         <ng-container *ngFor="let a of simulation().actions">
@@ -445,10 +445,10 @@
       <option *ngFor="let o of p.options" [value]="o">{{ o }}</option>
     </select>
     <select *ngSwitchCase="'status'" class="db-select" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event)">
-      <option *ngFor="let s of track()?.statuses" [value]="s.key">{{ s.label.en }} ({{ s.key }})</option>
+      <option *ngFor="let s of track()?.statuses" [value]="s.key">{{ lbl(s) }} ({{ s.key }})</option>
     </select>
     <select *ngSwitchCase="'track'" class="db-select" [ngModel]="obj[p.name]" (ngModelChange)="set(obj, p.name, $event); obj.statuses = []">
-      <option *ngFor="let t of def()?.tracks" [value]="t.key">{{ t.label.en }}</option>
+      <option *ngFor="let t of def()?.tracks" [value]="t.key">{{ lbl(t) }}</option>
     </select>
     <div *ngSwitchCase="'statuses'" class="wf-checks">
       <label *ngFor="let s of statusesOfTrack(obj.track)"><input type="checkbox" [checked]="obj.statuses.includes(s)" (change)="toggleIn(obj.statuses, s, obj, 'statuses')" /> {{ s }}</label>

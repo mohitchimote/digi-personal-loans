@@ -54,7 +54,7 @@
   <div class="db-alert db-alert--success mb-8" *ngIf="actionMessage()">✓ {{ actionMessage() }}</div>
   <div class="db-alert db-alert--error mb-8" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
   <!-- General workflow actions: whatever the workflow offers this person on the case right now. -->
-  <app-workflow-actions [appRef]="application()!.applicationRef" [refreshKey]="application()!.status + '|' + application()!.disbursementStatus" (done)="afterWorkflowAction()" />
+  <app-workflow-actions [appRef]="application()!.applicationRef" [refreshKey]="application()!.status + '|' + application()!.disbursementStatus" [reportLoadFailure]="false" (done)="afterWorkflowAction()" />
 
   <!-- One generic action: its inputs (from the workflow's guards) and a button labelled from the definition. -->
   <ng-template #actionRow let-a>
@@ -67,7 +67,7 @@
           </label>
           <div class="db-form-group" style="margin:0;" *ngIf="f.kind !== 'boolean'">
             <label>{{ fieldLabel(f) }}<span class="required" *ngIf="f.required"> *</span></label>
-            <input class="db-input" [type]="f.kind === 'number' ? 'number' : 'text'" [ngModel]="extraInput[a.key + '.' + f.field] || ''" (ngModelChange)="extraInput[a.key + '.' + f.field] = $event" />
+            <input class="db-input" [type]="f.kind === 'number' ? 'number' : 'text'" [ngModel]="extraInput[a.key + '.' + f.field] || ''" (ngModelChange)="extraInput[a.key + '.' + f.field] = $event == null ? '' : '' + $event" />
           </div>
         </ng-container>
       </ng-container>

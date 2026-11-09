@@ -1275,6 +1275,7 @@ export const HE: Record<string, string> = {
   'entdesc.mandates.view': 'קריאת טבלת מגבלות האישור.',
   'uw.extra.loadFailed': 'לא ניתן היה לטעון את הפעולות הזמינות בתיק. רעננו את הדף ונסו שוב.',
   'uw.extra.badNumber': 'הזינו מספר תקין עבור {{field}}.',
+  'uw.extra.noteFailed': 'התיק אושר, אך לא ניתן היה לשמור את הערת החריגה. הוסיפו אותה כהערת תיק.',
   'mandate.referTo': 'העברה אל {{role}}',
   'mandate.referredNote': 'הועבר אל {{to}} על ידי {{from}}',
   'mandate.history': 'שרשרת העברות',

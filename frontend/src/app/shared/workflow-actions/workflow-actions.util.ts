@@ -36,6 +36,7 @@ export function doneMessage(a: CaseAction, i18n: I18nService): string {
 
 /** A finite number from what was typed, or null (so "1e", "-" and the like are rejected, not sent as NaN). */
 export function parseNumber(raw: string): number | null {
-  const n = Number(raw);
-  return raw.trim() !== '' && Number.isFinite(n) ? n : null;
+  const s = raw.trim();
+  // plain decimal numbers only: Number() would also accept '0x10' and '1e3'
+  return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : null;
 }

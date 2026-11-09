@@ -430,7 +430,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     const d = this.def();
     if (!d) return [] as any[];
     return d.tracks.flatMap((tr: any) => tr.transitions.map((x: any) => ({
-      event: this.eventName(tr.key, x), track: tr.key, trackLabel: tr.label.en, key: x.key, label: x.label.en,
+      event: this.eventName(tr.key, x), track: tr.key, trackLabel: this.lbl(tr), key: x.key, label: this.lbl(x),
       actors: (x.actors as string[]).join(' / '), from: (x.from as string[]).includes('*') ? '*' : (x.from as string[]).join(', '), to: x.to ?? '',
       subs: this.subscribersOf(tr.key, x),
     })));
@@ -545,7 +545,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     this.rev();
     const d = this.def();
     if (!d) return [] as { key: string | null; label: string; sla?: any }[];
-    const out: { key: string | null; label: string; sla?: any }[] = d.stages.map((s: any) => ({ key: s.key, label: s.label.en, sla: s.sla }));
+    const out: { key: string | null; label: string; sla?: any }[] = d.stages.map((s: any) => ({ key: s.key, label: this.lbl(s), sla: s.sla }));
     const t = this.track();
     if (t?.statuses.some((s: any) => s.stage == null)) out.push({ key: null, label: this.i18n.t('admin.wf.noStage') });
     return out;
@@ -568,7 +568,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     });
     const transitions = (t.transitions as any[])
       .filter(x => x.to && !x.from.includes('*'))
-      .map(x => ({ key: x.key as string, label: x.label.en as string, actors: x.actors as string[], from: x.from as string[], to: x.to as string }));
+      .map(x => ({ key: x.key as string, label: this.lbl(x), actors: x.actors as string[], from: x.from as string[], to: x.to as string }));
     return { r: route(statuses, transitions, lanes.length), transitions };
   });
 
@@ -580,7 +580,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     const at = new Map(routed.r.nodes.map(n => [n.key, n]));
     return (t.statuses as any[]).map(s => {
       const n = at.get(s.key)!;
-      return { key: s.key, label: s.label.en, x: n.x, y: n.y, h: n.h, stage: s.stage ?? null, badge: s.badge, entry: entry.has(s.key) };
+      return { key: s.key, label: this.lbl(s), x: n.x, y: n.y, h: n.h, stage: s.stage ?? null, badge: s.badge, entry: entry.has(s.key) };
     });
   });
 
@@ -636,7 +636,14 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
     return (this.track()?.transitions ?? []).filter((x: any) => x.from.includes('*') && x.to);
   });
 
-  statusLabel(key: string): string { return this.track()?.statuses.find((s: any) => s.key === key)?.label.en ?? key; }
+  /** A name from the definition in the language the page is showing, falling back to English when that
+   * language has none. Display only: the editing boxes bind a specific language. */
+  lbl(x: { label?: { en: string; he?: string } } | null | undefined): string {
+    const l = x?.label;
+    return (this.i18n.lang() === 'he' && l?.he?.trim()) || l?.en || '';
+  }
+
+  statusLabel(key: string): string { const s = this.track()?.statuses.find((s: any) => s.key === key); return s ? this.lbl(s) : key; }
 
   readonly nodeW = NODE_W;
   readonly nodeH = NODE_H;
@@ -754,7 +761,7 @@ export class AdminWorkflowBuilderComponent implements OnInit, OnDestroy {
       if (!x.actors.includes(actor)) blocked = this.i18n.t('admin.wf.sim.wrongActor');
       else if (actor === 'STAFF' && x.entitlement && !ents.has(x.entitlement)) blocked = `${this.i18n.t('admin.wf.sim.needs')} ${x.entitlement}`;
       else if (!(x.from.includes('*') || x.from.includes(status))) blocked = this.i18n.t('admin.wf.sim.wrongStatus');
-      return { key: x.key, label: x.label.en, to: x.to ?? null, blocked, guards: (x.guards as any[]).map(g => g.type).join(', ') };
+      return { key: x.key, label: this.lbl(x), to: x.to ?? null, blocked, guards: (x.guards as any[]).map(g => g.type).join(', ') };
     });
     const queues = actor === 'STAFF'
       ? (this.def()?.queues ?? []).filter((q: any) => ents.has(q.requiresEntitlement) && (!q.requiresAlso || ents.has(q.requiresAlso)) && !(q.excludesEntitlement && ents.has(q.excludesEntitlement))).map((q: any) => q.label.en)

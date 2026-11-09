@@ -1235,6 +1235,7 @@ export const EN: Record<string, string> = {
   'uw.needs.approve.approvedAmount': 'Please enter a valid approved loan amount.',
   'uw.extra.loadFailed': 'Could not load the actions available on this case. Reload the page to try again.',
   'uw.extra.badNumber': 'Enter a valid number for {{field}}.',
+  'uw.extra.noteFailed': 'The case was approved, but the exception note could not be saved. Add it as a case note.',
   'mandate.referTo': 'Refer to {{role}}',
   'mandate.referredNote': 'Referred to {{to}} by {{from}}',
   'mandate.history': 'Referral chain',

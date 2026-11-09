@@ -149,7 +149,7 @@ export function validateDefinition(raw: unknown, opts: { entitlementKeys: string
   for (const t of def.tracks) {
     for (const x of t.transitions) {
       if (!x.event && !EVENT_RE.test(eventOf(t.key, x))) {
-        errors.push(`action ${x.key}: its default event "${eventOf(t.key, x)}" is not a valid event name; set an explicit event (lowercase words separated by dots, e.g. case.approved)`);
+        errors.push(`action ${x.key} (track ${t.key}): its default event "${eventOf(t.key, x)}" is not a valid event name. It is built from the track key and the action key, so set an explicit event on the action (lowercase words separated by dots, e.g. case.approved)`);
       }
     }
   }

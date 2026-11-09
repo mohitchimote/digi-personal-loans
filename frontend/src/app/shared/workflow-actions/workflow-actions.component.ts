@@ -24,14 +24,16 @@ import { buttonClassOf, doneMessage, fieldLabelOf, labelOf, missingInputMessage,
       <div class="wfa-row">
         <div class="wfa-action" *ngFor="let a of actions()">
           <ng-container *ngFor="let f of a.inputs">
+            <ng-container *ngIf="f.kind !== 'role'">
             <label class="db-checkbox" *ngIf="f.kind === 'boolean'">
               <input type="checkbox" [checked]="input[a.key + '.' + f.field] === 'true'" (change)="input[a.key + '.' + f.field] = $any($event.target).checked ? 'true' : ''" />
               <span>{{ fieldLabel(f) }}</span>
             </label>
             <div class="db-form-group wfa-field" *ngIf="f.kind !== 'boolean'">
               <label>{{ fieldLabel(f) }}<span class="required" *ngIf="f.required"> *</span></label>
-              <input class="db-input" [type]="f.kind === 'number' ? 'number' : 'text'" [ngModel]="input[a.key + '.' + f.field] || ''" (ngModelChange)="input[a.key + '.' + f.field] = $event" />
+              <input class="db-input" [type]="f.kind === 'number' ? 'number' : 'text'" [ngModel]="input[a.key + '.' + f.field] || ''" (ngModelChange)="input[a.key + '.' + f.field] = $event == null ? '' : '' + $event" />
             </div>
+            </ng-container>
           </ng-container>
           <button class="db-btn" [ngClass]="buttonClass(a)" [style.color]="a.ui.style === 'danger' ? '#c62828' : null"
                   [attr.data-action]="a.key" [disabled]="running() !== ''" (click)="run(a)">
@@ -55,6 +57,9 @@ export class WorkflowActionsComponent implements OnChanges {
   @Input() queueUrl = '/underwriter/pipeline';
   /** Change this (e.g. the case's status) to make the list reload after the case moved elsewhere. */
   @Input() refreshKey: unknown = null;
+  /** Show a message when the offered actions cannot be loaded. A screen that already reports that failure
+   * itself (it loads the same list) turns this off so the person is not told twice. */
+  @Input() reportLoadFailure = true;
   /** Emitted after an action ran, so the screen can reload the case. */
   @Output() done = new EventEmitter<void>();
 
@@ -72,12 +77,22 @@ export class WorkflowActionsComponent implements OnChanges {
 
   /** Only the latest request may update the list: a slow earlier answer must not overwrite a newer one. */
   private requestSeq = 0;
+  /** True while the banner on screen is the "could not load" one, so a later good load can clear it. */
+  private loadFailed = false;
 
   private reload(): void {
     const seq = ++this.requestSeq;
     this.workflow.caseActions(this.appRef).subscribe({
-      next: a => { if (seq === this.requestSeq) this.offered.set(a); },
-      error: () => { if (seq === this.requestSeq) { this.offered.set(null); this.error.set(this.i18n.t('uw.extra.loadFailed')); } },
+      next: a => {
+        if (seq !== this.requestSeq) return;
+        this.offered.set(a);
+        if (this.loadFailed) { this.loadFailed = false; this.error.set(''); }
+      },
+      error: () => {
+        if (seq !== this.requestSeq) return;
+        this.offered.set(null);
+        if (this.reportLoadFailure) { this.loadFailed = true; this.error.set(this.i18n.t('uw.extra.loadFailed')); }
+      },
     });
   }
 
@@ -90,7 +105,7 @@ export class WorkflowActionsComponent implements OnChanges {
   run(a: CaseAction): void {
     const body: Record<string, unknown> = {};
     for (const f of a.inputs) {
-      const raw = (this.input[`${a.key}.${f.field}`] ?? '').trim();
+      const raw = String(this.input[`${a.key}.${f.field}`] ?? '').trim();
       if (f.kind === 'boolean') { body[f.field] = raw === 'true'; continue; }
       if (f.kind === 'number') {
         const n = parseNumber(raw);
