@@ -49,6 +49,10 @@ public class User {
     // the user's own logout-everywhere action.
     private LocalDateTime sessionsRevokedAt;
 
+    // Y1 — the org unit (branch, region...) this staff member belongs to. Null for customers and for
+    // staff not placed in the hierarchy, who then see every case whatever their role's scope says.
+    private Long orgUnitId;
+
     public User() {}
 
     @PrePersist
@@ -78,6 +82,8 @@ public class User {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public LocalDateTime getSessionsRevokedAt() { return sessionsRevokedAt; }
     public void setSessionsRevokedAt(LocalDateTime sessionsRevokedAt) { this.sessionsRevokedAt = sessionsRevokedAt; }
+    public Long getOrgUnitId() { return orgUnitId; }
+    public void setOrgUnitId(Long orgUnitId) { this.orgUnitId = orgUnitId; }
     public boolean isEmailVerified() { return emailVerified; }
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
     public String getOtpCode() { return otpCode; }
