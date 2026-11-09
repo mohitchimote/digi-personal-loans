@@ -633,6 +633,11 @@ applications.put("/:appRef/affordability-result", async (c) => {
   return c.json(updated);
 });
 
+// The routes below are the stable HTTP contract shared with the Java application service and driven by
+// scripts/workflow-parity.mjs, so they stay. The Angular screens no longer call the decision and
+// disbursement ones: they run actions through POST /api/workflow/cases/:ref/actions/:action instead
+// (routes/workflow.ts), which applies exactly the same engine, guards, effects and audit.
+//
 // Every lifecycle and decision action below is a workflow transition: which statuses it is allowed
 // from, who may do it, its guards (visibility, referral lock, mandate, ...) and its side effects
 // (notes, notifications, emails, documents) are defined by the workflow definition, not here.

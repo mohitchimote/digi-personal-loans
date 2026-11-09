@@ -104,6 +104,17 @@
         "key": { "$ref": "#/$defs/key" },
         "label": { "$ref": "#/$defs/label" },
         "actors": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["CUSTOMER", "STAFF", "SYSTEM"] } },
+        "event": { "description": "Business event this action emits, e.g. case.approved. Omitted = \"<track>.<action key>\". Unique across the definition. Notifications, emails, documents and the audit trail are the event's subscribers.", "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9_]*)+$" },
+        "ui": {
+          "description": "Presentation only; the engine never reads it. Where the action's button appears and how it looks. Absent = general area (disbursement-track actions default to the disbursement area), secondary style, no icon.",
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "area": { "enum": ["decision", "disbursement", "general"] },
+            "style": { "enum": ["primary", "secondary", "danger"] },
+            "icon": { "description": "A Material icon name.", "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+            "after": { "description": "pipeline = return to the queue once the action has run.", "enum": ["pipeline"] }
+          }
+        },
         "entitlement": { "description": "Required of STAFF actors. SYSTEM is never subject to entitlements.", "type": "string", "pattern": "^[a-z]+\\.[A-Za-z]+$" },
         "from": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Status keys, or [\"*\"] for any status." },
         "to": { "description": "Omit for an action that leaves the status unchanged (notes, edits).", "$ref": "#/$defs/key" },

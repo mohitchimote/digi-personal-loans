@@ -2,6 +2,7 @@ import type {
   ActionsResult, Actor, CaseState, CreateResult, Facts, Failure, Guard, HostEffect, LadderRole, QueueResult,
   TrackDef, TrackStates, TransitionDef, TransitionRequest, TransitionResult, WorkflowDefinition,
 } from "./types";
+import { eventOf } from "./types";
 import { evalCondition, resolveTemplate, resolveVars, type TemplateContext } from "./template";
 
 // The workflow engine: pure functions, no I/O. The host (Worker routes today) resolves `facts`
@@ -195,6 +196,7 @@ export function evaluate(def: WorkflowDefinition, args: { case: CaseState; reque
   return {
     ok: true,
     action: t.key,
+    event: eventOf(track.key, t),
     track: track.key,
     from: { ...current },
     to,
@@ -204,6 +206,7 @@ export function evaluate(def: WorkflowDefinition, args: { case: CaseState; reque
     hostEffects,
     log: {
       action: t.key,
+      event: eventOf(track.key, t),
       track: track.key,
       fromStatus: current.status,
       toStatus,

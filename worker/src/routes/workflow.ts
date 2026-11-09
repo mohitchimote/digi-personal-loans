@@ -7,7 +7,7 @@ import { assertEntitlement, isStaff, requireAuth } from "../middleware/auth";
 import { AppError } from "../lib/errors";
 import { assertCaseVisible, caseScopeCondition } from "../lib/org";
 import { recordAudit } from "../lib/audit";
-import { describeActions } from "../lib/workflow/host";
+import { describeActions, runAction } from "../lib/workflow/host";
 import { loadCase, projectPublished, statusesByCategory } from "../lib/workflow/store";
 import { eligibleStaff, workflowInfoFor, type CaseWorkflowInfo } from "../lib/workflow/assignment";
 
@@ -20,6 +20,37 @@ workflow.use("*", requireAuth);
 workflow.get("/definition", async (c) => c.json(await projectPublished(getDb(c.env.DB))));
 
 workflow.get("/cases/:ref/actions", async (c) => c.json(await describeActions(c, c.req.param("ref"))));
+
+// Actions that carry data the host must validate and store itself (a form section, the chosen
+// product) keep their dedicated routes: running them here would move the case without that data.
+const DEDICATED_ROUTE_ACTIONS = new Set(["save_section", "edit_section", "select_product"]);
+
+// Runs any action the published workflow defines. This is what lets an admin add an action in the
+// builder and have it work without a new route: the definition decides who may run it, from which
+// status, its guards, and its effects (the same evaluation every dedicated route goes through).
+workflow.post("/cases/:ref/actions/:action", async (c) => {
+  const ref = c.req.param("ref");
+  const action = c.req.param("action");
+  if (DEDICATED_ROUTE_ACTIONS.has(action)) throw new AppError(`${action} carries form data and has its own endpoint.`, 400);
+
+  const body = await c.req.json<{ input?: unknown }>().catch(() => ({} as { input?: unknown }));
+  const input = body.input && typeof body.input === "object" && !Array.isArray(body.input) ? (body.input as Record<string, unknown>) : {};
+
+  // The definition's guards are the main check, but a transition built in the builder may not carry
+  // CASE_VISIBLE, so org scope / ownership is enforced here as well: this endpoint must never be a
+  // way around who can see a case.
+  const db = getDb(c.env.DB);
+  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, ref)).limit(1);
+  if (!app) throw new AppError("Application not found.", 404);
+  if (isStaff(c)) await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
+  else if (c.get("authUser").id !== app.customerId) throw new AppError("Application not found.", 404);
+
+  const { app: updated } = await runAction(c, ref, { action, input, waitUntil: (p) => c.executionCtx.waitUntil(p) });
+  // The action has committed. Listing what is offered next is a convenience, so if that fails the caller
+  // still gets the success it earned (and asks again on its own) rather than an error for work that happened.
+  const actions = await describeActions(c, ref).catch(() => null);
+  return c.json({ application: updated, actions });
+});
 
 // ------------------------------------------------------------------ ownership
 

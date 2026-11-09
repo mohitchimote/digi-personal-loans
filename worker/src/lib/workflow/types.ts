@@ -65,10 +65,25 @@ export interface TransitionDef {
   label: Label;
   actors: ActorType[];
   entitlement?: string;
+  /** Business event this action emits (e.g. "case.approved"). Omitted = "<track>.<action key>". */
+  event?: string;
+  /** How the action is presented to staff. Purely presentational: the engine never reads it. */
+  ui?: ActionUi;
   from: string[];
   to?: string;
   guards: Guard[];
   effects: Effect[];
+}
+
+/** Where an action's button appears and how it looks. Absent = "general" (disbursement-track actions
+ * default to "disbursement"), secondary style, no icon, stay on the case afterwards. */
+export interface ActionUi {
+  area?: "decision" | "disbursement" | "general";
+  style?: "primary" | "secondary" | "danger";
+  /** A Material icon name, e.g. "close". */
+  icon?: string;
+  /** "pipeline" = return to the queue once the action has run (it usually takes the case out of the user's hands). */
+  after?: "pipeline";
 }
 
 export interface TrackDef {
@@ -155,10 +170,14 @@ export interface TransitionRequest { action: string; actor: Actor; input?: Trans
 
 export type Failure = { ok: false; status: number; code: string; message: string };
 
+/** The event an action emits: the explicit one, else "<track>.<action>". Shared by engine, host and builder. */
+export function eventOf(track: string, t: { key: string; event?: string }): string { return t.event ?? `${track}.${t.key}`; }
+
 export type HostEffect = Record<string, unknown> & { type: string };
 
 export interface LogEntry {
   action: string;
+  event: string;
   track: string;
   fromStatus: string;
   toStatus: string;
@@ -175,6 +194,7 @@ export interface LogEntry {
 export interface TransitionSuccess {
   ok: true;
   action: string;
+  event: string;
   track: string;
   from: TrackState;
   to: TrackState;

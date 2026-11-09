@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Condition, WorkflowDefinition } from "./types";
+import { eventOf } from "./types";
 
 // Validation for workflow definitions, run on every save and publish. Layer 1 is a strict
 // structural schema (mirrors workflow-spec/definition.schema.json); layer 2 is the cross-reference
@@ -69,11 +70,20 @@ const status = z.object({
   label,
 }).strict();
 
+const EVENT_RE = /^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9_]*)+$/;
+
 const transition = z.object({
   key,
   label,
   actors: z.array(z.enum(["CUSTOMER", "STAFF", "SYSTEM"])).min(1),
   entitlement: z.string().regex(/^[a-z]+\.[A-Za-z]+$/).optional(),
+  event: z.string().regex(EVENT_RE).optional(),
+  ui: z.object({
+    area: z.enum(["decision", "disbursement", "general"]).optional(),
+    style: z.enum(["primary", "secondary", "danger"]).optional(),
+    icon: z.string().regex(/^[a-z][a-z0-9_]*$/).optional(),
+    after: z.enum(["pipeline"]).optional(),
+  }).strict().optional(),
   from: z.array(z.string()).min(1),
   to: key.optional(),
   guards: z.array(guard),
@@ -132,6 +142,17 @@ export function validateDefinition(raw: unknown, opts: { entitlementKeys: string
   dupes(def.tracks.map((t) => t.key), "track", errors);
   dupes(def.queues.map((q) => q.key), "queue", errors);
   dupes(def.tracks.flatMap((t) => t.transitions.map((x) => x.key)), "transition key (keys are unique across all tracks)", errors);
+  dupes(def.tracks.flatMap((t) => t.transitions.map((x) => eventOf(t.key, x))), "event (each action emits its own event; names are unique across all tracks)", errors);
+  // An action without an explicit event gets "<track>.<action key>", and that default is written to the audit
+  // trail like any other, so it has to be a valid event name too (an action key with a hyphen or a capital
+  // first letter would not be).
+  for (const t of def.tracks) {
+    for (const x of t.transitions) {
+      if (!x.event && !EVENT_RE.test(eventOf(t.key, x))) {
+        errors.push(`action ${x.key}: its default event "${eventOf(t.key, x)}" is not a valid event name; set an explicit event (lowercase words separated by dots, e.g. case.approved)`);
+      }
+    }
+  }
   dupes(def.tracks.flatMap((t) => (t.entryPoints ?? []).map((e) => e.key)), "entry point", errors);
 
   for (const t of def.tracks) {

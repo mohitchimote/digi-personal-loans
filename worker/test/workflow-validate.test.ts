@@ -73,6 +73,34 @@ describe("definition validation", () => {
     expect(errorsOf(d).join("\n")).toMatch(/Duplicate transition key/);
   });
 
+  it("rejects two actions that emit the same event, and malformed event names", () => {
+    const d = base();
+    d.tracks[1].transitions[0].event = "case.approved";
+    d.tracks[1].transitions[1].event = "case.approved";
+    expect(errorsOf(d).join(";")).toMatch(/Duplicate event/);
+    d.tracks[1].transitions[1].event = "Not An Event";
+    expect(errorsOf(d).join(";")).not.toBe("");
+  });
+
+  it("rejects an action whose default event name would be invalid, unless it sets an explicit one", () => {
+    const d = base();
+    d.tracks[1].transitions[0].key = "Approve-Early";
+    delete d.tracks[1].transitions[0].event;
+    expect(errorsOf(d).join(";")).toMatch(/default event .* is not a valid event name/);
+    d.tracks[1].transitions[0].event = "disbursement.approvedEarly";
+    expect(errorsOf(d).join(";")).not.toMatch(/default event/);
+  });
+
+  it("accepts a ui block and rejects unknown areas, styles, icons and stray keys", () => {
+    const d = base();
+    d.tracks[1].transitions[0].ui = { area: "decision", style: "danger", icon: "close", after: "pipeline" };
+    expect(errorsOf(d)).toEqual([]);
+    for (const bad of [{ area: "sidebar" }, { style: "loud" }, { icon: "Not An Icon" }, { after: "home" }, { colour: "red" }]) {
+      d.tracks[1].transitions[0].ui = bad;
+      expect(errorsOf(d).join(";"), JSON.stringify(bad)).not.toBe("");
+    }
+  });
+
   it("rejects a track with no way to start", () => {
     const d = base(); delete d.tracks[1].initialStatus;
     expect(errorsOf(d).join("\n")).toMatch(/needs an entry point or an initialStatus/);

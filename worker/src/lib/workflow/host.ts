@@ -19,7 +19,9 @@ import { allowedActions, evaluate, findTransition, queueAccess } from "./engine"
 import { routeOnEntry } from "./assignment";
 import { ensureDefaultDefinition, loadCase, parseDefinition } from "./store";
 import { buildEmailVars, buildNotification, type Vars } from "./messages";
-import type { Actor, Facts, QueueDef, TransitionInput, TransitionSuccess, WorkflowDefinition } from "./types";
+import { eventOf, type Actor, type Facts, type QueueDef, type TransitionInput, type TransitionSuccess, type WorkflowDefinition } from "./types";
+import { auditsEvent } from "./audit-policy";
+import { inputsOf, resolveUi, type ActionInput, type ResolvedUi } from "./presentation";
 
 // The Worker side of the workflow engine. engine.ts is pure; this resolves the facts it needs,
 // persists its result, and runs the side effects a definition asks for.
@@ -70,7 +72,8 @@ async function buildFacts(c: Context<AppEnv>, db: Db, app: LoanRow, actor: Actor
   };
 }
 
-export interface ActionInfo { key: string; track: string; label: { en: string; he: string } }
+export type { ActionInput, ResolvedUi } from "./presentation";
+export interface ActionInfo { key: string; track: string; label: { en: string; he: string }; event: string; inputs: ActionInput[]; ui: ResolvedUi }
 export interface ActionsView { allowed: ActionInfo[]; blocked: Record<string, { code: string; label: { en: string; he: string } }> }
 
 /** What the caller can do to this case right now, with labels, for the UI to render buttons from.
@@ -87,9 +90,11 @@ export async function describeActions(c: Context<AppEnv>, appRef: string): Promi
   const loaded = await loadCase(db, app);
   const facts = await buildFacts(c, db, app, actor, false);
   const r = allowedActions(loaded.definition, { case: loaded.state, actor, facts });
-  const meta = new Map(loaded.definition.tracks.flatMap((t) => t.transitions.map((x) => [x.key, { track: t.key, label: x.label }] as const)));
+  const meta = new Map(loaded.definition.tracks.flatMap((t) => t.transitions.map((x) => [x.key, { track: t.key, label: x.label, event: eventOf(t.key, x), inputs: inputsOf(x), ui: resolveUi(t.key, x) }] as const)));
+  const order = new Map([...meta.keys()].map((k, i) => [k, i] as const));
   return {
-    allowed: r.allowed.map((k) => ({ key: k, track: meta.get(k)!.track, label: meta.get(k)!.label })),
+    // In the definition's own order (the engine returns them alphabetically), so buttons appear in the order the workflow lists its actions.
+    allowed: [...r.allowed].sort((a, b) => order.get(a)! - order.get(b)!).map((k) => ({ key: k, track: meta.get(k)!.track, label: meta.get(k)!.label, event: meta.get(k)!.event, inputs: meta.get(k)!.inputs, ui: meta.get(k)!.ui })),
     blocked: Object.fromEntries(Object.entries(r.blocked).map(([k, code]) => [k, { code, label: meta.get(k)!.label }])),
   };
 }
@@ -194,6 +199,15 @@ async function persist(
   }
   // One atomic write for state, history and referral rows (D1 batch = a single transaction).
   if (queries.length > 0) await db.batch(queries as unknown as [never, ...never[]]);
+  // Every action emits its event; the audit trail records it, so audit entries use the same names the
+  // workflow definition (and its notification/email/document subscribers) uses.
+  if (auditsEvent(r)) {
+    await recordAudit(db, {
+      eventType: r.event, subjectType: "LoanApplication", subjectId: app.applicationRef,
+      actor: r.log.actorName, actorRole: r.log.actorRole,
+      detail: `${r.action}: ${r.log.fromStatus} -> ${r.log.toStatus}${r.log.reason ? ` (${r.log.reason})` : ""}`,
+    });
+  }
   if (routed) {
     await recordAudit(db, { eventType: "CASE_AUTO_ASSIGNED", subjectType: "LoanApplication", subjectId: app.applicationRef, actor: "System (Routing)", detail: `${routed.name} (${r.to.stage})` });
   }

@@ -37,6 +37,7 @@
       "transitions": [
         {
           "key": "save_section",
+          "event": "case.sectionSaved",
           "label": { "en": "Save section", "he": "שמירת שלב" },
           "actors": ["CUSTOMER", "STAFF"],
           "from": ["DRAFT", "IN_PROGRESS"],
@@ -46,6 +47,7 @@
         },
         {
           "key": "submit",
+          "event": "case.submitted",
           "label": { "en": "Submit application", "he": "הגשת בקשה" },
           "actors": ["CUSTOMER", "STAFF"],
           "from": ["DRAFT", "IN_PROGRESS"],
@@ -60,6 +62,7 @@
         },
         {
           "key": "select_product",
+          "event": "case.productSelected",
           "label": { "en": "Select product", "he": "בחירת מוצר" },
           "actors": ["CUSTOMER", "STAFF"],
           "from": ["SUBMITTED", "UNDER_REVIEW"],
@@ -69,6 +72,7 @@
         },
         {
           "key": "auto_approve",
+          "event": "case.autoApproved",
           "label": { "en": "Auto-approve", "he": "אישור אוטומטי" },
           "actors": ["SYSTEM"],
           "from": ["UNDER_REVIEW"],
@@ -86,6 +90,7 @@
         },
         {
           "key": "withdraw",
+          "event": "case.pulledBack",
           "label": { "en": "Pull back application", "he": "משיכת בקשה" },
           "actors": ["CUSTOMER", "STAFF"],
           "from": ["SUBMITTED", "UNDER_REVIEW"],
@@ -98,6 +103,7 @@
         },
         {
           "key": "cancel",
+          "event": "case.cancelled",
           "label": { "en": "Cancel application", "he": "ביטול בקשה" },
           "actors": ["CUSTOMER", "STAFF"],
           "from": ["DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR"],
@@ -110,6 +116,7 @@
         },
         {
           "key": "approve_conditional",
+          "event": "case.conditionallyApproved",
           "label": { "en": "Approve with conditions", "he": "אישור בתנאי" },
           "actors": ["STAFF"],
           "entitlement": "case.approve",
@@ -120,6 +127,8 @@
         },
         {
           "key": "approve",
+          "event": "case.approved",
+          "ui": { "area": "decision", "style": "primary", "icon": "check" },
           "label": { "en": "Approve", "he": "אישור" },
           "actors": ["STAFF"],
           "entitlement": "case.approve",
@@ -144,6 +153,8 @@
         },
         {
           "key": "decline",
+          "event": "case.declined",
+          "ui": { "area": "decision", "style": "danger", "icon": "close", "after": "pipeline" },
           "label": { "en": "Decline", "he": "דחייה" },
           "actors": ["STAFF"],
           "entitlement": "case.decline",
@@ -160,6 +171,8 @@
         },
         {
           "key": "send_back",
+          "event": "case.sentBack",
+          "ui": { "area": "decision", "style": "secondary", "icon": "undo", "after": "pipeline" },
           "label": { "en": "Send back to customer", "he": "החזרה ללקוח" },
           "actors": ["STAFF"],
           "entitlement": "case.sendBack",
@@ -194,6 +207,8 @@
         },
         {
           "key": "refer",
+          "event": "case.referred",
+          "ui": { "area": "decision", "style": "secondary", "icon": "arrow_upward", "after": "pipeline" },
           "label": { "en": "Refer to senior", "he": "העברה לבכיר" },
           "actors": ["STAFF"],
           "entitlement": "case.refer",
@@ -214,6 +229,7 @@
         },
         {
           "key": "add_note",
+          "event": "case.noteAdded",
           "label": { "en": "Add note", "he": "הוספת הערה" },
           "actors": ["STAFF"],
           "entitlement": "case.addNote",
@@ -223,6 +239,7 @@
         },
         {
           "key": "request_clarification",
+          "event": "case.clarificationRequested",
           "label": { "en": "Request clarification", "he": "בקשת הבהרה" },
           "actors": ["STAFF"],
           "entitlement": "case.addNote",
@@ -236,6 +253,7 @@
         },
         {
           "key": "request_documents",
+          "event": "case.documentsRequested",
           "label": { "en": "Request documents", "he": "בקשת מסמכים" },
           "actors": ["STAFF"],
           "entitlement": "case.addNote",
@@ -249,6 +267,7 @@
         },
         {
           "key": "edit_section",
+          "event": "case.sectionEditedByStaff",
           "label": { "en": "Edit section as staff", "he": "עריכת שלב על ידי צוות" },
           "actors": ["STAFF"],
           "entitlement": "case.editSection",
@@ -271,6 +290,8 @@
       "transitions": [
         {
           "key": "second_check",
+          "event": "disbursement.secondCheckRequested",
+          "ui": { "area": "disbursement", "style": "secondary", "icon": "autorenew" },
           "label": { "en": "Submit for second check", "he": "שליחה לבדיקה שנייה" },
           "actors": ["STAFF"],
           "entitlement": "case.disburseSecondCheck",
@@ -281,6 +302,8 @@
         },
         {
           "key": "authorise",
+          "event": "disbursement.authorised",
+          "ui": { "area": "disbursement", "style": "primary", "icon": "payments" },
           "label": { "en": "Authorise fund release", "he": "אישור שחרור כספים" },
           "actors": ["STAFF"],
           "entitlement": "case.disburse",

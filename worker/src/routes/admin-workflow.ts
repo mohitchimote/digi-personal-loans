@@ -7,7 +7,7 @@ import { requireAuth, requireRole } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import { ENTITLEMENT_CATALOG, ENTITLEMENT_KEYS } from "../lib/entitlements";
 import { validateDefinition } from "../lib/workflow/validate";
-import { createDraft, discardDraft, getDefinitionRow, listDefinitions, publishDraft, saveDraft } from "../lib/workflow/store";
+import { createDraft, discardDraft, ensureDefaultDefinition, getDefinitionRow, listDefinitions, publishDraft, saveDraft } from "../lib/workflow/store";
 
 // Admin workflow builder API: versioned definitions (DRAFT -> PUBLISHED -> ARCHIVED), copying the
 // form-builder lifecycle. Validation errors come back as a list so the builder can show every
@@ -39,7 +39,10 @@ workflowAdmin.get("/catalog", (c) =>
 );
 
 workflowAdmin.get("/definitions", async (c) => {
-  const rows = await listDefinitions(getDb(c.env.DB));
+  const db = getDb(c.env.DB);
+  // A fresh environment has no rows until something seeds the bundled default; the builder must not open empty.
+  await ensureDefaultDefinition(db);
+  const rows = await listDefinitions(db);
   return c.json(rows.map((r) => ({ ...summary(r), caseCount: r.caseCount })));
 });
 
