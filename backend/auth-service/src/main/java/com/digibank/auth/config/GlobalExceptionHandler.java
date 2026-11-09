@@ -1,5 +1,6 @@
 package com.digibank.auth.config;
 
+import com.digibank.auth.access.AdminApiException;
 import com.digibank.auth.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,6 +25,13 @@ public class GlobalExceptionHandler {
     // doesn't carry the original Authorization header and re-enters the security filter chain
     // unauthenticated, surfacing as a misleading 401 instead of 400 (same bug class already fixed
     // in application-service's/document-service's/notification-service's own handlers).
+    // Admin refusals carry their own status (400 unless the rule says 403/404), in the same
+    // {success, message, data} shape the Worker answers with.
+    @ExceptionHandler(AdminApiException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAdmin(AdminApiException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));

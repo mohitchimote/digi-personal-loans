@@ -32,6 +32,13 @@ public class RoleEntitlement {
 
         public Key() {}
 
+        public static Key of(String roleCode, String entitlement) {
+            Key k = new Key();
+            k.roleCode = roleCode;
+            k.entitlement = entitlement;
+            return k;
+        }
+
         @Override public boolean equals(Object o) {
             return o instanceof Key k && Objects.equals(roleCode, k.roleCode) && Objects.equals(entitlement, k.entitlement);
         }

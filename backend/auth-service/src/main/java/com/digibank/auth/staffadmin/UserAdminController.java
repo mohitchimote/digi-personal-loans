@@ -1,5 +1,8 @@
 package com.digibank.auth.staffadmin;
 
+import com.digibank.auth.access.OrgUnitRepository;
+import com.digibank.auth.access.RoleConfig;
+import com.digibank.auth.access.RoleConfigService;
 import com.digibank.auth.compliance.ComplianceAuditWriter;
 import com.digibank.auth.dto.ApiResponse;
 import com.digibank.auth.model.User;
@@ -28,15 +31,24 @@ public class UserAdminController {
 
     private final UserRepository userRepository;
     private final ComplianceAuditWriter complianceAuditWriter;
+    private final RoleConfigService roleConfig;
+    private final OrgUnitRepository orgUnits;
 
-    public UserAdminController(UserRepository userRepository, ComplianceAuditWriter complianceAuditWriter) {
+    public UserAdminController(UserRepository userRepository, ComplianceAuditWriter complianceAuditWriter,
+                               RoleConfigService roleConfig, OrgUnitRepository orgUnits) {
         this.userRepository = userRepository;
         this.complianceAuditWriter = complianceAuditWriter;
+        this.roleConfig = roleConfig;
+        this.orgUnits = orgUnits;
     }
 
-    private static final List<String> STAFF_ROLES = Arrays.asList(
-            "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN");
     private static final List<String> CUSTOMER_ROLES = Arrays.asList("CUSTOMER", "BUSINESS_OWNER");
+
+    // Staff roles are rows in the roles table (edited in the Roles page), not a constant, so a role an
+    // admin adds can be given to a user straight away.
+    private List<String> staffRoleCodes() {
+        return roleConfig.allStaffRoles().stream().map(RoleConfig::code).toList();
+    }
 
     // The security principal's username is the uuid (see JwtAuthenticationFilter's
     // loadUserByUsername(uuid)) — every request into this controller is already ADMIN-only
@@ -58,7 +70,7 @@ public class UserAdminController {
             @RequestParam(required = false) String type) {
         List<User> users;
         if ("staff".equals(type)) {
-            users = userRepository.findByRoleIn(STAFF_ROLES);
+            users = userRepository.findByRoleIn(staffRoleCodes());
         } else if ("customers".equals(type)) {
             users = userRepository.findByRoleIn(CUSTOMER_ROLES);
         } else {
@@ -67,13 +79,14 @@ public class UserAdminController {
         return ResponseEntity.ok(users.stream().map(UserSummaryResponse::from).toList());
     }
 
-    // NOTE: unlike createStaffUser below, this does not validate `body.get("role")` against
-    // STAFF_ROLES/CUSTOMER_ROLES before saving — pre-existing gap, kept as-is since this pass is a
-    // pure repackaging move (ARCHITECTURE.md §10), not a behavior change. Flagged separately,
-    // not fixed here.
     @PutMapping("/users/{id}/role")
     public ResponseEntity<ApiResponse<UserSummaryResponse>> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        String newRole = body.get("role");
+        // The role must be a staff role that exists or a customer role. This used to be saved unchecked.
+        if (newRole == null || (!staffRoleCodes().contains(newRole) && !CUSTOMER_ROLES.contains(newRole))) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Unknown role."));
+        }
         String previousRole = user.getRole();
         user.setRole(body.get("role"));
         // S2 — a role change invalidates any token already issued for this user; without this, the
@@ -83,6 +96,28 @@ public class UserAdminController {
         complianceAuditWriter.record("ROLE_CHANGED", "User", id.toString(), currentActorUuid(), currentActorRole(),
                 previousRole + " -> " + body.get("role"));
         return ResponseEntity.ok(ApiResponse.success("Role updated.", UserSummaryResponse.from(user)));
+    }
+
+    // Y1 — assign (or clear) a staff member's org unit. Revokes their sessions like a role change does:
+    // their case visibility changes, so the next request must re-resolve it.
+    @PutMapping("/users/{id}/org-unit")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> setOrgUnit(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        if (!staffRoleCodes().contains(user.getRole())) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Only staff users can be assigned to an org unit."));
+        }
+        Object raw = body.get("orgUnitId");
+        Long orgUnitId = raw == null ? null : ((Number) raw).longValue();
+        if (orgUnitId != null && !orgUnits.existsById(orgUnitId)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Unknown org unit."));
+        }
+        Long previous = user.getOrgUnitId();
+        user.setOrgUnitId(orgUnitId);
+        user.setSessionsRevokedAt(LocalDateTime.now());
+        userRepository.save(user);
+        complianceAuditWriter.record("USER_ORG_UNIT_CHANGED", "User", id.toString(), currentActorUuid(), currentActorRole(),
+                (previous == null ? "none" : previous) + " -> " + (orgUnitId == null ? "none" : orgUnitId));
+        return ResponseEntity.ok(ApiResponse.success("Org unit updated.", UserSummaryResponse.from(user)));
     }
 
     @PutMapping("/users/{id}/enabled")
@@ -106,8 +141,11 @@ public class UserAdminController {
         if (userRepository.existsByNationalId(req.getNationalId())) {
             return ResponseEntity.badRequest().body(ApiResponse.error("National ID already in use."));
         }
-        if (!STAFF_ROLES.contains(req.getRole())) {
+        if (!staffRoleCodes().contains(req.getRole())) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid staff role."));
+        }
+        if (req.getOrgUnitId() != null && !orgUnits.existsById(req.getOrgUnitId())) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Unknown org unit."));
         }
         User user = new User();
         user.setEmail(req.getEmail());
@@ -115,6 +153,7 @@ public class UserAdminController {
         user.setNationalId(req.getNationalId());
         user.setPhoneNumber(req.getPhoneNumber());
         user.setRole(req.getRole());
+        user.setOrgUnitId(req.getOrgUnitId());
         user.setEnabled(true);
         user.setEmailVerified(true);
         userRepository.save(user);

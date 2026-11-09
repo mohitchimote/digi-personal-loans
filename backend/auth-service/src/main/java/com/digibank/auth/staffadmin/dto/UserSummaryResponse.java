@@ -10,6 +10,7 @@ public class UserSummaryResponse {
     private String fullName;
     private String phoneNumber;
     private String role;
+    private Long orgUnitId;
     private boolean enabled;
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
@@ -23,6 +24,7 @@ public class UserSummaryResponse {
         r.fullName = u.getFullName();
         r.phoneNumber = u.getPhoneNumber();
         r.role = u.getRole();
+        r.orgUnitId = u.getOrgUnitId();
         r.enabled = u.isEnabled();
         r.createdAt = u.getCreatedAt();
         r.lastLogin = u.getLastLogin();
@@ -36,6 +38,7 @@ public class UserSummaryResponse {
     public String getFullName() { return fullName; }
     public String getPhoneNumber() { return phoneNumber; }
     public String getRole() { return role; }
+    public Long getOrgUnitId() { return orgUnitId; }
     public boolean isEnabled() { return enabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getLastLogin() { return lastLogin; }
