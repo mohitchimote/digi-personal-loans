@@ -1,5 +1,6 @@
 package com.digibank.application.security;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,19 +12,16 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Role gating here mirrors worker/src/routes/applications.ts's assertRole(...STAFF_ROLES) /
- * assertRole(c, "ADMIN") calls exactly (see PRODUCTION_READINESS.md §5/§6) — this is a faithful
- * port of the already-shipped-and-battle-tested Worker fix, not a fresh design.
+ * Staff endpoints are gated by what a person's role may do (an entitlement, carried in the token as a
+ * PERM_ authority), not by role names, so a role an admin creates or edits works here without a code
+ * change. The mapping is the one the default workflow definition makes (each action names the
+ * entitlement it needs, each queue the one that opens it) and the Worker enforces: decline needs
+ * case.decline, the pipeline needs queue.pipeline, and so on. Until the Java workflow engine exists
+ * (milestone M3) the mapping is stated here.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
-    // public (not private) so WizardController's S6 ownership check can reuse this one definition
-    // instead of adding a second copy within this service (Q2).
-    public static final String[] STAFF_ROLES = {
-            "BANKER", "UNDERWRITER", "SENIOR_UNDERWRITER", "HEAD_OF_LENDING", "COO", "CEO", "ADMIN"
-    };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
@@ -37,6 +35,24 @@ public class SecurityConfig {
         this.accessDeniedHandler = accessDeniedHandler;
     }
 
+    /** "case.decline" becomes the authority "PERM_case.decline". */
+    static String perm(String entitlement) {
+        return AuthenticatedUser.PERMISSION_PREFIX + entitlement;
+    }
+
+    /**
+     * The token filter is a @Component, so Boot would also register it as a plain servlet filter, outside
+     * the security chain. It is a once-per-request filter, so whichever copy ran first would win, and the
+     * outer copy's authentication can be discarded by the chain's own context handling. Disabling that
+     * registration makes it run exactly once, inside the chain, where it is meant to.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -48,20 +64,23 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/applications/mandate-rules").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/applications/mandate-rules").hasAnyRole(STAFF_ROLES)
-                .requestMatchers(HttpMethod.PUT, "/api/applications/*/section-by-underwriter").hasAnyRole(STAFF_ROLES)
-                .requestMatchers(HttpMethod.GET, "/api/applications/pipeline", "/api/applications/banker-queue")
-                    .hasAnyRole(STAFF_ROLES)
-                .requestMatchers(HttpMethod.POST,
-                        "/api/applications/*/notes",
-                        "/api/applications/*/decline",
-                        "/api/applications/*/send-back",
-                        "/api/applications/*/approve-by-underwriter",
-                        "/api/applications/*/refer-to-senior",
-                        "/api/applications/*/disbursement/authorise",
-                        "/api/applications/*/disbursement/second-check",
-                        "/api/applications/*/data-verification/resolve")
-                    .hasAnyRole(STAFF_ROLES)
+                .requestMatchers(HttpMethod.GET, "/api/applications/mandate-rules").hasAuthority(perm("mandates.view"))
+                .requestMatchers(HttpMethod.PUT, "/api/applications/*/section-by-underwriter").hasAuthority(perm("case.editSection"))
+                .requestMatchers(HttpMethod.GET, "/api/applications/pipeline").hasAuthority(perm("queue.pipeline"))
+                .requestMatchers(HttpMethod.GET, "/api/applications/banker-queue").hasAuthority(perm("queue.banker"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/notes").hasAuthority(perm("case.addNote"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/decline").hasAuthority(perm("case.decline"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/send-back").hasAuthority(perm("case.sendBack"))
+                // /approve is the conditional approval and /approve-by-underwriter the decision; both are
+                // approvals. /approve was open to any signed-in user, customers included, until now.
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/approve", "/api/applications/*/approve-by-underwriter")
+                    .hasAuthority(perm("case.approve"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/refer-to-senior").hasAuthority(perm("case.refer"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/disbursement/authorise").hasAuthority(perm("case.disburse"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/disbursement/second-check")
+                    .hasAuthority(perm("case.disburseSecondCheck"))
+                .requestMatchers(HttpMethod.POST, "/api/applications/*/data-verification/resolve")
+                    .hasAuthority(perm("case.resolveVerification"))
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

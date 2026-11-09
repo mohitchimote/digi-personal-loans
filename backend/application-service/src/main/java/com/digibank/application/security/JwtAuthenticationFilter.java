@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -19,12 +18,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.security.Key;
 import java.util.Date;
-import java.util.List;
 
 /**
  * Validates the JWT issued by auth-service. This service owns no user table, so — unlike
  * auth-service's own filter — authentication is derived entirely from the token's signed claims
- * (role), never a database lookup. See auth-service's AuthService.buildAuthResponse for where
+ * (role and, for staff, entitlements), never a database lookup. See auth-service's AuthService.buildAuthResponse for where
  * those claims are embedded at issuance. The one exception is session revocation (S2) — see
  * SessionRevocationCache, an in-memory poll rather than a per-request lookup.
  */
@@ -64,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            String role = claims.get("role", String.class);
+            AuthenticatedUser principal = AuthenticatedUser.fromClaims(claims);
             Long userId = claims.get("userId", Long.class);
             // S2 — reject if this token was issued before the user's last revocation (role change,
             // disable, or logout-everywhere), even though it's otherwise a validly-signed,
@@ -73,12 +71,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 filterChain.doFilter(request, response);
                 return;
             }
-            if (role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                AuthenticatedUser principal = new AuthenticatedUser(
-                        claims.getSubject(), userId, role, claims.get("fullName", String.class));
+            if (principal != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // ROLE_x plus a PERM_x per entitlement: access is decided by what the person's role may do.
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                        new UsernamePasswordAuthenticationToken(principal, null, principal.authorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }

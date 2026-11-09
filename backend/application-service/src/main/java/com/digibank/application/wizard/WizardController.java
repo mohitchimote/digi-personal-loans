@@ -3,7 +3,6 @@ package com.digibank.application.wizard;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.security.AuthenticatedUser;
 import com.digibank.application.security.CurrentUser;
-import com.digibank.application.security.SecurityConfig;
 import com.digibank.application.wizard.dto.ApplicationSectionRequest;
 import com.digibank.application.wizard.dto.StartApplicationRequest;
 import com.digibank.application.wizard.dto.StartPreApprovedRequest;
@@ -12,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -33,10 +31,10 @@ public class WizardController {
     // S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check
     // at all: any authenticated user could enumerate another customer's applications by guessing a
     // numeric customerId. Same fix shape as document-service's assertOwnsDocument (S1); reuses
-    // SecurityConfig.STAFF_ROLES rather than adding a second copy within this service (Q2).
+    // staff status taken from the token (a staff token carries its role), not a hard-coded role list.
     private static void assertOwnsCustomerId(Long customerId) {
         AuthenticatedUser user = CurrentUser.get();
-        if (Arrays.asList(SecurityConfig.STAFF_ROLES).contains(user.role())) return;
+        if (user.isStaff()) return;
         if (!user.userId().equals(customerId)) {
             throw new AccessDeniedException("Forbidden.");
         }
