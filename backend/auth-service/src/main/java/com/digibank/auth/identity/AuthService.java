@@ -6,7 +6,6 @@ import com.digibank.auth.identity.dto.RegisterInitiatedResponse;
 import com.digibank.auth.identity.dto.RegisterRequest;
 import com.digibank.auth.model.User;
 import com.digibank.auth.repository.UserRepository;
-import com.digibank.auth.security.JwtTokenProvider;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -28,13 +27,13 @@ import java.util.Map;
 public class AuthService implements UserDetailsService {
 
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
     private final OtpService otpService;
+    private final AuthResponseFactory authResponses;
 
-    public AuthService(UserRepository userRepository, JwtTokenProvider jwtTokenProvider, OtpService otpService) {
+    public AuthService(UserRepository userRepository, OtpService otpService, AuthResponseFactory authResponses) {
         this.userRepository = userRepository;
-        this.jwtTokenProvider = jwtTokenProvider;
         this.otpService = otpService;
+        this.authResponses = authResponses;
     }
 
     @Transactional
@@ -184,10 +183,14 @@ public class AuthService implements UserDetailsService {
         }
 
         user = otpService.verifyOtp(user, otp);
+        // Captured before this login overwrites it: the staff header shows "last accessed ...".
+        LocalDateTime previousLogin = user.getLastLogin();
         user.setLastLogin(LocalDateTime.now());
         user = userRepository.save(user);
 
-        return buildAuthResponse(user);
+        AuthResponse response = buildAuthResponse(user);
+        response.setPreviousLogin(previousLogin);
+        return response;
     }
 
     @Override
@@ -198,37 +201,9 @@ public class AuthService implements UserDetailsService {
     }
 
     private AuthResponse buildAuthResponse(User user) {
-        UserDetails userDetails = buildUserDetails(user);
-        // Every other service validates this token without a database of its own (see
-        // ARCHITECTURE.md/PRODUCTION_READINESS.md) — role/userId/fullName must travel inside the
-        // token itself rather than being re-resolved via a lookup only auth-service can do.
-        // fullName lets a service attribute a staff action (e.g. an approval) to who actually
-        // holds the token, instead of trusting a free-text "reviewedBy" field the client supplies.
-        // Map.of() would NPE if fullName is ever null (no NOT NULL constraint on that column) —
-        // use a mutable map instead so a bare role/userId token is issued rather than login failing.
-        Map<String, Object> extraClaims = new java.util.HashMap<>();
-        extraClaims.put("role", user.getRole());
-        extraClaims.put("userId", user.getId());
-        extraClaims.put("fullName", user.getFullName());
-        // Added for the admin email-templates feature (notification-service needs to know which
-        // address to send a "test" email to, and to attribute a template edit to a real address
-        // rather than a free-text field) — same trust model as role/userId/fullName above.
-        extraClaims.put("email", user.getEmail());
-        String token = jwtTokenProvider.generateToken(extraClaims, userDetails);
-
-        return AuthResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .userId(user.getId())
-                .email(user.getEmail())
-                .nationalId(user.getNationalId())
-                .idIssueDate(user.getIdIssueDate())
-                .fullName(user.getFullName())
-                .phoneNumber(user.getPhoneNumber())
-                .role(user.getRole())
-                .expiresIn(jwtTokenProvider.getExpirationTime())
-                .companyName(user.getCompanyName())
-                .build();
+        // The token carries everything the other services decide on (role, entitlements, scope, org
+        // unit, ladder rank): they validate it without a database of their own. See TokenClaims.
+        return authResponses.build(user, buildUserDetails(user));
     }
 
     private UserDetails buildUserDetails(User user) {

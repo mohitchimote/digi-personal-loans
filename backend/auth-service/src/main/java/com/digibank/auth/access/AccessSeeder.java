@@ -28,7 +28,7 @@ public class AccessSeeder implements CommandLineRunner {
     }
 
     /** Returns how many roles were created (0 when the table already had rows). */
-    int seed() {
+    public int seed() {
         if (roles.count() > 0) return 0;
         for (DefaultRole d : DefaultRoles.ALL) {
             Role role = new Role();
