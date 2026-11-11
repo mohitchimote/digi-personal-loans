@@ -15,6 +15,9 @@ public class CustomerProfileResponse {
     private String fullName;
     private String phoneNumber;
     private String companyName;
+    private String companyRegistrationNumber;
+    private String companyIndustry;
+    private Integer companyFoundedYear;
 
     public static CustomerProfileResponse from(User u) {
         CustomerProfileResponse r = new CustomerProfileResponse();
@@ -25,6 +28,9 @@ public class CustomerProfileResponse {
         r.fullName = u.getFullName();
         r.phoneNumber = u.getPhoneNumber();
         r.companyName = u.getCompanyName();
+        r.companyRegistrationNumber = u.getCompanyRegistrationNumber();
+        r.companyIndustry = u.getCompanyIndustry();
+        r.companyFoundedYear = u.getCompanyFoundedYear();
         return r;
     }
 
@@ -35,4 +41,7 @@ public class CustomerProfileResponse {
     public String getFullName() { return fullName; }
     public String getPhoneNumber() { return phoneNumber; }
     public String getCompanyName() { return companyName; }
+    public String getCompanyRegistrationNumber() { return companyRegistrationNumber; }
+    public String getCompanyIndustry() { return companyIndustry; }
+    public Integer getCompanyFoundedYear() { return companyFoundedYear; }
 }

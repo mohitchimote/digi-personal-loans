@@ -49,6 +49,9 @@ app:
     storage-path: ./branding-store
   integration-service:
     url: ${INTEGRATION_SERVICE_URL:http://localhost:8088}
+  # Asked how many cases sit in an org unit before it is deleted (the cases belong to application-service).
+  application-service:
+    url: ${APPLICATION_SERVICE_URL:http://localhost:8082}
 
 logging:
   level:

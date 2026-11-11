@@ -121,9 +121,12 @@ public class UserAdminController {
     }
 
     @PutMapping("/users/{id}/enabled")
-    public ResponseEntity<ApiResponse<UserSummaryResponse>> setEnabled(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> setEnabled(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        // The Worker requires a real boolean; a missing or mistyped value used to read as false here and disable the account.
+        if (!(body.get("enabled") instanceof Boolean enabled)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("enabled: Required (true or false)"));
+        }
         User user = userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
-        boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
         user.setEnabled(enabled);
         // S2 — disabling a user invalidates any token already issued for them immediately.
         user.setSessionsRevokedAt(LocalDateTime.now());
@@ -134,7 +137,7 @@ public class UserAdminController {
     }
 
     @PostMapping("/users")
-    public ResponseEntity<?> createStaffUser(@RequestBody CreateStaffRequest req) {
+    public ResponseEntity<?> createStaffUser(@jakarta.validation.Valid @RequestBody CreateStaffRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Email already in use."));
         }

@@ -44,14 +44,16 @@ public class AffordabilityRuleService {
     @Transactional
     public AffordabilityRulesDto updateRules(AffordabilityRulesDto update) {
         AffordabilityRuleSettings settings = getSettings();
-        settings.setMaxDti(update.getMaxDti());
-        settings.setMaxHti(update.getMaxHti());
-        settings.setMinMonthlyIncome(update.getMinMonthlyIncome());
-        settings.setBaseAnnualRate(update.getBaseAnnualRate());
-        settings.setRepaymentCapacityFactor(update.getRepaymentCapacityFactor());
-        settings.setMinCreditScore(update.getMinCreditScore());
-        settings.setAutoApprovalThresholdSingle(update.getAutoApprovalThresholdSingle());
-        settings.setAutoApprovalThresholdJoint(update.getAutoApprovalThresholdJoint());
+        // A field missing from the body keeps its current value. (The Worker would write null into a not-null
+        // column and fail; leaving the stored rule intact is the safe reading of a partial update.)
+        if (update.getMaxDti() != null) settings.setMaxDti(update.getMaxDti());
+        if (update.getMaxHti() != null) settings.setMaxHti(update.getMaxHti());
+        if (update.getMinMonthlyIncome() != null) settings.setMinMonthlyIncome(update.getMinMonthlyIncome());
+        if (update.getBaseAnnualRate() != null) settings.setBaseAnnualRate(update.getBaseAnnualRate());
+        if (update.getRepaymentCapacityFactor() != null) settings.setRepaymentCapacityFactor(update.getRepaymentCapacityFactor());
+        if (update.getMinCreditScore() != null) settings.setMinCreditScore(update.getMinCreditScore());
+        if (update.getAutoApprovalThresholdSingle() != null) settings.setAutoApprovalThresholdSingle(update.getAutoApprovalThresholdSingle());
+        if (update.getAutoApprovalThresholdJoint() != null) settings.setAutoApprovalThresholdJoint(update.getAutoApprovalThresholdJoint());
         repository.save(settings);
         return toDto(settings);
     }

@@ -53,6 +53,15 @@ public class User {
     // staff not placed in the hierarchy, who then see every case whatever their role's scope says.
     private Long orgUnitId;
 
+    // Staff availability for automatically routed cases (off = skipped by round-robin / least-loaded), as the
+    // Worker's users.is_available. The column default keeps every existing row available when it is added.
+    @Column(nullable = false, columnDefinition = "boolean not null default true")
+    private boolean available = true;
+
+    // Which language server-generated content (notifications) is written in; synced from the language toggle.
+    @Column(nullable = false, columnDefinition = "varchar(8) not null default 'en'")
+    private String preferredLanguage = "en";
+
     public User() {}
 
     @PrePersist
@@ -82,6 +91,10 @@ public class User {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public LocalDateTime getSessionsRevokedAt() { return sessionsRevokedAt; }
     public void setSessionsRevokedAt(LocalDateTime sessionsRevokedAt) { this.sessionsRevokedAt = sessionsRevokedAt; }
+    public boolean isAvailable() { return available; }
+    public void setAvailable(boolean available) { this.available = available; }
+    public String getPreferredLanguage() { return preferredLanguage; }
+    public void setPreferredLanguage(String preferredLanguage) { this.preferredLanguage = preferredLanguage; }
     public Long getOrgUnitId() { return orgUnitId; }
     public void setOrgUnitId(Long orgUnitId) { this.orgUnitId = orgUnitId; }
     public boolean isEmailVerified() { return emailVerified; }

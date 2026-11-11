@@ -144,6 +144,25 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Logged out.", null));
     }
 
+    // The frontend's language toggle is otherwise purely client-side; this is what lets server-generated
+    // content (notifications) be written in the person's language. Same body and answer as the Worker's.
+    @PutMapping("/language")
+    public ResponseEntity<ApiResponse<Map<String, String>>> setLanguage(@AuthenticationPrincipal UserDetails userDetails,
+                                                                       @RequestBody Map<String, Object> body) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Token is invalid or expired."));
+        }
+        Object language = body.get("preferredLanguage");
+        if (!"en".equals(language) && !"he".equals(language)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("preferredLanguage: must be \"en\" or \"he\""));
+        }
+        userRepository.findByUuid(userDetails.getUsername()).ifPresent(user -> {
+            user.setPreferredLanguage((String) language);
+            userRepository.save(user);
+        });
+        return ResponseEntity.ok(ApiResponse.success("Language preference updated.", Map.of("preferredLanguage", (String) language)));
+    }
+
     // S2 — polled every ~30s by the other 5 Java services (application-service, affordability-service,
     // document-service, notification-service, product-service), each keeping a small in-memory cache
     // so their own JwtAuthenticationFilter never needs a per-request call back to this service (see

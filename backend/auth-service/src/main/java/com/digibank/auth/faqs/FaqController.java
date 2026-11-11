@@ -34,19 +34,31 @@ public class FaqController {
 
     @PostMapping("/api/auth/admin/faqs")
     public ResponseEntity<Faq> createFaq(@RequestBody Faq faq) {
+        requireText(faq);
         faq.setId(null);
+        if (faq.getDisplayOrder() == null) faq.setDisplayOrder(0);
         return ResponseEntity.status(HttpStatus.CREATED).body(faqRepository.save(faq));
     }
 
     @PutMapping("/api/auth/admin/faqs/{id}")
     public ResponseEntity<Faq> updateFaq(@PathVariable Long id, @RequestBody Faq update) {
         Faq faq = faqRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("FAQ not found: " + id));
+        requireText(update);
         faq.setCategory(update.getCategory());
         faq.setQuestion(update.getQuestion());
         faq.setAnswer(update.getAnswer());
+        faq.setQuestionHe(update.getQuestionHe());
+        faq.setAnswerHe(update.getAnswerHe());
         faq.setVideoId(update.getVideoId());
-        faq.setDisplayOrder(update.getDisplayOrder());
+        faq.setDisplayOrder(update.getDisplayOrder() == null ? 0 : update.getDisplayOrder());
         return ResponseEntity.ok(faqRepository.save(faq));
+    }
+
+    /** The Worker's schema: category, question and answer are required strings (everything else is optional). */
+    private static void requireText(Faq faq) {
+        if (faq.getCategory() == null) throw new IllegalArgumentException("category: Required");
+        if (faq.getQuestion() == null) throw new IllegalArgumentException("question: Required");
+        if (faq.getAnswer() == null) throw new IllegalArgumentException("answer: Required");
     }
 
     @DeleteMapping("/api/auth/admin/faqs/{id}")

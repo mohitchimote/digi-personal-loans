@@ -1,5 +1,6 @@
 package com.digibank.auth.security;
 
+import com.digibank.auth.access.RoleConfigService;
 import com.digibank.auth.model.User;
 import com.digibank.auth.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -7,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,6 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -23,12 +28,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
     private final UserRepository userRepository;
+    private final RoleConfigService roleConfig;
+
+    /** Authority prefix for an entitlement: "case.actAsCustomer" becomes the authority "PERM_case.actAsCustomer". */
+    public static final String PERMISSION_PREFIX = "PERM_";
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserDetailsService userDetailsService,
-                                    UserRepository userRepository) {
+                                    UserRepository userRepository, RoleConfigService roleConfig) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
+        this.roleConfig = roleConfig;
+    }
+
+    /** ROLE_x plus a PERM_x for each entitlement the person's role holds right now (read live, like the rest of
+     * this filter, so an edited role applies at once), which is how the Worker gates by entitlement. */
+    List<GrantedAuthority> authoritiesFor(User user, UserDetails details) {
+        List<GrantedAuthority> out = new ArrayList<>(details.getAuthorities());
+        if (user != null) {
+            for (String e : roleConfig.resolve(user.getRole()).entitlements()) {
+                out.add(new SimpleGrantedAuthority(PERMISSION_PREFIX + e));
+            }
+        }
+        return out;
     }
 
     @Override
@@ -59,7 +81,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtTokenProvider.validateToken(jwt, userDetails) && userDetails.isEnabled()
                         && userDetails.isAccountNonLocked() && !revoked) {
                     UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(userDetails, null, authoritiesFor(user, userDetails));
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }

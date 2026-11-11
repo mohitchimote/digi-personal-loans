@@ -31,6 +31,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+app:
+  jwt:
+    # No default: required. Must match auth-service's, which issues the tokens the mandate admin API checks.
+    secret: ${JWT_SECRET}
+  # The escalation ladder (roles) and the org hierarchy live in auth-service; read over its internal API.
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
 management:
   endpoints:
     web:

@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.digibank.auth.dto.ApiResponse;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +31,12 @@ public class BrandingController {
     // chain handles it via XML root-element sniffing, same mechanism as its binary detection.
     private static final Set<String> ALLOWED_LOGO_TYPES = Set.of("image/png", "image/jpeg", "image/svg+xml");
     private static final long MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
+    private static final java.util.Map<String, String> LOGO_EXTENSIONS =
+            java.util.Map.of("image/png", "png", "image/jpeg", "jpg", "image/svg+xml", "svg");
+    private static final String LOGO_URL_PREFIX = "/api/branding/logo/";
+    // A stored logo's file name: no path separators and no leading dot, so a request cannot step out of the store.
+    private static final java.util.regex.Pattern SAFE_FILENAME = java.util.regex.Pattern.compile("[A-Za-z0-9_][A-Za-z0-9._-]*");
 
     private final Tika tika = new Tika();
     private final BrandingSettingsRepository repository;
@@ -67,7 +75,7 @@ public class BrandingController {
     public ResponseEntity<?> uploadLogo(@RequestParam("file") MultipartFile file) throws IOException {
         byte[] bytes = file.getBytes();
         if (bytes.length > MAX_LOGO_BYTES) {
-            throw new IllegalArgumentException("Logo is too large. Maximum size is 5MB.");
+            return ResponseEntity.status(413).body(ApiResponse.error("Logo is too large. Maximum size is 5MB."));
         }
         String detectedType = tika.detect(bytes);
         if (!ALLOWED_LOGO_TYPES.contains(detectedType)) {
@@ -76,16 +84,33 @@ public class BrandingController {
 
         Path dir = Paths.get(storagePath);
         Files.createDirectories(dir);
-        String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        // Named from the detected type, as the Worker does (logo_<uuid>.<ext>), never from the uploaded file's own
+        // name: that name is the client's and can carry path segments.
+        String filename = "logo_" + UUID.randomUUID() + "." + LOGO_EXTENSIONS.get(detectedType);
         Files.write(dir.resolve(filename), bytes);
 
         BrandingSettings settings = current();
-        settings.setLogoUrl("/api/branding/logo/" + filename);
-        return ResponseEntity.ok(repository.save(settings));
+        String previousLogoUrl = settings.getLogoUrl();
+        settings.setLogoUrl(LOGO_URL_PREFIX + filename);
+        BrandingSettings saved = repository.save(settings);
+
+        // Best-effort cleanup of the previous logo, as the Worker does: the new one is already live.
+        if (previousLogoUrl != null && previousLogoUrl.startsWith(LOGO_URL_PREFIX)) {
+            String previous = previousLogoUrl.substring(LOGO_URL_PREFIX.length());
+            if (SAFE_FILENAME.matcher(previous).matches()) {
+                try {
+                    Files.deleteIfExists(dir.resolve(previous));
+                } catch (IOException ignored) {
+                    // leave it behind
+                }
+            }
+        }
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/api/branding/logo/{filename}")
     public ResponseEntity<FileSystemResource> getLogo(@PathVariable String filename) {
+        if (!SAFE_FILENAME.matcher(filename).matches()) return ResponseEntity.notFound().build();
         Path path = Paths.get(storagePath, filename);
         if (!Files.exists(path)) return ResponseEntity.notFound().build();
         MediaType mediaType = filename.toLowerCase().endsWith(".png") ? MediaType.IMAGE_PNG

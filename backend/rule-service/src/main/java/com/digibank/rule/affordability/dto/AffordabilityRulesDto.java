@@ -12,7 +12,7 @@ public class AffordabilityRulesDto {
     private BigDecimal minMonthlyIncome;
     private BigDecimal baseAnnualRate;
     private BigDecimal repaymentCapacityFactor;
-    private int minCreditScore;
+    private Integer minCreditScore;
     private BigDecimal autoApprovalThresholdSingle;
     private BigDecimal autoApprovalThresholdJoint;
 
@@ -31,8 +31,8 @@ public class AffordabilityRulesDto {
     public BigDecimal getRepaymentCapacityFactor() { return repaymentCapacityFactor; }
     public void setRepaymentCapacityFactor(BigDecimal repaymentCapacityFactor) { this.repaymentCapacityFactor = repaymentCapacityFactor; }
 
-    public int getMinCreditScore() { return minCreditScore; }
-    public void setMinCreditScore(int minCreditScore) { this.minCreditScore = minCreditScore; }
+    public Integer getMinCreditScore() { return minCreditScore; }
+    public void setMinCreditScore(Integer minCreditScore) { this.minCreditScore = minCreditScore; }
 
     public BigDecimal getAutoApprovalThresholdSingle() { return autoApprovalThresholdSingle; }
     public void setAutoApprovalThresholdSingle(BigDecimal autoApprovalThresholdSingle) { this.autoApprovalThresholdSingle = autoApprovalThresholdSingle; }

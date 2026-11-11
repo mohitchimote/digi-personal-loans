@@ -26,6 +26,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRole(String role);
 
+    // Staff eligible to own a case: enabled people holding one of the roles (callers narrow by org unit).
+    List<User> findByRoleInAndEnabledTrue(List<String> roles);
+
     long countByOrgUnitId(Long orgUnitId);
 
     // A role's permissions travel in the token, so when a role is edited every session held by that

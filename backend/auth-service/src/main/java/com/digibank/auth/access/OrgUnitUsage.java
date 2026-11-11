@@ -1,10 +1,9 @@
 package com.digibank.auth.access;
 
 /**
- * How many cases sit in an org unit. Cases are owned by the application-service, not this one, so
- * until that link exists (milestone M2) the default answer is "none known". Deleting a unit is
- * refused when cases remain, which makes this the one place that rule is incomplete on the Java
- * side today.
+ * How many cases sit in an org unit. Cases are owned by application-service, so it is asked. Deleting a unit is
+ * refused when cases remain, so an implementation that cannot get an answer must throw (the delete is then
+ * refused), never answer 0 on a guess.
  */
 public interface OrgUnitUsage {
     long caseCount(long orgUnitId);

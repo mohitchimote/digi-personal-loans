@@ -19,6 +19,13 @@ public class Faq {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String answer;
 
+    // Hebrew translations: nullable, so a row without one just shows the English text (as the Worker's faqs).
+    @Column(columnDefinition = "TEXT")
+    private String questionHe;
+
+    @Column(columnDefinition = "TEXT")
+    private String answerHe;
+
     private String videoId;
     private Integer displayOrder = 0;
 
@@ -35,6 +42,12 @@ public class Faq {
 
     public String getAnswer() { return answer; }
     public void setAnswer(String answer) { this.answer = answer; }
+
+    public String getQuestionHe() { return questionHe; }
+    public void setQuestionHe(String questionHe) { this.questionHe = questionHe; }
+
+    public String getAnswerHe() { return answerHe; }
+    public void setAnswerHe(String answerHe) { this.answerHe = answerHe; }
 
     public String getVideoId() { return videoId; }
     public void setVideoId(String videoId) { this.videoId = videoId; }
