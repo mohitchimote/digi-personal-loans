@@ -25,7 +25,8 @@ $services = @(
     @{ name = "affordability-service"; port = 8083 },
     @{ name = "product-service";       port = 8084 },
     @{ name = "document-service";      port = 8085 },
-    @{ name = "notification-service";  port = 8086 }
+    @{ name = "notification-service";  port = 8086 },
+    @{ name = "workflow-service";      port = 8089 }
 )
 
 $backendDir = "$PSScriptRoot\backend"

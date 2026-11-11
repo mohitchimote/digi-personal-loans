@@ -40,6 +40,7 @@ jobs:
           - notification-service
           - rule-service
           - integration-service
+          - workflow-service
     defaults:
       run:
         working-directory: backend/${{ matrix.service }}

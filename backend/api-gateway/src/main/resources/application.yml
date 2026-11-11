@@ -69,6 +69,38 @@ spring:
               predicates:
                 - Path=/api/auth/admin/email-templates/**
 
+            # Same reason: the mandates admin API keeps the Worker's /api/auth/admin/mandates path but is
+            # served by rule-service, which owns the mandates table.
+            - id: mandates-admin
+              uri: lb://rule-service
+              predicates:
+                - Path=/api/auth/admin/mandates/**
+
+            # The form builder lives in application-service (it owns the form versions cases are pinned to).
+            - id: form-builder-admin
+              uri: lb://application-service
+              predicates:
+                - Path=/api/auth/admin/form-builder/**
+
+            # The workflow admin API keeps the Worker's /api/auth/admin/workflow path but is served by workflow-service.
+            - id: workflow-admin
+              uri: lb://workflow-service
+              predicates:
+                - Path=/api/auth/admin/workflow/**
+
+            # Executing an action has host effects (notes, emails, documents, field updates) that application-service
+            # owns, so it orchestrates the generic POST (see backend/workflow-service/README.md). Must precede workflow-runtime.
+            - id: workflow-action-execute
+              uri: lb://application-service
+              predicates:
+                - Path=/api/workflow/cases/*/actions/*
+                - Method=POST
+
+            - id: workflow-runtime
+              uri: lb://workflow-service
+              predicates:
+                - Path=/api/workflow/**
+
             - id: auth-service
               uri: lb://auth-service
               predicates:

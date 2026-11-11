@@ -1,0 +1,57 @@
+server:
+  port: 8089
+  error:
+    # "always" leaks exception messages/validation internals to any caller. Override via env var only for
+    # local debugging, never in a deployed environment (same as every other service).
+    include-message: ${ERROR_INCLUDE_MESSAGE:never}
+    include-binding-errors: ${ERROR_INCLUDE_BINDING_ERRORS:never}
+
+# EUREKA_SERVER_URL defaults to localhost for `mvnd spring-boot:run`; Docker Compose overrides it to the
+# `service-registry` container. The service boots fine with no registry running (it only registers itself).
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+spring:
+  application:
+    name: workflow-service
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/digibank_workflow?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    # No default: required. Missing env var fails startup immediately rather than falling back to a guessable value.
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      # Flyway owns the schema from day one (db/migration); Hibernate only checks that the mappings match it.
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  jwt:
+    # No default: required. Must match every other service's app.jwt.secret (and auth-service's, which issues the token).
+    secret: ${JWT_SECRET}
+  # Polled every 30s by SessionRevocationCache, not called per-request.
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  rule-service:
+    url: ${RULE_SERVICE_URL:http://localhost:8087}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.digibank: INFO
