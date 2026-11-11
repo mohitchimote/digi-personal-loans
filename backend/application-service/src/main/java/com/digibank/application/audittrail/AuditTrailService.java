@@ -1,94 +1,39 @@
 package com.digibank.application.audittrail;
 
-import com.digibank.application.client.EmailClient;
-import com.digibank.application.client.NotificationClient;
-import com.digibank.application.client.NotificationText;
-import com.digibank.application.compliance.ComplianceAuditWriter;
-import com.digibank.application.model.LoanApplication;
 import com.digibank.application.model.UnderwritingNote;
-import com.digibank.application.repository.LoanApplicationRepository;
 import com.digibank.application.repository.UnderwritingNoteRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 /**
- * Audit-trail context (ARCHITECTURE.md §10) — the record of who did what, when. Called from both
- * the wizard context (an underwriter editing a section leaves a note) and the decisioning context
- * (every decline/send-back/approve/refer/disbursement action leaves one), so this stays a small,
- * standalone service both can depend on rather than living inside either.
+ * Audit-trail context (ARCHITECTURE.md §10) — the record of who did what, when: the underwriting notes shown in
+ * the UI. Every note is written by a workflow action's NOTE effect (see workflow.WorkflowActions), inside that
+ * action's transaction; the customer notification and email a clarification or document request used to send from
+ * here are now the same action's NOTIFY and EMAIL effects. The compliance audit row for a note is written by the
+ * action once it has committed, so a rolled-back action leaves none.
  */
 @Service
 public class AuditTrailService {
 
-    private final LoanApplicationRepository repository;
     private final UnderwritingNoteRepository noteRepository;
-    private final NotificationClient notificationClient;
-    private final NotificationText text;
-    private final EmailClient emailClient;
-    private final ComplianceAuditWriter complianceAuditWriter;
 
-    public AuditTrailService(LoanApplicationRepository repository, UnderwritingNoteRepository noteRepository,
-                              NotificationClient notificationClient, NotificationText text, EmailClient emailClient,
-                              ComplianceAuditWriter complianceAuditWriter) {
-        this.repository = repository;
+    public AuditTrailService(UnderwritingNoteRepository noteRepository) {
         this.noteRepository = noteRepository;
-        this.notificationClient = notificationClient;
-        this.text = text;
-        this.emailClient = emailClient;
-        this.complianceAuditWriter = complianceAuditWriter;
     }
 
-    @Transactional
-    public UnderwritingNote addNote(String appRef, String section, String note, String noteType, String createdBy) {
-        LoanApplication app = getByRef(appRef);
+    /** Inserts the note; joins the caller's transaction. */
+    public UnderwritingNote saveNote(String appRef, String section, String note, String noteType, String createdBy) {
         UnderwritingNote entity = new UnderwritingNote();
         entity.setApplicationRef(appRef);
         entity.setSection(section);
         entity.setNote(note);
         entity.setNoteType(noteType);
         entity.setCreatedBy(createdBy);
-        UnderwritingNote saved = noteRepository.save(entity);
-
-        // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — every decisioning action (decline/send-back/
-        // approve/refer/disbursement/second-check) and every wizard edit/note funnels through this
-        // one method, so this is the single hook point for all of them.
-        complianceAuditWriter.record(noteType, "LoanApplication", appRef, createdBy, note);
-
-        if ("CLARIFICATION_REQUEST".equals(noteType) || "DOCUMENT_REQUEST".equals(noteType)) {
-            boolean isDocRequest = "DOCUMENT_REQUEST".equals(noteType);
-            notificationClient.send(app.getCustomerId(),
-                    isDocRequest ? "Document Required for Your Loan Application" : "Clarification Needed on Your Loan Application",
-                    text.greeting(app) + " Thank you for applying for a personal loan for " + text.loanPurpose(app) + " with DigiBank. "
-                            + "Our underwriting team is reviewing your " + text.sectionLabel(section) + " details and needs "
-                            + (isDocRequest ? "an additional document" : "some clarification") + " before we can proceed.\n\n"
-                            + "Underwriter's note: " + note + "\n\n"
-                            + "Next steps: " + (isDocRequest
-                                ? "Please log in to your DigiBank portal and upload the requested document from the Documents section."
-                                : "Please log in to your DigiBank portal, review your application, and update the relevant section.")
-                            + " Once done, your application will be back in the underwriting queue.",
-                    "APPLICATION_UPDATE", appRef);
-
-            Map<String, String> variables = text.commonEmailVariables(app);
-            variables.put("underwriterNote", note);
-            variables.put("sectionName", text.sectionLabel(section));
-            // eventKey === noteType here, matching worker's dynamic sendTemplatedEmail(db, env,
-            // noteType, ...) call — CLARIFICATION_REQUEST/DOCUMENT_REQUEST are both valid eventKeys
-            // in EVENT_REGISTRY.
-            emailClient.send(noteType, app.getCustomerEmail(), variables);
-        }
-
-        return saved;
+        return noteRepository.save(entity);
     }
 
     public List<UnderwritingNote> getNotes(String appRef) {
         return noteRepository.findByApplicationRefOrderByCreatedAtDesc(appRef);
-    }
-
-    private LoanApplication getByRef(String appRef) {
-        return repository.findByApplicationRef(appRef)
-                .orElseThrow(() -> new IllegalArgumentException("Application not found: " + appRef));
     }
 }

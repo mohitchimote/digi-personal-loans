@@ -56,6 +56,13 @@ app:
     url: ${RULE_SERVICE_URL:http://localhost:8087}
   integration-service:
     url: ${INTEGRATION_SERVICE_URL:http://localhost:8088}
+  # Configurable case workflow (state, transitions, queues). Every case action goes through it; if it cannot answer
+  # the action fails with 503 and nothing is applied. /internal has no gateway route and no token.
+  workflow-service:
+    url: ${WORKFLOW_SERVICE_URL:http://localhost:8089}
+  workflow:
+    # Register every existing application with workflow-service once the service is up (idempotent).
+    backfill-on-startup: ${WORKFLOW_BACKFILL_ON_STARTUP:true}
   # S2 — polled every 30s by SessionRevocationCache, not called per-request.
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8081}

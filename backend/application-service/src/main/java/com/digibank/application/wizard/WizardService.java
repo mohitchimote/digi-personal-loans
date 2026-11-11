@@ -1,18 +1,25 @@
 package com.digibank.application.wizard;
 
-import com.digibank.application.audittrail.AuditTrailService;
-import com.digibank.application.client.EmailClient;
-import com.digibank.application.client.NotificationText;
 import com.digibank.application.client.ProductClient;
-import com.digibank.application.decisioning.DecisioningService;
+import com.digibank.application.formbuilder.FormConditions;
+import com.digibank.application.formbuilder.FormVersion;
+import com.digibank.application.formbuilder.FormVersionService;
+import com.digibank.application.formbuilder.SectionColumns;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.digibank.application.model.LoanApplication;
 import com.digibank.application.repository.LoanApplicationRepository;
+import com.digibank.application.security.AuthenticatedUser;
+import com.digibank.application.workflow.IdempotencyKeys;
+import com.digibank.application.workflow.WorkflowActions;
+import com.digibank.application.workflow.WorkflowActions.Run;
+import com.digibank.application.workflow.WorkflowActor;
+import com.digibank.application.workflow.WorkflowCases;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,9 +29,11 @@ import java.util.Set;
 
 /**
  * Wizard/section-engine context (ARCHITECTURE.md §10) — section save/read, skip-forward mechanic,
- * start/resume, joint-applicant handling. Depends on DecisioningService for one thing only —
- * triggering auto-approval right after a product is selected (see selectProduct) — and on
- * AuditTrailService for the note an underwriter's section edit leaves.
+ * start/resume, joint-applicant handling. Every change of a case's state (section save, submit, withdraw, cancel,
+ * select-product, an underwriter's section edit) is a workflow action run through WorkflowActions: the data the
+ * wizard owns (a section, the chosen product) is written in the same transaction as the action, and the engine in
+ * workflow-service decides whether it is allowed and what else it does (status, form-version pin, emails, auto-approval).
+ * Cases are registered with workflow-service when they are created.
  */
 @Service
 public class WizardService {
@@ -32,15 +41,13 @@ public class WizardService {
     private final LoanApplicationRepository repository;
     private final ObjectMapper objectMapper;
     private final ProductClient productClient;
-    private final DecisioningService decisioningService;
-    private final AuditTrailService auditTrailService;
-    private final NotificationText text;
-    private final EmailClient emailClient;
+    private final WorkflowActions actions;
+    private final WorkflowCases workflowCases;
 
     private static final List<String> ACTIVE_STATUSES = List.of("DRAFT", "IN_PROGRESS");
 
-    private static final List<String> CANCELLABLE_STATUSES = List.of(
-            "DRAFT", "IN_PROGRESS", "SUBMITTED", "UNDER_REVIEW", "CONDITIONALLY_APPROVED", "REFERRED_TO_SENIOR");
+    /** A saved section from which the case summary workflow-service lists queues from (applicant, amount, purpose, term, guarantor) can change. */
+    private static final Set<String> SUMMARY_SECTIONS = Set.of("loanRequirements", "companyDetails", "personalDetails", "guarantorDetails");
 
     /** "guarantorDetails" sits right after personalDetails but is normally skipped — see
      * isSectionFilled(), which treats it as filled/skippable unless an underwriter has flagged
@@ -65,22 +72,28 @@ public class WizardService {
     private static final Set<String> MANDATORY_STOPS = Set.of("personalDetails", "connectBank", "reviewSubmit");
 
     private final SectionDataValidator sectionDataValidator;
+    private final FormVersionService formVersionService;
 
     public WizardService(LoanApplicationRepository repository, ObjectMapper objectMapper, ProductClient productClient,
-                          DecisioningService decisioningService, AuditTrailService auditTrailService,
-                          NotificationText text, EmailClient emailClient, SectionDataValidator sectionDataValidator) {
+                          WorkflowActions actions, WorkflowCases workflowCases,
+                          SectionDataValidator sectionDataValidator, FormVersionService formVersionService) {
+        this.formVersionService = formVersionService;
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.productClient = productClient;
-        this.decisioningService = decisioningService;
-        this.auditTrailService = auditTrailService;
-        this.text = text;
-        this.emailClient = emailClient;
+        this.actions = actions;
+        this.workflowCases = workflowCases;
         this.sectionDataValidator = sectionDataValidator;
     }
 
+    private LoanApplication created(LoanApplication app) {
+        LoanApplication saved = repository.save(app);
+        workflowCases.registerAfterCommit(saved);
+        return saved;
+    }
+
     @Transactional
-    public LoanApplication createOrResumeApplication(Long customerId, String email) {
+    public LoanApplication createOrResumeApplication(Long customerId, String email, Long orgUnitId) {
         return repository.findFirstByCustomerIdAndStatusInOrderByUpdatedAtDesc(customerId, ACTIVE_STATUSES)
                 .orElseGet(() -> {
                     LoanApplication app = LoanApplication.builder()
@@ -91,15 +104,16 @@ public class WizardService {
                             .currentSection("loanRequirements")
                             .completionPercentage(0)
                             .applicationType("PERSONAL")
+                            .orgUnitId(orgUnitId)
                             .build();
-                    return repository.save(app);
+                    return created(app);
                 });
     }
 
     /** Business-loan equivalent of createOrResumeApplication — same resume-an-active-draft
      * semantics, just tagged applicationType=BUSINESS and starting at the company details step. */
     @Transactional
-    public LoanApplication createOrResumeBusinessApplication(Long customerId, String email) {
+    public LoanApplication createOrResumeBusinessApplication(Long customerId, String email, Long orgUnitId) {
         return repository.findFirstByCustomerIdAndStatusInOrderByUpdatedAtDesc(customerId, ACTIVE_STATUSES)
                 .orElseGet(() -> {
                     LoanApplication app = LoanApplication.builder()
@@ -110,8 +124,9 @@ public class WizardService {
                             .currentSection("companyDetails")
                             .completionPercentage(0)
                             .applicationType("BUSINESS")
+                            .orgUnitId(orgUnitId)
                             .build();
-                    return repository.save(app);
+                    return created(app);
                 });
     }
 
@@ -258,83 +273,44 @@ public class WizardService {
         }
 
         app.setCompletionPercentage(calculateCompletion(app));
-        LoanApplication saved = repository.save(app);
+        LoanApplication saved = created(app);
         productClient.consumePreApprovedOffer(nationalId);
         return saved;
     }
 
-    @Transactional
-    public LoanApplication saveSection(String appRef, String section, Map<String, Object> data) {
-        LoanApplication app = getByRef(appRef);
-
-        String json = sectionDataValidator.validateAndSerialize(section, data);
-        switch (section) {
-            case "loanRequirements"   -> app.setLoanRequirementsJson(json);
-            case "consentManagement"  -> app.setConsentManagementJson(json);
-            case "personalDetails"    -> app.setPersonalDetailsJson(json);
-            case "connectBank"        -> app.setBankConnectionJson(json);
-            case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
-            case "outgoings"          -> app.setOutgoingsJson(json);
-            case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
-            case "verifyId"           -> app.setVerifyIdJson(json);
-            case "directDebit"        -> app.setDirectDebitJson(json);
-            case "reviewSubmit"       -> app.setReviewSubmitJson(json);
-            case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
-            case "companyDetails"             -> app.setCompanyDetailsJson(json);
-            case "signatories"                -> app.setSignatoriesJson(json);
-            case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
-            case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
-            case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
-            case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
-            default -> throw new IllegalArgumentException("Unknown section: " + section);
-        }
-
-        app.setStatus("IN_PROGRESS");
-        app.setCurrentSection(nextSection(section, app));
-        app.setCompletionPercentage(calculateCompletion(app));
-
-        return repository.save(app);
+    private Run run(String action, AuthenticatedUser caller) {
+        return Run.of(action, WorkflowActor.of(caller)).withKey(IdempotencyKeys.current());
     }
 
-    @Transactional
-    public LoanApplication saveSectionByUnderwriter(String appRef, String section, Map<String, Object> data, String editedBy) {
-        LoanApplication app = getByRef(appRef);
-
-        String json = sectionDataValidator.validateAndSerialize(section, data);
-        switch (section) {
-            case "loanRequirements"   -> app.setLoanRequirementsJson(json);
-            case "consentManagement"  -> app.setConsentManagementJson(json);
-            case "personalDetails"    -> app.setPersonalDetailsJson(json);
-            case "connectBank"        -> app.setBankConnectionJson(json);
-            case "incomeEmployment"   -> app.setIncomeEmploymentJson(json);
-            case "outgoings"          -> app.setOutgoingsJson(json);
-            case "creditDeclarations" -> app.setCreditDeclarationsJson(json);
-            case "verifyId"           -> app.setVerifyIdJson(json);
-            case "directDebit"        -> app.setDirectDebitJson(json);
-            case "guarantorDetails"           -> app.setGuarantorDetailsJson(json);
-            case "companyDetails"             -> app.setCompanyDetailsJson(json);
-            case "signatories"                -> app.setSignatoriesJson(json);
-            case "connectBusinessBank"        -> app.setBusinessBankConnectionJson(json);
-            case "businessFinancials"         -> app.setBusinessFinancialsJson(json);
-            case "businessOutgoings"          -> app.setBusinessOutgoingsJson(json);
-            case "businessCreditDeclarations" -> app.setBusinessCreditDeclarationsJson(json);
-            default -> throw new IllegalArgumentException("Unknown section: " + section);
-        }
-
-        repository.save(app);
-        auditTrailService.addNote(appRef, section, "Section edited by staff member.", "EDIT", editedBy);
+    /** Pushes the case summary (applicant, amount, purpose, term) to workflow-service after a change that can alter it. Best effort. */
+    private LoanApplication summarise(LoanApplication app, String section) {
+        if (section == null || SUMMARY_SECTIONS.contains(section)) workflowCases.registerAfterCommit(app);
         return app;
     }
 
-    @Transactional
-    public LoanApplication submitApplication(String appRef) {
+    /** The section's data, the next section and the completion are written in the same transaction as the save_section action. */
+    public LoanApplication saveSection(String appRef, AuthenticatedUser caller, String section, Map<String, Object> data) {
         LoanApplication app = getByRef(appRef);
-        app.setStatus("SUBMITTED");
-        app.setSubmittedAt(LocalDateTime.now());
-        app.setCompletionPercentage(100);
-        LoanApplication saved = repository.save(app);
-        emailClient.send("SUBMITTED", saved.getCustomerEmail(), text.commonEmailVariables(saved));
-        return saved;
+        String json = validateSection(app, section, data);
+        LoanApplication saved = actions.run(appRef, run("save_section", caller).withApply(a -> {
+            SectionColumns.write(a, section, json);
+            a.setCurrentSection(nextSection(section, a));
+            a.setCompletionPercentage(calculateCompletion(a));
+        })).application();
+        return summarise(saved, section);
+    }
+
+    /** An underwriter's edit: the edit_section action leaves its note; the section is written in the same transaction. */
+    public LoanApplication saveSectionByUnderwriter(String appRef, AuthenticatedUser caller, String section, Map<String, Object> data) {
+        LoanApplication app = getByRef(appRef);
+        String json = validateSection(app, section, data);
+        LoanApplication saved = actions.run(appRef, run("edit_section", caller).withInput(Map.of("section", section))
+                .withApply(a -> SectionColumns.write(a, section, json))).application();
+        return summarise(saved, section);
+    }
+
+    public LoanApplication submitApplication(String appRef, AuthenticatedUser caller) {
+        return summarise(actions.run(appRef, run("submit", caller)).application(), null);
     }
 
     @Transactional
@@ -348,24 +324,118 @@ public class WizardService {
         return repository.save(app);
     }
 
-    @Transactional
-    public LoanApplication selectProduct(String appRef, Map<String, Object> productData) {
-        LoanApplication app = getByRef(appRef);
-        app.setSelectedProductId(String.valueOf(productData.get("productId")));
+    /**
+     * The chosen product is written in the same transaction as the select_product action; if the affordability result
+     * passed and the amount is within the auto-approval threshold the engine's RUN_AUTO_APPROVAL effect then approves the
+     * case (the system's auto_approve action), so the case returned may already be APPROVED, as in the Worker.
+     */
+    public LoanApplication selectProduct(String appRef, AuthenticatedUser caller, Map<String, Object> productData) {
+        Object productId = productData.get("productId");
+        String json;
         try {
-            app.setSelectedProductJson(objectMapper.writeValueAsString(productData));
+            json = objectMapper.writeValueAsString(productData);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize product data", e);
         }
-        app.setStatus("UNDER_REVIEW");
-        repository.save(app);
-
-        decisioningService.maybeAutoApprove(app);
-        return app;
+        return actions.run(appRef, run("select_product", caller).withApply(a -> {
+            a.setSelectedProductId(productId == null ? "" : String.valueOf(productId));
+            a.setSelectedProductJson(json);
+        })).application();
     }
 
     public LoanApplication getApplication(String appRef) {
         return getByRef(appRef);
+    }
+
+    /**
+     * The application as GET /:appRef and GET /customer/:id/current serve it: every column, plus what the
+     * wizard and sidebar need to render schema-aware (resolvedFormVersion, formSchema,
+     * needsAttentionSections), from the version the case is judged against.
+     */
+    public Map<String, Object> view(LoanApplication app) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> out = new LinkedHashMap<>(objectMapper.convertValue(app, Map.class));
+        FormVersion version = formVersionService.resolveActive(app).orElse(null);
+        if (version == null) {
+            out.put("resolvedFormVersion", null);
+            out.put("formSchema", null);
+            out.put("needsAttentionSections", List.of());
+            return out;
+        }
+        JsonNode schema = formVersionService.parse(version);
+        Map<String, Object> resolved = new LinkedHashMap<>();
+        resolved.put("id", version.getId());
+        resolved.put("version", version.getVersion());
+        resolved.put("status", version.getStatus());
+        out.put("resolvedFormVersion", resolved);
+        out.put("formSchema", schema == null ? null : objectMapper.convertValue(schema, Object.class));
+        out.put("needsAttentionSections", SectionColumns.needsAttentionSections(app, schema, objectMapper, this::isSectionFilled));
+        return out;
+    }
+
+    /**
+     * Validates a section save against the section's fixed shape and the form version in force: a port of
+     * validateSectionData in worker/src/routes/applications.ts. Admin-added custom fields are split out
+     * before the strict static shape runs and merged back after; required, visible fields and option lists
+     * are then enforced across every schema field. Returns the JSON to persist.
+     */
+    String validateSection(LoanApplication app, String section, Map<String, Object> data) {
+        if (!SectionColumns.isKnown(section)) throw new IllegalArgumentException("Unknown section: " + section);
+
+        JsonNode schema = formVersionService.resolveActive(app).map(formVersionService::parse).orElse(null);
+        List<JsonNode> schemaFields = new java.util.ArrayList<>();
+        if (schema != null) {
+            for (JsonNode s : schema.path("sections")) {
+                if (section.equals(s.path("key").asText())) s.path("fields").forEach(schemaFields::add);
+            }
+        }
+
+        Map<String, Object> staticData = new LinkedHashMap<>(data);
+        Map<String, Object> customData = new LinkedHashMap<>();
+        for (JsonNode f : schemaFields) {
+            String key = f.path("key").asText();
+            if ("custom".equals(f.path("kind").asText()) && staticData.containsKey(key)) customData.put(key, staticData.remove(key));
+        }
+
+        String json = sectionDataValidator.validateAndSerialize(section, staticData);
+        ObjectNode merged;
+        try {
+            merged = (ObjectNode) objectMapper.readTree(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to read validated section data", e);
+        }
+        customData.forEach((k, v) -> merged.set(k, objectMapper.valueToTree(v)));
+        if (schemaFields.isEmpty()) return merged.toString();
+
+        Map<String, Object> cross = SectionColumns.flattenAllSectionValues(app, objectMapper);
+        merged.fields().forEachRemaining(e -> cross.put(section + "." + e.getKey(), SectionColumns.plain(objectMapper, e.getValue())));
+        FormConditions.Context ctx = new FormConditions.Context(schema.get("constants"), cross);
+
+        for (JsonNode f : schemaFields) {
+            String key = f.path("key").asText();
+            boolean visible = !f.path("hidden").asBoolean(false) && FormConditions.isFieldVisible(f, section, ctx);
+            JsonNode value = merged.get(key);
+            boolean empty = value == null || value.isNull() || (value.isTextual() && value.asText().isEmpty());
+
+            if (f.path("required").asBoolean(false) && visible && empty) {
+                throw new IllegalArgumentException("Missing required field '" + key + "' for section '" + section + "'.");
+            }
+            JsonNode options = f.get("options");
+            if (visible && options != null && options.size() > 0 && !empty) {
+                java.util.Set<String> allowed = new java.util.HashSet<>();
+                JsonNode dep = f.get("optionsDependOn");
+                if (dep != null) {
+                    Object trigger = cross.get(section + "." + dep.path("fieldKey").asText());
+                    allowed.addAll(FormConditions.strings(dep.path("map").get(trigger == null ? "" : FormConditions.str(trigger))));
+                } else {
+                    options.forEach(o -> allowed.add(o.path("value").asText()));
+                }
+                if (!allowed.contains(FormConditions.str(SectionColumns.plain(objectMapper, value)))) {
+                    throw new IllegalArgumentException("Invalid value for field '" + key + "' in section '" + section + "'.");
+                }
+            }
+        }
+        return merged.toString();
     }
 
     public List<LoanApplication> getApplicationsByCustomer(Long customerId) {
@@ -377,25 +447,12 @@ public class WizardService {
                 .orElseThrow(() -> new IllegalArgumentException("No application found for customer: " + customerId));
     }
 
-    @Transactional
-    public LoanApplication withdrawApplication(String appRef) {
-        LoanApplication app = getByRef(appRef);
-        if (!"SUBMITTED".equals(app.getStatus()) && !"UNDER_REVIEW".equals(app.getStatus())) {
-            throw new IllegalStateException("Only submitted applications can be pulled back: " + appRef);
-        }
-        app.setStatus("IN_PROGRESS");
-        app.setCurrentSection("reviewSubmit");
-        return repository.save(app);
+    public LoanApplication withdrawApplication(String appRef, AuthenticatedUser caller) {
+        return actions.run(appRef, run("withdraw", caller)).application();
     }
 
-    @Transactional
-    public LoanApplication cancelApplication(String appRef) {
-        LoanApplication app = getByRef(appRef);
-        if (!CANCELLABLE_STATUSES.contains(app.getStatus())) {
-            throw new IllegalStateException("Application cannot be cancelled in its current status: " + appRef);
-        }
-        app.setStatus("WITHDRAWN");
-        return repository.save(app);
+    public LoanApplication cancelApplication(String appRef, AuthenticatedUser caller) {
+        return actions.run(appRef, run("cancel", caller)).application();
     }
 
     private LoanApplication getByRef(String appRef) {

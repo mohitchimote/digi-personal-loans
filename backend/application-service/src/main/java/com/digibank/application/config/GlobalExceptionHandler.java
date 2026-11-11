@@ -21,11 +21,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(body(ex.getMessage()));
+    }
+
+    /** The Worker's AppError(message, status): 403 not-owner, 404 not-visible, 409 wrong state, and so on. */
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<Map<String, Object>> handleApi(ApiException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(body(ex.getMessage()));
+    }
+
+    private static Map<String, Object> body(String message) {
         // HashMap, not Map.of() — Map.of() throws NPE on a null value, and "data" is always null here.
         Map<String, Object> body = new HashMap<>();
         body.put("success", false);
-        body.put("message", ex.getMessage());
+        body.put("message", message);
         body.put("data", null);
-        return ResponseEntity.badRequest().body(body);
+        return body;
     }
 }

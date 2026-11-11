@@ -21,7 +21,7 @@ import java.util.Set;
  */
 public record AuthenticatedUser(
         String uuid, Long userId, String role, String fullName,
-        Set<String> entitlements, String scope, Long orgUnitId, Integer rank, String roleLabel) {
+        Set<String> entitlements, String scope, Long orgUnitId, Integer rank, String roleLabel, String email) {
 
     /** Authority prefix for an entitlement: the entitlement "case.decline" is the authority "PERM_case.decline". */
     public static final String PERMISSION_PREFIX = "PERM_";
@@ -61,6 +61,6 @@ public record AuthenticatedUser(
                 claims.getSubject(), claims.get("userId", Long.class), role, claims.get("fullName", String.class),
                 entitlements, claims.get("scope", String.class),
                 orgUnit == null ? null : orgUnit.longValue(), rank == null ? null : rank.intValue(),
-                claims.get("roleLabel", String.class));
+                claims.get("roleLabel", String.class), claims.get("email", String.class));
     }
 }

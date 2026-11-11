@@ -16,8 +16,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * PERM_ authority), not by role names, so a role an admin creates or edits works here without a code
  * change. The mapping is the one the default workflow definition makes (each action names the
  * entitlement it needs, each queue the one that opens it) and the Worker enforces: decline needs
- * case.decline, the pipeline needs queue.pipeline, and so on. Until the Java workflow engine exists
- * (milestone M3) the mapping is stated here.
+ * case.decline, the pipeline needs queue.pipeline, and so on. The workflow engine in workflow-service checks the
+ * same entitlements again for every action and queue; the mapping stated here is the first line of defence and
+ * stops a caller without the entitlement before any work is done.
  */
 @Configuration
 @EnableWebSecurity
@@ -63,8 +64,16 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers(HttpMethod.PUT, "/api/applications/mandate-rules").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/applications/mandate-rules").hasAuthority(perm("mandates.view"))
+                // Service-to-service (auth-service asks before deleting an org unit); the controller refuses
+                // anything that came through the gateway.
+                .requestMatchers(HttpMethod.GET, "/api/applications/internal/**").permitAll()
+                // The form builder is served from this service; the gateway routes it ahead of auth-service.
+                .requestMatchers("/api/auth/admin/form-builder/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/applications/home-stats", "/api/applications/staff-activity")
+                    .hasAuthority(perm("dashboard.view"))
+                .requestMatchers(HttpMethod.GET, "/api/applications/*/mandate").hasAuthority(perm("mandates.view"))
+                // Re-sync of every application with workflow-service (also run at startup).
+                .requestMatchers(HttpMethod.POST, "/api/applications/admin/workflow-backfill").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/applications/*/section-by-underwriter").hasAuthority(perm("case.editSection"))
                 .requestMatchers(HttpMethod.GET, "/api/applications/pipeline").hasAuthority(perm("queue.pipeline"))
                 .requestMatchers(HttpMethod.GET, "/api/applications/banker-queue").hasAuthority(perm("queue.banker"))

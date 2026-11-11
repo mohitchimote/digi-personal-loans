@@ -17,12 +17,17 @@ public class BusinessFinancialsController {
 
     private final BusinessFinancialsAnalysisService businessFinancialsAnalysisService;
 
-    public BusinessFinancialsController(BusinessFinancialsAnalysisService businessFinancialsAnalysisService) {
+    private final com.digibank.application.security.CaseAccess caseAccess;
+
+    public BusinessFinancialsController(BusinessFinancialsAnalysisService businessFinancialsAnalysisService,
+                                        com.digibank.application.security.CaseAccess caseAccess) {
         this.businessFinancialsAnalysisService = businessFinancialsAnalysisService;
+        this.caseAccess = caseAccess;
     }
 
     @GetMapping("/{appRef}/business-financials-analysis")
     public ResponseEntity<BusinessFinancialsAnalysis> getBusinessFinancialsAnalysis(@PathVariable String appRef) {
+        caseAccess.visible(appRef);
         return ResponseEntity.ok(businessFinancialsAnalysisService.getOrGenerate(appRef));
     }
 }

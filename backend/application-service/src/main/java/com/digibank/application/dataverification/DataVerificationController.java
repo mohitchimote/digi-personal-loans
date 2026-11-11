@@ -17,18 +17,24 @@ public class DataVerificationController {
 
     private final DataVerificationService dataVerificationService;
 
-    public DataVerificationController(DataVerificationService dataVerificationService) {
+    private final com.digibank.application.security.CaseAccess caseAccess;
+
+    public DataVerificationController(DataVerificationService dataVerificationService,
+                                      com.digibank.application.security.CaseAccess caseAccess) {
         this.dataVerificationService = dataVerificationService;
+        this.caseAccess = caseAccess;
     }
 
     @GetMapping("/{appRef}/data-verification")
     public ResponseEntity<DataVerificationSummary> getDataVerification(@PathVariable String appRef) {
+        caseAccess.visible(appRef);
         return ResponseEntity.ok(dataVerificationService.getOrGenerate(appRef));
     }
 
     @PostMapping("/{appRef}/data-verification/resolve")
     public ResponseEntity<DataVerificationSummary> resolveDataVerificationRule(
             @PathVariable String appRef, @Valid @RequestBody DataVerificationResolutionRequest request) {
+        caseAccess.visible(appRef);
         request.setReviewedBy(CurrentUser.get().displayName());
         return ResponseEntity.ok(dataVerificationService.resolveRule(appRef, request));
     }

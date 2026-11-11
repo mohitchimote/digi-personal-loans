@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface UnderwritingNoteRepository extends JpaRepository<UnderwritingNote, Long> {
     List<UnderwritingNote> findByApplicationRefOrderByCreatedAtDesc(String applicationRef);
+    List<UnderwritingNote> findTop50ByApplicationRefInOrderByCreatedAtDesc(java.util.Collection<String> applicationRefs);
 }

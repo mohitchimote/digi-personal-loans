@@ -112,6 +112,19 @@ public class LoanApplication {
     @Column(columnDefinition = "TEXT")
     private String guarantorDetailsJson;
 
+    /** The org unit this case belongs to: the opening staff member's unit for a banker-assisted case, null
+     * for a customer's own digital application (visible to all staff). Drives branch-scoped visibility. */
+    private Long orgUnitId;
+
+    /** The form_versions row frozen onto the case at submit (null while in flight: the published version applies). */
+    private Long formVersionId;
+
+    /** True when the system approved it (auto-approval), false for a human approval. */
+    private Boolean autoApproved = false;
+
+    /** The role currently holding a referred case; null when not referred. */
+    private String referredToRole;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
@@ -233,6 +246,18 @@ public class LoanApplication {
     public String getGuarantorDetailsJson() { return guarantorDetailsJson; }
     public void setGuarantorDetailsJson(String guarantorDetailsJson) { this.guarantorDetailsJson = guarantorDetailsJson; }
 
+    public Long getOrgUnitId() { return orgUnitId; }
+    public void setOrgUnitId(Long orgUnitId) { this.orgUnitId = orgUnitId; }
+
+    public Long getFormVersionId() { return formVersionId; }
+    public void setFormVersionId(Long formVersionId) { this.formVersionId = formVersionId; }
+
+    public Boolean getAutoApproved() { return Boolean.TRUE.equals(autoApproved); }
+    public void setAutoApproved(Boolean autoApproved) { this.autoApproved = autoApproved; }
+
+    public String getReferredToRole() { return referredToRole; }
+    public void setReferredToRole(String referredToRole) { this.referredToRole = referredToRole; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -254,6 +279,7 @@ public class LoanApplication {
         public Builder currentSection(String v) { obj.currentSection = v; return this; }
         public Builder completionPercentage(Integer v) { obj.completionPercentage = v; return this; }
         public Builder applicationType(String v) { obj.applicationType = v; return this; }
+        public Builder orgUnitId(Long v) { obj.orgUnitId = v; return this; }
         public LoanApplication build() { return obj; }
     }
 }
