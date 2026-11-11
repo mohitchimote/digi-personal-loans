@@ -40,7 +40,7 @@ public class CatalogController {
     }
 
     @PutMapping("/admin/{id}")
-    public ResponseEntity<LoanProduct> updateProduct(@PathVariable Long id, @RequestBody LoanProduct update) {
+    public ResponseEntity<LoanProduct> updateProduct(@PathVariable Long id, @RequestBody java.util.Map<String, Object> update) {
         return ResponseEntity.ok(catalogService.updateProduct(id, update));
     }
 

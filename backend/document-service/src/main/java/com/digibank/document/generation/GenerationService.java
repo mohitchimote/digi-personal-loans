@@ -1,6 +1,8 @@
 package com.digibank.document.generation;
 
 import com.digibank.document.PathSafety;
+import com.digibank.document.config.AppException;
+import com.digibank.document.util.OpaqueId;
 import com.digibank.document.generation.dto.DocumentGenerationRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -80,13 +82,15 @@ public class GenerationService {
 
     public byte[] getGeneratedBytes(Long docId) throws IOException {
         GeneratedDocument doc = generatedRepo.findById(docId)
-                .orElseThrow(() -> new RuntimeException("Document not found: " + docId));
-        return Files.readAllBytes(Paths.get(doc.getFilePath()));
+                .orElseThrow(() -> new AppException("Document not found: " + OpaqueId.encode("doc", docId)));
+        Path file = Paths.get(doc.getFilePath());
+        if (!Files.exists(file)) throw new AppException("Document not found: " + OpaqueId.encode("doc", docId));
+        return Files.readAllBytes(file);
     }
 
     public GeneratedDocument getGeneratedById(Long docId) {
         return generatedRepo.findById(docId)
-                .orElseThrow(() -> new RuntimeException("Document not found: " + docId));
+                .orElseThrow(() -> new AppException("Document not found: " + OpaqueId.encode("doc", docId)));
     }
 
     public List<GeneratedDocument> getByCustomer(Long customerId) {

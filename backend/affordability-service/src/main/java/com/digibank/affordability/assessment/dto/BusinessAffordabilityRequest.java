@@ -14,7 +14,7 @@ public class BusinessAffordabilityRequest {
     @NotNull private BigDecimal requestedLoanAmount;
     @NotNull private Integer requestedTermMonths;
 
-    private Integer directorCreditScore = 7;
+    private Integer directorCreditScore;
     private boolean hasCompanyDefaulted = false;
     private boolean hasLiquidationOrWindingUp = false;
 

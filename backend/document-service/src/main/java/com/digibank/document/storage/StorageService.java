@@ -1,6 +1,8 @@
 package com.digibank.document.storage;
 
 import com.digibank.document.PathSafety;
+import com.digibank.document.config.AppException;
+import com.digibank.document.util.OpaqueId;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,9 @@ public class StorageService {
             "application/pdf", "image/jpeg", "image/png",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword");
 
+    // Enough for a scanned payslip/ID photo or a multi-page PDF; the Worker's MAX_UPLOAD_BYTES.
+    static final long MAX_UPLOAD_BYTES = 5L * 1024 * 1024;
+
     private final Tika tika = new Tika();
     private final UploadedDocumentRepository uploadedRepo;
 
@@ -43,11 +48,11 @@ public class StorageService {
     }
 
     public UploadedDocument storeUpload(String appRef, Long customerId, String docType, MultipartFile file) throws IOException {
+        if (file.getSize() > MAX_UPLOAD_BYTES) throw new AppException("File is too large. Maximum size is 5MB.", 413);
         byte[] bytes = file.getBytes();
         String detectedType = tika.detect(bytes);
         if (!ALLOWED_MIME_TYPES.contains(detectedType)) {
-            throw new IllegalArgumentException(
-                    "Unsupported file type: " + detectedType + ". Allowed: PDF, JPEG, PNG, DOC, DOCX.");
+            throw new IllegalArgumentException("Unsupported file type. Allowed: PDF, JPEG, PNG, DOC, DOCX.");
         }
 
         Path dir = Paths.get(storagePath, "uploaded", PathSafety.safePathSegment(appRef, "applicationRef"));
@@ -82,11 +87,13 @@ public class StorageService {
 
     public UploadedDocument getUploadedById(Long id) {
         return uploadedRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Uploaded document not found: " + id));
+                .orElseThrow(() -> new AppException("Uploaded document not found: " + OpaqueId.encode("upl", id)));
     }
 
     public byte[] getUploadedBytes(Long id) throws IOException {
         UploadedDocument doc = getUploadedById(id);
-        return Files.readAllBytes(Paths.get(doc.getStoragePath()));
+        Path file = Paths.get(doc.getStoragePath());
+        if (!Files.exists(file)) throw new AppException("Uploaded document not found: " + OpaqueId.encode("upl", id));
+        return Files.readAllBytes(file);
     }
 }

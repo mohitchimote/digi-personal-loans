@@ -16,6 +16,8 @@ public final class RepaymentCalculator {
     private RepaymentCalculator() {}
 
     public static BigDecimal monthlyRepayment(BigDecimal annualRate, BigDecimal principal, int termMonths) {
+        // A zero rate makes the amortisation formula 0/0; the instalment is then simply principal / term.
+        if (annualRate.signum() == 0) return principal.divide(new BigDecimal(termMonths), 2, RoundingMode.HALF_UP);
         BigDecimal monthlyRate = annualRate.divide(new BigDecimal("1200"), MC);
         BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRate);
         BigDecimal onePlusRpowN = onePlusR.pow(termMonths, MC);

@@ -26,17 +26,22 @@ public class BusinessAffordabilityService {
 
     public BusinessAffordabilityResult assess(BusinessAffordabilityRequest req) {
         List<String> failures = new ArrayList<>();
+        boolean terminal = false;
+        boolean structural = false;
 
         if (req.isHasLiquidationOrWindingUp()) {
             failures.add("Company has an active liquidation or winding-up petition on record — application cannot proceed.");
+            terminal = true;
         }
         if (req.isHasCompanyDefaulted()) {
             failures.add("Previous business loan default recorded — application cannot proceed.");
+            terminal = true;
         }
 
         int directorScore = req.getDirectorCreditScore() != null ? req.getDirectorCreditScore() : 0;
         if (directorScore < MIN_DIRECTOR_CREDIT_SCORE) {
             failures.add("Primary signatory's credit score of " + directorScore + " is below the minimum required score of " + MIN_DIRECTOR_CREDIT_SCORE + ".");
+            structural = true;
         }
 
         BigDecimal monthlyRevenue = req.getMonthlyRevenue();
@@ -60,12 +65,16 @@ public class BusinessAffordabilityService {
                 ? netOperatingIncome.divide(totalDebtService, MC).setScale(2, RoundingMode.HALF_UP)
                 : new BigDecimal("99.00");
 
+        boolean capacity = false;
         if (dscr.compareTo(MIN_DSCR) < 0) {
-            failures.add("Debt Service Coverage Ratio of " + dscr + " is below the minimum required " + MIN_DSCR + ".");
+            failures.add("Debt Service Coverage Ratio of " + AffordabilitySuggestions.num(dscr) + " is below the minimum required " + AffordabilitySuggestions.num(MIN_DSCR) + ".");
+            capacity = true;
         }
 
         BigDecimal repaymentCapacity = netOperatingIncome.subtract(existingDebtService).setScale(2, RoundingMode.HALF_UP);
 
+        // The DSCR=1.0 breakeven above is the display figure; suggestions need the 1.25x margin baked in.
+        double safeCapacity = Math.round((netOperatingIncome.doubleValue() / MIN_DSCR.doubleValue() - existingDebtService.doubleValue()) * 100) / 100.0;
         String riskCategory = deriveRisk(dscr, directorScore);
         String creditCategory = deriveCreditCategory(directorScore);
 
@@ -76,6 +85,12 @@ public class BusinessAffordabilityService {
                 .monthlyRepaymentCapacity(repaymentCapacity)
                 .calculatedMonthlyRepayment(calculatedRepayment)
                 .failureReasons(failures)
+                .failureType(AffordabilitySuggestions.failureType(terminal, structural, capacity))
+                .maxAffordableAmount(capacity ? AffordabilitySuggestions.maxAffordableAmount(
+                        safeCapacity, BASE_ANNUAL_RATE.doubleValue(), n) : null)
+                .minAffordableTermMonths(capacity ? AffordabilitySuggestions.minAffordableTermMonths(
+                        safeCapacity, BASE_ANNUAL_RATE.doubleValue(), p.doubleValue(),
+                        AffordabilitySuggestions.MAX_TERM_MONTHS) : null)
                 .riskCategory(riskCategory)
                 .creditScoreCategory(creditCategory)
                 .build();

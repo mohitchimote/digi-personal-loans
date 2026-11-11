@@ -14,6 +14,9 @@ public class BusinessAffordabilityResult {
     private List<String> failureReasons;
     private String riskCategory;
     private String creditScoreCategory;
+    private String failureType;
+    private BigDecimal maxAffordableAmount;
+    private Integer minAffordableTermMonths;
 
     public boolean isPassed() { return passed; }
     public void setPassed(boolean passed) { this.passed = passed; }
@@ -39,6 +42,13 @@ public class BusinessAffordabilityResult {
     public String getCreditScoreCategory() { return creditScoreCategory; }
     public void setCreditScoreCategory(String creditScoreCategory) { this.creditScoreCategory = creditScoreCategory; }
 
+    public String getFailureType() { return failureType; }
+    public void setFailureType(String failureType) { this.failureType = failureType; }
+    public BigDecimal getMaxAffordableAmount() { return maxAffordableAmount; }
+    public void setMaxAffordableAmount(BigDecimal maxAffordableAmount) { this.maxAffordableAmount = maxAffordableAmount; }
+    public Integer getMinAffordableTermMonths() { return minAffordableTermMonths; }
+    public void setMinAffordableTermMonths(Integer minAffordableTermMonths) { this.minAffordableTermMonths = minAffordableTermMonths; }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
@@ -51,6 +61,9 @@ public class BusinessAffordabilityResult {
         public Builder failureReasons(List<String> v) { obj.failureReasons = v; return this; }
         public Builder riskCategory(String v) { obj.riskCategory = v; return this; }
         public Builder creditScoreCategory(String v) { obj.creditScoreCategory = v; return this; }
+        public Builder failureType(String v) { obj.failureType = v; return this; }
+        public Builder maxAffordableAmount(BigDecimal v) { obj.maxAffordableAmount = v; return this; }
+        public Builder minAffordableTermMonths(Integer v) { obj.minAffordableTermMonths = v; return this; }
         public BusinessAffordabilityResult build() { return obj; }
     }
 }

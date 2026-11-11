@@ -73,7 +73,7 @@ public class PdfGeneratorService {
 
             // Header bar
             Table header = new Table(UnitValue.createPercentArray(new float[]{60, 40})).useAllAvailableWidth();
-            Cell brandCell = new Cell().add(new Paragraph("DigiBank").setFont(bold).setFontSize(22).setFontColor(TCS_BLUE))
+            Cell brandCell = new Cell().add(new Paragraph("DigiLend").setFont(bold).setFontSize(22).setFontColor(TCS_BLUE))
                     .add(new Paragraph("Personal Banking").setFont(regular).setFontSize(9).setFontColor(TCS_BLUE))
                     .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER).setPaddingBottom(4);
             Cell refCell = new Cell().add(new Paragraph("Application Reference").setFont(regular).setFontSize(8).setFontColor(TCS_BLUE))
@@ -98,10 +98,10 @@ public class PdfGeneratorService {
             // Addressee
             doc.add(new Paragraph("Dear " + req.getCustomerName() + ",").setFont(regular).setFontSize(11).setMarginBottom(10));
             doc.add(new Paragraph(isFinal
-                    ? "We are pleased to confirm that your application for a personal loan with DigiBank has been " +
+                    ? "We are pleased to confirm that your application for a personal loan with DigiLend has been " +
                       "fully reviewed and approved by our underwriting team. All verification checks have been " +
                       "satisfactorily completed. Please review the final details of your offer below."
-                    : "We are pleased to confirm that your application for a personal loan with DigiBank has been " +
+                    : "We are pleased to confirm that your application for a personal loan with DigiLend has been " +
                       "conditionally approved, subject to satisfactory verification of the information and documents " +
                       "provided. Please review the details of your conditional offer below.")
                     .setFont(regular).setFontSize(10).setMarginBottom(20));
@@ -134,7 +134,7 @@ public class PdfGeneratorService {
                     "Receipt and verification of income documentation (payslips or Shuma).",
                     "Receipt of three months' bank statements confirming income and outgoings.",
                     "No material change in financial circumstances since the date of application.",
-                    "Execution of the formal Loan Agreement in the form provided by DigiBank."
+                    "Execution of the formal Loan Agreement in the form provided by DigiLend."
                 };
             for (int i = 0; i < conditions.length; i++) {
                 doc.add(new Paragraph((i + 1) + ".  " + conditions[i]).setFont(regular).setFontSize(9).setMarginBottom(4));
@@ -144,9 +144,10 @@ public class PdfGeneratorService {
             // Next steps
             doc.add(new Paragraph("Next Steps").setFont(bold).setFontSize(12).setFontColor(TCS_BLUE).setMarginBottom(8));
             doc.add(new Paragraph(isFinal
-                    ? "Your DigiBank advisor will be in touch shortly to arrange execution of the Loan Agreement and " +
+                    ? "Your loan has been fully approved and no further action is required from you. Your DigiLend " +
+                      "advisor will be in touch shortly to arrange execution of the Loan Agreement and " +
                       "drawdown of funds to your nominated account."
-                    : "Please log in to your DigiBank portal and upload the required supporting documents in the Documents section. " +
+                    : "Please log in to your DigiLend portal and upload the required supporting documents in the Documents section. " +
                       "Once all documents have been received and verified, your assigned advisor will contact you to arrange " +
                       "execution of the Loan Agreement and drawdown of funds.")
                     .setFont(regular).setFontSize(10).setMarginBottom(20));
@@ -154,10 +155,13 @@ public class PdfGeneratorService {
             // Footer disclaimer
             doc.add(new Table(1).useAllAvailableWidth()
                     .addCell(new Cell().setHeight(2).setBackgroundColor(TCS_YELLOW).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)));
-            doc.add(new Paragraph(
-                    "This is a conditional approval only. DigiBank reserves the right to withdraw or amend this offer " +
-                    "prior to drawdown. This letter does not constitute a binding commitment to lend. " +
-                    "DigiBank Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.")
+            doc.add(new Paragraph(isFinal
+                    ? "This is a final approval. All verification checks referenced above have been satisfactorily " +
+                      "completed. DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. " +
+                      "Registered in Israel No. 51-234567-8."
+                    : "This is a conditional approval only. DigiLend reserves the right to withdraw or amend this offer " +
+                      "prior to drawdown. This letter does not constitute a binding commitment to lend. " +
+                      "DigiLend Ltd is regulated under Israeli Banking Law 5761-2000. Registered in Israel No. 51-234567-8.")
                     .setFont(regular).setFontSize(7).setFontColor(new DeviceRgb(120, 120, 120)).setMarginTop(10));
 
             doc.close();
@@ -200,7 +204,7 @@ public class PdfGeneratorService {
                     "obligation to lend or borrow.");
 
             addSectionHeading(doc, fonts, "1. Lender");
-            addKeyValueRow(doc, fonts, "Lender", "DigiBank Ltd, regulated under Israeli Banking Law 5761-2000");
+            addKeyValueRow(doc, fonts, "Lender", "DigiLend Ltd, regulated under Israeli Banking Law 5761-2000");
             addKeyValueRow(doc, fonts, "Registered No.", "51-234567-8");
             addKeyValueRow(doc, fonts, "Borrower", req.getCustomerName());
 
@@ -224,7 +228,7 @@ public class PdfGeneratorService {
             addSectionHeading(doc, fonts, "4. Right of Withdrawal");
             addParagraph(doc, fonts,
                     "You have the right to withdraw from this credit agreement without giving any reason within 14 " +
-                    "calendar days of the agreement being executed. To exercise this right, contact your DigiBank " +
+                    "calendar days of the agreement being executed. To exercise this right, contact your DigiLend " +
                     "advisor before the withdrawal period ends. If you withdraw, you must repay the capital drawn " +
                     "down without undue delay, together with interest accrued up to the date of repayment.");
 
@@ -237,7 +241,7 @@ public class PdfGeneratorService {
             addSectionHeading(doc, fonts, "6. Consequences of Missing Payments");
             addParagraph(doc, fonts,
                     "Missing a payment may have severe consequences (e.g. forced sale of assets securing the loan, " +
-                    "where applicable) and make obtaining credit more difficult. DigiBank will apply the default " +
+                    "where applicable) and make obtaining credit more difficult. DigiLend will apply the default " +
                     "interest rate set out in your loan agreement to overdue amounts and may report late or missed " +
                     "payments to credit reference agencies.");
 
@@ -306,11 +310,11 @@ public class PdfGeneratorService {
         return withLetterheadDocument(req.getApplicationRef(), "PERSONAL LOAN — TERMS AND CONDITIONS", (doc, fonts) -> {
             addParagraph(doc, fonts, "These Terms and Conditions apply to the " + req.getProductName()
                     + " offered to " + req.getCustomerName() + " and form part of your loan Agreement with "
-                    + "DigiBank, together with your Key Facts Statement and Repayment Schedule.");
+                    + "DigiLend, together with your Key Facts Statement and Repayment Schedule.");
 
             String[][] sections = {
                 {"1. Definitions",
-                 "\"Agreement\" means the loan agreement between you and DigiBank Ltd (\"DigiBank\", \"we\", \"us\"), " +
+                 "\"Agreement\" means the loan agreement between you and DigiLend Ltd (\"DigiLend\", \"we\", \"us\"), " +
                  "including these Terms and the Key Facts Statement. \"You\" means the borrower named in the " +
                  "Agreement. \"Loan\" means the amount of credit made available to you under the Agreement."},
                 {"2. The Loan Facility",
@@ -321,7 +325,7 @@ public class PdfGeneratorService {
                 {"3. Interest",
                  "Interest accrues daily on the outstanding balance at the fixed annual rate stated in your Key " +
                  "Facts Statement, calculated on a reducing-balance basis. The rate is fixed for the full term of " +
-                 "the Agreement and will not change unless you and DigiBank agree in writing to vary the Agreement."},
+                 "the Agreement and will not change unless you and DigiLend agree in writing to vary the Agreement."},
                 {"4. Repayment",
                  "You must repay the Loan in the monthly instalments set out in your Repayment Schedule, by direct " +
                  "debit or standing order from the account you nominated when accepting this offer. Each " +
@@ -329,7 +333,7 @@ public class PdfGeneratorService {
                  "month, payment is due on the last day of that month."},
                 {"5. Early Settlement",
                  "You may repay all or part of the outstanding balance at any time without penalty. Written notice " +
-                 "to your DigiBank advisor at least 5 business days beforehand is appreciated so we can prepare an " +
+                 "to your DigiLend advisor at least 5 business days beforehand is appreciated so we can prepare an " +
                  "accurate settlement figure, but is not a condition of your right to repay early."},
                 {"6. Default and Consequences",
                  "If you miss a scheduled payment, we will apply the default interest rate disclosed in your Key " +
@@ -351,9 +355,9 @@ public class PdfGeneratorService {
                  "consents you gave during your application. We share information about your conduct of this " +
                  "account with licensed credit reference agencies on an ongoing basis."},
                 {"10. Complaints",
-                 "If you are unhappy with any aspect of this Agreement or our service, contact your DigiBank " +
+                 "If you are unhappy with any aspect of this Agreement or our service, contact your DigiLend " +
                  "advisor in the first instance. If your complaint is not resolved to your satisfaction, you may " +
-                 "escalate it through DigiBank's formal complaints procedure, details of which are available on " +
+                 "escalate it through DigiLend's formal complaints procedure, details of which are available on " +
                  "request."},
                 {"11. Governing Law",
                  "This Agreement is governed by the laws of the State of Israel, including the Banking Law " +
@@ -430,7 +434,7 @@ public class PdfGeneratorService {
 
             Table header = new Table(UnitValue.createPercentArray(new float[]{60, 40})).useAllAvailableWidth();
             header.addCell(new Cell()
-                    .add(new Paragraph("DigiBank").setFont(bold).setFontSize(18).setFontColor(TCS_BLUE))
+                    .add(new Paragraph("DigiLend").setFont(bold).setFontSize(18).setFontColor(TCS_BLUE))
                     .add(new Paragraph("Personal Banking").setFont(regular).setFontSize(8).setFontColor(TCS_BLUE))
                     .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
             header.addCell(new Cell()

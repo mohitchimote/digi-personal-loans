@@ -36,13 +36,17 @@ public class AffordabilityService {
         int MIN_CREDIT_SCORE = rules.getMinCreditScore();
 
         List<String> failures = new ArrayList<>();
+        boolean terminal = false;
+        boolean structural = false;
 
         // Hard stops
         if (req.isHasBankruptcy()) {
             failures.add("Active or undischarged bankruptcy on record — application cannot proceed.");
+            terminal = true;
         }
         if (req.isHasDefaulted()) {
             failures.add("Previous loan default recorded — application cannot proceed.");
+            terminal = true;
         }
 
         BigDecimal grossIncome = req.getMonthlyGrossIncome();
@@ -51,6 +55,7 @@ public class AffordabilityService {
         if (netIncome.compareTo(MIN_MONTHLY_INCOME) < 0) {
             failures.add("Monthly net income of ₪" + netIncome.setScale(0, RoundingMode.HALF_UP)
                     + " is below the minimum required ₪" + MIN_MONTHLY_INCOME.setScale(0, RoundingMode.HALF_UP) + ".");
+            structural = true;
         }
 
         // Debt-to-Income
@@ -60,7 +65,8 @@ public class AffordabilityService {
                 : new BigDecimal("100");
 
         if (dti.compareTo(MAX_DTI) > 0) {
-            failures.add("Debt-to-income ratio of " + dti + "% exceeds the maximum permitted " + MAX_DTI + "%.");
+            failures.add("Payment-to-income ratio of " + AffordabilitySuggestions.num(dti) + "% exceeds the maximum permitted " + AffordabilitySuggestions.num(MAX_DTI) + "%.");
+            structural = true;
         }
 
         // Housing-to-Income
@@ -70,13 +76,15 @@ public class AffordabilityService {
                 : new BigDecimal("100");
 
         if (hti.compareTo(MAX_HTI) > 0) {
-            failures.add("Housing cost ratio of " + hti + "% exceeds the maximum permitted " + MAX_HTI + "%.");
+            failures.add("Housing cost ratio of " + AffordabilitySuggestions.num(hti) + "% exceeds the maximum permitted " + AffordabilitySuggestions.num(MAX_HTI) + "%.");
+            structural = true;
         }
 
         // Credit score
         int creditScore = req.getCreditScore() != null ? req.getCreditScore() : 0;
         if (creditScore < MIN_CREDIT_SCORE) {
             failures.add("Credit score of " + creditScore + " is below the minimum required score of " + MIN_CREDIT_SCORE + ".");
+            structural = true;
         }
 
         // Monthly repayment capacity
@@ -94,9 +102,11 @@ public class AffordabilityService {
                 .divide(onePlusRpowN.subtract(BigDecimal.ONE), MC)
                 .setScale(2, RoundingMode.HALF_UP);
 
+        boolean capacity = false;
         if (calculatedRepayment.compareTo(repaymentCapacity) > 0 && failures.isEmpty()) {
-            failures.add("Calculated monthly repayment of ₪" + calculatedRepayment
-                    + " exceeds your available repayment capacity of ₪" + repaymentCapacity + ".");
+            failures.add("Calculated monthly repayment of ₪" + AffordabilitySuggestions.num(calculatedRepayment)
+                    + " exceeds your available repayment capacity of ₪" + AffordabilitySuggestions.num(repaymentCapacity) + ".");
+            capacity = true;
         }
 
         String riskCategory = deriveRisk(creditScore, dti);
@@ -110,6 +120,12 @@ public class AffordabilityService {
                 .monthlyRepaymentCapacity(repaymentCapacity)
                 .calculatedMonthlyRepayment(calculatedRepayment)
                 .failureReasons(failures)
+                .failureType(AffordabilitySuggestions.failureType(terminal, structural, capacity))
+                .maxAffordableAmount(capacity ? AffordabilitySuggestions.maxAffordableAmount(
+                        repaymentCapacity.doubleValue(), BASE_ANNUAL_RATE.doubleValue(), n) : null)
+                .minAffordableTermMonths(capacity ? AffordabilitySuggestions.minAffordableTermMonths(
+                        repaymentCapacity.doubleValue(), BASE_ANNUAL_RATE.doubleValue(), p.doubleValue(),
+                        AffordabilitySuggestions.MAX_TERM_MONTHS) : null)
                 .riskCategory(riskCategory)
                 .creditScoreCategory(creditCategory)
                 .build();

@@ -43,6 +43,13 @@ public class EmailTemplateAdminService {
     @Transactional
     public EmailTemplateResponse updateTemplate(String eventKey, UpsertEmailTemplateRequest body, String actingUserEmail) {
         requireKnownEvent(eventKey);
+        // The Worker's zod schema: subject and bodyContent are required and non-empty (z.string().min(1)).
+        if (body.getSubject() == null || body.getSubject().isEmpty()) {
+            throw new IllegalArgumentException("subject: String must contain at least 1 character(s)");
+        }
+        if (body.getBodyContent() == null || body.getBodyContent().isEmpty()) {
+            throw new IllegalArgumentException("bodyContent: String must contain at least 1 character(s)");
+        }
         EmailTemplate template = getOrSeedTemplate(eventKey);
         template.setEnabled(body.isEnabled());
         template.setToAddress(body.getToAddress());

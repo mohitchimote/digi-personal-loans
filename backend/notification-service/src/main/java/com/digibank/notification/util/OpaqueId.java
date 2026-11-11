@@ -26,16 +26,16 @@ public final class OpaqueId {
     public static Long decode(String prefix, String opaque) {
         String expectedPrefix = prefix + "_";
         if (opaque == null || !opaque.startsWith(expectedPrefix)) {
-            throw new IllegalArgumentException("Invalid id: " + opaque);
+            throw new IllegalArgumentException("Invalid id.");
         }
         try {
             BigInteger obfuscated = new BigInteger(opaque.substring(expectedPrefix.length()), 36);
             if (obfuscated.signum() < 0 || obfuscated.compareTo(PRIME) >= 0) {
-                throw new IllegalArgumentException("Invalid id: " + opaque);
+                throw new IllegalArgumentException("Invalid id.");
             }
             return obfuscated.multiply(MULTIPLIER_INV).mod(PRIME).longValueExact();
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid id: " + opaque);
+            throw new IllegalArgumentException("Invalid id.");
         }
     }
 }

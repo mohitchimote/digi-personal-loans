@@ -18,7 +18,7 @@ public class AffordabilityRequest {
     @NotNull private BigDecimal requestedLoanAmount;
     @NotNull private Integer requestedTermMonths;
 
-    private Integer creditScore = 7;
+    private Integer creditScore;
     private boolean hasDefaulted = false;
     private boolean hasBankruptcy = false;
 

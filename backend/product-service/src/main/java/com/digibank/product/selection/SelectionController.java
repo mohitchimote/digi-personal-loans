@@ -23,7 +23,7 @@ public class SelectionController {
     public ResponseEntity<ProductSelection> selectProduct(@RequestBody Map<String, Object> body) {
         String appRef = (String) body.get("applicationRef");
         String productCode = (String) body.get("productCode");
-        Integer termMonths = body.get("termMonths") != null ? (Integer) body.get("termMonths") : null;
+        Integer termMonths = body.get("termMonths") instanceof Number n ? Integer.valueOf(n.intValue()) : null;
         return ResponseEntity.ok(selectionService.selectProduct(appRef, productCode, termMonths));
     }
 

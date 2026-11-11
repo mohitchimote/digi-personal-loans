@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Random;
-import java.util.UUID;
 
 /**
  * N1 (ARCHITECTURE_REVIEW_GAPS.md) — simulated card-payment adapter, same "fake it" demo-synthesis
@@ -25,8 +24,9 @@ public class CardPaymentGenerator {
         Random rng = new Random(seed);
 
         CardPaymentResult result = new CardPaymentResult();
-        result.setTransactionId("TXN-" + UUID.nameUUIDFromBytes(
-                (request.getApplicationRef() + ":cardpayment").getBytes()).toString().substring(0, 12).toUpperCase());
+        // Worker: TXN-<applicationRef stripped to alphanumerics>-<6 digits>, drawn first from the seeded stream.
+        result.setTransactionId("TXN-" + request.getApplicationRef().replaceAll("[^A-Za-z0-9]", "")
+                + "-" + String.format("%06d", rng.nextInt(1_000_000)));
         result.setStatus("AUTHORISED");
         result.setAmount(request.getAmount());
         result.setCardLast4(String.format("%04d", rng.nextInt(10_000)));

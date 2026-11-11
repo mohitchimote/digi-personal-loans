@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -178,26 +179,36 @@ public class CatalogService {
         return saved;
     }
 
-    public LoanProduct updateProduct(Long id, LoanProduct update) {
+    private static BigDecimal dec(Object v) {
+        return v == null ? null : new BigDecimal(v.toString());
+    }
+
+    private static Integer integer(Object v) {
+        return v == null ? null : (v instanceof Number n ? Integer.valueOf(n.intValue()) : Integer.valueOf(v.toString()));
+    }
+
+    /** The Worker's partial update: every field is `body.x ?? existing.x`, so a field that is absent or null is left as it is. */
+    public LoanProduct updateProduct(Long id, Map<String, Object> body) {
         LoanProduct product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
-        if (!product.getProductCode().equals(update.getProductCode()) && productRepository.existsByProductCode(update.getProductCode())) {
-            throw new IllegalArgumentException("Product code already exists: " + update.getProductCode());
+        Object code = body.get("productCode");
+        if (code != null && !code.toString().equals(product.getProductCode()) && productRepository.existsByProductCode(code.toString())) {
+            throw new IllegalArgumentException("Product code already exists: " + code);
         }
-        product.setProductCode(update.getProductCode());
-        product.setProductName(update.getProductName());
-        product.setDescription(update.getDescription());
-        product.setAnnualInterestRate(update.getAnnualInterestRate());
-        product.setMinAmount(update.getMinAmount());
-        product.setMaxAmount(update.getMaxAmount());
-        product.setMinTermMonths(update.getMinTermMonths());
-        product.setMaxTermMonths(update.getMaxTermMonths());
-        product.setMinCreditScore(update.getMinCreditScore());
-        product.setMinMonthlyIncome(update.getMinMonthlyIncome());
-        product.setMaxDti(update.getMaxDti());
-        product.setRiskCategories(update.getRiskCategories());
-        product.setActive(update.isActive());
-        product.setProductType(update.getProductType());
+        if (code != null) product.setProductCode(code.toString());
+        if (body.get("productName") != null) product.setProductName(body.get("productName").toString());
+        if (body.get("description") != null) product.setDescription(body.get("description").toString());
+        if (body.get("annualInterestRate") != null) product.setAnnualInterestRate(dec(body.get("annualInterestRate")));
+        if (body.get("minAmount") != null) product.setMinAmount(dec(body.get("minAmount")));
+        if (body.get("maxAmount") != null) product.setMaxAmount(dec(body.get("maxAmount")));
+        if (body.get("minTermMonths") != null) product.setMinTermMonths(integer(body.get("minTermMonths")));
+        if (body.get("maxTermMonths") != null) product.setMaxTermMonths(integer(body.get("maxTermMonths")));
+        if (body.get("minCreditScore") != null) product.setMinCreditScore(integer(body.get("minCreditScore")));
+        if (body.get("minMonthlyIncome") != null) product.setMinMonthlyIncome(dec(body.get("minMonthlyIncome")));
+        if (body.get("maxDti") != null) product.setMaxDti(dec(body.get("maxDti")));
+        if (body.get("riskCategories") != null) product.setRiskCategories(body.get("riskCategories").toString());
+        if (body.get("active") != null) product.setActive(Boolean.parseBoolean(body.get("active").toString()));
+        if (body.get("productType") != null) product.setProductType(body.get("productType").toString());
         LoanProduct saved = productRepository.save(product);
         cache.evictPrefix(PRODUCTS_CACHE_PREFIX);
         return saved;
@@ -231,12 +242,16 @@ public class CatalogService {
         return eligible;
     }
 
+    /** Worker's isEligible: every criterion applies only when both the request and the product set it. */
     private boolean isEligible(LoanProduct p, ProductEligibilityRequest req) {
-        if (req.getCreditScore() != null && req.getCreditScore() < p.getMinCreditScore()) return false;
-        if (req.getMonthlyGrossIncome() != null && req.getMonthlyGrossIncome().compareTo(p.getMinMonthlyIncome()) < 0) return false;
-        if (req.getRequestedAmount() != null && (req.getRequestedAmount().compareTo(p.getMinAmount()) < 0 || req.getRequestedAmount().compareTo(p.getMaxAmount()) > 0)) return false;
-        if (req.getDti() != null && req.getDti().compareTo(p.getMaxDti()) > 0) return false;
-        if (req.getRiskCategory() != null && p.getRiskCategories() != null) {
+        if (req.getCreditScore() != null && p.getMinCreditScore() != null && req.getCreditScore() < p.getMinCreditScore()) return false;
+        if (req.getMonthlyGrossIncome() != null && p.getMinMonthlyIncome() != null
+                && req.getMonthlyGrossIncome().compareTo(p.getMinMonthlyIncome()) < 0) return false;
+        if (req.getRequestedAmount() != null && p.getMinAmount() != null && p.getMaxAmount() != null
+                && (req.getRequestedAmount().compareTo(p.getMinAmount()) < 0 || req.getRequestedAmount().compareTo(p.getMaxAmount()) > 0)) return false;
+        if (req.getDti() != null && p.getMaxDti() != null && req.getDti().compareTo(p.getMaxDti()) > 0) return false;
+        if (req.getRiskCategory() != null && !req.getRiskCategory().isEmpty()
+                && p.getRiskCategories() != null && !p.getRiskCategories().isEmpty()) {
             List<String> allowed = Arrays.asList(p.getRiskCategories().split(","));
             if (!allowed.contains(req.getRiskCategory())) return false;
         }
@@ -244,23 +259,26 @@ public class CatalogService {
     }
 
     private EligibleProduct toEligibleProduct(LoanProduct p, ProductEligibilityRequest req) {
-        int term = req.getRequestedTermMonths() != null ? req.getRequestedTermMonths() : p.getMinTermMonths();
-        BigDecimal amount = req.getRequestedAmount() != null ? req.getRequestedAmount() : p.getMinAmount();
-        BigDecimal monthly = RepaymentCalculator.monthlyRepayment(p.getAnnualInterestRate(), amount, term);
+        int term = req.getRequestedTermMonths() != null ? req.getRequestedTermMonths()
+                : p.getMinTermMonths() != null ? p.getMinTermMonths() : 12;
+        BigDecimal amount = req.getRequestedAmount() != null ? req.getRequestedAmount()
+                : p.getMinAmount() != null ? p.getMinAmount() : BigDecimal.ZERO;
+        BigDecimal rate = p.getAnnualInterestRate() != null ? p.getAnnualInterestRate() : BigDecimal.ZERO;
+        BigDecimal monthly = RepaymentCalculator.monthlyRepayment(rate, amount, term);
         BigDecimal total = monthly.multiply(new BigDecimal(term)).setScale(2, java.math.RoundingMode.HALF_UP);
 
         return EligibleProduct.builder()
                 .productId(p.getProductCode())
                 .productName(p.getProductName())
                 .description(p.getDescription())
-                .interestRate(p.getAnnualInterestRate())
+                .interestRate(rate)
                 .minAmount(p.getMinAmount())
                 .maxAmount(p.getMaxAmount())
                 .minTermMonths(p.getMinTermMonths())
                 .maxTermMonths(p.getMaxTermMonths())
                 .monthlyRepayment(monthly)
                 .totalRepayable(total)
-                .apr(p.getAnnualInterestRate())
+                .apr(rate)
                 .recommended(false)
                 .build();
     }

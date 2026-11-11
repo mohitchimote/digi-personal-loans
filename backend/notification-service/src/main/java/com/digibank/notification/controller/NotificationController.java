@@ -1,5 +1,6 @@
 package com.digibank.notification.controller;
 
+import com.digibank.notification.config.AppException;
 import com.digibank.notification.model.Notification;
 import com.digibank.notification.security.OwnershipCheck;
 import com.digibank.notification.security.CurrentUser;
@@ -66,8 +67,33 @@ public class NotificationController {
     }
 
     @PostMapping("/customer/{customerId}/seed-welcome")
-    public ResponseEntity<Void> seedWelcome(@PathVariable Long customerId) {
-        notificationService.seedWelcomeNotifications(customerId);
+    public ResponseEntity<Void> seedWelcome(@PathVariable Long customerId,
+                                            @RequestBody(required = false) Map<String, Object> body) {
+        // Worker: any body that is not {lang:"he"} (including none) means English.
+        String lang = body != null && "he".equals(body.get("lang")) ? "he" : "en";
+        notificationService.seedWelcomeNotifications(customerId, lang);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Internal contract for the workflow host: the customer's stored language (users.preferred_language,
+     * owned by auth-service) is passed in as "lang"; the wording is chosen here. Returns the stored
+     * notification, or 204 when the template name is unknown (the Worker then sends nothing).
+     */
+    @PostMapping("/create-from-template")
+    public ResponseEntity<Notification> createFromTemplate(@RequestBody Map<String, Object> body) {
+        Object customerId = body.get("customerId");
+        if (customerId == null) throw new AppException("customerId is required.");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> vars = body.get("vars") instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
+        Notification created = notificationService.createFromTemplate(
+                Long.valueOf(customerId.toString()),
+                (String) body.get("template"),
+                (String) body.get("lang"),
+                (String) body.get("firstName"),
+                (String) body.get("loanPurpose"),
+                (String) body.get("applicationRef"),
+                vars);
+        return created == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(created);
     }
 }
