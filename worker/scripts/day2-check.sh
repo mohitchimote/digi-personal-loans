@@ -51,8 +51,8 @@ $CURL "$BASE/api/applications/$REF/notes" | jget ".length"
 echo "=== pipeline (should be empty of this app since auto-approved sets APPROVED, still in PIPELINE_STATUSES) ==="
 $CURL "$BASE/api/applications/pipeline" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log('pipeline count:',j.length, 'contains ref:', j.some(a=>a.applicationRef==='$REF'))})"
 
-echo "=== mandate rules ==="
-$CURL "$BASE/api/applications/mandate-rules"
+echo "=== mandates (context mandates; admin API, replaced the old /api/applications/mandate-rules) ==="
+$CURL "$BASE/api/auth/admin/mandates"
 echo
 
 AUTO_APPROVED_REF=$REF

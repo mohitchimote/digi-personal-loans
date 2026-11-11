@@ -116,7 +116,7 @@ this section should be read as still-open unless explicitly marked so.
    staff-only endpoints additionally require one of the roles the Worker itself gates
    (`worker/src/routes/applications.ts`'s `STAFF_ROLES`), applied identically in
    `application-service/.../security/SecurityConfig.java`:
-   `PUT /mandate-rules` → `ADMIN` only; `GET /mandate-rules`, `PUT /*/section-by-underwriter`,
+   `PUT /mandate-rules` → `ADMIN` only (endpoints since removed; see rule-service `/api/auth/admin/mandates`); `GET /mandate-rules`, `PUT /*/section-by-underwriter`,
    `GET /pipeline`, `GET /banker-queue`, `POST /*/notes|decline|send-back|approve-by-underwriter|
    refer-to-senior|disbursement/authorise|disbursement/second-check|data-verification/resolve` →
    any `STAFF_ROLES` member. Same pattern applied to `product-service` (`ADMIN` on `/admin/**`,
@@ -208,7 +208,7 @@ pass — every issued token carries a real `exp` claim). What was missing was th
 
 Role gating (finding 1) answers "can this role call the approve endpoint at all," not "is this
 *amount* within what that role is allowed to approve." Those are different questions, and only the
-first one was enforced server-side. The 5-tier mandate limits (`MandateRules.java` —
+first one was enforced server-side. The 5-tier mandate limits (`MandateRules.java`, since removed: limits now come from rule-service's context mandates and are enforced by the workflow engine —
 `UNDERWRITER` ≤ $100k, `SENIOR_UNDERWRITER` ≤ $300k, `HEAD_OF_LENDING` ≤ $750k, `COO` ≤ $2M, `CEO`
 effectively unlimited) were, before this fix, enforced **only in the Angular UI** — explicitly
 documented as advisory, not a security boundary, in `MandateRules.limitFor()`'s own Javadoc and in
@@ -337,7 +337,7 @@ compared every Worker route/lib against the Java codebase. Summary, in priority 
    deliberate, accepted difference in `ARCHITECTURE.md` §6.3 (same determinism contract per
    `applicationRef`, never a bit-identical-output requirement), not new drift.
    Also checked `mandate_rules` and `affordability_rules` default thresholds
-   (`worker/src/db/schema.ts`) against `decisioning.MandateRules` / `rules.AffordabilityRules`
+   (`worker/src/db/schema.ts`) against `decisioning.MandateRules` (since removed) / `rules.AffordabilityRules`
    (§10): every single value matches exactly —
    underwriter/senior-underwriter/head-of-lending/COO/CEO limits (100k/300k/750k/2M/~unlimited) and
    DTI/HTI/min-income/base-rate/repayment-capacity/min-credit-score/auto-approval thresholds are

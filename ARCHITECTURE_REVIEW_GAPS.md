@@ -272,6 +272,8 @@ public contract preserved as a thin proxy so nothing calling through the gateway
   data (min credit score/income/DTI stored on each `LoanProduct` row), not a shared threshold that
   belongs in a central rules store, so there's nothing to extract there.
 
+> **Superseded (2026-11):** `MandateRules`, the `/api/applications/mandate-rules` endpoints and rule-service's `GET`/`PUT /internal/rules/mandates` were removed. Mandates are now context-based rows served by rule-service (`/api/auth/admin/mandates`, `GET /internal/rules/mandates/resolve`), matching the Worker. The text below records the original G4 verification.
+
 **Runtime-verified, not just compiled**: booted `rule-service`, `affordability-service`, and
 `application-service` as plain jars against the real local MySQL (no Docker — same constraint as
 G1/G3) and drove the full chain with real tokens: `GET`/`PUT /internal/rules/mandates` and

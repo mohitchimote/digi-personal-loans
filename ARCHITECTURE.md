@@ -595,7 +595,7 @@ Single command: backend (one window per service, all via mvnd) + frontend (`ng s
 
 **Resolved by the migration, not carried forward**: `AffordabilityRules`/`MandateRules` used to be
 in-memory Spring beans that reset on every service restart — they're now persisted D1 tables
-(`affordability_rules`, `mandate_rules`), so admin edits survive a redeploy. Listed here only so
+(`affordability_rules`, context-based `mandates`; the Java `MandateRules` bean has since been removed in favour of rule-service), so admin edits survive a redeploy. Listed here only so
 anyone comparing against the pre-migration document doesn't go looking for this gap and wonder if
 it regressed.
 
@@ -636,7 +636,7 @@ decisioning → audittrail), not a cycle.
 | Context | Owns | Key classes (post-repackage) | Extraction trigger |
 |---|---|---|---|
 | Wizard / section engine | Section save/read, skip-forward mechanic, start/resume, joint-applicant handling | `wizard.WizardService`, `wizard.WizardController`, `wizard.dto.*`, `model.LoanApplication` | Rarely changes independently of decisioning today — low priority to split. |
-| Decisioning & mandates | Approve/decline/refer/disbursement, mandate-limit enforcement (§5) | `decisioning.DecisioningService`, `decisioning.DecisioningController`, `decisioning.MandateRules` | If underwriting ever needs its own release cadence/on-call ownership separate from the customer-facing wizard, or a dedicated audit/compliance data store. |
+| Decisioning & mandates | Approve/decline/refer/disbursement, mandate-limit enforcement (§5) | `decisioning.DecisioningService`, `decisioning.DecisioningController`; limits come from rule-service (`GET /internal/rules/mandates/resolve`), transitions from workflow-service | If underwriting ever needs its own release cadence/on-call ownership separate from the customer-facing wizard, or a dedicated audit/compliance data store. |
 | Audit trail | Underwriting notes — the record of who did what, when | `audittrail.AuditTrailService`, `audittrail.NotesController`, `model.UnderwritingNote` | If notes need independent retention/compliance rules from the application data they're attached to. |
 | Data verification | Simulated RAG discrepancy-check generator, now behind a port (§6.3-equivalent "fake it" pattern) | `dataverification.DataVerificationService` (orchestrator), `dataverification.DataVerificationPort` (interface), `dataverification.SimulatedDataVerificationAdapter` (today's only implementation) | The clearest future split — this is a placeholder for a real document-AI/OCR integration; when built, it's a second `DataVerificationPort` implementation, not a rewrite (PRODUCTION_READINESS.md §7). |
 | Business financials intelligence | Simulated P&L/cashflow/risk-grade analysis, same port pattern | `businessfinancials.BusinessFinancialsAnalysisService`, `businessfinancials.BusinessFinancialsPort`, `businessfinancials.SimulatedBusinessFinancialsAdapter` | Same shape as data verification — a real integration (core-banking/credit-bureau feed) becomes a second port implementation. |
