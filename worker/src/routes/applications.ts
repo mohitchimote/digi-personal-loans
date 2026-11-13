@@ -19,7 +19,7 @@ import { withWorkflowInfo } from "../lib/workflow/assignment";
 import type { QueueDef } from "../lib/workflow/types";
 import type { TransitionInput } from "../lib/workflow/types";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
-import { masterValueProblem, loadMasterItemFacts } from "../lib/master-options";
+import { masterValueProblem, loadMasterItemFacts, hasNoChildren, masterItemNameEn } from "../lib/master-options";
 import { isFieldVisible } from "../lib/form-schema-types";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -131,6 +131,10 @@ async function validateSectionData(
     if (visible && f.optionsSource && value !== undefined && value !== null && value !== "") {
       const dep = f.optionsSource.dependsOn;
       const parentValue = dep ? crossSectionValues[`${section}.${dep.fieldKey}`] : undefined;
+      const parentCodeValue = parentValue == null ? "" : String(parentValue);
+      // A cascade whose parent has nothing under it yet (country without states, state without cities)
+      // takes free text rather than blocking the customer; the master gets filled in later.
+      if (dep && parentCodeValue && await hasNoChildren(db, f.optionsSource.master, parentCodeValue)) continue;
       const problem = masterValueProblem({
         item: await loadMasterItemFacts(db, f.optionsSource.master, String(value), {
           valueAttribute: f.optionsSource.valueAttribute,
@@ -294,9 +298,10 @@ applications.post("/start-pre-approved", async (c) => {
     phoneNumber: "+972 50 123 4567",
     email: customerEmail,
     street: "12 Rothschild Boulevard",
-    city: "Tel Aviv",
+    country: "IL",
+    state: "IL-TA",
+    city: "IL-57564",
     postCode: "6688112",
-    country: "Israel",
     monthsAtCurrentAddress: 48,
     previousAddresses: [],
     assistedByStaff: false,
@@ -712,7 +717,12 @@ applications.get("/:appRef/data-verification", async (c) => {
   const app = await getByRef(db, appRef);
   if (app.dataVerificationJson) return c.json(JSON.parse(app.dataVerificationJson));
 
-  const summary = generateDataVerification(app);
+  // The address on the application holds a city code; the document check compares names.
+  const personal = (() => { try { return app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null; } catch { return null; } })();
+  const forCheck = personal?.city
+    ? { ...app, personalDetailsJson: JSON.stringify({ ...personal, city: await masterItemNameEn(db, "city", String(personal.city)) }) }
+    : app;
+  const summary = generateDataVerification(forCheck);
   await db
     .update(loanApplications)
     .set({ dataVerificationJson: JSON.stringify(summary), updatedAt: new Date().toISOString() })

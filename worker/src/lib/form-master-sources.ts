@@ -19,6 +19,16 @@ const PERSONAL: FieldDefault[] = [
   { section: "personalDetails", field: "maritalStatus", source: { master: "marital_status" } },
   { section: "personalDetails", field: "preferredBranch", source: { master: "branch" } },
   { section: "personalDetails", field: "staffName", source: { master: "staff", dependsOn: { fieldKey: "preferredBranch" } } },
+  { section: "personalDetails", field: "country", source: { master: "country" } },
+  {
+    section: "personalDetails", field: "state", source: { master: "state", dependsOn: { fieldKey: "country" } },
+    add: { field: { sectionHeaderKey: "currentAddress", labelKey: "personal.stateLabel", required: true, order: 5 } },
+  },
+  { section: "personalDetails", field: "city", source: { master: "city", dependsOn: { fieldKey: "state" } } },
+  {
+    section: "guarantorDetails", field: "guarantorRelationship", source: { master: "relationship" },
+    add: { header: { key: "guarantor", labelKey: "guarantor.detailsHeader" }, field: { sectionHeaderKey: "guarantor", labelKey: "directDebit.guarantorRelationshipLabel", required: true, order: 1 } },
+  },
   { section: "incomeEmployment", field: "employmentStatus", source: { master: "employment_status" } },
   { section: "incomeEmployment", field: "employmentDuration", source: { master: "employment_duration" } },
   { section: "directDebit", field: "bankCode", source: { master: "bank" } },
@@ -27,6 +37,26 @@ const PERSONAL: FieldDefault[] = [
 
 // The business form's definition is only a list of empty sections today, so these fields are added to it.
 const BUSINESS: FieldDefault[] = [
+  {
+    section: "companyDetails", field: "industry", source: { master: "industry_sector" },
+    add: { header: { key: "company", labelKey: "company.detailsTitle" }, field: { sectionHeaderKey: "company", labelKey: "register.companyIndustryLabel", required: true, order: 0 } },
+  },
+  {
+    section: "companyDetails", field: "country", source: { master: "country" },
+    add: { field: { sectionHeaderKey: "company", labelKey: "personal.countryLabel", required: true, order: 0 } },
+  },
+  {
+    section: "companyDetails", field: "state", source: { master: "state", dependsOn: { fieldKey: "country" } },
+    add: { field: { sectionHeaderKey: "company", labelKey: "personal.stateLabel", required: true, order: 0 } },
+  },
+  {
+    section: "companyDetails", field: "city", source: { master: "city", dependsOn: { fieldKey: "state" } },
+    add: { field: { sectionHeaderKey: "company", labelKey: "personal.cityLabel", required: true, order: 0 } },
+  },
+  {
+    section: "guarantorDetails", field: "guarantorRelationship", source: { master: "relationship" },
+    add: { header: { key: "guarantor", labelKey: "guarantor.detailsHeader" }, field: { sectionHeaderKey: "guarantor", labelKey: "directDebit.guarantorRelationshipLabel", required: true, order: 1 } },
+  },
   {
     section: "companyDetails", field: "loanPurpose", source: { master: "business_loan_purpose" },
     add: { header: { key: "loanRequest", labelKey: "company.loanRequestHeader" }, field: { sectionHeaderKey: "loanRequest", labelKey: "loanReq.purposeLabel", required: true, order: 1 } },
@@ -54,6 +84,16 @@ const BUSINESS: FieldDefault[] = [
  * briefly a master ("branch_staff"); they are read from the Users table now.
  */
 const REPOINT: Record<string, string> = { branch_staff: "staff" };
+
+/**
+ * Cascades need the parent before the child in display order (country, then state, then city), but the
+ * personal form lists city before country. When a default touches one of these fields, the header's fields
+ * are renumbered with these first, in this order, and any others after them in their existing order.
+ */
+const ORDERED: Record<FormKey, { section: string; header: string; keys: string[] }[]> = {
+  "personal-loan-wizard": [{ section: "personalDetails", header: "currentAddress", keys: ["street", "country", "state", "city", "postCode"] }],
+  "business-loan-wizard": [{ section: "companyDetails", header: "company", keys: ["industry", "country", "state", "city"] }],
+};
 
 export const MASTER_SOURCE_DEFAULTS: Record<FormKey, FieldDefault[]> = {
   "personal-loan-wizard": PERSONAL,
@@ -90,6 +130,14 @@ export function applyMasterSources(formKey: FormKey, schema: FormVersionSchema):
     if (field.optionsSource || field.options?.length || field.optionsDependOn) continue;
     field.optionsSource = d.source;
     changes.push(`${d.section}.${d.field}: options from "${d.source.master}"`);
+  }
+  for (const o of ORDERED[formKey]) {
+    if (!changes.some((c) => o.keys.some((k) => c.startsWith(`${o.section}.${k}:`)))) continue;
+    const section = next.sections.find((x) => x.key === o.section);
+    if (!section) continue;
+    const inHeader = section.fields.filter((f) => f.sectionHeaderKey === o.header);
+    const rank = (f: FormField) => { const i = o.keys.indexOf(f.key); return i >= 0 ? i : o.keys.length + f.order; };
+    inHeader.sort((a, b) => rank(a) - rank(b)).forEach((f, i) => { f.order = i + 1; });
   }
   return { schema: next, changes };
 }

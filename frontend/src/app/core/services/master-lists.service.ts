@@ -56,6 +56,11 @@ export class MasterListsService {
     });
   }
 
+  /** True once the list (or the children of this parent) has come back from the server, even if empty. */
+  isLoaded(type: string, parentCode?: string): boolean {
+    return parentCode ? `${type}|${parentCode}` in this.children() : type in this.lists();
+  }
+
   items(type: string): MasterOption[] { return this.lists()[type] ?? []; }
   childItems(type: string, parentCode: string): MasterOption[] { return this.children()[`${type}|${parentCode}`] ?? []; }
 

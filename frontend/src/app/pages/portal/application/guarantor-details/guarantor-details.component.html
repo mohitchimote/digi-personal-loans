@@ -29,7 +29,7 @@
       <div class="form-row">
         <div class="db-form-group">
           <label>{{ 'directDebit.guarantorRelationshipLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="guarantorRelationship" />
+          <app-field-select [field]="relationshipField()" [control]="form.get('guarantorRelationship')" />
         </div>
         <div class="db-form-group">
           <label>{{ 'directDebit.guarantorPhoneLabel' | translate }} <span class="required">*</span></label>
@@ -97,7 +97,7 @@
         </div>
         <div class="dense-field">
           <label>{{ 'directDebit.guarantorRelationshipLabel' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="text" formControlName="guarantorRelationship" />
+          <app-field-select [field]="relationshipField()" [control]="form.get('guarantorRelationship')" />
         </div>
         <div class="dense-field">
           <label>{{ 'directDebit.guarantorPhoneLabel' | translate }} <span class="required">*</span></label>

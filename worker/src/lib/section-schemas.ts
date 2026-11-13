@@ -18,6 +18,7 @@ import { z } from "zod";
 const addressHistoryEntrySchema = z
   .object({
     street: z.string(),
+    state: z.string().optional(),
     city: z.string(),
     postCode: z.string(),
     country: z.string(),
@@ -73,6 +74,7 @@ const personalDetailsSchema = z
     phoneNumber: z.string().optional(),
     email: z.string().email().optional(),
     street: z.string(),
+    state: z.string().optional(),
     city: z.string(),
     postCode: z.string(),
     country: z.string(),
@@ -244,6 +246,7 @@ const companyDetailsSchema = z
     industry: z.string(),
     yearFounded: z.number(),
     street: z.string(),
+    state: z.string().optional(),
     city: z.string(),
     postCode: z.string(),
     country: z.string(),

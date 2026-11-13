@@ -6,6 +6,8 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { DocumentService } from '../../../../core/services/document.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { FieldSelectComponent } from '../../../../shared/field-select/field-select.component';
+import { FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 /** Business equivalent of GuarantorDetailsComponent — only ever reached when an underwriter has
@@ -13,13 +15,15 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 @Component({
   selector: 'app-business-guarantor-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, FieldSelectComponent],
   templateUrl: './business-guarantor-details.component.html',
   styleUrl: './business-guarantor-details.component.scss'
 })
 export class BusinessGuarantorDetailsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
+  /** The form definition's field for the relationship pick-list; it says which master the options come from. */
+  relationshipField = signal<FormField | undefined>(undefined);
   appRef = signal('');
   readOnly = signal(false);
   uploading = signal(false);
@@ -48,6 +52,7 @@ export class BusinessGuarantorDetailsComponent implements OnInit {
     this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.relationshipField.set(fieldIn(app.formSchema, 'guarantorDetails', 'guarantorRelationship'));
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (this.readOnly()) this.form.disable();
         if (app.guarantorDetailsJson) {

@@ -7,6 +7,7 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { reconcileStoredValue } from '../../../../shared/master-options';
+import { FieldSelectComponent } from '../../../../shared/field-select/field-select.component';
 import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
@@ -43,7 +44,7 @@ const SECTION_JSON_COLUMNS: Record<string, string> = {
 @Component({
   selector: 'app-personal-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, DynamicFieldComponent, FieldHelpComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, FieldSelectComponent, DynamicFieldComponent, FieldHelpComponent],
   templateUrl: './personal-details.component.html',
   styleUrl: './personal-details.component.scss'
 })
@@ -139,9 +140,10 @@ export class PersonalDetailsComponent implements OnInit {
       phoneNumber:  [''],
       email:        ['', Validators.email],
       street:       ['', Validators.required],
+      country:      ['IL', Validators.required],
+      state:        ['', Validators.required],
       city:         ['', Validators.required],
       postCode:     ['', Validators.required],
-      country:      ['Israel', Validators.required],
       monthsAtCurrentAddress: [null, [Validators.min(0)]],
       previousAddresses: this.fb.array([]),
       assistedByStaff: [false],
@@ -276,9 +278,10 @@ export class PersonalDetailsComponent implements OnInit {
   private buildPreviousAddress(data?: any): FormGroup {
     return this.fb.group({
       street:          [data?.street || '', Validators.required],
+      country:         [data?.country || 'IL', Validators.required],
+      state:           [data?.state || '', Validators.required],
       city:            [data?.city || '', Validators.required],
       postCode:        [data?.postCode || '', Validators.required],
-      country:         [data?.country || 'Israel', Validators.required],
       monthsAtAddress: [data?.monthsAtAddress ?? null, [Validators.min(0)]],
     });
   }

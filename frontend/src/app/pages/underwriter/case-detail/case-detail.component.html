@@ -163,9 +163,9 @@
           <div class="review-grid">
             <div class="review-item"><span>{{ 'register.companyNameLabel' | translate }}</span><strong>{{ company.companyName }}</strong></div>
             <div class="review-item"><span>{{ 'register.companyRegNumberLabel' | translate }}</span><strong>{{ company.companyRegistrationNumber }}</strong></div>
-            <div class="review-item"><span>{{ 'register.companyIndustryLabel' | translate }}</span><strong>{{ company.industry }}</strong></div>
+            <div class="review-item"><span>{{ 'register.companyIndustryLabel' | translate }}</span><strong>{{ company.industry | fieldLabel:application()?.formSchema:'companyDetails':'industry' }}</strong></div>
             <div class="review-item"><span>{{ 'register.companyFoundedYearLabel' | translate }}</span><strong>{{ company.yearFounded }}</strong></div>
-            <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ company.street }}, {{ company.city }}</strong></div>
+            <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ company.street }}, {{ company.city | fieldLabel:application()?.formSchema:'companyDetails':'city':company.state }}, {{ company.country | fieldLabel:application()?.formSchema:'companyDetails':'country' }}</strong></div>
           </div>
         </div>
 
@@ -180,7 +180,7 @@
           <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
           <div class="review-grid" *ngIf="guarantorDetails.guarantorName">
             <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
-            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship | fieldLabel:application()?.formSchema:'guarantorDetails':'guarantorRelationship' }}</strong></div>
             <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
           </div>
           <div class="db-alert db-alert--warning" *ngIf="!guarantorDetails.guarantorName">
@@ -213,7 +213,7 @@
               <div class="review-item"><span>{{ 'reviewSubmit.fullName' | translate }}</span><strong>{{ personal.firstName }} {{ personal.lastName }}</strong></div>
               <div class="review-item"><span>{{ 'personal.dobLabel' | translate }}</span><strong>{{ personal.dateOfBirth | date:'dd MMM yyyy' }}</strong></div>
               <div class="review-item"><span>{{ 'personal.nationalIdLabel' | translate }}</span><strong>{{ personal.nationalId }}</strong></div>
-              <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city }}</strong></div>
+              <div class="review-item"><span>{{ 'reviewSubmit.address' | translate }}</span><strong>{{ personal.street }}, {{ personal.city | fieldLabel:application()?.formSchema:'personalDetails':'city':personal.state }}, {{ personal.country | fieldLabel:application()?.formSchema:'personalDetails':'country' }}</strong></div>
             </div>
             <div class="review-grid mt-16" *ngIf="personal.applicant2">
               <div class="review-item"><span>{{ 'personal.applicant2Header' | translate }}</span><strong>{{ personal.applicant2.firstName }} {{ personal.applicant2.lastName }}</strong></div>
@@ -234,7 +234,6 @@
             </div>
             <div class="form-row">
               <div class="db-form-group"><label>{{ 'personal.streetLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.street" /></div>
-              <div class="db-form-group"><label>{{ 'personal.cityLabel' | translate }}</label><input class="db-input" [(ngModel)]="editBuffer.city" /></div>
             </div>
             <div class="uw-decision-actions">
               <button class="db-btn db-btn--accent" (click)="saveEdit('personalDetails')" [disabled]="savingEdit()">{{ 'common.save' | translate }}</button>
@@ -254,7 +253,7 @@
           <div class="card-header"><h3>{{ 'guarantor.title' | translate }}</h3></div>
           <div class="review-grid" *ngIf="guarantorDetails.guarantorName">
             <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorName }}</strong></div>
-            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorRelationship | fieldLabel:application()?.formSchema:'guarantorDetails':'guarantorRelationship' }}</strong></div>
             <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ guarantorDetails.guarantorPhone }}</strong></div>
           </div>
           <div class="db-alert db-alert--warning" *ngIf="!guarantorDetails.guarantorName">
@@ -513,7 +512,7 @@
           </div>
           <div class="review-grid mt-16" *ngIf="directDebit.guarantorName">
             <div class="review-item"><span>{{ 'directDebit.guarantorNameLabel' | translate }}</span><strong>{{ directDebit.guarantorName }}</strong></div>
-            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ directDebit.guarantorRelationship }}</strong></div>
+            <div class="review-item"><span>{{ 'directDebit.guarantorRelationshipLabel' | translate }}</span><strong>{{ directDebit.guarantorRelationship | fieldLabel:application()?.formSchema:'guarantorDetails':'guarantorRelationship' }}</strong></div>
             <div class="review-item"><span>{{ 'directDebit.guarantorPhoneLabel' | translate }}</span><strong>{{ directDebit.guarantorPhone }}</strong></div>
           </div>
           <div class="uw-notes" *ngIf="notesFor('directDebit').length">

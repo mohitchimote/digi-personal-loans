@@ -6,6 +6,8 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { DocumentService } from '../../../../core/services/document.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
+import { FieldSelectComponent } from '../../../../shared/field-select/field-select.component';
+import { FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
 /** Only ever reached when an underwriter has sent the case back specifically requesting a
@@ -14,13 +16,15 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 @Component({
   selector: 'app-guarantor-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, FieldSelectComponent],
   templateUrl: './guarantor-details.component.html',
   styleUrl: './guarantor-details.component.scss'
 })
 export class GuarantorDetailsComponent implements OnInit {
   form: FormGroup;
   saving = signal(false);
+  /** The form definition's field for the relationship pick-list; it says which master the options come from. */
+  relationshipField = signal<FormField | undefined>(undefined);
   appRef = signal('');
   readOnly = signal(false);
   uploading = signal(false);
@@ -49,6 +53,7 @@ export class GuarantorDetailsComponent implements OnInit {
     this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.relationshipField.set(fieldIn(app.formSchema, 'guarantorDetails', 'guarantorRelationship'));
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.guarantorDetailsJson) {
           const data = JSON.parse(app.guarantorDetailsJson);

@@ -132,22 +132,29 @@
 
       <div class="form-row form-row--3">
         <div class="db-form-group">
-          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
-          <app-field-help [field]="fieldDef('city')" />
-          <input class="db-input" type="text" formControlName="city" [placeholder]="'personal.cityPlaceholder' | translate" autocomplete="address-level2" />
-          <div class="db-error-msg" *ngIf="f('city')?.invalid && f('city')?.touched">{{ 'common.required' | translate }}</div>
-        </div>
-        <div class="db-form-group">
-          <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
-          <app-field-help [field]="fieldDef('postCode')" />
-          <input class="db-input" type="text" formControlName="postCode" [placeholder]="'personal.postCodePlaceholder' | translate" autocomplete="postal-code" />
-          <div class="db-error-msg" *ngIf="f('postCode')?.invalid && f('postCode')?.touched">{{ 'common.required' | translate }}</div>
-        </div>
-        <div class="db-form-group">
           <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
           <app-field-help [field]="fieldDef('country')" />
-          <input class="db-input" type="text" formControlName="country" />
+          <app-field-select [field]="fieldDef('country')" [control]="f('country')" autocomplete="country-name" />
+          <div class="db-error-msg" *ngIf="f('country')?.invalid && f('country')?.touched">{{ 'common.required' | translate }}</div>
         </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.stateLabel' | translate }} <span class="required">*</span></label>
+          <app-field-help [field]="fieldDef('state')" />
+          <app-field-select [field]="fieldDef('state')" [control]="f('state')" [parent]="f('country')?.value" [waitingText]="'personal.chooseCountryFirst' | translate" autocomplete="address-level1" />
+          <div class="db-error-msg" *ngIf="f('state')?.invalid && f('state')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+          <app-field-help [field]="fieldDef('city')" />
+          <app-field-select [field]="fieldDef('city')" [control]="f('city')" [parent]="f('state')?.value" [waitingText]="'personal.chooseStateFirst' | translate" autocomplete="address-level2" />
+          <div class="db-error-msg" *ngIf="f('city')?.invalid && f('city')?.touched">{{ 'common.required' | translate }}</div>
+        </div>
+      </div>
+      <div class="db-form-group" style="max-width:260px">
+        <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
+        <app-field-help [field]="fieldDef('postCode')" />
+        <input class="db-input" type="text" formControlName="postCode" [placeholder]="'personal.postCodePlaceholder' | translate" autocomplete="postal-code" />
+        <div class="db-error-msg" *ngIf="f('postCode')?.invalid && f('postCode')?.touched">{{ 'common.required' | translate }}</div>
       </div>
 
       <div class="db-form-group" style="max-width:260px">
@@ -172,17 +179,21 @@
           </div>
           <div class="form-row form-row--3">
             <div class="db-form-group">
-              <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
-              <input class="db-input" type="text" formControlName="city" />
-            </div>
-            <div class="db-form-group">
-              <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
-              <input class="db-input" type="text" formControlName="postCode" />
-            </div>
-            <div class="db-form-group">
               <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
-              <input class="db-input" type="text" formControlName="country" />
+              <app-field-select [field]="fieldDef('country')" [control]="pa.get('country')" />
             </div>
+            <div class="db-form-group">
+              <label>{{ 'personal.stateLabel' | translate }} <span class="required">*</span></label>
+              <app-field-select [field]="fieldDef('state')" [control]="pa.get('state')" [parent]="pa.get('country')?.value" [waitingText]="'personal.chooseCountryFirst' | translate" />
+            </div>
+            <div class="db-form-group">
+              <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
+              <app-field-select [field]="fieldDef('city')" [control]="pa.get('city')" [parent]="pa.get('state')?.value" [waitingText]="'personal.chooseStateFirst' | translate" />
+            </div>
+          </div>
+          <div class="db-form-group" style="max-width:260px">
+            <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" formControlName="postCode" />
           </div>
           <div class="db-form-group" style="max-width:260px">
             <label>{{ 'personal.monthsAtAddressLabel' | translate }}</label>
@@ -395,19 +406,24 @@
           <input class="db-input" type="text" formControlName="street" />
         </div>
         <div class="dense-field">
+          <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
+          <app-field-help [field]="fieldDef('country')" />
+          <app-field-select [field]="fieldDef('country')" [control]="f('country')" />
+        </div>
+        <div class="dense-field">
+          <label>{{ 'personal.stateLabel' | translate }} <span class="required">*</span></label>
+          <app-field-help [field]="fieldDef('state')" />
+          <app-field-select [field]="fieldDef('state')" [control]="f('state')" [parent]="f('country')?.value" [waitingText]="'personal.chooseCountryFirst' | translate" />
+        </div>
+        <div class="dense-field">
           <label>{{ 'personal.cityLabel' | translate }} <span class="required">*</span></label>
           <app-field-help [field]="fieldDef('city')" />
-          <input class="db-input" type="text" formControlName="city" />
+          <app-field-select [field]="fieldDef('city')" [control]="f('city')" [parent]="f('state')?.value" [waitingText]="'personal.chooseStateFirst' | translate" />
         </div>
         <div class="dense-field">
           <label>{{ 'personal.postCodeLabel' | translate }} <span class="required">*</span></label>
           <app-field-help [field]="fieldDef('postCode')" />
           <input class="db-input" type="text" formControlName="postCode" />
-        </div>
-        <div class="dense-field">
-          <label>{{ 'personal.countryLabel' | translate }} <span class="required">*</span></label>
-          <app-field-help [field]="fieldDef('country')" />
-          <input class="db-input" type="text" formControlName="country" />
         </div>
         <div class="dense-field">
           <label>{{ 'personal.monthsAtAddressLabel' | translate }}</label>
@@ -424,9 +440,10 @@
           </div>
           <div class="dense-grid">
             <div class="dense-field"><label>{{ 'personal.streetLabel' | translate }}</label><input class="db-input" type="text" formControlName="street" /></div>
-            <div class="dense-field"><label>{{ 'personal.cityLabel' | translate }}</label><input class="db-input" type="text" formControlName="city" /></div>
+            <div class="dense-field"><label>{{ 'personal.countryLabel' | translate }}</label><app-field-select [field]="fieldDef('country')" [control]="pa.get('country')" /></div>
+            <div class="dense-field"><label>{{ 'personal.stateLabel' | translate }}</label><app-field-select [field]="fieldDef('state')" [control]="pa.get('state')" [parent]="pa.get('country')?.value" [waitingText]="'personal.chooseCountryFirst' | translate" /></div>
+            <div class="dense-field"><label>{{ 'personal.cityLabel' | translate }}</label><app-field-select [field]="fieldDef('city')" [control]="pa.get('city')" [parent]="pa.get('state')?.value" [waitingText]="'personal.chooseStateFirst' | translate" /></div>
             <div class="dense-field"><label>{{ 'personal.postCodeLabel' | translate }}</label><input class="db-input" type="text" formControlName="postCode" /></div>
-            <div class="dense-field"><label>{{ 'personal.countryLabel' | translate }}</label><input class="db-input" type="text" formControlName="country" /></div>
             <div class="dense-field"><label>{{ 'personal.monthsAtAddressLabel' | translate }}</label><input class="db-input" type="number" formControlName="monthsAtAddress" min="0" /></div>
           </div>
         </div>

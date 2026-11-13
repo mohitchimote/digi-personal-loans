@@ -122,3 +122,26 @@ export async function loadMasterItemFacts(
   }));
   return facts.find((f) => f.parentCode === opts.parentCode) ?? facts[0];
 }
+
+/**
+ * True when the parent item has no children of this master type at all (a country the state master has no
+ * data for yet, a state with no cities). A field cascading from it then accepts free text, so the customer
+ * is never stuck on a gap in the data. System lists always have an answer, so they are never "empty".
+ */
+export async function hasNoChildren(db: Db, master: string, parentCode: string): Promise<boolean> {
+  if (isSystemList(master)) return false;
+  const [parent] = await db.select({ id: masterItems.id }).from(masterItems)
+    .where(and(sql`${masterItems.typeCode} IN (SELECT parent_type_code FROM master_types WHERE code = ${master})`, eq(masterItems.code, parentCode))).limit(1);
+  if (!parent) return true;
+  const [child] = await db.select({ id: masterItems.id }).from(masterItems)
+    .where(and(eq(masterItems.typeCode, master), eq(masterItems.parentId, parent.id))).limit(1);
+  return !child;
+}
+
+/** The English name of a master item, or the value itself when it is not a code (free text, old records). */
+export async function masterItemNameEn(db: Db, master: string, code: string): Promise<string> {
+  if (!code) return code;
+  const [row] = await db.select({ nameEn: masterItems.nameEn }).from(masterItems)
+    .where(and(eq(masterItems.typeCode, master), eq(masterItems.code, code))).limit(1);
+  return row?.nameEn ?? code;
+}

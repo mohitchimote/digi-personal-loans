@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
+import { FieldSelectComponent } from '../../../../shared/field-select/field-select.component';
 import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
 import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
@@ -15,7 +16,7 @@ import { I18nService } from '../../../../core/i18n/i18n.service';
 @Component({
   selector: 'app-company-details',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, ApplicationAsideComponent, TranslatePipe, FieldSelectComponent],
   templateUrl: './company-details.component.html',
   styleUrl: './company-details.component.scss'
 })
@@ -25,7 +26,7 @@ export class CompanyDetailsComponent implements OnInit {
   appRef = signal('');
   readOnly = signal(false);
   /** The form definition's fields for the pick-lists on this step: they say where the options come from. */
-  fieldDefs = signal<{ purpose?: FormField; branch?: FormField; staff?: FormField }>({});
+  fieldDefs = signal<{ purpose?: FormField; branch?: FormField; staff?: FormField; industry?: FormField; country?: FormField; state?: FormField; city?: FormField }>({});
 
   constructor(
     private fb: FormBuilder,
@@ -43,9 +44,10 @@ export class CompanyDetailsComponent implements OnInit {
       industry:                  ['', Validators.required],
       yearFounded:                [null, Validators.required],
       street:   ['', Validators.required],
+      country:  ['IL', Validators.required],
+      state:    ['', Validators.required],
       city:     ['', Validators.required],
       postCode: ['', Validators.required],
-      country:  ['Israel', Validators.required],
       loanAmount: [100000, [Validators.required, Validators.min(20000), Validators.max(1000000)]],
       loanPurpose: ['', Validators.required],
       loanTerm:   [36, [Validators.required, Validators.min(6), Validators.max(84)]],
@@ -93,6 +95,10 @@ export class CompanyDetailsComponent implements OnInit {
           purpose: fieldIn(app.formSchema, 'companyDetails', 'loanPurpose'),
           branch: fieldIn(app.formSchema, 'companyDetails', 'preferredBranch'),
           staff: fieldIn(app.formSchema, 'companyDetails', 'staffName'),
+          industry: fieldIn(app.formSchema, 'companyDetails', 'industry'),
+          country: fieldIn(app.formSchema, 'companyDetails', 'country'),
+          state: fieldIn(app.formSchema, 'companyDetails', 'state'),
+          city: fieldIn(app.formSchema, 'companyDetails', 'city'),
         });
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.companyDetailsJson) {

@@ -42,6 +42,24 @@ export class FormFieldOptionsService {
     return src.valueAttribute ? this.lists.optionsBy(src.master, src.valueAttribute) : this.lists.options(src.master);
   }
 
+  /** True once the field's options have been fetched (they may still be empty: a country with no states). */
+  loaded(field: FormField | null | undefined, parentValue?: unknown): boolean {
+    if (!field) return false;
+    if (field.options?.length) return true;
+    const src = field.optionsSource;
+    if (!src) return false;
+    if (src.dependsOn) {
+      const parent = parentValue == null ? '' : String(parentValue);
+      return !!parent && this.lists.isLoaded(src.master, parent);
+    }
+    return this.lists.isLoaded(src.master);
+  }
+
+  /** True when the field is a pick-list at all (typed options or a master), as opposed to free text. */
+  isPickList(field: FormField | null | undefined): boolean {
+    return !!field && (!!field.options?.length || !!field.optionsSource);
+  }
+
   /** The name to show for a stored value, in the current language. Understands codes and the display
    * text older records hold. Falls back to the raw value so nothing renders blank. */
   label(field: FormField | null | undefined, value: unknown, parentValue?: unknown): string {
