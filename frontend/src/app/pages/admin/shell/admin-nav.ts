@@ -56,6 +56,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     labelKey: 'admin.nav.comms',
     items: [
       { route: '/admin/email-templates', labelKey: 'admin.emailTemplates', descKey: 'admin.nav.emailDesc',    icon: 'mail' },
+      { route: '/admin/letters',          labelKey: 'admin.letters',        descKey: 'admin.nav.lettersDesc',  icon: 'description' },
       { route: '/admin/faqs',            labelKey: 'admin.faqs',           descKey: 'admin.nav.faqsDesc',     icon: 'help' },
       { route: '/admin/branding',        labelKey: 'admin.branding',       descKey: 'admin.nav.brandingDesc', icon: 'palette' },
     ],

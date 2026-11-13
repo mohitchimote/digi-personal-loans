@@ -1330,6 +1330,8 @@ export const HE: Record<string, string> = {
   'admin.errLoadProducts': 'לא ניתן לטעון מוצרים.',
   'admin.errSaveProduct': 'לא ניתן לשמור את המוצר.',
   'admin.errDeleteProduct': 'לא ניתן למחוק את המוצר.',
+  'admin.letters': 'מכתבים',
+  'admin.nav.lettersDesc': 'מכתבי PDF בעברית ובאנגלית: בלוקים, תנאים ושדות, עם גרסאות.',
   'admin.emailTemplates': 'תבניות דוא"ל',
   'admin.emailTemplatesSubtitle': 'הגדירו את הודעות הדוא"ל הנשלחות למבקשים בשלבים מרכזיים של הבקשה.',
   'admin.loadingEmailTemplates': 'טוען תבניות דוא"ל…',

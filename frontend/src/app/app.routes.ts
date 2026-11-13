@@ -150,6 +150,8 @@ export const routes: Routes = [
       { path: 'mandates', loadComponent: () => import('./pages/admin/mandates/admin-mandates.component').then(m => m.AdminMandatesComponent) },
       { path: 'products', loadComponent: () => import('./pages/admin/products/admin-products.component').then(m => m.AdminProductsComponent) },
       { path: 'branding', loadComponent: () => import('./pages/admin/branding/admin-branding.component').then(m => m.AdminBrandingComponent) },
+      { path: 'letters', loadComponent: () => import('./pages/admin/letters/admin-letters.component').then(m => m.AdminLettersComponent) },
+      { path: 'letters/:key', loadComponent: () => import('./pages/admin/letters/letter-editor.component').then(m => m.LetterEditorComponent) },
       { path: 'email-templates', loadComponent: () => import('./pages/admin/email-templates/admin-email-templates.component').then(m => m.AdminEmailTemplatesComponent) },
       { path: 'form-builder', loadComponent: () => import('./pages/admin/form-builder/admin-form-builder.component').then(m => m.AdminFormBuilderComponent) },
       { path: 'workflow', loadComponent: () => import('./pages/admin/workflow-builder/admin-workflow-builder.component').then(m => m.AdminWorkflowBuilderComponent) },

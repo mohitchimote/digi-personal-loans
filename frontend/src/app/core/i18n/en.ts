@@ -1290,6 +1290,8 @@ export const EN: Record<string, string> = {
   'admin.errLoadProducts': 'Could not load products.',
   'admin.errSaveProduct': 'Could not save product.',
   'admin.errDeleteProduct': 'Could not delete product.',
+  'admin.letters': 'Letters',
+  'admin.nav.lettersDesc': 'PDF letters in English and Hebrew: blocks, conditions and fields, versioned.',
   'admin.emailTemplates': 'Email Templates',
   'admin.emailTemplatesSubtitle': 'Configure the emails sent to applicants at key stages of their application.',
   'admin.loadingEmailTemplates': 'Loading email templates…',
