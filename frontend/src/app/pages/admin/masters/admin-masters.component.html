@@ -33,14 +33,15 @@
     <div class="db-card mb-16" *ngIf="showTypeForm()">
       <div class="card-header"><h3>{{ (editingTypeCode() ? 'admin.masters.editMaster' : 'admin.masters.newMaster') | translate }}</h3></div>
       <div class="form-grid">
-        <div class="db-form-group" *ngIf="!editingTypeCode()">
-          <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="text" maxlength="64" [(ngModel)]="typeDraft.code" placeholder="marital_status" />
-          <small class="text-muted">{{ 'admin.masters.typeCodeHint' | translate }}</small>
+        <div class="db-form-group" *ngIf="editingTypeCode()">
+          <label>{{ 'admin.org.code' | translate }}</label>
+          <div class="code-readonly"><code>{{ typeDraft.code }}</code></div>
+          <small class="text-muted">{{ 'admin.masters.codeFixed' | translate }}</small>
         </div>
         <div class="db-form-group">
           <label>{{ 'admin.wf.labelEn' | translate }} <span class="required">*</span></label>
           <input class="db-input" type="text" [(ngModel)]="typeDraft.labelEn" />
+          <small class="text-muted" *ngIf="!editingTypeCode()">{{ 'admin.masters.codeAuto' | translate }}</small>
         </div>
         <div class="db-form-group">
           <label>{{ 'admin.wf.labelHe' | translate }} <span class="required">*</span></label>
@@ -64,7 +65,7 @@
       <h4 class="mt-16">{{ 'admin.masters.attributes' | translate }}</h4>
       <p class="text-muted" style="font-size:0.85rem">{{ 'admin.masters.attributesHint' | translate }}</p>
       <div class="attr-row" *ngFor="let a of typeDraft.attributeDefs; let i = index">
-        <input class="db-input" type="text" [(ngModel)]="a.key" [placeholder]="'admin.wf.key' | translate" />
+        <code class="attr-key" [title]="'admin.masters.codeFixed' | translate">{{ a.key || '—' }}</code>
         <input class="db-input" type="text" [(ngModel)]="a.label.en" [placeholder]="'admin.wf.labelEn' | translate" />
         <input class="db-input" type="text" dir="rtl" [(ngModel)]="a.label.he" [placeholder]="'admin.wf.labelHe' | translate" />
         <select class="db-input" [(ngModel)]="a.kind">
@@ -101,14 +102,15 @@
       <!-- Item form -->
       <div class="unit-form" *ngIf="showItemForm()">
         <div class="form-grid">
-          <div class="db-form-group">
-            <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
-            <input class="db-input" type="text" maxlength="64" [(ngModel)]="itemDraft.code" [disabled]="editingItemId() !== null" />
-            <small class="text-muted" *ngIf="editingItemId() !== null">{{ 'admin.masters.itemCodeLocked' | translate }}</small>
+          <div class="db-form-group" *ngIf="editingItemId() !== null">
+            <label>{{ 'admin.org.code' | translate }}</label>
+            <div class="code-readonly"><code>{{ itemDraft.code }}</code></div>
+            <small class="text-muted">{{ 'admin.masters.codeFixed' | translate }}</small>
           </div>
           <div class="db-form-group">
             <label>{{ 'admin.wf.labelEn' | translate }} <span class="required">*</span></label>
             <input class="db-input" type="text" [(ngModel)]="itemDraft.nameEn" />
+            <small class="text-muted" *ngIf="editingItemId() === null">{{ 'admin.masters.codeAuto' | translate }}</small>
           </div>
           <div class="db-form-group">
             <label>{{ 'admin.wf.labelHe' | translate }} <span class="required">*</span></label>

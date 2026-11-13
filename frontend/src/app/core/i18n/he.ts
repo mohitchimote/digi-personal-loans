@@ -1715,4 +1715,6 @@ export const HE: Record<string, string> = {
   'admin.masters.searchParent': 'חיפוש…',
   'common.previous': 'הקודם',
   'common.next': 'הבא',
+  'admin.masters.codeAuto': 'הקוד נוצר מהשם באנגלית בעת השמירה.',
+  'admin.masters.codeFixed': 'נוצר אוטומטית ולא ניתן לשינוי, כך שרשומות אחרות נשארות תקינות.',
 };

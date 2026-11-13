@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { and, asc, count, eq, inArray, or, like, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { masterTypes, masterItems } from "../db/schema";
@@ -9,8 +9,8 @@ import { AppError } from "../lib/errors";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import {
-  CODE_RE, ITEM_CODE_RE, attributeDefsSchema, validateAttributes, typeCreatesCycle, parseJson,
-  type AttributeDef,
+  attributeDefsSchema, validateAttributes, typeCreatesCycle, parseJson, generateCode, generateAttributeKey, normaliseName,
+  CODE_RE, type AttributeDef,
 } from "../lib/masters";
 
 // Masters: define-once reference data. Admin CRUD lives under /api/auth/admin/masters; the read-only
@@ -21,19 +21,47 @@ mastersAdmin.use("*", requireAuth, requireRole("ADMIN"));
 
 type Db = ReturnType<typeof getDb>;
 
+// Attribute definitions arrive without keys when new: the server derives a camelCase key from the
+// English label (keys, like codes, are never typed by hand).
+const attributeInput = z.array(z.object({
+  key: z.string().optional(),
+  label: z.object({ en: z.string().trim().min(1), he: z.string().trim().min(1) }),
+  kind: z.enum(["text", "number", "boolean"]),
+  required: z.boolean().optional(),
+})).max(20);
+
+function finaliseAttributes(input: z.infer<typeof attributeInput>, existing: AttributeDef[]): AttributeDef[] {
+  // Keys already on the master are kept as they are (stored item values refer to them); new rows get one.
+  const existingKeys = new Set(existing.map((d) => d.key));
+  const taken = new Set<string>();
+  for (const d of input) if (d.key && existingKeys.has(d.key)) taken.add(d.key);
+  const out: AttributeDef[] = input.map((d) => {
+    if (d.key && existingKeys.has(d.key)) return { ...d, key: d.key };
+    const key = generateAttributeKey(d.label.en, taken);
+    taken.add(key);
+    return { ...d, key };
+  });
+  const parsed = attributeDefsSchema.safeParse(out);
+  if (!parsed.success) throw new AppError(parsed.error.issues[0]?.message ?? "Invalid extra fields.");
+  return parsed.data;
+}
+
+const NO_TYPED_CODE = "Codes are generated automatically from the English name and can't be set by hand.";
+
 const typeBase = z.object({
   labelEn: z.string().trim().min(1),
   labelHe: z.string().trim().min(1),
   description: z.string().trim().nullable().optional(),
   parentTypeCode: z.string().regex(CODE_RE).nullable().optional(),
   parentRequired: z.boolean().optional(),
-  attributeDefs: attributeDefsSchema.optional(),
+  attributeDefs: attributeInput.optional(),
   sortOrder: z.number().int().optional(),
 });
-const typeCreate = typeBase.extend({ code: z.string().regex(CODE_RE, "Use lowercase letters, digits, _ or -.") });
+const typeCreate = typeBase.extend({ code: z.string().optional() });
 
 const itemSchema = z.object({
-  code: z.string().regex(ITEM_CODE_RE, "Use letters, digits, _ . or -."),
+  // Create: must be absent (generated). Update: optional, and if present must equal the existing code.
+  code: z.string().optional(),
   nameEn: z.string().trim().min(1),
   nameHe: z.string().trim().min(1),
   parentId: z.number().int().nullable().optional(),
@@ -71,13 +99,16 @@ mastersAdmin.get("/types", async (c) => {
 mastersAdmin.post("/types", zValidator("json", typeCreate), async (c) => {
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
+  if (body.code) throw new AppError(NO_TYPED_CODE);
   const all = await db.select().from(masterTypes);
-  if (all.some((t) => t.code === body.code)) throw new AppError("A master with that code already exists.");
+  const taken = new Set(all.map((t) => t.code));
+  if (all.some((t) => normaliseName(t.labelEn) === normaliseName(body.labelEn))) throw new AppError("A master with that name already exists.");
+  const code = generateCode(body.labelEn, (x) => taken.has(x), { lower: true, fallback: "MASTER" });
   if (body.parentTypeCode && !all.some((t) => t.code === body.parentTypeCode)) throw new AppError("Unknown parent master.");
   const [saved] = await db.insert(masterTypes).values({
-    code: body.code, labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null,
+    code, labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null,
     parentTypeCode: body.parentTypeCode ?? null, parentRequired: body.parentRequired ?? true,
-    attributeDefs: JSON.stringify(body.attributeDefs ?? []),
+    attributeDefs: JSON.stringify(finaliseAttributes(body.attributeDefs ?? [], [])),
     sortOrder: body.sortOrder ?? 0, isSystem: false, createdAt: new Date().toISOString(),
   }).returning();
   await recordAudit(db, { eventType: "MASTER_TYPE_CREATED", subjectType: "MasterType", subjectId: saved.code, detail: saved.labelEn, ...actorOf(c) });
@@ -105,7 +136,9 @@ mastersAdmin.put("/types/:code", zValidator("json", typeBase), async (c) => {
   const [saved] = await db.update(masterTypes).set({
     labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null, parentTypeCode,
     parentRequired: body.parentRequired ?? existing.parentRequired,
-    attributeDefs: body.attributeDefs ? JSON.stringify(body.attributeDefs) : existing.attributeDefs,
+    attributeDefs: body.attributeDefs
+      ? JSON.stringify(finaliseAttributes(body.attributeDefs, parseJson<AttributeDef[]>(existing.attributeDefs, [])))
+      : existing.attributeDefs,
     sortOrder: body.sortOrder ?? existing.sortOrder,
   }).where(eq(masterTypes.code, existing.code)).returning();
   await recordAudit(db, { eventType: "MASTER_TYPE_UPDATED", subjectType: "MasterType", subjectId: saved.code, detail: saved.labelEn, ...actorOf(c) });
@@ -194,11 +227,25 @@ mastersAdmin.post("/types/:code/items", zValidator("json", itemSchema), async (c
   const db = getDb(c.env.DB);
   const type = await getType(db, c.req.param("code"));
   const body = c.req.valid("json");
-  const [dup] = await db.select().from(masterItems).where(and(eq(masterItems.typeCode, type.code), eq(masterItems.code, body.code))).limit(1);
-  if (dup) throw new AppError("An item with that code already exists in this master.");
+  if (body.code) throw new AppError(NO_TYPED_CODE);
   const prepared = await prepareItem(db, type, body);
+
+  // Code: from the English name, unique within the master. Only rows whose code shares the base can
+  // clash, so that is all we load. The same rows reveal a duplicate: the same name (ignoring case,
+  // spacing and punctuation) under the same parent is a duplicate, not a new item.
+  const base = generateCode(body.nameEn, () => false);
+  const likeBase = base.replace(/[\\%_]/g, (m) => `\\${m}`) + "\\_%";
+  const related = await db.select({ code: masterItems.code, nameEn: masterItems.nameEn, parentId: masterItems.parentId }).from(masterItems)
+    .where(and(eq(masterItems.typeCode, type.code), or(eq(masterItems.code, base), sql`${masterItems.code} LIKE ${likeBase} ESCAPE '\\'`)));
+  const wanted = normaliseName(body.nameEn);
+  if (related.some((r) => (r.parentId ?? null) === prepared.parentId && normaliseName(r.nameEn) === wanted)) {
+    throw new AppError(`"${body.nameEn.trim()}" already exists in this master.`);
+  }
+  const taken = new Set(related.map((r) => r.code));
+  const code = generateCode(body.nameEn, (x) => taken.has(x));
+
   const [saved] = await db.insert(masterItems).values({
-    typeCode: type.code, code: body.code, nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId,
+    typeCode: type.code, code, nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId,
     sortOrder: body.sortOrder ?? 0, active: body.active ?? true, attributes: prepared.attributes,
     createdAt: new Date().toISOString(),
   }).returning();
@@ -214,7 +261,7 @@ mastersAdmin.put("/items/:id", zValidator("json", itemSchema), async (c) => {
   const type = await getType(db, existing.typeCode);
   const body = c.req.valid("json");
   // The code is what other records store, so it can't be edited after creation.
-  if (body.code !== existing.code) throw new AppError("An item's code can't be changed - other records refer to it. Add a new item instead.");
+  if (body.code !== undefined && body.code !== existing.code) throw new AppError("An item's code can't be changed - other records refer to it. Add a new item instead.");
   const prepared = await prepareItem(db, type, body);
   const [saved] = await db.update(masterItems).set({
     nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId, sortOrder: body.sortOrder ?? existing.sortOrder,

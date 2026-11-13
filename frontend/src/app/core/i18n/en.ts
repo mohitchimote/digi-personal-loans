@@ -1675,4 +1675,6 @@ export const EN: Record<string, string> = {
   'admin.masters.searchParent': 'Search…',
   'common.previous': 'Previous',
   'common.next': 'Next',
+  'admin.masters.codeAuto': 'The code is generated from the English name when you save.',
+  'admin.masters.codeFixed': 'Generated automatically; can\'t be changed, so other records stay valid.',
 };

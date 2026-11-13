@@ -35,3 +35,5 @@
 .parent-filter { flex: 1; min-width: 220px; }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 12px; }
 .mt-8 { margin-top: 8px; display: inline-flex; }
+.code-readonly { padding: 9px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.05); }
+.attr-key { padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.05); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
