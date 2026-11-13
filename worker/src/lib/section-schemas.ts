@@ -231,9 +231,9 @@ const directDebitSchema = z
 const reviewSubmitSchema = z
   .object({
     agreedToTerms: z.literal(true),
-    agreedToPrivacyPolicy: z.literal(true),
-    electronicSignature: z.string().min(2),
-    submittedAt: z.string(),
+    agreedToPrivacy: z.literal(true),
+    agreedToCredit: z.literal(true),
+    signature: z.string().min(2),
   })
   .strict();
 

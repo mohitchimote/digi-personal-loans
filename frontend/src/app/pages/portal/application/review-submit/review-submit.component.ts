@@ -66,7 +66,7 @@ export class ReviewSubmitComponent implements OnInit {
     if (!app) return;
 
     this.appSvc.saveSection(app.applicationRef, 'reviewSubmit',
-      { agreedToTerms: true, agreedToPrivacyPolicy: true, electronicSignature: this.signature, submittedAt: new Date().toISOString() },
+      { agreedToTerms: this.agreedToTerms, agreedToPrivacy: this.agreedToPrivacy, agreedToCredit: this.agreedToCredit, signature: this.signature },
       this.identity.userId!
     ).subscribe({
       next: () => {
