@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:dev2": "cd ../frontend && npm run build && cd ../worker && wrangler d1 migrations apply digibank2 --remote -c wrangler.dev2.toml && wrangler deploy -c wrangler.dev2.toml",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply digibank --local",
     "db:migrate:remote": "wrangler d1 migrations apply digibank --remote",
