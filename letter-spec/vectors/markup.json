@@ -1,0 +1,167 @@
+{
+  "description": "Parsing rich text into styled runs. `runs` is what a renderer draws; `error`, when present, is a substring of the message and the runs before the problem are not specified, so only `error` is compared when it is given. See README, Rich text.",
+  "vectors": [
+    {
+      "name": "plain text is one run",
+      "input": "hello",
+      "runs": [
+        {
+          "text": "hello",
+          "b": false,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "bold, italic and underline",
+      "input": "a <b>b</b> <i>c</i> <u>d</u>",
+      "runs": [
+        {
+          "text": "a ",
+          "b": false,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": "b",
+          "b": true,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": " ",
+          "b": false,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": "c",
+          "b": false,
+          "i": true,
+          "u": false
+        },
+        {
+          "text": " ",
+          "b": false,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": "d",
+          "b": false,
+          "i": false,
+          "u": true
+        }
+      ]
+    },
+    {
+      "name": "styles nest and combine",
+      "input": "<b>x<i>y</i>z</b>",
+      "runs": [
+        {
+          "text": "x",
+          "b": true,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": "y",
+          "b": true,
+          "i": true,
+          "u": false
+        },
+        {
+          "text": "z",
+          "b": true,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "entities become the characters",
+      "input": "Tom &amp; Jerry &lt;3 &gt;",
+      "runs": [
+        {
+          "text": "Tom & Jerry <3 >",
+          "b": false,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "a lone ampersand is a literal ampersand",
+      "input": "R&D",
+      "runs": [
+        {
+          "text": "R&D",
+          "b": false,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "a newline stays a newline in the text",
+      "input": "a\nb",
+      "runs": [
+        {
+          "text": "a\nb",
+          "b": false,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "a field token is not markup",
+      "input": "Rate {{loan.annualRate}} <b>{{loan.amount}}</b>",
+      "runs": [
+        {
+          "text": "Rate {{loan.annualRate}} ",
+          "b": false,
+          "i": false,
+          "u": false
+        },
+        {
+          "text": "{{loan.amount}}",
+          "b": true,
+          "i": false,
+          "u": false
+        }
+      ]
+    },
+    {
+      "name": "a tag left open is an error",
+      "input": "<b>x",
+      "error": "never closed"
+    },
+    {
+      "name": "tags closed out of order are an error",
+      "input": "<b><i>x</b></i>",
+      "error": "does not match"
+    },
+    {
+      "name": "a closing tag with nothing open is an error",
+      "input": "x</b>",
+      "error": "does not match"
+    },
+    {
+      "name": "an unknown tag is an error",
+      "input": "<p>x</p>",
+      "error": "must be written &lt;"
+    },
+    {
+      "name": "a lone less-than is an error",
+      "input": "1 < 2",
+      "error": "must be written &lt;"
+    },
+    {
+      "name": "opening the same style twice is an error",
+      "input": "<b><b>x</b></b>",
+      "error": "already open"
+    }
+  ]
+}

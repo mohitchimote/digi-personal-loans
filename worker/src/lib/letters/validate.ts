@@ -1,4 +1,5 @@
 import { metaOf } from "./rules";
+import { parseMarkup, plainText } from "./markup";
 import type { Dictionary, FieldType, LetterDocument, LetterNode, Operator, Rule, SavedRule } from "./types";
 
 // Checks a letter template before it can be saved as ready or published: every field it names exists, every
@@ -118,10 +119,15 @@ export function validateLetter(doc: LetterDocument, dictionary: Dictionary, save
       }
       if (meta?.type === "list") add("error", "token.list", `"${path}" is a list; use a repeat block to print its entries.`, nodeId);
     }
+    for (const [lang, t] of [["English", en], ["Hebrew", he]] as const) {
+      const m = parseMarkup(t);
+      if (m.error) add("error", "text.markup", `${lang} text: ${m.error}.`, nodeId);
+    }
     const key = (ts: { path: string }[]) => [...new Set(ts.map((t) => t.path))].sort().join("|");
     if (key(inEn) !== key(inHe)) add("warning", "text.tokensDiffer", "The English and Hebrew text do not use the same fields.", nodeId);
-    if (!en.trim() && he.trim()) add("warning", "text.emptyEn", "The English text is empty.", nodeId);
-    if (en.trim() && !he.trim()) add("warning", "text.emptyHe", "The Hebrew text is empty.", nodeId);
+    const pe = plainText(en).trim(), ph = plainText(he).trim();
+    if (!pe && ph) add("warning", "text.emptyEn", "The English text is empty.", nodeId);
+    if (pe && !ph) add("warning", "text.emptyHe", "The Hebrew text is empty.", nodeId);
   }
 
   // ---- nodes

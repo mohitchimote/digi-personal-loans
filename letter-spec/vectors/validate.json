@@ -811,6 +811,90 @@
       "expect": [
         "error:rule.opType"
       ]
+    },
+    {
+      "name": "markup that is fine",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "<b>Bold</b> and <i><u>both</u></i>",
+              "he": "<b>Bold</b> and <i><u>both</u></i>"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": []
+    },
+    {
+      "name": "a tag left open (in both languages)",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "<b>Bold",
+              "he": "<b>Bold"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:text.markup",
+        "error:text.markup"
+      ]
+    },
+    {
+      "name": "an unknown tag (in both languages)",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "<span>x</span>",
+              "he": "<span>x</span>"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:text.markup",
+        "error:text.markup"
+      ]
+    },
+    {
+      "name": "text that is only markup counts as empty",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "Hello",
+              "he": "<b></b>"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:text.emptyHe"
+      ]
     }
   ]
 }

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { formatValue } from "../src/lib/letters/formats";
 import { evalRule, type EvalContext } from "../src/lib/letters/rules";
 import { resolveLetter } from "../src/lib/letters/resolve";
+import { parseMarkup } from "../src/lib/letters/markup";
 import { validateLetter } from "../src/lib/letters/validate";
 import type { Dictionary, Lang, LetterDocument, Rule, SavedRule } from "../src/lib/letters/types";
 
@@ -74,6 +75,17 @@ describe("letter-spec validate", () => {
     it(v.name, () => {
       const issues = validateLetter(v.document as LetterDocument, dictionary, (v.savedRules ?? []) as SavedRule[], v.knownImageIds ? { knownImageIds: new Set<string>(v.knownImageIds) } : {});
       expect(issues.map((i) => `${i.severity}:${i.code}`).sort()).toEqual(v.expect);
+    });
+  }
+});
+
+describe("letter-spec markup", () => {
+  const file = readJson("vectors/markup.json");
+  for (const v of file.vectors) {
+    it(v.name, () => {
+      const r = parseMarkup(v.input);
+      if (v.error) expect(r.error ?? "").toContain(v.error);
+      else { expect(r.error).toBeUndefined(); expect(r.runs).toEqual(v.runs); }
     });
   }
 });

@@ -1,4 +1,5 @@
-import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { parseMarkup, type Run } from "../letters/markup";
+import { PDFDocument, degrees, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import bidiFactory from "bidi-js";
 
@@ -138,4 +139,131 @@ export function drawTable(page: PDFPage, fonts: LetterFonts, rows: { label: stri
     y -= rowH;
   }
   return y;
+}
+
+
+// ---- styled text: bold, italic and underline runs, wrapped, reordered for Hebrew and drawn per run
+
+/** One character with its style. */
+export interface SChar { ch: string; b: boolean; i: boolean; u: boolean }
+export type Align = "start" | "center" | "end";
+
+/** Rich text (letters/markup.ts) as a list of styled characters. Text with broken markup is shown as plain text. */
+export function styledChars(markup: string): SChar[] {
+  const p = parseMarkup(markup);
+  const runs: Run[] = p.error ? [{ text: markup, b: false, i: false, u: false }] : p.runs;
+  return runs.flatMap((r) => [...r.text].map((ch) => ({ ch, b: r.b, i: r.i, u: r.u })));
+}
+
+const supported = new WeakMap<PDFFont, Set<number>>();
+function drawableChar(ch: string, font: PDFFont): string {
+  let set = supported.get(font);
+  if (!set) { set = new Set(font.getCharacterSet()); supported.set(font, set); }
+  const cp = ch.codePointAt(0)!;
+  return cp === 0x20 || set.has(cp) ? ch : " ";
+}
+
+const fontOf = (fonts: LetterFonts, bold: boolean) => (bold ? fonts.bold : fonts.regular);
+
+/** Width of characters as drawn: each stretch in one weight is measured with that weight's face. */
+export function widthOfStyled(chars: SChar[], fonts: LetterFonts, size: number, baseBold = false): number {
+  let w = 0, buf = "", bold = false;
+  const flush = () => { if (buf) w += fontOf(fonts, bold).widthOfTextAtSize(buf, size); buf = ""; };
+  for (const c of chars) {
+    const b = baseBold || c.b;
+    if (b !== bold) { flush(); bold = b; }
+    buf += drawableChar(c.ch, fontOf(fonts, b));
+  }
+  flush();
+  return w;
+}
+
+/** Greedy word wrap of styled text. A newline is a hard break; a word longer than the line is split. Trailing spaces are dropped. */
+export function wrapStyled(chars: SChar[], fonts: LetterFonts, size: number, maxWidth: number, baseBold = false): SChar[][] {
+  const lines: SChar[][] = [];
+  let line: SChar[] = [];
+  const trim = (l: SChar[]) => { let e = l.length; while (e > 0 && l[e - 1].ch === " ") e--; return l.slice(0, e); };
+  const w = (l: SChar[]) => widthOfStyled(trim(l), fonts, size, baseBold);
+  const words: SChar[][] = [];
+  let cur: SChar[] = [];
+  for (const c of chars) {
+    if (c.ch === "\n") { words.push(cur, [c]); cur = []; continue; }
+    cur.push(c);
+    if (c.ch === " ") { words.push(cur); cur = []; }
+  }
+  words.push(cur);
+  for (const word of words) {
+    if (word.length === 1 && word[0].ch === "\n") { lines.push(trim(line)); line = []; continue; }
+    if (!word.length) continue;
+    if (line.length === 0 || w([...line, ...word]) <= maxWidth) { line.push(...word); continue; }
+    lines.push(trim(line)); line = [];
+    let rest = word;
+    while (w(rest) > maxWidth && rest.length > 1) {
+      let k = rest.length - 1;
+      while (k > 1 && w(rest.slice(0, k)) > maxWidth) k--;
+      lines.push(rest.slice(0, k)); rest = rest.slice(k);
+    }
+    line = rest;
+  }
+  lines.push(trim(line));
+  return lines;
+}
+
+/** Characters of a line in the order they are drawn left to right, with their styles carried along and brackets mirrored. */
+export function visualStyled(line: SChar[], font: PDFFont, base: "ltr" | "rtl"): SChar[] {
+  if (!line.length) return line;
+  const text = line.map((c) => drawableChar(c.ch, font)).join("");
+  // A string of equal length per character is needed to index by position; astral characters are not used in letters.
+  if ([...text].length !== line.length) return line;
+  const chars = [...text];
+  const levels = bidi.getEmbeddingLevels(text, base);
+  for (const [i, ch] of bidi.getMirroredCharactersMap(text, levels.levels)) chars[i] = ch;
+  const idx = chars.map((_, i) => i);
+  for (const [start, end] of bidi.getReorderSegments(text, levels)) {
+    for (let a = start, b = end; a < b; a++, b--) [idx[a], idx[b]] = [idx[b], idx[a]];
+  }
+  return idx.map((i) => ({ ...line[i], ch: chars[i] }));
+}
+
+export interface DrawRun { text: string; bold: boolean; italic: boolean; underline: boolean; width: number }
+
+/** Splits a drawing-ordered line into runs of one script and one style, each ready for the font library (see embeddedRuns). */
+export function styledRuns(visual: SChar[], fonts: LetterFonts, size: number, baseBold = false): DrawRun[] {
+  const runs: { chars: SChar[]; script: "H" | "L" | null; b: boolean; i: boolean; u: boolean }[] = [];
+  let cur: (typeof runs)[number] | null = null;
+  for (const c of visual) {
+    const script = HEBREW.test(c.ch) ? "H" : LATIN.test(c.ch) ? "L" : null;
+    const b = baseBold || c.b;
+    const breaks = cur && ((script && cur.script && script !== cur.script) || cur.b !== b || cur.i !== c.i || cur.u !== c.u);
+    if (!cur || breaks) { cur = { chars: [], script: null, b, i: c.i, u: c.u }; runs.push(cur); }
+    cur.chars.push(c);
+    if (script && !cur.script) cur.script = script;
+  }
+  return runs.map((r) => {
+    const f = fontOf(fonts, r.b);
+    const raw = r.chars.map((c) => c.ch).join("");
+    const text = r.script === "H" ? [...raw].reverse().join("") : raw;
+    return { text, bold: r.b, italic: r.i, underline: r.u, width: f.widthOfTextAtSize(text, size) };
+  });
+}
+
+export interface StyledLineOpts { lang: Lang; size: number; color?: RGB; bold?: boolean; align?: Align }
+
+/** Draws one wrapped line at `x`..`x + width`, aligned (start is the right-hand side in Hebrew). Returns its drawn width. */
+export function drawStyledLine(page: PDFPage, fonts: LetterFonts, line: SChar[], x: number, y: number, width: number, o: StyledLineOpts): number {
+  const runs = styledRuns(visualStyled(line, fonts.regular, o.lang === "he" ? "rtl" : "ltr"), fonts, o.size, o.bold);
+  const total = runs.reduce((a, r) => a + r.width, 0);
+  const align = o.align ?? "start";
+  const left = align === "center" ? x + (width - total) / 2 : (align === "start") === (o.lang === "en") ? x : x + width - total;
+  let cx = left;
+  const color = o.color ?? rgb(0.1, 0.12, 0.16);
+  for (const r of runs) {
+    const font = fontOf(fonts, r.bold);
+    if (r.text.trim() !== "" || r.underline) {
+      page.drawText(r.text, { x: cx, y, size: o.size, font, color, ...(r.italic ? { ySkew: degrees(12) } : {}) });
+      if (r.underline) page.drawLine({ start: { x: cx, y: y - o.size * 0.12 }, end: { x: cx + r.width, y: y - o.size * 0.12 }, thickness: Math.max(0.5, o.size / 18), color });
+    }
+    cx += r.width;
+  }
+  return total;
 }

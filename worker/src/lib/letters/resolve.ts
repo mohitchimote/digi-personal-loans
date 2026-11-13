@@ -15,6 +15,9 @@ export interface ResolveInput {
   today: string;
 }
 
+/** Literal `&`, `<` and `>` in rich text are written as entities; a value filled into a token is escaped the same way. */
+export const escapeMarkup = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const TOKEN = /\{\{\s*([\w.]+)(?:\|(\w+))?\s*\}\}/g;
 
 /** Page numbers are only known when the PDF is laid out, so these tokens pass through untouched. */
@@ -25,7 +28,8 @@ function fillTokens(text: string, ctx: EvalContext, lang: Lang, missing: Set<str
     if (PAGE_TOKENS.has(path)) return all;
     const value = getPath(path, ctx);
     if (isMissing(value)) { missing.add(path); return ""; }
-    return formatValue(value, metaOf(path, ctx), fmt, lang);
+    // Text carries <b>/<i>/<u> markup, so a value must never be able to add or break any.
+    return escapeMarkup(formatValue(value, metaOf(path, ctx), fmt, lang));
   });
 }
 
@@ -44,9 +48,13 @@ export function resolveLetter(input: ResolveInput, lang: Lang): ResolvedLetter {
     for (const n of nodes) {
       const text = (b: { en: string; he: string }) => fillTokens(b[lang], ctx, lang, missing);
       switch (n.t) {
-        case "heading": out.push({ type: "heading", text: text(n.text) }); break;
-        case "paragraph": out.push({ type: "paragraph", text: text(n.text) }); break;
-        case "list": out.push({ type: "list", items: n.items.map(text) }); break;
+        case "heading": out.push({ type: "heading", text: text(n.text), ...(n.level && n.level !== 1 ? { level: n.level } : {}), ...(n.align && n.align !== "start" ? { align: n.align } : {}), ...(n.indent ? { indent: n.indent } : {}) }); break;
+        case "paragraph": out.push({ type: "paragraph", text: text(n.text), ...(n.align && n.align !== "start" ? { align: n.align } : {}), ...(n.indent ? { indent: n.indent } : {}) }); break;
+        case "list": {
+          const levels = n.items.map((i) => i.level ?? 0);
+          out.push({ type: "list", items: n.items.map(text), ...(n.ordered ? { ordered: true as const } : {}), ...(levels.some((l) => l > 0) ? { levels } : {}) });
+          break;
+        }
         case "table": out.push({ type: "table", rows: n.rows.map((r) => ({ label: text(r.label), value: text(r.value) })) }); break;
         case "image": out.push({ type: "image", ...(n.imageId ? { imageId: n.imageId } : {}), ...(n.kind ? { kind: n.kind } : {}), alt: text(n.alt) }); break;
         case "signature": out.push({ type: "signature", ...(n.imageId ? { imageId: n.imageId } : {}), caption: text(n.caption) }); break;

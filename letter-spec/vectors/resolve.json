@@ -2604,6 +2604,142 @@
           ]
         }
       }
+    },
+    {
+      "name": "rich text: markup passes through, values are escaped, layout fields only when not default",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "h2",
+            "t": "heading",
+            "level": 2,
+            "align": "center",
+            "text": {
+              "en": "Terms",
+              "he": "Terms"
+            }
+          },
+          {
+            "id": "h1",
+            "t": "heading",
+            "text": {
+              "en": "Plain heading",
+              "he": "Plain heading"
+            }
+          },
+          {
+            "id": "p",
+            "t": "paragraph",
+            "align": "end",
+            "indent": 2,
+            "text": {
+              "en": "<b>Amount:</b> {{loan.amount}} for <i>{{product.name}}</i>",
+              "he": "<b>Amount:</b> {{loan.amount}} for <i>{{product.name}}</i>"
+            }
+          },
+          {
+            "id": "p0",
+            "t": "paragraph",
+            "align": "start",
+            "indent": 0,
+            "text": {
+              "en": "Defaults are left out",
+              "he": "Defaults are left out"
+            }
+          },
+          {
+            "id": "l",
+            "t": "list",
+            "ordered": true,
+            "items": [
+              {
+                "en": "One",
+                "he": "אחד"
+              },
+              {
+                "en": "Sub <u>point</u>",
+                "he": "נקודה",
+                "level": 1
+              },
+              {
+                "en": "Two",
+                "he": "שניים",
+                "level": 0
+              }
+            ]
+          },
+          {
+            "id": "l2",
+            "t": "list",
+            "items": [
+              {
+                "en": "Bullet",
+                "he": "תבליט"
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "loan": {
+          "amount": 150000
+        },
+        "product": {
+          "name": {
+            "en": "Fast <Cash> & Co",
+            "he": "מזומן & שות'"
+          }
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "heading",
+              "text": "Terms",
+              "level": 2,
+              "align": "center"
+            },
+            {
+              "type": "heading",
+              "text": "Plain heading"
+            },
+            {
+              "type": "paragraph",
+              "text": "<b>Amount:</b> ₪150,000 for <i>Fast &lt;Cash&gt; &amp; Co</i>",
+              "align": "end",
+              "indent": 2
+            },
+            {
+              "type": "paragraph",
+              "text": "Defaults are left out"
+            },
+            {
+              "type": "list",
+              "items": [
+                "One",
+                "Sub <u>point</u>",
+                "Two"
+              ],
+              "ordered": true,
+              "levels": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "type": "list",
+              "items": [
+                "Bullet"
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

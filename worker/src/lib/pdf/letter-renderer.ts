@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
-import { drawLine, drawable, embedLetterFonts, wrapLines, type Lang, type LetterFonts } from "./bilingual";
+import { drawStyledLine, embedLetterFonts, styledChars, wrapStyled, type Align, type Lang, type LetterFonts, type SChar } from "./bilingual";
 import type { Block, ResolvedLetter } from "../letters/types";
 
 // Draws resolved letters (letters/resolve.ts) as one PDF: the English letter, then the Hebrew one. It only
@@ -41,10 +41,14 @@ function imageSize(img: PDFImage): { w: number; h: number } {
   return { w: img.width * k, h: img.height * k };
 }
 
-/** Lines a block needs, and the height they take, so a page can be filled and a header measured. */
-function textLines(c: Ctx, text: string, size: number, bold: boolean, width: number): string[] {
-  return text.split("\n").flatMap((p) => (p.trim() === "" ? [""] : wrapLines(drawable(p, font(c, bold)), font(c, bold), size, width)));
+/** Wrapped, styled lines of a piece of rich text. */
+function layout(c: Ctx, markup: string, size: number, bold: boolean, width: number): SChar[][] {
+  return wrapStyled(styledChars(markup), c.fonts, size, width, bold);
 }
+
+const STEP = 18;
+/** The block's area for a given indent: it grows from the start side (left in English, right in Hebrew). */
+const region = (lang: Lang, indent = 0) => ({ x: lang === "he" ? MARGIN : MARGIN + indent * STEP, w: CONTENT_W - indent * STEP });
 
 interface Flow { page: PDFPage; y: number; top: number; bottom: number; pages: PDFPage[]; newPage: () => PDFPage }
 
@@ -54,37 +58,44 @@ function ensure(flow: Flow, height: number): void {
 
 async function drawBlock(c: Ctx, flow: Flow, b: Block): Promise<void> {
   const he = c.lang === "he";
-  const style = (size: number, bold = false, color = INK) => ({ lang: c.lang, size, bold, color });
+  const opts = (size: number, o: { bold?: boolean; color?: typeof INK; align?: Align } = {}) => ({ lang: c.lang, size, bold: o.bold, color: o.color ?? INK, align: o.align });
   switch (b.type) {
     case "heading": {
-      const size = 15, lh = lineHeight(size);
-      const lines = textLines(c, b.text, size, true, CONTENT_W);
-      flow.y -= 6; ensure(flow, lh * lines.length + GAP);
-      for (const l of lines) { drawLine(flow.page, c.fonts, l, MARGIN, flow.y - size, CONTENT_W, style(size, true, BLUE)); flow.y -= lh; }
+      const size = b.level === 3 ? 11.5 : b.level === 2 ? 13.5 : 16, lh = lineHeight(size);
+      const r = region(c.lang, b.indent);
+      const lines = layout(c, b.text, size, true, r.w);
+      flow.y -= 6; ensure(flow, lh * Math.min(lines.length, 2) + GAP);
+      for (const l of lines) { ensure(flow, lh); drawStyledLine(flow.page, c.fonts, l, r.x, flow.y - size, r.w, opts(size, { bold: true, color: BLUE, align: b.align })); flow.y -= lh; }
       flow.y -= GAP / 2;
       break;
     }
     case "paragraph": {
       const size = 10.5, lh = lineHeight(size);
-      const lines = textLines(c, b.text, size, false, CONTENT_W);
+      const r = region(c.lang, b.indent);
+      const lines = layout(c, b.text, size, false, r.w);
       ensure(flow, Math.min(lh * lines.length, lh * 3));
-      for (const l of lines) { ensure(flow, lh); drawLine(flow.page, c.fonts, l, MARGIN, flow.y - size, CONTENT_W, style(size)); flow.y -= lh; }
+      for (const l of lines) { ensure(flow, lh); drawStyledLine(flow.page, c.fonts, l, r.x, flow.y - size, r.w, opts(size, { align: b.align })); flow.y -= lh; }
       flow.y -= GAP;
       break;
     }
     case "list": {
-      const size = 10.5, lh = lineHeight(size), indent = 14;
-      for (const item of b.items) {
-        const lines = textLines(c, item, size, false, CONTENT_W - indent);
+      const size = 10.5, lh = lineHeight(size), marker = 16;
+      const counters = [0, 0, 0];
+      b.items.forEach((item, k) => {
+        const level = Math.min(2, b.levels?.[k] ?? 0);
+        // A new item at a shallower level restarts the numbering below it.
+        counters[level]++; for (let d = level + 1; d < counters.length; d++) counters[d] = 0;
+        const label = b.ordered ? `${counters[level]}.` : level === 0 ? "•" : "–";
+        const r = region(c.lang, level);
+        const lines = layout(c, item, size, false, r.w - marker);
         ensure(flow, lh * Math.min(lines.length, 2));
         lines.forEach((l, i) => {
           ensure(flow, lh);
-          const x = he ? MARGIN : MARGIN + indent;
-          if (i === 0) drawLine(flow.page, c.fonts, "•", he ? MARGIN + CONTENT_W - 8 : MARGIN + 2, flow.y - size, 8, { ...style(size), lang: "en" });
-          drawLine(flow.page, c.fonts, l, x, flow.y - size, CONTENT_W - indent, style(size));
+          if (i === 0) drawStyledLine(flow.page, c.fonts, styledChars(label), he ? r.x + r.w - marker : r.x, flow.y - size, marker - 3, { ...opts(size), align: he ? "end" : "start" } as never);
+          drawStyledLine(flow.page, c.fonts, l, he ? r.x : r.x + marker, flow.y - size, r.w - marker, opts(size));
           flow.y -= lh;
         });
-      }
+      });
       flow.y -= GAP;
       break;
     }
@@ -92,19 +103,16 @@ async function drawBlock(c: Ctx, flow: Flow, b: Block): Promise<void> {
       const size = 10.5, lh = lineHeight(size), rowPad = 5;
       const labelW = CONTENT_W * 0.6, valueW = CONTENT_W - labelW - 10;
       for (const r of b.rows) {
-        const labelLines = textLines(c, r.label, size, false, labelW);
-        const valueLines = textLines(c, r.value, size, true, valueW);
+        const labelLines = layout(c, r.label, size, false, labelW);
+        const valueLines = layout(c, r.value, size, true, valueW);
         const rows = Math.max(labelLines.length, valueLines.length), h = rows * lh + rowPad * 2;
         ensure(flow, h);
         flow.page.drawLine({ start: { x: MARGIN, y: flow.y }, end: { x: MARGIN + CONTENT_W, y: flow.y }, thickness: 0.5, color: RULE });
         const labelX = he ? MARGIN + CONTENT_W - labelW : MARGIN;
         const valueX = he ? MARGIN : MARGIN + labelW + 10;
-        labelLines.forEach((l, i) => drawLine(flow.page, c.fonts, l, labelX, flow.y - rowPad - size - i * lh, labelW, style(size)));
+        labelLines.forEach((l, i) => drawStyledLine(flow.page, c.fonts, l, labelX, flow.y - rowPad - size - i * lh, labelW, opts(size)));
         // Values sit at the far edge of their column: right in English, left in Hebrew.
-        valueLines.forEach((l, i) => {
-          const w = c.fonts.bold.widthOfTextAtSize(drawable(l, c.fonts.bold), size);
-          drawLine(flow.page, c.fonts, l, he ? valueX : valueX + valueW - w, flow.y - rowPad - size - i * lh, he ? valueW : w, style(size, true));
-        });
+        valueLines.forEach((l, i) => drawStyledLine(flow.page, c.fonts, l, valueX, flow.y - rowPad - size - i * lh, valueW, opts(size, { bold: true, align: "end" })));
         flow.y -= h;
       }
       flow.page.drawLine({ start: { x: MARGIN, y: flow.y }, end: { x: MARGIN + CONTENT_W, y: flow.y }, thickness: 0.5, color: RULE });
@@ -126,7 +134,7 @@ async function drawBlock(c: Ctx, flow: Flow, b: Block): Promise<void> {
         const lx = he ? MARGIN + CONTENT_W - lw : MARGIN;
         flow.page.drawLine({ start: { x: lx, y: flow.y - 3 }, end: { x: lx + lw, y: flow.y - 3 }, thickness: 0.6, color: MUTED });
         flow.y -= 6;
-        if (caption) { drawLine(flow.page, c.fonts, caption, MARGIN, flow.y - size, CONTENT_W, style(size, false, MUTED)); flow.y -= lh; }
+        if (caption) { for (const l of layout(c, caption, size, false, CONTENT_W)) { drawStyledLine(flow.page, c.fonts, l, MARGIN, flow.y - size, CONTENT_W, opts(size, { color: MUTED })); flow.y -= lh; } }
       }
       flow.y -= GAP;
       break;
@@ -138,7 +146,7 @@ async function drawBlock(c: Ctx, flow: Flow, b: Block): Promise<void> {
 function zoneHeight(c: Ctx, blocks: Block[]): number {
   let h = 0;
   for (const b of blocks) {
-    if (b.type === "paragraph" || b.type === "heading") h += textLines(c, b.text, b.type === "heading" ? 13 : 9, b.type === "heading", CONTENT_W).length * lineHeight(b.type === "heading" ? 13 : 9) + 2;
+    if (b.type === "paragraph" || b.type === "heading") h += layout(c, b.text, b.type === "heading" ? 13 : 9, b.type === "heading", CONTENT_W).length * lineHeight(b.type === "heading" ? 13 : 9) + 2;
     else if (b.type === "image") { const img = c.embedded.get(b.imageId ?? ""); h += (img ? imageSize(img).h : 0) + 4; }
     else if (b.type === "list") h += b.items.length * lineHeight(9);
   }
@@ -155,10 +163,10 @@ async function drawZone(c: Ctx, page: PDFPage, blocks: Block[], top: number, tok
       if (img) { const d = imageSize(img); page.drawImage(img, { x: he ? MARGIN + CONTENT_W - d.w : MARGIN, y: y - d.h, width: d.w, height: d.h }); y -= d.h + 4; }
     } else if (b.type === "paragraph" || b.type === "heading") {
       const size = b.type === "heading" ? 13 : 9, bold = b.type === "heading";
-      for (const l of textLines(c, fill(b.text), size, bold, CONTENT_W)) { drawLine(page, c.fonts, l, MARGIN, y - size, CONTENT_W, { lang: c.lang, size, bold, color: bold ? BLUE : MUTED }); y -= lineHeight(size); }
+      for (const l of layout(c, fill(b.text), size, bold, CONTENT_W)) { drawStyledLine(page, c.fonts, l, MARGIN, y - size, CONTENT_W, { lang: c.lang, size, bold, color: bold ? BLUE : MUTED, align: b.align }); y -= lineHeight(size); }
       y -= 2;
     } else if (b.type === "list") {
-      for (const i of b.items) { drawLine(page, c.fonts, fill(i), MARGIN, y - 9, CONTENT_W, { lang: c.lang, size: 9, color: MUTED }); y -= lineHeight(9); }
+      for (const i of b.items) { drawStyledLine(page, c.fonts, styledChars(fill(i)), MARGIN, y - 9, CONTENT_W, { lang: c.lang, size: 9, color: MUTED }); y -= lineHeight(9); }
     }
   }
 }

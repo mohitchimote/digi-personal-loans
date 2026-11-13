@@ -48,10 +48,19 @@ export const savedRule = z.object({ id: z.string(), name: z.string(), rule }).st
 
 // ---- document nodes
 
+export const ALIGNS = ["start", "center", "end"] as const;
+export type Align = (typeof ALIGNS)[number];
+export const MAX_INDENT = 4, MAX_LIST_LEVEL = 2;
+const align = z.enum(ALIGNS);
+const indent = z.number().int().min(0).max(MAX_INDENT);
+/** A bullet or numbered point: bilingual text and how far it is indented (0 to 2). */
+export const listItem = bilingual.extend({ level: z.number().int().min(0).max(MAX_LIST_LEVEL).optional() }).strict();
+export type ListItem = z.infer<typeof listItem>;
+
 export type LetterNode =
-  | { id: string; t: "heading"; text: Bilingual }
-  | { id: string; t: "paragraph"; text: Bilingual }
-  | { id: string; t: "list"; items: Bilingual[] }
+  | { id: string; t: "heading"; text: Bilingual; level?: 1 | 2 | 3; align?: Align; indent?: number }
+  | { id: string; t: "paragraph"; text: Bilingual; align?: Align; indent?: number }
+  | { id: string; t: "list"; ordered?: boolean; items: ListItem[] }
   | { id: string; t: "table"; rows: { label: Bilingual; value: Bilingual }[] }
   | { id: string; t: "image"; imageId?: string; kind?: string; alt: Bilingual }
   | { id: string; t: "signature"; imageId?: string; caption: Bilingual }
@@ -61,9 +70,9 @@ export type LetterNode =
 
 export const node: z.ZodType<LetterNode> = z.lazy(() =>
   z.discriminatedUnion("t", [
-    z.object({ id: z.string(), t: z.literal("heading"), text: bilingual }).strict(),
-    z.object({ id: z.string(), t: z.literal("paragraph"), text: bilingual }).strict(),
-    z.object({ id: z.string(), t: z.literal("list"), items: z.array(bilingual) }).strict(),
+    z.object({ id: z.string(), t: z.literal("heading"), text: bilingual, level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(), align: align.optional(), indent: indent.optional() }).strict(),
+    z.object({ id: z.string(), t: z.literal("paragraph"), text: bilingual, align: align.optional(), indent: indent.optional() }).strict(),
+    z.object({ id: z.string(), t: z.literal("list"), ordered: z.boolean().optional(), items: z.array(listItem) }).strict(),
     z.object({ id: z.string(), t: z.literal("table"), rows: z.array(z.object({ label: bilingual, value: bilingual }).strict()) }).strict(),
     z.object({ id: z.string(), t: z.literal("image"), imageId: z.string().optional(), kind: z.string().optional(), alt: bilingual }).strict(),
     z.object({ id: z.string(), t: z.literal("signature"), imageId: z.string().optional(), caption: bilingual }).strict(),
@@ -96,9 +105,9 @@ export interface Dictionary { formatVersion: 1; fields: Record<string, FieldMeta
 // ---- resolved output (what renderers draw)
 
 export type Block =
-  | { type: "heading"; text: string }
-  | { type: "paragraph"; text: string }
-  | { type: "list"; items: string[] }
+  | { type: "heading"; text: string; level?: 1 | 2 | 3; align?: Align; indent?: number }
+  | { type: "paragraph"; text: string; align?: Align; indent?: number }
+  | { type: "list"; items: string[]; ordered?: true; levels?: number[] }
   | { type: "table"; rows: { label: string; value: string }[] }
   | { type: "image"; imageId?: string; kind?: string; alt: string }
   | { type: "signature"; imageId?: string; caption: string };
