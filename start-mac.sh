@@ -5,8 +5,10 @@ set -uo pipefail
 export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
 export PATH="$JAVA_HOME/bin:/opt/homebrew/bin:$PATH"
 
-SERVICES_NAMES=(api-gateway auth-service application-service affordability-service product-service document-service notification-service workflow-service)
-SERVICES_PORTS=(8080 8081 8082 8083 8084 8085 8086 8089)
+# service-registry (Eureka) must be first: the gateway routes via lb://<service> and every service registers with it.
+# rule-service and integration-service go before the services that call them (see start-backend.ps1).
+SERVICES_NAMES=(service-registry rule-service integration-service api-gateway auth-service application-service affordability-service product-service document-service notification-service workflow-service)
+SERVICES_PORTS=(8761 8087 8088 8080 8081 8082 8083 8084 8085 8086 8089)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"

@@ -82,6 +82,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
+            "proxyConfig": "proxy.conf.json",
             "allowedHosts": ["exquisite-hasty-issuing.ngrok-free.dev", "ispersonalloans.tcsdigilend.com"]
           },
           "configurations": {
