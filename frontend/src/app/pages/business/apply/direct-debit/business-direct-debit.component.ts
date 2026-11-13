@@ -6,9 +6,8 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
-import { FieldOption } from '../../../../core/services/form-builder.service';
-import { I18nService } from '../../../../core/i18n/i18n.service';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
+import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 
 /** Business equivalent of DirectDebitComponent — repayment account capture is identical in shape,
  * just simplified to a single business account (no joint-applicant account-source picker). */
@@ -26,12 +25,13 @@ export class BusinessDirectDebitComponent implements OnInit {
   readOnly = signal(false);
   prefilledFromBank = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
+  /** The form definition's bank and branch fields: they say where the options come from. */
+  fieldDefs = signal<{ bank?: FormField; branch?: FormField }>({});
   /** Set when a bank is filled in for the customer: pick that bank's first branch once its branches arrive. */
   private wantDefaultBranch = false;
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router,
-              private lists: MasterListsService, private i18n: I18nService) {
-    this.lists.load(['bank']);
+              private opts: FormFieldOptionsService) {
     this.form = this.fb.group({
       accountHolderName: ['', Validators.required],
       bankCode:          ['', Validators.required],
@@ -41,13 +41,10 @@ export class BusinessDirectDebitComponent implements OnInit {
       confirmAuthorisation: [false, Validators.requiredTrue],
     });
 
-    this.form.get('bankCode')!.valueChanges.subscribe((code) => {
-      this.form.patchValue({ branchCode: '' }, { emitEvent: false });
-      if (code) this.lists.loadChildren('bank_branch', code);
-    });
+    this.form.get('bankCode')!.valueChanges.subscribe(() => this.form.patchValue({ branchCode: '' }, { emitEvent: false }));
     // Once a filled-in bank's branches have arrived, choose the first (what the old list did).
     effect(() => {
-      const branches = this.lists.bankBranchOptions(this.form.value.bankCode);
+      const branches = this.opts.options(this.fieldDefs().branch, this.form.value.bankCode);
       if (this.wantDefaultBranch && branches.length && !this.form.value.branchCode) {
         this.wantDefaultBranch = false;
         this.form.patchValue({ branchCode: branches[0].value }, { emitEvent: false });
@@ -55,17 +52,17 @@ export class BusinessDirectDebitComponent implements OnInit {
     });
   }
 
-  get selectedBank(): { code: string } | undefined {
-    return this.lists.items('bank').find(b => b.code === this.form.value.bankCode);
+  get selectedBank(): FieldOption | undefined {
+    return this.bankOptions().find(b => b.value === this.form.value.bankCode);
   }
 
-  bankOptions(): FieldOption[] { return this.lists.options('bank'); }
-  branchOptions(): FieldOption[] { return this.lists.bankBranchOptions(this.form.value.bankCode); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  bankOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().bank); }
+  branchOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().branch, this.form.value.bankCode); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
   /** Names are stored on the mandate in English, as before. */
   private bankDisplayName(code: string): string {
-    return this.lists.items('bank').find(b => b.code === code)?.name.en || '';
+    return this.bankOptions().find(b => b.value === code)?.label.en || '';
   }
 
   get selectedBranchName(): string {
@@ -78,12 +75,15 @@ export class BusinessDirectDebitComponent implements OnInit {
     this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.fieldDefs.set({
+          bank: fieldIn(app.formSchema, 'directDebit', 'bankCode'),
+          branch: fieldIn(app.formSchema, 'directDebit', 'branchCode'),
+        });
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (this.readOnly()) this.form.disable();
         if (app.directDebitJson) {
           const data = JSON.parse(app.directDebitJson);
           this.form.patchValue(data);
-          if (data.bankCode) this.lists.loadChildren('bank_branch', data.bankCode);
           return;
         }
 
@@ -91,16 +91,15 @@ export class BusinessDirectDebitComponent implements OnInit {
         const bankConnection = JSON.parse(app.businessBankConnectionJson);
         const company = app.companyDetailsJson ? JSON.parse(app.companyDetailsJson) : {};
         if (bankConnection.connected) {
-          const match = this.lists.bankByName(bankConnection.bankName || '');
+          const match = this.opts.findByName(this.fieldDefs().bank, bankConnection.bankName || '');
           this.form.patchValue({
             accountHolderName: company.companyName || this.identity.companyName || '',
-            bankCode: match?.code || '',
+            bankCode: match?.value || '',
             branchCode: '',
             accountNumber: String(Math.floor(10000000 + Math.random() * 89999999)),
           });
           this.wantDefaultBranch = !!match;
-          if (match) this.lists.loadChildren('bank_branch', match.code);
-          this.prefilledFromBank.set(true);
+                this.prefilledFromBank.set(true);
         }
       }
     });

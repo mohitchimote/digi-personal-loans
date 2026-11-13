@@ -41,6 +41,9 @@ const optionsSourceSchema = z
   .object({
     master: z.string().min(1),
     dependsOn: z.object({ fieldKey: z.string() }).strict().optional(),
+    // Store this attribute of the chosen item instead of its code. For a bank's branches the stored value
+    // is the branch number ("800"), which is what a direct-debit mandate needs, not the item code ("10-800").
+    valueAttribute: z.string().optional(),
   })
   .strict();
 

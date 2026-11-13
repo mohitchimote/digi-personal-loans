@@ -1735,4 +1735,6 @@ export const HE: Record<string, string> = {
   'admin.formMasterDependsOn': 'להציג רק פריטים תחת הבחירה שנעשתה ב',
   'admin.formMasterDependsNone': 'ללא - להציג את כל הפריטים',
   'admin.formMasterNoParentField': 'כדי ליצור מדרג, הוסיפו שדה קודם בקטע זה שמשתמש בנתון היסוד האב, והציבו את השדה הזה אחריו.',
+  'admin.formMasterStore': 'הערך שנשמר בבקשה',
+  'admin.formMasterStoreCode': 'קוד הפריט (מומלץ)',
 };

@@ -21,12 +21,16 @@ const OPTION_TYPES: FieldType[] = ['select', 'radio'];
 const VALIDATION_TYPES: FieldType[] = ['text', 'number', 'textarea'];
 
 // Deliberately narrow, hand-picked list — NOT a generic "any existing field can carry options"
-// mechanism. These four personalDetails fields are plain enumerable choices today (hardcoded TS
+// mechanism. These are plain enumerable choices (pick-lists whose values live in the Masters, or a
+// list typed here) with no other special behavior; they were originally four personalDetails fields, plain enumerable choices (hardcoded TS
 // arrays in core/models/index.ts) with no other special behavior, unlike e.g. nationalId (live
 // verification) or previousAddresses (a FormArray) — see the architecture-review discussion this
 // came out of. Extending this list to another existing field is a deliberate decision, not a
 // side effect of adding a new field type.
-const EXISTING_OPTION_FIELD_KEYS = ['maritalStatus', 'nationality', 'preferredBranch', 'staffName'];
+const EXISTING_OPTION_FIELD_KEYS = [
+  'maritalStatus', 'nationality', 'preferredBranch', 'staffName',
+  'employmentStatus', 'employmentDuration', 'loanPurpose', 'bankCode', 'branchCode',
+];
 
 // Extracted out of AdminFormBuilderComponent so the same label/tooltip/help-text/visibility/
 // options/validation editor can be reused by both the List view's inline expanded row and the
@@ -97,11 +101,23 @@ export class FieldDetailPanelComponent implements OnChanges, OnInit {
       .sort((a, b) => a.order - b.order);
   }
 
+  /** Extra fields the chosen master's items carry (a branch's number, an address ...): one can be stored instead of the code. */
+  masterAttributes(): { key: string; label: string }[] {
+    const t = this.masterTypes.find(x => x.code === this.field.optionsSource?.master);
+    return (t?.attributeDefs ?? []).map(d => ({ key: d.key, label: this.i18n.lang() === 'he' ? d.label.he : d.label.en }));
+  }
+
+  setValueAttribute(key: string): void {
+    if (!this.field.optionsSource) return;
+    const { valueAttribute: _drop, ...rest } = this.field.optionsSource;
+    this.field.optionsSource = key ? { ...rest, valueAttribute: key } : rest;
+    this.changed.emit();
+  }
+
   setMasterDependsOn(fieldKey: string): void {
     if (!this.field.optionsSource) return;
-    this.field.optionsSource = fieldKey
-      ? { master: this.field.optionsSource.master, dependsOn: { fieldKey } }
-      : { master: this.field.optionsSource.master };
+    const { dependsOn: _drop, ...rest } = this.field.optionsSource;
+    this.field.optionsSource = fieldKey ? { ...rest, dependsOn: { fieldKey } } : rest;
     this.changed.emit();
   }
 

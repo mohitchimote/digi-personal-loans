@@ -1695,4 +1695,6 @@ export const EN: Record<string, string> = {
   'admin.formMasterDependsOn': 'Show only items under the choice made in',
   'admin.formMasterDependsNone': 'None - offer every item',
   'admin.formMasterNoParentField': 'To cascade, add an earlier field in this section that uses the parent master, and put this field after it.',
+  'admin.formMasterStore': 'Value saved with the application',
+  'admin.formMasterStoreCode': 'The item\'s code (recommended)',
 };

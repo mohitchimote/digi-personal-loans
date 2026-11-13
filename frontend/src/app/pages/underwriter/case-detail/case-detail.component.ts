@@ -1,6 +1,7 @@
 import { MasterListsService } from '../../../core/services/master-lists.service';
-import { FieldOption } from '../../../core/services/form-builder.service';
-import { MasterLabelPipe } from '../../../shared/pipes/master-label.pipe';
+import { FormFieldOptionsService } from '../../../core/services/form-field-options.service';
+import { FieldOption, fieldIn } from '../../../core/services/form-builder.service';
+import { FieldLabelPipe } from '../../../shared/pipes/field-label.pipe';
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +25,7 @@ type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVe
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent, WorkflowActionsComponent, MasterLabelPipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent, WorkflowActionsComponent, FieldLabelPipe],
   templateUrl: './case-detail.component.html',
   styleUrl: './case-detail.component.scss'
 })
@@ -198,8 +199,10 @@ export class CaseDetailComponent implements OnInit {
     return (this.approvedAmount ?? 0) > limit;
   }
 
-  /** Master lists for labels and the employment-status dropdown shown while editing. */
-  readonly lists = inject(MasterListsService);
+  /** What a form field offers, as the application's form definition says. */
+  readonly opts = inject(FormFieldOptionsService);
+  /** Only the document checklist goes to a master directly: expected documents are not a form field. */
+  private readonly lists = inject(MasterListsService);
 
   constructor(
     private route: ActivatedRoute,
@@ -522,7 +525,8 @@ export class CaseDetailComponent implements OnInit {
   }
 
   uploadedTypeLabel(type: string): string {
-    return this.lists.label('document_type', type);
+    const hit = this.lists.items('document_type').find(i => i.code === type);
+    return hit ? (this.i18n.lang() === 'he' ? hit.name.he || hit.name.en : hit.name.en) : type;
   }
 
   docLabel(type: string): string {
@@ -553,9 +557,10 @@ export class CaseDetailComponent implements OnInit {
 
   staffContactHint(): string {
     const p = this.personal;
-    this.lists.load(['branch', 'branch_staff']);
-    if (p.staffName) return this.lists.label('branch_staff', p.staffName);
-    if (p.preferredBranch) return this.lists.label('branch', p.preferredBranch);
+    const schema = this.application()?.formSchema;
+    const branchField = fieldIn(schema, 'personalDetails', 'preferredBranch');
+    if (p.staffName) return this.opts.label(fieldIn(schema, 'personalDetails', 'staffName'), p.staffName, p.preferredBranch);
+    if (p.preferredBranch) return this.opts.label(branchField, p.preferredBranch);
     return '';
   }
 
@@ -593,8 +598,9 @@ export class CaseDetailComponent implements OnInit {
     return this.notes().filter(n => n.section === sectionKey);
   }
 
-  statusOptions(): FieldOption[] { return this.lists.options('employment_status'); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  private statusField() { return fieldIn(this.application()?.formSchema, 'incomeEmployment', 'employmentStatus'); }
+  statusOptions(): FieldOption[] { return this.opts.options(this.statusField()); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
   isEditing(section: string): boolean {
     return this.editingSection() === section;
@@ -605,8 +611,7 @@ export class CaseDetailComponent implements OnInit {
     this.editBuffer = JSON.parse(JSON.stringify(current || {}));
     // Older records hold the status as display text; show it as the matching choice.
     if (section === 'incomeEmployment' && this.editBuffer.employmentStatus) {
-      this.lists.load(['employment_status']);
-      this.editBuffer.employmentStatus = this.lists.normalise('employment_status', this.editBuffer.employmentStatus) ?? this.editBuffer.employmentStatus;
+      this.editBuffer.employmentStatus = this.opts.normalise(this.statusField(), this.editBuffer.employmentStatus) ?? this.editBuffer.employmentStatus;
     }
   }
 

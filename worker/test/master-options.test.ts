@@ -59,6 +59,13 @@ describe("masterSourceProblems", () => {
     ]);
     expect(p[0]).toMatch(/no parent master/);
   });
+  it("flags a stored attribute the master does not have", () => {
+    const withAttr = (key: string) => masterSourceProblems(
+      formVersionSchemaSchema.parse(schemaOf([field("b", 1, { optionsSource: { master: "bank_branch", valueAttribute: key } })])),
+      new Map([["bank_branch", { parentTypeCode: null, attributeKeys: ["branchCode"] }]]));
+    expect(withAttr("branchCode")).toEqual([]);
+    expect(withAttr("nope")[0]).toMatch(/no extra field/);
+  });
   it("flags a non select/radio custom field", () => {
     expect(check([field("t", 1, { type: "text", optionsSource: { master: "country" } })])[0]).toMatch(/select and radio/);
   });
@@ -70,6 +77,10 @@ describe("masterValueProblem", () => {
     masterValueProblem({ item: active, value: "IL-HA", previous: undefined, dependsOn: false, dependsOnValue: undefined, ...o });
   it("accepts an active item", () => expect(run({})).toBeNull());
   it("rejects an unknown code", () => expect(run({ item: null })).toMatch(/not a valid choice/));
+  it("never blocks a value that is unchanged from what was saved, even older display text", () => {
+    expect(run({ item: null, value: "Married", previous: "Married" })).toBeNull();
+    expect(run({ item: null, value: "Married", previous: "Single" })).toMatch(/not a valid choice/);
+  });
   it("rejects a newly chosen inactive item but keeps an unchanged one", () => {
     const off = { active: false, parentCode: "IL" };
     expect(run({ item: off })).toMatch(/no longer available/);

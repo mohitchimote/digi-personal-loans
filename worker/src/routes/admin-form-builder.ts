@@ -6,13 +6,15 @@ import { getDb } from "../db/client";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { AppError } from "../lib/errors";
 import { success } from "../lib/api-response";
-import { FORM_KEYS, isFormKey } from "../lib/form-schema-types";
+import { FORM_KEYS, isFormKey, type FormKey } from "../lib/form-schema-types";
+import { applyMasterSources } from "../lib/form-master-sources";
 import {
   createDraftFrom,
   discardDraft,
   getPublishedVersion,
   getVersionById,
   listVersions,
+  parseSchema,
   publishVersion,
   updateDraft,
 } from "../lib/form-versions";
@@ -101,6 +103,30 @@ formBuilderAdmin.delete("/versions/:id", async (c) => {
   const db = getDb(c.env.DB);
   await discardDraft(db, id);
   return success(c, "Draft discarded.", null);
+});
+
+// Brings a form's published definition up to date with the masters: each pick-list field takes its options
+// from its master (lib/form-master-sources.ts). Creates a draft from the published version, applies the
+// sources, and publishes it as a new version; a field an admin already configured is never overridden.
+// Idempotent: when nothing needs changing no version is created.
+formBuilderAdmin.post("/forms/:formKey/apply-master-sources", async (c) => {
+  const formKey = c.req.param("formKey");
+  requireKnownFormKey(formKey);
+  const db = getDb(c.env.DB);
+  const published = await getPublishedVersion(db, formKey as FormKey);
+  if (!published) throw new AppError("No published version for this form yet.", 404);
+  const { schema, changes } = applyMasterSources(formKey as FormKey, parseSchema(published));
+  if (changes.length === 0) return success(c, "Already up to date.", { changes });
+  const authUser = c.get("authUser");
+  const draft = await createDraftFrom(db, formKey as FormKey, published.id, authUser.email);
+  try {
+    await updateDraft(db, draft.id, { schemaJson: JSON.stringify(schema), changeNote: `Options now come from masters (${changes.length} field${changes.length === 1 ? "" : "s"})` });
+    const version = await publishVersion(db, draft.id, authUser.email);
+    return success(c, `Published as v${version.version}.`, { version: version.version, changes });
+  } catch (e) {
+    await discardDraft(db, draft.id).catch(() => undefined); // do not leave a half-made draft behind
+    throw e;
+  }
 });
 
 // Convenience for the Angular wizard preview panel — the currently-published version's parsed

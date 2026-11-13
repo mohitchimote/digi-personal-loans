@@ -7,7 +7,7 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { reconcileStoredValue } from '../../../../shared/master-options';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -123,10 +123,10 @@ export class PersonalDetailsComponent implements OnInit {
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
-              private notifications: NotificationService, private lists: MasterListsService) {
+              private notifications: NotificationService, private opts: FormFieldOptionsService) {
     this.customFields = this.fb.group({});
     // Re-run whenever a master list arrives: the saved record may be waiting on it (see reconcileLegacyValues).
-    effect(() => { this.mastersInUse().forEach((m) => this.lists.options(m)); this.reconcileLegacyValues(); });
+    effect(() => { this.reconcileFields().forEach((f) => this.opts.options(f.def, f.parent)); this.reconcileLegacyValues(); });
     this.form = this.fb.group({
       firstName:    ['', Validators.required],
       lastName:     ['', Validators.required],
@@ -336,7 +336,6 @@ export class PersonalDetailsComponent implements OnInit {
         const personalDetailsSection = app.formSchema?.sections?.find((s: any) => s.key === 'personalDetails');
         const allFields: FormField[] = personalDetailsSection?.fields ?? [];
         this.allFieldDefs.set(allFields);
-        this.lists.load(this.mastersInUse());
         this.sectionHeaders.set(personalDetailsSection?.sectionHeaders ?? []);
         this.constants = app.formSchema?.constants ?? [];
         this.staticValues = this.buildStaticValues(app);
@@ -369,27 +368,22 @@ export class PersonalDetailsComponent implements OnInit {
     return this.allFieldDefs().find((f) => f.key === key);
   }
 
-  /** Which master each of these existing fields reads when the Form Builder has not pointed it elsewhere. */
-  private static readonly DEFAULT_MASTER: Record<string, string> = {
-    nationality: 'nationality',
-    maritalStatus: 'marital_status',
-    preferredBranch: 'branch',
-    staffName: 'branch_staff',
-  };
-
-  /** Options for one of the existing pick-list fields (nationality/maritalStatus/preferredBranch).
-   * Order of precedence: a list the admin typed in the Form Builder, then a master the admin chose
-   * there, then the field's default master. Stored values are the master items' codes. */
-  private optionsFor(key: string): FieldOption[] {
+  /** Options for a pick-list field, as its form definition says: a list typed in the Form Builder, or a
+   * master the definition points at. This screen never names a master. A cascading field (staff, which
+   * depends on the branch) is given the value of the field it depends on. */
+  private optionsOf(key: string): FieldOption[] {
     const def = this.fieldDef(key);
-    if (def?.options?.length) return def.options;
-    return this.lists.options(def?.optionsSource?.master ?? PersonalDetailsComponent.DEFAULT_MASTER[key]);
+    const dep = def?.optionsSource?.dependsOn?.fieldKey ?? def?.optionsDependOn?.fieldKey;
+    return this.opts.options(def, dep ? this.f(dep)?.value : undefined);
   }
 
-  /** Masters this screen needs, for loading and for the legacy-value mapping below. */
-  private mastersInUse(): string[] {
-    return ['nationality', 'maritalStatus', 'preferredBranch', 'staffName']
-      .map((k) => this.fieldDef(k)?.optionsSource?.master ?? PersonalDetailsComponent.DEFAULT_MASTER[k]);
+  /** The pick-list fields whose saved values may need mapping to codes, with the value each depends on. */
+  private reconcileFields(): { def: FormField | undefined; parent: unknown }[] {
+    return ['nationality', 'maritalStatus', 'preferredBranch', 'staffName'].map((key) => {
+      const def = this.fieldDef(key);
+      const dep = def?.optionsSource?.dependsOn?.fieldKey ?? def?.optionsDependOn?.fieldKey;
+      return { def, parent: dep ? this.f(dep)?.value : undefined };
+    });
   }
 
   /** Records saved before these fields used masters hold display text ("Single", "Israeli", a branch
@@ -410,17 +404,9 @@ export class PersonalDetailsComponent implements OnInit {
     fix(this.f('staffName'), this.staffOptionsForBranch());
   }
 
-  nationalityOptions(): FieldOption[] {
-    return this.optionsFor('nationality');
-  }
-
-  maritalStatusOptions(): FieldOption[] {
-    return this.optionsFor('maritalStatus');
-  }
-
-  branchOptions(): FieldOption[] {
-    return this.optionsFor('preferredBranch');
-  }
+  nationalityOptions(): FieldOption[] { return this.optionsOf('nationality'); }
+  maritalStatusOptions(): FieldOption[] { return this.optionsOf('maritalStatus'); }
+  branchOptions(): FieldOption[] { return this.optionsOf('preferredBranch'); }
 
   optionLabel(opt: FieldOption): string {
     return opt.label[this.i18n.lang()] || opt.label.en;
@@ -500,19 +486,9 @@ export class PersonalDetailsComponent implements OnInit {
     return this.numberOfApplicants() === 2;
   }
 
-  /** Staff the customer can name at the chosen branch. A Form Builder dependency map wins when the admin
-   * set one (a configured-but-incomplete mapping reads as "nothing valid yet", never "everyone");
-   * otherwise it is the Branch Staff master's items under that branch. */
+  /** Staff the customer can name at the chosen branch; the form definition says where they come from. */
   staffOptionsForBranch(): FieldOption[] {
-    const staffField = this.fieldDef('staffName');
-    const branch = this.f('preferredBranch')?.value;
-    if (staffField?.optionsDependOn) {
-      const allowedCodes = staffField.optionsDependOn.map[branch] ?? [];
-      const byCode = new Map((staffField.options ?? []).map((o) => [o.value, o]));
-      return allowedCodes.map((c) => byCode.get(c)).filter((o): o is FieldOption => !!o);
-    }
-    if (staffField?.options?.length) return [];
-    return branch ? this.lists.optionsUnder(staffField?.optionsSource?.master ?? PersonalDetailsComponent.DEFAULT_MASTER['staffName'], branch) : [];
+    return this.optionsOf('staffName');
   }
 
   onBranchChange(): void {

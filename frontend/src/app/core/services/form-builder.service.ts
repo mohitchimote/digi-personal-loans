@@ -36,6 +36,13 @@ export interface OptionsDependOn {
 export interface OptionsSource {
   master: string;
   dependsOn?: { fieldKey: string };
+  /** Store this attribute of the chosen item instead of its code (a bank branch's number). */
+  valueAttribute?: string;
+}
+
+/** Finds a field in a form definition (an application's `formSchema`), or undefined. */
+export function fieldIn(schema: FormVersionSchema | null | undefined, section: string, key: string): FormField | undefined {
+  return schema?.sections?.find((s) => s.key === section)?.fields?.find((f) => f.key === key);
 }
 
 // --- Visibility condition engine — mirrors worker/src/lib/form-schema-types.ts. Kept in sync

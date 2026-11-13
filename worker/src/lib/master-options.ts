@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { getDb } from "../db/client";
 import { masterItems, masterTypes } from "../db/schema";
 import { AppError } from "./errors";
@@ -13,7 +13,7 @@ type Db = ReturnType<typeof getDb>;
  * Checked when a draft is saved and again at publish (masters can change in between). */
 export function masterSourceProblems(
   schema: FormVersionSchema,
-  types: ReadonlyMap<string, { parentTypeCode: string | null }>,
+  types: ReadonlyMap<string, { parentTypeCode: string | null; attributeKeys?: readonly string[] }>,
 ): string[] {
   const problems: string[] = [];
   for (const section of schema.sections) {
@@ -26,6 +26,9 @@ export function masterSourceProblems(
       if (!type) { problems.push(`${where}: the master "${src.master}" does not exist.`); continue; }
       if (f.type && f.kind === "custom" && f.type !== "select" && f.type !== "radio") {
         problems.push(`${where}: only select and radio fields can take their options from a master.`);
+      }
+      if (src.valueAttribute && !(type.attributeKeys ?? []).includes(src.valueAttribute)) {
+        problems.push(`${where}: "${src.master}" has no extra field "${src.valueAttribute}" to store.`);
       }
       if (src.dependsOn) {
         const trigger = byKey.get(src.dependsOn.fieldKey);
@@ -59,8 +62,11 @@ export function masterValueProblem(args: {
   dependsOnValue: unknown;
 }): string | null {
   const { item, value, previous, dependsOn, dependsOnValue } = args;
+  // Keeping what was already saved never blocks an edit, even if it is older display text that is not
+  // an item code (records saved before the field used a master) or an item since deactivated.
+  if (previous != null && previous !== "" && String(previous) === value) return null;
   if (!item) return "is not a valid choice";
-  if (!item.active && String(previous ?? "") !== value) return "is no longer available";
+  if (!item.active) return "is no longer available";
   if (dependsOn) {
     const parent = dependsOnValue == null ? "" : String(dependsOnValue);
     if (!parent) return "needs the field it depends on to be chosen first";
@@ -71,19 +77,43 @@ export function masterValueProblem(args: {
 
 export async function assertMasterSources(db: Db, schema: FormVersionSchema): Promise<void> {
   if (!schema.sections.some((s) => s.fields.some((f) => f.optionsSource))) return;
-  const rows = await db.select({ code: masterTypes.code, parentTypeCode: masterTypes.parentTypeCode }).from(masterTypes);
-  const problems = masterSourceProblems(schema, new Map(rows.map((r) => [r.code, r])));
+  const rows = await db.select({ code: masterTypes.code, parentTypeCode: masterTypes.parentTypeCode, attributeDefs: masterTypes.attributeDefs }).from(masterTypes);
+  const types = new Map(rows.map((r) => {
+    let keys: string[] = [];
+    try { keys = (JSON.parse(r.attributeDefs) as { key: string }[]).map((d) => d.key); } catch { /* none */ }
+    return [r.code, { parentTypeCode: r.parentTypeCode, attributeKeys: keys }] as const;
+  }));
+  const problems = masterSourceProblems(schema, types);
   if (problems.length) throw new AppError(problems.join(" "));
 }
 
-/** Looks up a master item and its parent's code, for {@link masterValueProblem}. */
-export async function loadMasterItemFacts(db: Db, master: string, code: string): Promise<MasterItemFacts | null> {
-  const [item] = await db.select().from(masterItems).where(and(eq(masterItems.typeCode, master), eq(masterItems.code, code))).limit(1);
-  if (!item) return null;
-  let parentCode: string | null = null;
-  if (item.parentId != null) {
-    const [p] = await db.select({ code: masterItems.code }).from(masterItems).where(eq(masterItems.id, item.parentId)).limit(1);
-    parentCode = p?.code ?? null;
-  }
-  return { active: item.active, parentCode };
+/**
+ * Looks up the master item a submitted value refers to, with its parent's code, for {@link masterValueProblem}.
+ * Normally the value is the item's code. With `valueAttribute` it is that attribute's value instead
+ * (a branch number): several items can share it (every bank has a branch "001"), so `parentCode`, when
+ * the field cascades, picks the one under the chosen parent.
+ */
+export async function loadMasterItemFacts(
+  db: Db,
+  master: string,
+  value: string,
+  opts: { valueAttribute?: string; parentCode?: string } = {},
+): Promise<MasterItemFacts | null> {
+  const candidates = opts.valueAttribute
+    ? await db.select().from(masterItems).where(and(
+        eq(masterItems.typeCode, master),
+        sql`json_extract(${masterItems.attributes}, ${"$." + opts.valueAttribute}) = ${value}`,
+      )).limit(500)
+    : await db.select().from(masterItems).where(and(eq(masterItems.typeCode, master), eq(masterItems.code, value))).limit(1);
+  if (candidates.length === 0) return null;
+
+  const facts = await Promise.all(candidates.map(async (item) => {
+    let parentCode: string | null = null;
+    if (item.parentId != null) {
+      const [p] = await db.select({ code: masterItems.code }).from(masterItems).where(eq(masterItems.id, item.parentId)).limit(1);
+      parentCode = p?.code ?? null;
+    }
+    return { active: item.active, parentCode } satisfies MasterItemFacts;
+  }));
+  return facts.find((f) => f.parentCode === opts.parentCode) ?? facts[0];
 }

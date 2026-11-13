@@ -1,4 +1,6 @@
-import { MasterLabelPipe } from '../../../shared/pipes/master-label.pipe';
+import { FieldLabelPipe } from '../../../shared/pipes/field-label.pipe';
+import { FormDefinitionService } from '../../../core/services/form-definition.service';
+import { FormVersionSchema } from '../../../core/services/form-builder.service';
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { WorkflowService } from '../../../core/services/workflow.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -21,7 +23,7 @@ const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED'
 @Component({
   selector: 'app-uw-pipeline',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, SlaSummaryComponent, MasterLabelPipe],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, SlaSummaryComponent, FieldLabelPipe],
   templateUrl: './pipeline.component.html',
   styleUrl: './pipeline.component.scss'
 })
@@ -96,13 +98,24 @@ export class PipelineComponent implements OnInit {
     this.endDate.set('');
   }
 
-  constructor(private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute) {}
+  /** The published form definitions: they say where a stored value's name comes from (e.g. the loan purpose). */
+  schemas = signal<Partial<Record<'personal-loan-wizard' | 'business-loan-wizard', FormVersionSchema>>>({});
+
+  constructor(private appSvc: ApplicationService, public i18n: I18nService, private route: ActivatedRoute,
+              private definitions: FormDefinitionService) {}
+
+  schemaFor(app: LoanApplication): FormVersionSchema | undefined {
+    return this.schemas()[this.isBusiness(app) ? 'business-loan-wizard' : 'personal-loan-wizard'];
+  }
 
   statusLabel(status: string): string {
     return this.i18n.t('status.' + status);
   }
 
   ngOnInit(): void {
+    for (const key of ['personal-loan-wizard', 'business-loan-wizard'] as const) {
+      this.definitions.published(key).subscribe({ next: schema => this.schemas.update(m => ({ ...m, [key]: schema })), error: () => {} });
+    }
     const initialStatus = this.route.snapshot.queryParamMap.get('status');
     if (initialStatus) this.activeFilter.set(initialStatus);
 

@@ -225,7 +225,7 @@ async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: Trans
         lastNote = await insertNote(db, app.applicationRef, String(e.section ?? "general"), String(e.text ?? ""), String(e.noteType ?? "NOTE"), actor.name);
         break;
       case "NOTIFY": {
-        await warmLoanPurposeNames(db);
+        await warmLoanPurposeNames(db, app);
         const spec = buildNotification(String(e.template), app, await language(), (e.vars ?? {}) as Vars);
         if (spec) await sendNotification(db, app.customerId, spec.title, spec.message, spec.type, app.applicationRef);
         break;

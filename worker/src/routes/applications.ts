@@ -130,12 +130,16 @@ async function validateSectionData(
     // data never blocks an unrelated edit. Same visibility exemption as above.
     if (visible && f.optionsSource && value !== undefined && value !== null && value !== "") {
       const dep = f.optionsSource.dependsOn;
+      const parentValue = dep ? crossSectionValues[`${section}.${dep.fieldKey}`] : undefined;
       const problem = masterValueProblem({
-        item: await loadMasterItemFacts(db, f.optionsSource.master, String(value)),
+        item: await loadMasterItemFacts(db, f.optionsSource.master, String(value), {
+          valueAttribute: f.optionsSource.valueAttribute,
+          parentCode: parentValue == null ? undefined : String(parentValue),
+        }),
         value: String(value),
         previous: flattenAllSectionValues(app)[`${section}.${f.key}`],
         dependsOn: !!dep,
-        dependsOnValue: dep ? crossSectionValues[`${section}.${dep.fieldKey}`] : undefined,
+        dependsOnValue: parentValue,
       });
       if (problem) throw new AppError(`Field '${f.key}' in section '${section}' ${problem}.`);
     }

@@ -4,9 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
-import { FieldOption } from '../../../../core/services/form-builder.service';
-import { reconcileStoredValue } from '../../../../shared/master-options';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
+import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -27,13 +26,14 @@ export class IncomeEmploymentComponent implements OnInit {
   readOnly = signal(false);
   numberOfApplicants = signal(1);
   applicant2Error = signal('');
+  /** The form definition's fields for the two pick-lists on this step: they say where the options come from. */
+  fieldDefs = signal<{ status?: FormField; duration?: FormField }>({});
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
               public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
-              private lists: MasterListsService) {
-    this.lists.load(['employment_status', 'employment_duration']);
-    // Saved records may hold the old display text ("Full-Time Employed"); map it to the code once the lists arrive.
-    effect(() => { this.lists.options('employment_status'); this.lists.options('employment_duration'); this.reconcileLegacyValues(); });
+              private opts: FormFieldOptionsService) {
+    // Saved records may hold the old display text ("Full-Time Employed"); map it to the code once the options arrive.
+    effect(() => { this.opts.options(this.fieldDefs().status); this.opts.options(this.fieldDefs().duration); this.reconcileLegacyValues(); });
     this.form = this.fb.group({
       employmentStatus:   ['', Validators.required],
       employer:           [''],
@@ -61,6 +61,10 @@ export class IncomeEmploymentComponent implements OnInit {
     this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.fieldDefs.set({
+          status: fieldIn(app.formSchema, 'incomeEmployment', 'employmentStatus'),
+          duration: fieldIn(app.formSchema, 'incomeEmployment', 'employmentDuration'),
+        });
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.loanRequirementsJson) {
           const loanReqs = JSON.parse(app.loanRequirementsJson);
@@ -114,16 +118,15 @@ export class IncomeEmploymentComponent implements OnInit {
     this.additionalEmployments.removeAt(index);
   }
 
-  statusOptions(): FieldOption[] { return this.lists.options('employment_status'); }
-  durationOptions(): FieldOption[] { return this.lists.options('employment_duration'); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  statusOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().status); }
+  durationOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().duration); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
-  /** Whether an employment status carries employer details (employer, job title, duration). Read from the
-   * master's `isEmployed` attribute, so adding or renaming a status needs no code change. */
+  /** Whether an employment status carries employer details (employer, job title, duration). The form's
+   * options say so through an `isEmployed` setting on each status, so adding or renaming one needs no code change. */
   private hasEmployment(status: unknown): boolean {
-    const code = this.lists.normalise('employment_status', status);
-    if (!code) return !!status; // list not loaded yet (or unknown value): keep the section visible
-    return this.lists.items('employment_status').find((i) => i.code === code)?.attributes['isEmployed'] === true;
+    const isEmployed = this.opts.attribute(this.fieldDefs().status, status, 'isEmployed');
+    return isEmployed === undefined ? !!status : isEmployed === true; // unknown or not loaded yet: keep the details visible
   }
 
   isEmployedAt(group: any): boolean {
@@ -131,17 +134,17 @@ export class IncomeEmploymentComponent implements OnInit {
   }
 
   private reconcileLegacyValues(): void {
-    const fix = (control: AbstractControl | null, type: string) => {
-      const options = this.lists.options(type);
+    const fix = (control: AbstractControl | null, def: FormField | undefined) => {
+      const options = this.opts.options(def);
       if (!control?.value || !options.length) return;
-      const fixed = reconcileStoredValue(options, control.value);
+      const fixed = this.opts.normalise(def, control.value);
       if (fixed === null) control.setValue('', { emitEvent: false });
       else if (fixed !== control.value) control.setValue(fixed, { emitEvent: false });
     };
     const groups: (AbstractControl | null)[] = [this.form, this.applicant2Form, ...this.additionalEmployments.controls];
     for (const g of groups) {
-      fix(g?.get('employmentStatus') ?? null, 'employment_status');
-      fix(g?.get('employmentDuration') ?? null, 'employment_duration');
+      fix(g?.get('employmentStatus') ?? null, this.fieldDefs().status);
+      fix(g?.get('employmentDuration') ?? null, this.fieldDefs().duration);
     }
   }
 

@@ -64,6 +64,13 @@
         </select>
         <small class="text-muted">{{ 'admin.formMasterCodesHint' | translate }}</small>
       </div>
+      <div class="db-form-group" *ngIf="masterAttributes().length">
+        <label>{{ 'admin.formMasterStore' | translate }}</label>
+        <select class="db-select" [disabled]="disabled" [ngModel]="field.optionsSource?.valueAttribute || ''" (ngModelChange)="setValueAttribute($event)">
+          <option value="">{{ 'admin.formMasterStoreCode' | translate }}</option>
+          <option *ngFor="let a of masterAttributes()" [value]="a.key">{{ a.label }}</option>
+        </select>
+      </div>
       <div class="db-form-group" *ngIf="masterParentType() as parent">
         <label>{{ 'admin.formMasterDependsOn' | translate }} ({{ masterLabel(parent) }})</label>
         <select class="db-select" [disabled]="disabled || !masterTriggerFields().length" [ngModel]="field.optionsSource?.dependsOn?.fieldKey || ''" (ngModelChange)="setMasterDependsOn($event)">

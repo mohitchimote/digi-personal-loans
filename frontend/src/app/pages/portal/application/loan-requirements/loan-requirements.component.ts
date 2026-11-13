@@ -4,10 +4,8 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
-import { FieldOption } from '../../../../core/services/form-builder.service';
-import { I18nService } from '../../../../core/i18n/i18n.service';
-import { reconcileStoredValue } from '../../../../shared/master-options';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
+import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 
@@ -24,18 +22,18 @@ export class LoanRequirementsComponent implements OnInit {
   ready = signal(false);
   appRef = signal('');
   readOnly = signal(false);
+  /** The form definition's loan-purpose field: it says where the options come from. */
+  purposeField = signal<FormField | undefined>(undefined);
 
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
     public identity: EffectiveIdentityService,
     private router: Router,
-    private lists: MasterListsService,
-    private i18n: I18nService
+    private opts: FormFieldOptionsService
   ) {
-    this.lists.load(['loan_purpose']);
-    // A saved record may hold the old display text ("Home Improvement"): map it to the code once the list arrives.
-    effect(() => { this.lists.options('loan_purpose'); this.reconcileLegacyPurpose(); });
+    // A saved record may hold the old display text ("Home Improvement"): map it to the code once the options arrive.
+    effect(() => { this.opts.options(this.purposeField()); this.reconcileLegacyPurpose(); });
     this.form = this.fb.group({
       loanAmount:            [50000, [Validators.required, Validators.min(5000), Validators.max(300000)]],
       loanPurpose:           ['', Validators.required],
@@ -44,14 +42,13 @@ export class LoanRequirementsComponent implements OnInit {
     });
   }
 
-  purposeOptions(): FieldOption[] { return this.lists.options('loan_purpose'); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  purposeOptions(): FieldOption[] { return this.opts.options(this.purposeField()); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
   private reconcileLegacyPurpose(): void {
     const c = this.form?.get('loanPurpose');
-    const options = this.purposeOptions();
-    if (!c?.value || !options.length) return;
-    const fixed = reconcileStoredValue(options, c.value);
+    if (!c?.value || !this.purposeOptions().length) return;
+    const fixed = this.opts.normalise(this.purposeField(), c.value);
     if (fixed === null) c.setValue('', { emitEvent: false });
     else if (fixed !== c.value) c.setValue(fixed, { emitEvent: false });
   }
@@ -72,6 +69,7 @@ export class LoanRequirementsComponent implements OnInit {
     this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.purposeField.set(fieldIn(app.formSchema, 'loanRequirements', 'loanPurpose'));
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (this.readOnly()) this.form.disable();
         if (app.loanRequirementsJson) {

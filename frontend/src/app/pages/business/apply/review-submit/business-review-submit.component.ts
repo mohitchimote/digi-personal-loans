@@ -1,4 +1,4 @@
-import { MasterLabelPipe } from '../../../../shared/pipes/master-label.pipe';
+import { FieldLabelPipe } from '../../../../shared/pipes/field-label.pipe';
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -12,7 +12,7 @@ import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 @Component({
   selector: 'app-business-review-submit',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, MasterLabelPipe],
+  imports: [CommonModule, FormsModule, RouterLink, ApplicationAsideComponent, TranslatePipe, FieldLabelPipe],
   templateUrl: './business-review-submit.component.html',
   styleUrl: './business-review-submit.component.scss'
 })

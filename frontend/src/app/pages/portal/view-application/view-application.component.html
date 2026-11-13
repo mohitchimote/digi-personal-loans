@@ -22,7 +22,7 @@
     <div class="card-header"><h3>{{ 'steps.loanRequirements' | translate }}</h3></div>
     <div class="review-grid">
       <div class="review-item"><span>{{ 'loanReq.amountLabel' | translate }}</span><strong>₪{{ loanReqs.loanAmount | number }}</strong></div>
-      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose | masterLabel:'loan_purpose' }}</strong></div>
+      <div class="review-item"><span>{{ 'reviewSubmit.purpose' | translate }}</span><strong>{{ loanReqs.loanPurpose | fieldLabel:application()?.formSchema:'loanRequirements':'loanPurpose' }}</strong></div>
       <div class="review-item"><span>{{ 'reviewSubmit.loanTerm' | translate }}</span><strong>{{ loanReqs.loanTerm }} {{ 'reviewSubmit.months' | translate }}</strong></div>
     </div>
   </div>
@@ -53,13 +53,13 @@
   <div class="db-card mb-16" id="section-incomeEmployment">
     <div class="card-header"><h3>{{ 'steps.incomeEmployment' | translate }}</h3></div>
     <div class="review-grid">
-      <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus | masterLabel:'employment_status' }}</strong></div>
+      <div class="review-item"><span>{{ 'income.statusLabel' | translate }}</span><strong>{{ income.employmentStatus | fieldLabel:application()?.formSchema:'incomeEmployment':'employmentStatus' }}</strong></div>
       <div class="review-item"><span>{{ 'income.employerLabel' | translate }}</span><strong>{{ income.employer || '—' }}</strong></div>
       <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyGrossIncome | number }}</strong></div>
       <div class="review-item"><span>{{ 'income.netIncomeLabel' | translate }}</span><strong>₪{{ income.monthlyNetIncome | number }}</strong></div>
     </div>
     <div class="review-grid mt-16" *ngIf="income.applicant2">
-      <div class="review-item"><span>{{ 'income.applicant2Header' | translate }}</span><strong>{{ income.applicant2.employmentStatus | masterLabel:'employment_status' }}</strong></div>
+      <div class="review-item"><span>{{ 'income.applicant2Header' | translate }}</span><strong>{{ income.applicant2.employmentStatus | fieldLabel:application()?.formSchema:'incomeEmployment':'employmentStatus' }}</strong></div>
       <div class="review-item"><span>{{ 'income.grossIncomeLabel' | translate }}</span><strong>₪{{ income.applicant2.monthlyGrossIncome | number }}</strong></div>
     </div>
   </div>

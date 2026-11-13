@@ -6,9 +6,8 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
-import { FieldOption } from '../../../../core/services/form-builder.service';
-import { I18nService } from '../../../../core/i18n/i18n.service';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
+import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 
 interface BankOption { id: string; name: string; icon: string; }
 type BankConnectionSummary = { accountMasked: string; avgBalance: number; transactions: number };
@@ -48,6 +47,9 @@ export class ConnectBankComponent implements OnInit {
   primaryAccount = computed(() => this.accounts().find(a => a.id === this.primaryAccountId()) ?? this.accounts()[0] ?? null);
 
   showManualForm = signal(false);
+  /** Manual account entry offers the same bank and branch choices as Direct Debit, so it uses that section's field definitions. */
+  bankField = signal<FormField | undefined>(undefined);
+  branchField = signal<FormField | undefined>(undefined);
   manualBankCode = '';
   manualBranchCode = '';
   manualAccountNumber = '';
@@ -70,17 +72,16 @@ export class ConnectBankComponent implements OnInit {
     private appSvc: ApplicationService,
     public identity: EffectiveIdentityService,
     private router: Router,
-    private lists: MasterListsService,
-    private i18n: I18nService
-  ) {
-    this.lists.load(['bank']);
-  }
+    private opts: FormFieldOptionsService
+  ) {}
 
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
     if (!userId || !email) return;
     this.appSvc.resolveEditable(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
+        this.bankField.set(fieldIn(app.formSchema, 'directDebit', 'bankCode'));
+        this.branchField.set(fieldIn(app.formSchema, 'directDebit', 'branchCode'));
         this.appRef.set(app.applicationRef);
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.loanRequirementsJson) {
@@ -166,13 +167,12 @@ export class ConnectBankComponent implements OnInit {
     this.primaryAccountId.set(id);
   }
 
-  bankOptions(): FieldOption[] { return this.lists.options('bank'); }
-  manualBranchOptions(): FieldOption[] { return this.lists.bankBranchOptions(this.manualBankCode); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  bankOptions(): FieldOption[] { return this.opts.options(this.bankField()); }
+  manualBranchOptions(): FieldOption[] { return this.opts.options(this.branchField(), this.manualBankCode); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
   onManualBankChange(): void {
     this.manualBranchCode = '';
-    if (this.manualBankCode) this.lists.loadChildren('bank_branch', this.manualBankCode);
   }
 
   get manualFormValid(): boolean {
@@ -181,11 +181,11 @@ export class ConnectBankComponent implements OnInit {
 
   addManualAccount(): void {
     if (!this.manualFormValid) return;
-    const bank = this.lists.items('bank').find(b => b.code === this.manualBankCode);
+    const bank = this.bankOptions().find(b => b.value === this.manualBankCode);
     const last4 = this.manualAccountNumber.slice(-4);
     this.addAccount({
       id: crypto.randomUUID(),
-      bankName: bank?.name.en || '',
+      bankName: bank?.label.en || '',
       accountMasked: '**** **** **** ' + last4,
       avgBalance: null,
       transactions: null,

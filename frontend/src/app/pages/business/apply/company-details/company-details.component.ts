@@ -4,9 +4,8 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
-import { MasterListsService } from '../../../../core/services/master-lists.service';
-import { FieldOption } from '../../../../core/services/form-builder.service';
-import { reconcileStoredValue } from '../../../../shared/master-options';
+import { FormFieldOptionsService } from '../../../../core/services/form-field-options.service';
+import { FieldOption, FormField, fieldIn } from '../../../../core/services/form-builder.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -25,6 +24,8 @@ export class CompanyDetailsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   readOnly = signal(false);
+  /** The form definition's fields for the pick-lists on this step: they say where the options come from. */
+  fieldDefs = signal<{ purpose?: FormField; branch?: FormField; staff?: FormField }>({});
 
   constructor(
     private fb: FormBuilder,
@@ -32,11 +33,10 @@ export class CompanyDetailsComponent implements OnInit {
     public identity: EffectiveIdentityService,
     private router: Router,
     private i18n: I18nService,
-    private lists: MasterListsService
+    private opts: FormFieldOptionsService
   ) {
-    this.lists.load(['business_loan_purpose', 'branch', 'branch_staff']);
-    // A saved record may hold the old display text ("Working Capital", a branch name): map it to the code once the lists arrive.
-    effect(() => { ['business_loan_purpose', 'branch', 'branch_staff'].forEach((m) => this.lists.options(m)); this.reconcileLegacyValues(); });
+    // A saved record may hold the old display text ("Working Capital", a branch name): map it to the code once the options arrive.
+    effect(() => { this.purposeOptions(); this.branchOptions(); this.staffOptionsForBranch(); this.reconcileLegacyValues(); });
     this.form = this.fb.group({
       companyName:               ['', Validators.required],
       companyRegistrationNumber: ['', Validators.required],
@@ -55,14 +55,13 @@ export class CompanyDetailsComponent implements OnInit {
     });
   }
 
-  purposeOptions(): FieldOption[] { return this.lists.options('business_loan_purpose'); }
-  branchOptions(): FieldOption[] { return this.lists.options('branch'); }
-  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+  purposeOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().purpose); }
+  branchOptions(): FieldOption[] { return this.opts.options(this.fieldDefs().branch); }
+  optionLabel(o: FieldOption): string { return this.opts.localised(o); }
 
-  /** Staff the customer can name at the chosen branch: the Branch Staff master's items under it. */
+  /** Staff the customer can name at the chosen branch; the form definition says where they come from. */
   staffOptionsForBranch(): FieldOption[] {
-    const branch = this.f('preferredBranch')?.value;
-    return branch ? this.lists.optionsUnder('branch_staff', branch) : [];
+    return this.opts.options(this.fieldDefs().staff, this.f('preferredBranch')?.value);
   }
 
   onBranchChange(): void {
@@ -72,16 +71,16 @@ export class CompanyDetailsComponent implements OnInit {
   }
 
   private reconcileLegacyValues(): void {
-    const fix = (name: string, options: FieldOption[]) => {
+    const fix = (name: string, def: FormField | undefined, parent?: unknown) => {
       const c = this.form?.get(name);
-      if (!c?.value || !options.length) return;
-      const fixed = reconcileStoredValue(options, c.value);
+      if (!c?.value || !this.opts.options(def, parent).length) return;
+      const fixed = this.opts.normalise(def, c.value, parent);
       if (fixed === null) c.setValue('', { emitEvent: false });
       else if (fixed !== c.value) c.setValue(fixed, { emitEvent: false });
     };
-    fix('loanPurpose', this.purposeOptions());
-    fix('preferredBranch', this.branchOptions());
-    fix('staffName', this.staffOptionsForBranch());
+    fix('loanPurpose', this.fieldDefs().purpose);
+    fix('preferredBranch', this.fieldDefs().branch);
+    fix('staffName', this.fieldDefs().staff, this.f('preferredBranch')?.value);
   }
 
   ngOnInit(): void {
@@ -90,6 +89,11 @@ export class CompanyDetailsComponent implements OnInit {
     this.appSvc.resolveEditableBusiness(userId, email, this.identity.appRef ?? undefined, this.identity.isAssisting).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
+        this.fieldDefs.set({
+          purpose: fieldIn(app.formSchema, 'companyDetails', 'loanPurpose'),
+          branch: fieldIn(app.formSchema, 'companyDetails', 'preferredBranch'),
+          staff: fieldIn(app.formSchema, 'companyDetails', 'staffName'),
+        });
         this.readOnly.set(this.identity.isAssisting && !this.appSvc.isEditableStatus(app.status));
         if (app.companyDetailsJson) {
           this.form.patchValue(JSON.parse(app.companyDetailsJson));
