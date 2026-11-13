@@ -1,0 +1,862 @@
+{
+  "description": "Rule evaluation. today is fixed. See README, Rules.",
+  "dictionary": "dictionary.sample.json",
+  "today": "2026-11-13",
+  "data": {
+    "application": {
+      "reference": "DGB-2026-90531",
+      "type": "PERSONAL",
+      "submittedAt": "2026-11-12"
+    },
+    "applicants": [
+      {
+        "fullName": "Noa Levi",
+        "role": "MAIN",
+        "dateOfBirth": "1988-04-12",
+        "monthlyIncome": 21500
+      },
+      {
+        "fullName": "Daniel Levi",
+        "role": "JOINT",
+        "dateOfBirth": "1986-09-02",
+        "monthlyIncome": 14000
+      }
+    ],
+    "loan": {
+      "purpose": "DEBT_CONSOLIDATION",
+      "amount": 150000,
+      "termMonths": 60,
+      "rateType": "FIXED_THEN_VARIABLE",
+      "annualRate": 5.4,
+      "fixedMonths": 24
+    },
+    "calculated": {
+      "monthlyRepayment": 2858.34,
+      "totalPayable": 171500.4,
+      "costPerShekel": 1.1433
+    },
+    "guarantor": {
+      "required": true,
+      "name": "Yossi Levi"
+    },
+    "product": {
+      "name": {
+        "en": "Personal Loan",
+        "he": "הלוואה אישית"
+      }
+    },
+    "branch": {
+      "name": {
+        "en": "Haifa - Hadar",
+        "he": "חיפה - הדר"
+      }
+    },
+    "documents": {
+      "checklist": [
+        {
+          "name": {
+            "en": "National ID",
+            "he": "תעודת זהות"
+          },
+          "requirement": "REQUIRED",
+          "received": true
+        },
+        {
+          "name": {
+            "en": "Payslips",
+            "he": "תלושי שכר"
+          },
+          "requirement": "REQUIRED",
+          "received": false
+        },
+        {
+          "name": {
+            "en": "Bank statements",
+            "he": "דפי חשבון בנק"
+          },
+          "requirement": "CONDITIONAL",
+          "received": false
+        }
+      ]
+    }
+  },
+  "savedRules": [
+    {
+      "id": "varrate",
+      "name": "Rate can change",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "condition",
+            "field": "loan.rateType",
+            "op": "ne",
+            "rhs": {
+              "k": "value",
+              "v": "FIXED_FOR_TERM"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "viaref",
+      "name": "Via another rule",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "ref",
+            "id": "varrate"
+          }
+        ]
+      }
+    }
+  ],
+  "vectors": [
+    {
+      "name": "eq a choice",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "eq",
+        "rhs": {
+          "k": "value",
+          "v": "FIXED_THEN_VARIABLE"
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "eq a different choice",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "eq",
+        "rhs": {
+          "k": "value",
+          "v": "VARIABLE"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "ne a different choice",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "ne",
+        "rhs": {
+          "k": "value",
+          "v": "FIXED_FOR_TERM"
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "ne the same choice",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "ne",
+        "rhs": {
+          "k": "value",
+          "v": "FIXED_THEN_VARIABLE"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "eq on a missing value is false",
+      "rule": {
+        "t": "condition",
+        "field": "loan.nothing",
+        "op": "eq",
+        "rhs": {
+          "k": "value",
+          "v": "x"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "ne on a missing value is false too: unknown never matches",
+      "rule": {
+        "t": "condition",
+        "field": "loan.nothing",
+        "op": "ne",
+        "rhs": {
+          "k": "value",
+          "v": "x"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "gt number",
+      "rule": {
+        "t": "condition",
+        "field": "loan.amount",
+        "op": "gt",
+        "rhs": {
+          "k": "value",
+          "v": 100000
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "gt equal is false",
+      "rule": {
+        "t": "condition",
+        "field": "loan.amount",
+        "op": "gt",
+        "rhs": {
+          "k": "value",
+          "v": 150000
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "gte equal is true",
+      "rule": {
+        "t": "condition",
+        "field": "loan.amount",
+        "op": "gte",
+        "rhs": {
+          "k": "value",
+          "v": 150000
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "lt",
+      "rule": {
+        "t": "condition",
+        "field": "loan.annualRate",
+        "op": "lt",
+        "rhs": {
+          "k": "value",
+          "v": 6
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "lte equal",
+      "rule": {
+        "t": "condition",
+        "field": "loan.annualRate",
+        "op": "lte",
+        "rhs": {
+          "k": "value",
+          "v": 5.4
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "numbers compare as numbers not text",
+      "rule": {
+        "t": "condition",
+        "field": "loan.amount",
+        "op": "gt",
+        "rhs": {
+          "k": "value",
+          "v": 99999
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "between is inclusive",
+      "rule": {
+        "t": "condition",
+        "field": "loan.termMonths",
+        "op": "between",
+        "rhs": {
+          "k": "value",
+          "v": 60,
+          "v2": 60
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "between outside",
+      "rule": {
+        "t": "condition",
+        "field": "loan.termMonths",
+        "op": "between",
+        "rhs": {
+          "k": "value",
+          "v": 61,
+          "v2": 70
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "contains ignores case and reads a bilingual value as English",
+      "rule": {
+        "t": "condition",
+        "field": "product.name",
+        "op": "contains",
+        "rhs": {
+          "k": "value",
+          "v": "personal"
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "in a list",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "in",
+        "rhs": {
+          "k": "value",
+          "list": [
+            "VARIABLE",
+            "FIXED_THEN_VARIABLE"
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "not in the list",
+      "rule": {
+        "t": "condition",
+        "field": "loan.rateType",
+        "op": "in",
+        "rhs": {
+          "k": "value",
+          "list": [
+            "VARIABLE"
+          ]
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "empty on a value that exists",
+      "rule": {
+        "t": "condition",
+        "field": "application.reference",
+        "op": "empty"
+      },
+      "expect": false
+    },
+    {
+      "name": "empty on a missing value",
+      "rule": {
+        "t": "condition",
+        "field": "loan.nothing",
+        "op": "empty"
+      },
+      "expect": true
+    },
+    {
+      "name": "notEmpty",
+      "rule": {
+        "t": "condition",
+        "field": "guarantor.name",
+        "op": "notEmpty"
+      },
+      "expect": true
+    },
+    {
+      "name": "isYes",
+      "rule": {
+        "t": "condition",
+        "field": "guarantor.required",
+        "op": "isYes"
+      },
+      "expect": true
+    },
+    {
+      "name": "isNo",
+      "rule": {
+        "t": "condition",
+        "field": "guarantor.required",
+        "op": "isNo"
+      },
+      "expect": false
+    },
+    {
+      "name": "isYes on a missing value is false",
+      "rule": {
+        "t": "condition",
+        "field": "loan.nothing",
+        "op": "isYes"
+      },
+      "expect": false
+    },
+    {
+      "name": "isNo on a missing value is false",
+      "rule": {
+        "t": "condition",
+        "field": "loan.nothing",
+        "op": "isNo"
+      },
+      "expect": false
+    },
+    {
+      "name": "date before today",
+      "rule": {
+        "t": "condition",
+        "field": "application.submittedAt",
+        "op": "before",
+        "rhs": {
+          "k": "today"
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "date after today",
+      "rule": {
+        "t": "condition",
+        "field": "application.submittedAt",
+        "op": "after",
+        "rhs": {
+          "k": "today"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "withinDays inclusive",
+      "rule": {
+        "t": "condition",
+        "field": "application.submittedAt",
+        "op": "withinDays",
+        "rhs": {
+          "k": "value",
+          "v": 1
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "withinDays too tight",
+      "rule": {
+        "t": "condition",
+        "field": "application.submittedAt",
+        "op": "withinDays",
+        "rhs": {
+          "k": "value",
+          "v": 0
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "compare with another field: term vs fixed period",
+      "rule": {
+        "t": "condition",
+        "field": "loan.termMonths",
+        "op": "eq",
+        "rhs": {
+          "k": "field",
+          "v": "loan.fixedMonths"
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "compare with another field: amount above repayment",
+      "rule": {
+        "t": "condition",
+        "field": "loan.amount",
+        "op": "gt",
+        "rhs": {
+          "k": "field",
+          "v": "calculated.monthlyRepayment"
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "count of a list",
+      "rule": {
+        "t": "condition",
+        "field": "applicants.count",
+        "op": "gt",
+        "rhs": {
+          "k": "value",
+          "v": 1
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "count equals",
+      "rule": {
+        "t": "condition",
+        "field": "applicants.count",
+        "op": "eq",
+        "rhs": {
+          "k": "value",
+          "v": 2
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "anyMatch on age",
+      "rule": {
+        "t": "condition",
+        "field": "applicants",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.dateOfBirth",
+              "op": "ageBelow",
+              "rhs": {
+                "k": "value",
+                "v": 39
+              }
+            }
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "anyMatch on age, nobody old enough",
+      "rule": {
+        "t": "condition",
+        "field": "applicants",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.dateOfBirth",
+              "op": "ageAtLeast",
+              "rhs": {
+                "k": "value",
+                "v": 41
+              }
+            }
+          ]
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "noneMatch",
+      "rule": {
+        "t": "condition",
+        "field": "applicants",
+        "op": "noneMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.dateOfBirth",
+              "op": "ageBelow",
+              "rhs": {
+                "k": "value",
+                "v": 30
+              }
+            }
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "anyMatch a document not received",
+      "rule": {
+        "t": "condition",
+        "field": "documents.checklist",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.received",
+              "op": "isNo"
+            }
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "noneMatch a document not received",
+      "rule": {
+        "t": "condition",
+        "field": "documents.checklist",
+        "op": "noneMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.received",
+              "op": "isNo"
+            }
+          ]
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "anyMatch with two conditions on one item",
+      "rule": {
+        "t": "condition",
+        "field": "documents.checklist",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.requirement",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": "REQUIRED"
+              }
+            },
+            {
+              "t": "condition",
+              "field": "item.received",
+              "op": "isNo"
+            }
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "the two conditions must hold on the same item",
+      "rule": {
+        "t": "condition",
+        "field": "documents.checklist",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.requirement",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": "CONDITIONAL"
+              }
+            },
+            {
+              "t": "condition",
+              "field": "item.received",
+              "op": "isYes"
+            }
+          ]
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "anyMatch on a missing list is false",
+      "rule": {
+        "t": "condition",
+        "field": "nothing.list",
+        "op": "anyMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": []
+        }
+      },
+      "expect": false
+    },
+    {
+      "name": "noneMatch on a missing list is true",
+      "rule": {
+        "t": "condition",
+        "field": "nothing.list",
+        "op": "noneMatch",
+        "nested": {
+          "t": "group",
+          "op": "all",
+          "items": [
+            {
+              "t": "condition",
+              "field": "item.received",
+              "op": "isNo"
+            }
+          ]
+        }
+      },
+      "expect": true
+    },
+    {
+      "name": "any of",
+      "rule": {
+        "t": "group",
+        "op": "any",
+        "items": [
+          {
+            "t": "condition",
+            "field": "loan.rateType",
+            "op": "eq",
+            "rhs": {
+              "k": "value",
+              "v": "VARIABLE"
+            }
+          },
+          {
+            "t": "condition",
+            "field": "guarantor.required",
+            "op": "isYes"
+          }
+        ]
+      },
+      "expect": true
+    },
+    {
+      "name": "all of, one fails",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "condition",
+            "field": "loan.rateType",
+            "op": "eq",
+            "rhs": {
+              "k": "value",
+              "v": "VARIABLE"
+            }
+          },
+          {
+            "t": "condition",
+            "field": "guarantor.required",
+            "op": "isYes"
+          }
+        ]
+      },
+      "expect": false
+    },
+    {
+      "name": "not all of",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "condition",
+            "field": "loan.rateType",
+            "op": "eq",
+            "rhs": {
+              "k": "value",
+              "v": "VARIABLE"
+            }
+          },
+          {
+            "t": "condition",
+            "field": "guarantor.required",
+            "op": "isYes"
+          }
+        ],
+        "not": true
+      },
+      "expect": true
+    },
+    {
+      "name": "nested groups",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "group",
+            "op": "any",
+            "items": [
+              {
+                "t": "condition",
+                "field": "loan.amount",
+                "op": "gt",
+                "rhs": {
+                  "k": "value",
+                  "v": 1000000
+                }
+              },
+              {
+                "t": "condition",
+                "field": "guarantor.required",
+                "op": "isYes"
+              }
+            ]
+          },
+          {
+            "t": "condition",
+            "field": "applicants.count",
+            "op": "eq",
+            "rhs": {
+              "k": "value",
+              "v": 2
+            }
+          }
+        ]
+      },
+      "expect": true
+    },
+    {
+      "name": "an empty group is met",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": []
+      },
+      "expect": true
+    },
+    {
+      "name": "a saved rule",
+      "rule": {
+        "t": "ref",
+        "id": "varrate"
+      },
+      "expect": true
+    },
+    {
+      "name": "a saved rule that uses another saved rule",
+      "rule": {
+        "t": "ref",
+        "id": "viaref"
+      },
+      "expect": true
+    },
+    {
+      "name": "a missing saved rule is not met",
+      "rule": {
+        "t": "ref",
+        "id": "nope"
+      },
+      "expect": false
+    }
+  ]
+}

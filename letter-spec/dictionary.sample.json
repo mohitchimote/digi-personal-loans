@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "fields": {
+    "application.reference": { "label": { "en": "Application reference", "he": "מספר בקשה" }, "type": "text" },
+    "application.type": { "label": { "en": "Application type", "he": "סוג בקשה" }, "type": "choice", "choices": [ { "v": "PERSONAL", "en": "Personal", "he": "פרטי" }, { "v": "BUSINESS", "en": "Business", "he": "עסקי" } ] },
+    "application.submittedAt": { "label": { "en": "Submitted on", "he": "הוגשה בתאריך" }, "type": "date" },
+    "applicants": { "label": { "en": "Applicants", "he": "מבקשים" }, "type": "list", "itemFields": {
+      "fullName": { "label": { "en": "Full name", "he": "שם מלא" }, "type": "text" },
+      "role": { "label": { "en": "Role", "he": "תפקיד" }, "type": "choice", "choices": [ { "v": "MAIN", "en": "Main borrower", "he": "לווה ראשי" }, { "v": "JOINT", "en": "Joint borrower", "he": "לווה במשותף" } ] },
+      "dateOfBirth": { "label": { "en": "Date of birth", "he": "תאריך לידה" }, "type": "date" },
+      "monthlyIncome": { "label": { "en": "Monthly income", "he": "הכנסה חודשית" }, "type": "money" }
+    } },
+    "loan.purpose": { "label": { "en": "Loan purpose", "he": "מטרת ההלוואה" }, "type": "choice", "choices": [ { "v": "HOME_IMPROVEMENT", "en": "Home Improvement", "he": "שיפוץ הבית" }, { "v": "DEBT_CONSOLIDATION", "en": "Debt Consolidation", "he": "איחוד הלוואות" } ] },
+    "loan.amount": { "label": { "en": "Loan amount", "he": "סכום ההלוואה" }, "type": "money" },
+    "loan.termMonths": { "label": { "en": "Term in months", "he": "תקופה בחודשים" }, "type": "number", "fmt": "term" },
+    "loan.rateType": { "label": { "en": "Rate type", "he": "סוג ריבית" }, "type": "choice", "choices": [ { "v": "FIXED_FOR_TERM", "en": "Fixed for the whole term", "he": "קבועה לכל התקופה" }, { "v": "FIXED_THEN_VARIABLE", "en": "Fixed, then variable", "he": "קבועה ואז משתנה" }, { "v": "VARIABLE", "en": "Variable", "he": "משתנה" } ] },
+    "loan.annualRate": { "label": { "en": "Annual rate", "he": "ריבית שנתית" }, "type": "percent" },
+    "loan.fixedMonths": { "label": { "en": "Fixed period in months", "he": "תקופת ריבית קבועה בחודשים" }, "type": "number", "fmt": "int" },
+    "calculated.monthlyRepayment": { "label": { "en": "Monthly repayment", "he": "החזר חודשי" }, "type": "money", "fmt": "money2" },
+    "calculated.totalPayable": { "label": { "en": "Total amount to repay", "he": "סך כל הסכום להחזר" }, "type": "money", "fmt": "money2" },
+    "calculated.costPerShekel": { "label": { "en": "Repay per ₪1 borrowed", "he": "החזר על כל ₪1 שנלווה" }, "type": "number", "fmt": "dec" },
+    "guarantor.required": { "label": { "en": "Guarantor required", "he": "נדרש ערב" }, "type": "bool" },
+    "guarantor.name": { "label": { "en": "Guarantor name", "he": "שם הערב" }, "type": "text" },
+    "product.name": { "label": { "en": "Product name", "he": "שם המוצר" }, "type": "text" },
+    "branch.name": { "label": { "en": "Branch", "he": "סניף" }, "type": "text" },
+    "documents.checklist": { "label": { "en": "Document checklist", "he": "רשימת מסמכים" }, "type": "list", "itemFields": {
+      "name": { "label": { "en": "Document", "he": "מסמך" }, "type": "text" },
+      "requirement": { "label": { "en": "Requirement", "he": "דרישה" }, "type": "choice", "choices": [ { "v": "REQUIRED", "en": "Required", "he": "חובה" }, { "v": "CONDITIONAL", "en": "Required if it applies", "he": "חובה אם רלוונטי" } ] },
+      "received": { "label": { "en": "Received", "he": "התקבל" }, "type": "bool" }
+    } }
+  }
+}

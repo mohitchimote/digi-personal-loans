@@ -1,0 +1,2609 @@
+{
+  "description": "Resolving a whole letter. See README, Resolving.",
+  "dictionary": "dictionary.sample.json",
+  "today": "2026-11-13",
+  "savedRules": [
+    {
+      "id": "varrate",
+      "name": "Rate can change",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "condition",
+            "field": "loan.rateType",
+            "op": "ne",
+            "rhs": {
+              "k": "value",
+              "v": "FIXED_FOR_TERM"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "viaref",
+      "name": "Via another rule",
+      "rule": {
+        "t": "group",
+        "op": "all",
+        "items": [
+          {
+            "t": "ref",
+            "id": "varrate"
+          }
+        ]
+      }
+    }
+  ],
+  "vectors": [
+    {
+      "name": "text with every kind of value",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "h",
+            "t": "heading",
+            "text": {
+              "en": "Main Features",
+              "he": "מאפיינים"
+            }
+          },
+          {
+            "id": "p",
+            "t": "paragraph",
+            "text": {
+              "en": "Amount: {{loan.amount}}\nTerm: {{loan.termMonths}}\nRate: {{loan.annualRate}}\nType: {{loan.rateType}}\nProduct: {{product.name}}\nSubmitted: {{application.submittedAt}}\nGuarantor: {{guarantor.required}}\nAmount as a number: {{loan.amount|int}}",
+              "he": "סכום: {{loan.amount}}\nתקופה: {{loan.termMonths}}\nריבית: {{loan.annualRate}}\nסוג: {{loan.rateType}}\nמוצר: {{product.name}}\nהוגשה: {{application.submittedAt}}\nערב: {{guarantor.required}}\nהסכום כמספר: {{loan.amount|int}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "heading",
+              "text": "Main Features"
+            },
+            {
+              "type": "paragraph",
+              "text": "Amount: ₪150,000\nTerm: 5 years\nRate: 5.4%\nType: Fixed, then variable\nProduct: Personal Loan\nSubmitted: 12 November 2026\nGuarantor: Yes\nAmount as a number: 150,000"
+            }
+          ],
+          "missing": []
+        },
+        "he": {
+          "body": [
+            {
+              "type": "heading",
+              "text": "מאפיינים"
+            },
+            {
+              "type": "paragraph",
+              "text": "סכום: 150,000 ₪\nתקופה: 5 שנים\nריבית: 5.4%\nסוג: קבועה ואז משתנה\nמוצר: הלוואה אישית\nהוגשה: 12 בנובמבר 2026\nערב: כן\nהסכום כמספר: 150,000"
+            }
+          ],
+          "missing": []
+        },
+        "decisions": []
+      }
+    },
+    {
+      "name": "a missing value prints nothing and is reported",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p",
+            "t": "paragraph",
+            "text": {
+              "en": "Branch: {{branch.phone}}.",
+              "he": "סניף: {{branch.phone}}."
+            }
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Branch: ."
+            }
+          ],
+          "missing": [
+            "branch.phone"
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "סניף: ."
+            }
+          ],
+          "missing": [
+            "branch.phone"
+          ]
+        }
+      }
+    },
+    {
+      "name": "alternatives: the first variant that is met is used",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "alt",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.rateType",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "FIXED_FOR_TERM"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Fixed.",
+                      "he": "קבועה."
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.rateType",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "FIXED_THEN_VARIABLE"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Fixed for {{loan.fixedMonths}} months, then variable.",
+                      "he": "קבועה ל-{{loan.fixedMonths}} חודשים ואז משתנה."
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": null,
+                "children": [
+                  {
+                    "id": "a3",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Variable.",
+                      "he": "משתנה."
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Fixed for 24 months, then variable."
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "קבועה ל-24 חודשים ואז משתנה."
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "alt",
+            "kind": "alternatives",
+            "shown": true,
+            "variant": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "alternatives: no rule on the last variant means otherwise",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "alt",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.rateType",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "FIXED_FOR_TERM"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Fixed.",
+                      "he": "קבועה."
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.rateType",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "FIXED_THEN_VARIABLE"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Fixed for {{loan.fixedMonths}} months, then variable.",
+                      "he": "קבועה ל-{{loan.fixedMonths}} חודשים ואז משתנה."
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": null,
+                "children": [
+                  {
+                    "id": "a3",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Variable.",
+                      "he": "משתנה."
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Variable."
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "alt",
+            "kind": "alternatives",
+            "shown": true,
+            "variant": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "alternatives: the first of several matching variants wins",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "alt",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.amount",
+                      "op": "gt",
+                      "rhs": {
+                        "k": "value",
+                        "v": 1000
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "First",
+                      "he": "ראשון"
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.amount",
+                      "op": "gt",
+                      "rhs": {
+                        "k": "value",
+                        "v": 10
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Second",
+                      "he": "שני"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "First"
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "alt",
+            "kind": "alternatives",
+            "shown": true,
+            "variant": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "alternatives: nothing matches and there is no otherwise",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "alt",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "loan.amount",
+                      "op": "gt",
+                      "rhs": {
+                        "k": "value",
+                        "v": 9999999
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "a1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Never",
+                      "he": "לעולם"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": []
+        },
+        "he": {
+          "body": []
+        },
+        "decisions": [
+          {
+            "nodeId": "alt",
+            "kind": "alternatives",
+            "shown": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "when: shown and hidden by a saved rule, in document order",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "group",
+              "op": "all",
+              "items": [
+                {
+                  "t": "ref",
+                  "id": "varrate"
+                }
+              ]
+            },
+            "children": [
+              {
+                "id": "p1",
+                "t": "paragraph",
+                "text": {
+                  "en": "Rate can change.",
+                  "he": "הריבית עשויה להשתנות."
+                }
+              }
+            ]
+          },
+          {
+            "id": "w2",
+            "t": "when",
+            "rule": {
+              "t": "group",
+              "op": "all",
+              "items": [
+                {
+                  "t": "ref",
+                  "id": "varrate"
+                }
+              ],
+              "not": true
+            },
+            "children": [
+              {
+                "id": "p2",
+                "t": "paragraph",
+                "text": {
+                  "en": "Rate is fixed.",
+                  "he": "הריבית קבועה."
+                }
+              }
+            ]
+          },
+          {
+            "id": "w3",
+            "t": "when",
+            "rule": null,
+            "children": [
+              {
+                "id": "p3",
+                "t": "paragraph",
+                "text": {
+                  "en": "Always.",
+                  "he": "תמיד."
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Rate can change."
+            },
+            {
+              "type": "paragraph",
+              "text": "Always."
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "הריבית עשויה להשתנות."
+            },
+            {
+              "type": "paragraph",
+              "text": "תמיד."
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "w1",
+            "kind": "when",
+            "shown": true
+          },
+          {
+            "nodeId": "w2",
+            "kind": "when",
+            "shown": false
+          },
+          {
+            "nodeId": "w3",
+            "kind": "when",
+            "shown": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "when: a hidden section contributes no missing fields",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w",
+            "t": "when",
+            "rule": {
+              "t": "group",
+              "op": "all",
+              "items": [
+                {
+                  "t": "condition",
+                  "field": "guarantor.required",
+                  "op": "isNo"
+                }
+              ]
+            },
+            "children": [
+              {
+                "id": "p",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{guarantor.phone}}",
+                  "he": "{{guarantor.phone}}"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [],
+          "missing": []
+        },
+        "decisions": [
+          {
+            "nodeId": "w",
+            "kind": "when",
+            "shown": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "repeat: only the items where the filter is met, with each item's fields",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r",
+            "t": "repeat",
+            "over": "documents.checklist",
+            "where": {
+              "t": "group",
+              "op": "all",
+              "items": [
+                {
+                  "t": "condition",
+                  "field": "item.received",
+                  "op": "isNo"
+                }
+              ]
+            },
+            "children": [
+              {
+                "id": "p",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{item.name}} ({{item.requirement}})",
+                  "he": "{{item.name}} ({{item.requirement}})"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Payslips (Required)"
+            },
+            {
+              "type": "paragraph",
+              "text": "Bank statements (Required if it applies)"
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "תלושי שכר (חובה)"
+            },
+            {
+              "type": "paragraph",
+              "text": "דפי חשבון בנק (חובה אם רלוונטי)"
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "r",
+            "kind": "repeat",
+            "shown": true,
+            "items": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "repeat: every item when there is no filter",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r",
+            "t": "repeat",
+            "over": "applicants",
+            "where": null,
+            "children": [
+              {
+                "id": "p",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{item.fullName}}: {{item.role}}, {{item.monthlyIncome}}",
+                  "he": "{{item.fullName}}: {{item.role}}, {{item.monthlyIncome}}"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Noa Levi: Main borrower, ₪21,500"
+            },
+            {
+              "type": "paragraph",
+              "text": "Daniel Levi: Joint borrower, ₪14,000"
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Noa Levi: לווה ראשי, 21,500 ₪"
+            },
+            {
+              "type": "paragraph",
+              "text": "Daniel Levi: לווה במשותף, 14,000 ₪"
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "r",
+            "kind": "repeat",
+            "shown": true,
+            "items": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "repeat: nothing matches, so nothing is shown",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r",
+            "t": "repeat",
+            "over": "documents.checklist",
+            "where": {
+              "t": "group",
+              "op": "all",
+              "items": [
+                {
+                  "t": "condition",
+                  "field": "item.received",
+                  "op": "isYes"
+                },
+                {
+                  "t": "condition",
+                  "field": "item.requirement",
+                  "op": "eq",
+                  "rhs": {
+                    "k": "value",
+                    "v": "CONDITIONAL"
+                  }
+                }
+              ]
+            },
+            "children": [
+              {
+                "id": "p",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{item.name}}",
+                  "he": "{{item.name}}"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": []
+        },
+        "decisions": [
+          {
+            "nodeId": "r",
+            "kind": "repeat",
+            "shown": false,
+            "items": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "repeat: over a missing list shows nothing",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r",
+            "t": "repeat",
+            "over": "nothing.list",
+            "where": null,
+            "children": [
+              {
+                "id": "p",
+                "t": "paragraph",
+                "text": {
+                  "en": "x",
+                  "he": "x"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": []
+        },
+        "decisions": [
+          {
+            "nodeId": "r",
+            "kind": "repeat",
+            "shown": false,
+            "items": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "a condition inside a repeat sees the current item",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r",
+            "t": "repeat",
+            "over": "documents.checklist",
+            "where": null,
+            "children": [
+              {
+                "id": "w",
+                "t": "when",
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "item.received",
+                      "op": "isNo"
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "p",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Missing: {{item.name}}",
+                      "he": "חסר: {{item.name}}"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "Missing: Payslips"
+            },
+            {
+              "type": "paragraph",
+              "text": "Missing: Bank statements"
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "paragraph",
+              "text": "חסר: תלושי שכר"
+            },
+            {
+              "type": "paragraph",
+              "text": "חסר: דפי חשבון בנק"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "header changes with the application type, and page tokens pass through",
+      "document": {
+        "formatVersion": 1,
+        "header": [
+          {
+            "id": "hdr",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "application.type",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "PERSONAL"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "i1",
+                    "t": "image",
+                    "kind": "personal",
+                    "alt": {
+                      "en": "Personal loans",
+                      "he": "הלוואות אישיות"
+                    }
+                  },
+                  {
+                    "id": "r1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Ref {{application.reference}}",
+                      "he": "מספר {{application.reference}}"
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "application.type",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "BUSINESS"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "i2",
+                    "t": "image",
+                    "kind": "business",
+                    "alt": {
+                      "en": "Business lending",
+                      "he": "אשראי עסקי"
+                    }
+                  },
+                  {
+                    "id": "r2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Ref {{application.reference}}",
+                      "he": "מספר {{application.reference}}"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "body": [],
+        "footer": [
+          {
+            "id": "ft",
+            "t": "paragraph",
+            "text": {
+              "en": "Page {{page.number}} of {{page.total}}",
+              "he": "עמוד {{page.number}} מתוך {{page.total}}"
+            }
+          }
+        ]
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "header": [
+            {
+              "type": "image",
+              "kind": "personal",
+              "alt": "Personal loans"
+            },
+            {
+              "type": "paragraph",
+              "text": "Ref DGB-2026-90531"
+            }
+          ],
+          "footer": [
+            {
+              "type": "paragraph",
+              "text": "Page {{page.number}} of {{page.total}}"
+            }
+          ],
+          "missing": []
+        },
+        "he": {
+          "header": [
+            {
+              "type": "image",
+              "kind": "personal",
+              "alt": "הלוואות אישיות"
+            },
+            {
+              "type": "paragraph",
+              "text": "מספר DGB-2026-90531"
+            }
+          ],
+          "footer": [
+            {
+              "type": "paragraph",
+              "text": "עמוד {{page.number}} מתוך {{page.total}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "the business header is used for a business application",
+      "document": {
+        "formatVersion": 1,
+        "header": [
+          {
+            "id": "hdr",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "application.type",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "PERSONAL"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "i1",
+                    "t": "image",
+                    "kind": "personal",
+                    "alt": {
+                      "en": "Personal loans",
+                      "he": "הלוואות אישיות"
+                    }
+                  },
+                  {
+                    "id": "r1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Ref {{application.reference}}",
+                      "he": "מספר {{application.reference}}"
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "group",
+                  "op": "all",
+                  "items": [
+                    {
+                      "t": "condition",
+                      "field": "application.type",
+                      "op": "eq",
+                      "rhs": {
+                        "k": "value",
+                        "v": "BUSINESS"
+                      }
+                    }
+                  ]
+                },
+                "children": [
+                  {
+                    "id": "i2",
+                    "t": "image",
+                    "kind": "business",
+                    "alt": {
+                      "en": "Business lending",
+                      "he": "אשראי עסקי"
+                    }
+                  },
+                  {
+                    "id": "r2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "Ref {{application.reference}}",
+                      "he": "מספר {{application.reference}}"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "body": [],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "BUSINESS",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "header": [
+            {
+              "type": "image",
+              "kind": "business",
+              "alt": "Business lending"
+            },
+            {
+              "type": "paragraph",
+              "text": "Ref DGB-2026-90531"
+            }
+          ]
+        },
+        "decisions": [
+          {
+            "nodeId": "hdr",
+            "kind": "alternatives",
+            "shown": true,
+            "variant": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "list, table, image with an uploaded picture, and signature",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "l",
+            "t": "list",
+            "items": [
+              {
+                "en": "Term: {{loan.termMonths}}",
+                "he": "תקופה: {{loan.termMonths}}"
+              },
+              {
+                "en": "Second",
+                "he": "שני"
+              }
+            ]
+          },
+          {
+            "id": "t",
+            "t": "table",
+            "rows": [
+              {
+                "label": {
+                  "en": "Monthly repayment",
+                  "he": "החזר חודשי"
+                },
+                "value": {
+                  "en": "{{calculated.monthlyRepayment}}",
+                  "he": "{{calculated.monthlyRepayment}}"
+                }
+              },
+              {
+                "label": {
+                  "en": "Total to repay",
+                  "he": "סך הכל"
+                },
+                "value": {
+                  "en": "{{calculated.totalPayable}}",
+                  "he": "{{calculated.totalPayable}}"
+                }
+              },
+              {
+                "label": {
+                  "en": "Per ₪1",
+                  "he": "לכל ₪1"
+                },
+                "value": {
+                  "en": "{{calculated.costPerShekel}}",
+                  "he": "{{calculated.costPerShekel}}"
+                }
+              }
+            ]
+          },
+          {
+            "id": "im",
+            "t": "image",
+            "imageId": "img-seal-1",
+            "alt": {
+              "en": "Seal of {{branch.name}}",
+              "he": "חותם {{branch.name}}"
+            }
+          },
+          {
+            "id": "s",
+            "t": "signature",
+            "imageId": "img-sig-9",
+            "caption": {
+              "en": "Authorised signatory, {{branch.name}}",
+              "he": "מורשה חתימה, {{branch.name}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "data": {
+        "application": {
+          "reference": "DGB-2026-90531",
+          "type": "PERSONAL",
+          "submittedAt": "2026-11-12"
+        },
+        "applicants": [
+          {
+            "fullName": "Noa Levi",
+            "role": "MAIN",
+            "dateOfBirth": "1988-04-12",
+            "monthlyIncome": 21500
+          },
+          {
+            "fullName": "Daniel Levi",
+            "role": "JOINT",
+            "dateOfBirth": "1986-09-02",
+            "monthlyIncome": 14000
+          }
+        ],
+        "loan": {
+          "purpose": "DEBT_CONSOLIDATION",
+          "amount": 150000,
+          "termMonths": 60,
+          "rateType": "FIXED_THEN_VARIABLE",
+          "annualRate": 5.4,
+          "fixedMonths": 24
+        },
+        "calculated": {
+          "monthlyRepayment": 2858.34,
+          "totalPayable": 171500.4,
+          "costPerShekel": 1.1433
+        },
+        "guarantor": {
+          "required": true,
+          "name": "Yossi Levi"
+        },
+        "product": {
+          "name": {
+            "en": "Personal Loan",
+            "he": "הלוואה אישית"
+          }
+        },
+        "branch": {
+          "name": {
+            "en": "Haifa - Hadar",
+            "he": "חיפה - הדר"
+          }
+        },
+        "documents": {
+          "checklist": [
+            {
+              "name": {
+                "en": "National ID",
+                "he": "תעודת זהות"
+              },
+              "requirement": "REQUIRED",
+              "received": true
+            },
+            {
+              "name": {
+                "en": "Payslips",
+                "he": "תלושי שכר"
+              },
+              "requirement": "REQUIRED",
+              "received": false
+            },
+            {
+              "name": {
+                "en": "Bank statements",
+                "he": "דפי חשבון בנק"
+              },
+              "requirement": "CONDITIONAL",
+              "received": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "en": {
+          "body": [
+            {
+              "type": "list",
+              "items": [
+                "Term: 5 years",
+                "Second"
+              ]
+            },
+            {
+              "type": "table",
+              "rows": [
+                {
+                  "label": "Monthly repayment",
+                  "value": "₪2,858.34"
+                },
+                {
+                  "label": "Total to repay",
+                  "value": "₪171,500.40"
+                },
+                {
+                  "label": "Per ₪1",
+                  "value": "1.14"
+                }
+              ]
+            },
+            {
+              "type": "image",
+              "imageId": "img-seal-1",
+              "alt": "Seal of Haifa - Hadar"
+            },
+            {
+              "type": "signature",
+              "imageId": "img-sig-9",
+              "caption": "Authorised signatory, Haifa - Hadar"
+            }
+          ]
+        },
+        "he": {
+          "body": [
+            {
+              "type": "list",
+              "items": [
+                "תקופה: 5 שנים",
+                "שני"
+              ]
+            },
+            {
+              "type": "table",
+              "rows": [
+                {
+                  "label": "החזר חודשי",
+                  "value": "2,858.34 ₪"
+                },
+                {
+                  "label": "סך הכל",
+                  "value": "171,500.40 ₪"
+                },
+                {
+                  "label": "לכל ₪1",
+                  "value": "1.14"
+                }
+              ]
+            },
+            {
+              "type": "image",
+              "imageId": "img-seal-1",
+              "alt": "חותם חיפה - הדר"
+            },
+            {
+              "type": "signature",
+              "imageId": "img-sig-9",
+              "caption": "מורשה חתימה, חיפה - הדר"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -59,6 +59,9 @@ export function ageInYears(dob: unknown, today: string): number | null {
 
 // ---- comparison helpers
 
+/** A bilingual value ({en, he}) compares as its English text. */
+const plain = (v: unknown): unknown => (typeof v === "object" && v !== null && !Array.isArray(v) && "en" in (v as object) ? (v as { en: unknown }).en : v);
+
 const isNumeric = (v: unknown): boolean => typeof v === "number" || (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)));
 function equal(a: unknown, b: unknown): boolean {
   if (typeof a === "boolean" || typeof b === "boolean") return String(a) === String(b);
@@ -79,7 +82,7 @@ function rhsValue(c: ConditionRule, ctx: EvalContext): unknown {
  * as an empty list.
  */
 export function evalCondition(c: ConditionRule, ctx: EvalContext, depth = 0): boolean {
-  const lv = getPath(c.field, ctx);
+  const lv = plain(getPath(c.field, ctx));
   if (c.op === "empty") return isMissing(lv) || (Array.isArray(lv) && lv.length === 0);
   if (c.op === "notEmpty") return !(isMissing(lv) || (Array.isArray(lv) && lv.length === 0));
   if (c.op === "anyMatch" || c.op === "noneMatch") {
@@ -88,7 +91,7 @@ export function evalCondition(c: ConditionRule, ctx: EvalContext, depth = 0): bo
     return c.op === "anyMatch" ? any : !any;
   }
   if (isMissing(lv)) return false;
-  const rv = rhsValue(c, ctx);
+  const rv = plain(rhsValue(c, ctx));
   switch (c.op) {
     case "isYes": return lv === true;
     case "isNo": return lv === false;

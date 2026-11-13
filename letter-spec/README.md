@@ -1,0 +1,122 @@
+# letter-spec
+
+The single source of truth for the **letter engine**: how a letter template, plus the data of one application, becomes the text that is printed, in English and Hebrew. Two engines implement it (the Cloudflare Worker module, which is the reference build, and the Java services, which are production) and both must pass the same conformance vectors. Drawing the PDF is **not** part of the contract: each side uses its own PDF library and draws the engine's output.
+
+| File | What it is |
+|---|---|
+| `dictionary.sample.json` | A sample data dictionary (`formatVersion` 1) used by the vectors |
+| `vectors/formats.json` | How a value prints (numbers, money, dates, terms, choices) |
+| `vectors/rules.json` | Rule evaluation against fixed data and a fixed date |
+| `vectors/resolve.json` | Whole documents resolved to text, with the audit decisions |
+
+## The pieces
+
+```
+template (document)  +  data dictionary  +  saved rules  +  application data  +  issue date
+                                  |
+                          resolveLetter(input, lang)           <- pure function, the contract
+                                  |
+              ResolvedLetter { header, body, footer, decisions, missing }
+                                  |
+                  renderer (pdf-lib in the Worker, iText/PDFBox in Java)  <- not in the contract
+```
+
+`resolveLetter` has no clock and no I/O. The issue date (`today`) is an input, so a letter can be rebuilt exactly later for an auditor from the stored template version and data.
+
+## Document
+
+A document has three zones, `header`, `body` and `footer`, each a list of nodes. All text is bilingual (`{ "en": "...", "he": "..." }`) and may contain tokens (below).
+
+| Node | Meaning |
+|---|---|
+| `heading`, `paragraph` | One block of text. A `\n` is a line break |
+| `list` | Bullet points, each bilingual |
+| `table` | Rows of a label and a value |
+| `image` | A picture: `imageId` (an uploaded image) or `kind` (a built-in one), with a description |
+| `signature` | A signature picture (`imageId`) with a caption |
+| `when` | Shows its `children` only when `rule` is met (`rule: null` = always) |
+| `repeat` | Shows its `children` once per entry of the list `over`, keeping only entries that meet `where` |
+| `alternatives` | Several `variants`, each with a rule; **the first variant whose rule is met is used**. A variant with `rule: null` always matches, so put it last as the "otherwise". If none match, nothing is shown |
+
+Nodes nest: a `when` can sit in a `repeat`, a `repeat` in an `alternatives`, and so on. Inside a `repeat`, `item.<field>` is the current entry.
+
+## Data dictionary
+
+Everything a letter can use. `fields` maps a dotted path to `{ label, type, fmt?, choices?, itemFields? }`. Types: `text`, `number`, `money`, `percent`, `date`, `bool`, `choice` (with `choices: [{v, en, he}]`), `list` (with `itemFields`). Dates are `YYYY-MM-DD`. A value may also be a bilingual object `{en, he}` (a name from a master, say), which prints in the language asked for and compares as its English text.
+
+Two paths are derived: `<list>.count` (a list's length) and `today` (the issue date). `page.number` and `page.total` are tokens only a renderer can fill (see Resolving).
+
+## Tokens
+
+`{{path}}` or `{{path|format}}`. The value prints as the field's default format, or as `format` when given. Formats: `int`, `dec`, `money`, `money2`, `pct`, `term`, `date`, `yesno`. Defaults by type: number `int`, money `money`, percent `pct`, date `date`, bool `yesno`, choice = its label in the language, text as is.
+
+## Formats
+
+Written out in full so both engines print the same characters. Rounding is half up on the exact value. `₪` is U+20AA.
+
+| Format | English | Hebrew |
+|---|---|---|
+| `int` | `1,234,567` | same |
+| `dec` | two decimals: `1,234.50` | same |
+| `money` | `₪150,000` (whole shekels) | `150,000 ₪` |
+| `money2` | `₪2,858.34` | `2,858.34 ₪` |
+| negative money | `-₪5` | `-5 ₪` |
+| `pct` | at least one, at most two decimals: `5.4%`, `5.25%`, `6.0%` | same |
+| `term` (months) | `1 year`, `3 years and 6 months`, `5 months`, `1 month` | `שנה`, `שנתיים`, `3 שנים ו-6 חודשים`, `שנה וחודשיים`, `5 חודשים`, `חודש`, `חודשיים` |
+| `date` | `13 November 2026` | `13 בנובמבר 2026` |
+| `yesno` | `Yes` / `No` | `כן` / `לא` |
+
+Hebrew `term`: 1 and 2 use the singular and the dual (`שנה`/`שנתיים`, `חודש`/`חודשיים`); other counts are `N שנים` / `N חודשים`. The "and" is the prefix ו, joined with a hyphen only before a numeral (`3 שנים ו-6 חודשים`, but `שנה וחודשיים`). The month names are in `formats.ts`/the vectors; the Java engine must use the same table.
+
+A missing value (null, undefined or empty string) prints as nothing.
+
+## Rules
+
+A rule is a `group` (`op: all | any`, optional `not`, `items`), a `condition`, or a `ref` to a saved rule by id. A condition has a `field` (any dictionary path, or `item.<key>` inside a list), an `op`, and for most ops an `rhs`: `{k: "value", v}`, `{k: "field", v: <other path>}` or `{k: "today"}`; `between` uses `v` and `v2`; `in` uses `list`; `withinDays`, `ageAtLeast`, `ageBelow` use a numeric `v`.
+
+| Operators | Meaning |
+|---|---|
+| `eq`, `ne` | Equal / not equal. Two numbers compare as numbers, booleans as booleans, anything else as exact text |
+| `gt`, `gte`, `lt`, `lte`, `between` | Numeric. `between` is inclusive |
+| `contains` | Case-insensitive substring |
+| `in` | The value is one of `rhs.list` (compared as text) |
+| `empty`, `notEmpty` | Missing, empty text, or an empty list |
+| `isYes`, `isNo` | The value is the boolean true / false |
+| `before`, `after` | Dates, whole days |
+| `withinDays` | The date is at most `v` days from the issue date, either side |
+| `ageAtLeast`, `ageBelow` | Whole years between a date of birth and the issue date |
+| `anyMatch`, `noneMatch` | On a list: some / no entry meets the `nested` group (evaluated with `item.*` for that entry) |
+
+**Missing values.** Any comparison whose value, or the value it is compared with, is missing is **false** (an unknown value never matches), including `ne`. Only `empty`/`notEmpty` look at missingness itself. A missing list counts as an empty list: `anyMatch` is false, `noneMatch` is true.
+
+**Groups.** An empty group is met. `not` flips the result of a group that has items.
+
+**Saved rules.** A `ref` is met when the saved rule it names is met. A `ref` to a rule that does not exist is not met. References nest; evaluation stops at 20 levels deep (not met).
+
+## Resolving
+
+`resolveLetter(input, lang)` walks the three zones in order and returns:
+
+```
+{ lang, header[], body[], footer[],
+  decisions: [{ nodeId, kind: when|repeat|alternatives, shown, variant?, items? }],
+  missing:   [ paths that a token named and that had no value ] }
+```
+
+Blocks: `heading` / `paragraph` (`text`), `list` (`items[]`), `table` (`rows[{label, value}]`), `image` (`imageId?`, `kind?`, `alt`), `signature` (`imageId?`, `caption`). Text has every token filled in. `{{page.number}}` and `{{page.total}}` are left as they are for the renderer.
+
+- `decisions` are recorded in document order for `when`, `repeat` and `alternatives` nodes **outside** repeats (what happened inside a repeat is not recorded per entry). For `alternatives`, `variant` is the zero-based variant used; for `repeat`, `items` is how many entries were shown. The same decisions result for both languages, so the two cannot disagree.
+- `missing` is sorted. A letter with anything in `missing` should not be issued.
+
+## Conformance
+
+The vectors are the contract. Each side runs them:
+
+- Worker: `worker/test/letter-vectors.test.ts`.
+- Java: to be added next to the workflow engine's `VectorsTest`. Expected values were derived by hand from this document, not copied from the Worker's output.
+
+Matching rule in `resolve.json`: every key in `expect` must equal the result; arrays must match in length and order.
+
+## Not in the contract
+
+PDF drawing (fonts, line breaking, page breaks, right-to-left layout, table layout); the editor; storage of templates, versions and images; who writes calculated values into the application data (the backend does, whenever the data they need exists).

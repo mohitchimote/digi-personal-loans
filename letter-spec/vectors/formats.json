@@ -1,0 +1,320 @@
+{
+  "description": "How a value prints. See README, Formats.",
+  "vectors": [
+    {
+      "name": "money en",
+      "value": 150000,
+      "type": "money",
+      "lang": "en",
+      "expect": "₪150,000"
+    },
+    {
+      "name": "money he",
+      "value": 150000,
+      "type": "money",
+      "lang": "he",
+      "expect": "150,000 ₪"
+    },
+    {
+      "name": "money2 en",
+      "value": 2858.34,
+      "type": "money",
+      "lang": "en",
+      "expect": "₪2,858.34",
+      "fmt": "money2"
+    },
+    {
+      "name": "money2 he",
+      "value": 2858.34,
+      "type": "money",
+      "lang": "he",
+      "expect": "2,858.34 ₪",
+      "fmt": "money2"
+    },
+    {
+      "name": "money negative en",
+      "value": -5,
+      "type": "money",
+      "lang": "en",
+      "expect": "-₪5"
+    },
+    {
+      "name": "money negative he",
+      "value": -5,
+      "type": "money",
+      "lang": "he",
+      "expect": "-5 ₪"
+    },
+    {
+      "name": "money rounds to whole shekels",
+      "value": 1234.6,
+      "type": "money",
+      "lang": "en",
+      "expect": "₪1,235"
+    },
+    {
+      "name": "int groups thousands",
+      "value": 1234567,
+      "type": "number",
+      "lang": "en",
+      "expect": "1,234,567"
+    },
+    {
+      "name": "int zero",
+      "value": 0,
+      "type": "number",
+      "lang": "en",
+      "expect": "0"
+    },
+    {
+      "name": "dec two places",
+      "value": 1234.5,
+      "type": "number",
+      "lang": "en",
+      "expect": "1,234.50",
+      "fmt": "dec"
+    },
+    {
+      "name": "dec small",
+      "value": 1.1433,
+      "type": "number",
+      "lang": "he",
+      "expect": "1.14",
+      "fmt": "dec"
+    },
+    {
+      "name": "pct one decimal",
+      "value": 5.4,
+      "type": "percent",
+      "lang": "en",
+      "expect": "5.4%"
+    },
+    {
+      "name": "pct two decimals",
+      "value": 5.25,
+      "type": "percent",
+      "lang": "he",
+      "expect": "5.25%"
+    },
+    {
+      "name": "pct whole number keeps a decimal",
+      "value": 6,
+      "type": "percent",
+      "lang": "en",
+      "expect": "6.0%"
+    },
+    {
+      "name": "term years and months en",
+      "value": 42,
+      "type": "number",
+      "lang": "en",
+      "expect": "3 years and 6 months",
+      "fmt": "term"
+    },
+    {
+      "name": "term years and months he",
+      "value": 42,
+      "type": "number",
+      "lang": "he",
+      "expect": "3 שנים ו-6 חודשים",
+      "fmt": "term"
+    },
+    {
+      "name": "term one year",
+      "value": 12,
+      "type": "number",
+      "lang": "en",
+      "expect": "1 year",
+      "fmt": "term"
+    },
+    {
+      "name": "term one year he",
+      "value": 12,
+      "type": "number",
+      "lang": "he",
+      "expect": "שנה",
+      "fmt": "term"
+    },
+    {
+      "name": "term two years he uses the dual",
+      "value": 24,
+      "type": "number",
+      "lang": "he",
+      "expect": "שנתיים",
+      "fmt": "term"
+    },
+    {
+      "name": "term months only",
+      "value": 5,
+      "type": "number",
+      "lang": "en",
+      "expect": "5 months",
+      "fmt": "term"
+    },
+    {
+      "name": "term months only he",
+      "value": 5,
+      "type": "number",
+      "lang": "he",
+      "expect": "5 חודשים",
+      "fmt": "term"
+    },
+    {
+      "name": "term one year and two months he",
+      "value": 14,
+      "type": "number",
+      "lang": "he",
+      "expect": "שנה וחודשיים",
+      "fmt": "term"
+    },
+    {
+      "name": "term two years and a month he",
+      "value": 25,
+      "type": "number",
+      "lang": "he",
+      "expect": "שנתיים וחודש",
+      "fmt": "term"
+    },
+    {
+      "name": "term one month",
+      "value": 1,
+      "type": "number",
+      "lang": "en",
+      "expect": "1 month",
+      "fmt": "term"
+    },
+    {
+      "name": "date en",
+      "value": "2026-11-13",
+      "type": "date",
+      "lang": "en",
+      "expect": "13 November 2026"
+    },
+    {
+      "name": "date he",
+      "value": "2026-11-13",
+      "type": "date",
+      "lang": "he",
+      "expect": "13 בנובמבר 2026"
+    },
+    {
+      "name": "date single digit day",
+      "value": "2026-01-05",
+      "type": "date",
+      "lang": "en",
+      "expect": "5 January 2026"
+    },
+    {
+      "name": "yes en",
+      "value": true,
+      "type": "bool",
+      "lang": "en",
+      "expect": "Yes"
+    },
+    {
+      "name": "no he",
+      "value": false,
+      "type": "bool",
+      "lang": "he",
+      "expect": "לא"
+    },
+    {
+      "name": "choice en",
+      "value": "VARIABLE",
+      "type": "choice",
+      "lang": "en",
+      "expect": "Variable",
+      "choices": [
+        {
+          "v": "VARIABLE",
+          "en": "Variable",
+          "he": "משתנה"
+        },
+        {
+          "v": "FIXED",
+          "en": "Fixed",
+          "he": "קבועה"
+        }
+      ]
+    },
+    {
+      "name": "choice he",
+      "value": "VARIABLE",
+      "type": "choice",
+      "lang": "he",
+      "expect": "משתנה",
+      "choices": [
+        {
+          "v": "VARIABLE",
+          "en": "Variable",
+          "he": "משתנה"
+        },
+        {
+          "v": "FIXED",
+          "en": "Fixed",
+          "he": "קבועה"
+        }
+      ]
+    },
+    {
+      "name": "unknown choice code prints as is",
+      "value": "OTHER",
+      "type": "choice",
+      "lang": "en",
+      "expect": "OTHER",
+      "choices": [
+        {
+          "v": "VARIABLE",
+          "en": "Variable",
+          "he": "משתנה"
+        },
+        {
+          "v": "FIXED",
+          "en": "Fixed",
+          "he": "קבועה"
+        }
+      ]
+    },
+    {
+      "name": "bilingual value en",
+      "value": {
+        "en": "Personal Loan",
+        "he": "הלוואה אישית"
+      },
+      "type": "text",
+      "lang": "en",
+      "expect": "Personal Loan"
+    },
+    {
+      "name": "bilingual value he",
+      "value": {
+        "en": "Personal Loan",
+        "he": "הלוואה אישית"
+      },
+      "type": "text",
+      "lang": "he",
+      "expect": "הלוואה אישית"
+    },
+    {
+      "name": "text passes through",
+      "value": "DGB-1",
+      "type": "text",
+      "lang": "en",
+      "expect": "DGB-1"
+    },
+    {
+      "name": "missing value prints nothing",
+      "value": null,
+      "type": "text",
+      "lang": "en",
+      "expect": ""
+    },
+    {
+      "name": "empty string prints nothing",
+      "value": "",
+      "type": "text",
+      "lang": "he",
+      "expect": ""
+    }
+  ]
+}

@@ -38,7 +38,8 @@ export function formatTerm(months: number, lang: Lang): string {
   if (lang === "he") {
     if (y) parts.push(y === 1 ? "שנה" : y === 2 ? "שנתיים" : `${y} שנים`);
     if (m) parts.push(m === 1 ? "חודש" : m === 2 ? "חודשיים" : `${m} חודשים`);
-    return parts.join(" ו-");
+    // The "and" is the prefix ו: attached to a word, hyphenated before a numeral ("שנה וחודשיים", "3 שנים ו-6 חודשים").
+    return parts.length === 2 ? parts[0] + (/^\d/.test(parts[1]) ? " ו-" : " ו") + parts[1] : parts.join("");
   }
   if (y) parts.push(`${y} ${y === 1 ? "year" : "years"}`);
   if (m) parts.push(`${m} ${m === 1 ? "month" : "months"}`);
