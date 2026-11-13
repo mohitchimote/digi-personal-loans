@@ -146,6 +146,10 @@ export class SidebarComponent implements OnInit {
     return this.applicationSteps.filter(s => this.isStepCompleted(s.sectionKey!)).length;
   }
 
+  trackByStep(_index: number, step: NavItem): string {
+    return step.sectionKey ?? step.route;
+  }
+
   get progressPercent(): number {
     return Math.round((this.completedCount() / this.applicationSteps.length) * 100);
   }
