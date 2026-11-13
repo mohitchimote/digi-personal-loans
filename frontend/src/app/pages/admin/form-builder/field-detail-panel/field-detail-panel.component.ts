@@ -52,14 +52,19 @@ export class FieldDetailPanelComponent implements OnChanges, OnInit {
   @Output() changed = new EventEmitter<void>();
 
   masterTypes: MasterType[] = [];
+  private systemLists: MasterType[] = [];
 
   constructor(private masters: MastersService, private i18n: I18nService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     // The list arrives after the first render; a parent that doesn't re-check on its own would never show it.
     this.masters.types().subscribe({
-      next: t => { this.masterTypes = t; this.cdr.markForCheck(); },
+      next: t => { this.masterTypes = [...t, ...this.systemLists]; this.cdr.markForCheck(); },
       error: () => { this.masterTypes = []; this.cdr.markForCheck(); },
+    });
+    this.masters.systemLists().subscribe({
+      next: l => { this.systemLists = l; this.masterTypes = [...this.masterTypes.filter(m => !m.isSystemList), ...l]; this.cdr.markForCheck(); },
+      error: () => {},
     });
   }
 

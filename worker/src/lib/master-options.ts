@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { getDb } from "../db/client";
 import { masterItems, masterTypes } from "../db/schema";
 import { AppError } from "./errors";
+import { SYSTEM_LISTS, isSystemList } from "./system-lists";
 import type { FormVersionSchema } from "./form-schema-types";
 
 // Forms whose fields take their options from a master (see `optionsSource` in form-schema-types.ts).
@@ -83,7 +84,10 @@ export async function assertMasterSources(db: Db, schema: FormVersionSchema): Pr
     try { keys = (JSON.parse(r.attributeDefs) as { key: string }[]).map((d) => d.key); } catch { /* none */ }
     return [r.code, { parentTypeCode: r.parentTypeCode, attributeKeys: keys }] as const;
   }));
-  const problems = masterSourceProblems(schema, types);
+  // System lists (bank staff) are valid sources too, though they are not rows in master_types.
+  const merged = new Map(types);
+  for (const l of Object.values(SYSTEM_LISTS)) merged.set(l.code, { parentTypeCode: l.parentTypeCode, attributeKeys: [] });
+  const problems = masterSourceProblems(schema, merged);
   if (problems.length) throw new AppError(problems.join(" "));
 }
 
@@ -99,6 +103,7 @@ export async function loadMasterItemFacts(
   value: string,
   opts: { valueAttribute?: string; parentCode?: string } = {},
 ): Promise<MasterItemFacts | null> {
+  if (isSystemList(master)) return SYSTEM_LISTS[master].find(db, value);
   const candidates = opts.valueAttribute
     ? await db.select().from(masterItems).where(and(
         eq(masterItems.typeCode, master),

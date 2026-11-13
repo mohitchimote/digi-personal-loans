@@ -21,12 +21,23 @@ const business = () => formVersionSchemaSchema.parse({
   ],
 });
 const types = new Map([
-  ["nationality", { parentTypeCode: null }], ["branch", { parentTypeCode: null }], ["branch_staff", { parentTypeCode: "branch" }],
+  ["nationality", { parentTypeCode: null }], ["branch", { parentTypeCode: null }], ["staff", { parentTypeCode: "branch" }],
   ["bank", { parentTypeCode: null }], ["bank_branch", { parentTypeCode: "bank", attributeKeys: ["branchCode"] }],
   ["business_loan_purpose", { parentTypeCode: null }],
 ]);
 
 describe("applyMasterSources", () => {
+  it("re-points a field that still uses the retired branch_staff master at the staff list", () => {
+    const schema = formVersionSchemaSchema.parse({
+      sections: [{ key: "personalDetails", order: 1, sideMenuLabelKey: "s", sectionHeaders: [header("h")], fields: [
+        field("preferredBranch", 1, { optionsSource: { master: "branch" } }),
+        field("staffName", 2, { optionsSource: { master: "branch_staff", dependsOn: { fieldKey: "preferredBranch" } } }),
+      ] }],
+    });
+    const out = applyMasterSources("personal-loan-wizard", schema);
+    expect(out.schema.sections[0].fields[1].optionsSource).toEqual({ master: "staff", dependsOn: { fieldKey: "preferredBranch" } });
+    expect(out.changes.some((c) => c.includes("branch_staff"))).toBe(true);
+  });
   it("sets the source on known fields and result still validates", () => {
     const { schema, changes } = applyMasterSources("personal-loan-wizard", personal());
     const pd = schema.sections[0].fields;

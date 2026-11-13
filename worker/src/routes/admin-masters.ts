@@ -7,6 +7,7 @@ import { getDb } from "../db/client";
 import { masterTypes, masterItems, orgLevels, orgUnits } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { requireAuth, requireRole } from "../middleware/auth";
+import { SYSTEM_LISTS, isSystemList } from "../lib/system-lists";
 import { recordAudit } from "../lib/audit";
 import {
   attributeDefsSchema, validateAttributes, typeCreatesCycle, parseJson, generateCode, generateAttributeKey, normaliseName,
@@ -87,6 +88,13 @@ function shapeType(t: typeof masterTypes.$inferSelect, itemCount?: number) {
 function shapeItem(i: typeof masterItems.$inferSelect) {
   return { ...i, attributes: parseJson<Record<string, unknown>>(i.attributes, {}) };
 }
+
+// Pick-lists that come from elsewhere (bank staff from Users): not editable here, but a form can use them.
+mastersAdmin.get("/system-lists", (c) =>
+  c.json(Object.values(SYSTEM_LISTS).map((l) => ({
+    code: l.code, labelEn: l.label.en, labelHe: l.label.he, description: null, parentTypeCode: l.parentTypeCode,
+    parentRequired: true, attributeDefs: [], isSystem: true, isSystemList: true, sortOrder: 999,
+  }))));
 
 mastersAdmin.get("/types", async (c) => {
   const db = getDb(c.env.DB);
@@ -294,6 +302,7 @@ mastersAdmin.delete("/items/:id", async (c) => {
 export const masters = new Hono<AppEnv>();
 
 async function pickList(db: Db, typeCode: string, parentCode?: string, q?: string, limit = 2000) {
+  if (isSystemList(typeCode)) return SYSTEM_LISTS[typeCode].list(db, { parentCode, q, limit });
   const [type] = await db.select().from(masterTypes).where(eq(masterTypes.code, typeCode)).limit(1);
   if (!type) throw new AppError("Unknown master.", 404);
   const conds = [eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)];
@@ -325,6 +334,13 @@ async function pickList(db: Db, typeCode: string, parentCode?: string, q?: strin
   }));
   return out;
 }
+
+// System lists (bank staff) carry people's names, so unlike the masters they are for signed-in users only.
+masters.use("/", async (c, next) => {
+  const wanted = (c.req.query("types") ?? "").split(",").map((t) => t.trim());
+  return wanted.some(isSystemList) ? requireAuth(c, next) : next();
+});
+masters.use("/:type", async (c, next) => (isSystemList(c.req.param("type")) ? requireAuth(c, next) : next()));
 
 // GET /api/masters?types=title,gender,country  -> { title: [...], gender: [...], country: [...] }
 masters.get("/", async (c) => {

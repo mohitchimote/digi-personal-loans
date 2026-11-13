@@ -20,6 +20,8 @@ export interface MasterType {
   isSystem: boolean;
   sortOrder: number;
   itemCount?: number;
+  /** A list that comes from elsewhere (bank staff from Users): a form can use it, but it is not edited as a master. */
+  isSystemList?: boolean;
 }
 export interface MasterTypeInput {
   code?: string;
@@ -74,6 +76,8 @@ export class MastersService {
 
   // Admin
   types(): Observable<MasterType[]> { return this.http.get<MasterType[]>(`${ADMIN}/types`); }
+  /** Lists a form can use that are not masters (bank staff, read from Users). */
+  systemLists(): Observable<MasterType[]> { return this.http.get<MasterType[]>(`${ADMIN}/system-lists`); }
   createType(t: MasterTypeInput): Observable<MasterType> { return this.http.post<MasterType>(`${ADMIN}/types`, t); }
   updateType(code: string, t: MasterTypeInput): Observable<MasterType> { return this.http.put<MasterType>(`${ADMIN}/types/${code}`, t); }
   deleteType(code: string): Observable<void> { return this.http.delete<void>(`${ADMIN}/types/${code}`); }

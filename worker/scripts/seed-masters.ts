@@ -32,7 +32,6 @@ const TYPES: TypeSeed[] = [
       { key: "address", label: { en: "Address", he: "כתובת" }, kind: "text" },
       { key: "phone", label: { en: "Phone", he: "טלפון" }, kind: "text" },
     ] },
-  { code: "branch_staff", en: "Branch Staff", he: "צוות סניף", desc: "Staff a customer can name when assisted at a branch (demo data).", parent: "branch" },
   { code: "employment_status", en: "Employment Status", he: "מצב תעסוקתי", desc: "",
     attrs: [{ key: "isEmployed", label: { en: "Has employment details (employer, job title)", he: "יש פרטי תעסוקה (מעסיק, תפקיד)" }, kind: "boolean" }] },
   { code: "employment_duration", en: "Employment Duration", he: "משך העסקה", desc: "Time in current employment." },
@@ -166,18 +165,6 @@ SIMPLE.branch = [
 ];
 for (const [type, rows] of Object.entries(SIMPLE)) items(type, rows);
 
-// Demo staff per branch (what the "assisted by staff" question offers today). Codes are generated from
-// the English name, like any item an admin adds.
-const STAFF: Record<string, [string, string][]> = {
-  "TLV-ROTHSCHILD": [["Yael Cohen", "יעל כהן"], ["Itai Mor", "איתי מור"], ["Shira Ben-Ari", "שירה בן-ארי"], ["Omer Katz", "עומר כץ"]],
-  "JLM-JAFFA": [["Avi Steinberg", "אבי שטיינברג"], ["Noa Friedman", "נועה פרידמן"], ["Eitan Azulay", "איתן אזולאי"]],
-  "HFA-HADAR": [["Liat Peretz", "ליאת פרץ"], ["Ronen Asaf", "רונן אסף"], ["Dana Shapiro", "דנה שפירא"], ["Gil Bar-On", "גיל בר-און"]],
-  "BS-OLDCITY": [["Maya Sasson", "מאיה ששון"], ["Tomer Halevi", "תומר הלוי"], ["Adi Malka", "עדי מלכה"]],
-  "NTN-CENTER": [["Yossi Amar", "יוסי עמר"], ["Keren Tzur", "קרן צור"], ["Nadav Eliyahu", "נדב אליהו"], ["Sigal Dotan", "סיגל דותן"]],
-  "ETH-TOURIST": [["Roni Vaknin", "רוני וקנין"], ["Eyal Barkan", "אייל ברקן"], ["Hila Marom", "הילה מרום"]],
-};
-items("branch_staff", Object.entries(STAFF).flatMap(([branch, people]) =>
-  people.map(([en, he]) => [en.toUpperCase().replace(/[^A-Z0-9]+/g, "_"), en, he, { parent: branch }] as Row)), "branch");
 items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")).map(([c, en, he]) => [c, en, he] as Row), undefined, true);
 
 // Organisation levels named Region / Branch pick their units from the matching masters by default.

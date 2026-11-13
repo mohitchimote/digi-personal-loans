@@ -18,7 +18,7 @@ const PERSONAL: FieldDefault[] = [
   { section: "personalDetails", field: "nationality", source: { master: "nationality" } },
   { section: "personalDetails", field: "maritalStatus", source: { master: "marital_status" } },
   { section: "personalDetails", field: "preferredBranch", source: { master: "branch" } },
-  { section: "personalDetails", field: "staffName", source: { master: "branch_staff", dependsOn: { fieldKey: "preferredBranch" } } },
+  { section: "personalDetails", field: "staffName", source: { master: "staff", dependsOn: { fieldKey: "preferredBranch" } } },
   { section: "incomeEmployment", field: "employmentStatus", source: { master: "employment_status" } },
   { section: "incomeEmployment", field: "employmentDuration", source: { master: "employment_duration" } },
   { section: "directDebit", field: "bankCode", source: { master: "bank" } },
@@ -36,7 +36,7 @@ const BUSINESS: FieldDefault[] = [
     add: { header: { key: "branchAssistance", labelKey: "personal.staffAssistHeader" }, field: { sectionHeaderKey: "branchAssistance", labelKey: "personal.preferredBranchLabel", required: false, order: 2 } },
   },
   {
-    section: "companyDetails", field: "staffName", source: { master: "branch_staff", dependsOn: { fieldKey: "preferredBranch" } },
+    section: "companyDetails", field: "staffName", source: { master: "staff", dependsOn: { fieldKey: "preferredBranch" } },
     add: { field: { sectionHeaderKey: "branchAssistance", labelKey: "personal.staffNameLabel", required: false, order: 3 } },
   },
   {
@@ -48,6 +48,12 @@ const BUSINESS: FieldDefault[] = [
     add: { field: { sectionHeaderKey: "account", labelKey: "directDebit.branchCodeLabel", required: true, order: 3 } },
   },
 ];
+
+/**
+ * Sources that used to point at something that no longer exists, and where they point now. Bank staff were
+ * briefly a master ("branch_staff"); they are read from the Users table now.
+ */
+const REPOINT: Record<string, string> = { branch_staff: "staff" };
 
 export const MASTER_SOURCE_DEFAULTS: Record<FormKey, FieldDefault[]> = {
   "personal-loan-wizard": PERSONAL,
@@ -62,6 +68,12 @@ export const MASTER_SOURCE_DEFAULTS: Record<FormKey, FieldDefault[]> = {
 export function applyMasterSources(formKey: FormKey, schema: FormVersionSchema): { schema: FormVersionSchema; changes: string[] } {
   const next: FormVersionSchema = JSON.parse(JSON.stringify(schema));
   const changes: string[] = [];
+  for (const section of next.sections) {
+    for (const f of section.fields) {
+      const to = f.optionsSource && REPOINT[f.optionsSource.master];
+      if (to) { changes.push(`${section.key}.${f.key}: options from "${f.optionsSource!.master}" now come from "${to}"`); f.optionsSource = { ...f.optionsSource!, master: to }; }
+    }
+  }
   for (const d of MASTER_SOURCE_DEFAULTS[formKey]) {
     const section: FormSection | undefined = next.sections.find((s) => s.key === d.section);
     if (!section) continue;
