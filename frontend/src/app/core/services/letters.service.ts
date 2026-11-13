@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { API_BASE } from './api-base';
 
 // Mirrors worker/src/lib/letters/types.ts (language-neutral model: letter-spec/README.md).
+export type Lang = 'en' | 'he';
 export interface Bi { en: string; he: string }
 export type FieldType = 'text' | 'number' | 'money' | 'percent' | 'date' | 'bool' | 'choice' | 'list';
 export interface Choice { v: string; en: string; he: string }
@@ -46,6 +47,10 @@ export class LettersService {
   saveRule(name: string, rule: Rule): Observable<SavedRule> { return this.http.post<SavedRule>(`${this.base}/rules`, { name, rule }); }
   images(): Observable<LetterImage[]> { return this.http.get<LetterImage[]>(`${this.base}/images`); }
   uploadImage(name: string, kind: string, dataBase64: string): Observable<LetterImage> { return this.http.post<LetterImage>(`${this.base}/images`, { name, kind, dataBase64 }); }
+
+  sampleData(): Observable<Record<string, unknown>> { return this.http.get<Record<string, unknown>>(`${this.base}/sample-data`); }
+  applicationData(ref: string): Observable<Record<string, unknown>> { return this.http.get<Record<string, unknown>>(`${this.base}/application-data/${encodeURIComponent(ref)}`); }
+  imageFile(id: string): Observable<Blob> { return this.http.get(`${this.base}/images/${id}/file`, { responseType: 'blob' }); }
 
   templates(): Observable<LetterTemplateRow[]> { return this.http.get<LetterTemplateRow[]>(`${this.base}/templates`); }
   create(body: { nameEn: string; nameHe: string; description?: string; appliesTo: string; starter: boolean }): Observable<{ key: string }> { return this.http.post<{ key: string }>(`${this.base}/templates`, body); }

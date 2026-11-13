@@ -89,3 +89,41 @@ export function cloneNode(n: LetterNode): LetterNode {
   reId(copy);
   return copy;
 }
+
+import { Rule, SavedRule } from '../../../core/services/letters.service';
+
+/** A sentence for a rule, for the label above a conditional block ("Loan amount is more than 100000"). */
+export function describeRule(rule: Rule | null | undefined, dict: Dictionary | null, saved: SavedRule[], list?: string, depth = 0): string {
+  if (!rule) return 'always';
+  if (depth > 6) return '…';
+  if (rule.t === 'ref') return saved.find((s) => s.id === rule.id)?.name ?? rule.id;
+  if (rule.t === 'group') {
+    if (!rule.items.length) return 'always';
+    const parts = rule.items.map((i) => describeRule(i, dict, saved, list, depth + 1));
+    const s = parts.length === 1 ? parts[0] : parts.map((p) => (/ (and|or) /.test(p) ? `(${p})` : p)).join(rule.op === 'all' ? ' and ' : ' or ');
+    return rule.not ? `not (${s})` : s;
+  }
+  const m = metaFor(dict, rule.field, list);
+  const name = m?.label.en ?? (rule.field || '…');
+  const v = rule.rhs;
+  const val = () => {
+    if (!v) return '…';
+    if (v.k === 'today') return 'today';
+    if (v.k === 'field') return metaFor(dict, String(v.v), list)?.label.en ?? String(v.v);
+    if (m?.type === 'choice') return choicesOf(m).find((c) => c.v === String(v.v))?.en ?? String(v.v ?? '…');
+    return String(v.v ?? '…');
+  };
+  switch (rule.op) {
+    case 'empty': return `${name} is empty`;
+    case 'notEmpty': return `${name} has a value`;
+    case 'isYes': return `${name} is yes`;
+    case 'isNo': return `${name} is no`;
+    case 'in': return `${name} is one of ${(v?.list ?? []).join(', ') || '…'}`;
+    case 'between': return `${name} is between ${v?.v ?? '…'} and ${v?.v2 ?? '…'}`;
+    case 'withinDays': return `${name} is within ${v?.v ?? '…'} days of today`;
+    case 'ageAtLeast': return `${name} is at least ${v?.v ?? '…'} years old`;
+    case 'ageBelow': return `${name} is under ${v?.v ?? '…'} years old`;
+    case 'anyMatch': case 'noneMatch': return `${name} ${rule.op === 'anyMatch' ? 'has an entry where' : 'has no entry where'} ${rule.nested ? describeRule(rule.nested, dict, saved, rule.field, depth + 1) : 'any'}`;
+    default: return `${name} ${OP_LABEL[rule.op]} ${val()}`;
+  }
+}

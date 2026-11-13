@@ -30,6 +30,15 @@ const now = () => new Date().toISOString();
 
 lettersAdmin.get("/dictionary", (c) => c.json({ ...LETTER_DICTIONARY, storedOnApplication: [...STORED_ON_APPLICATION] }));
 
+/** What the editor shows letters filled with: the built-in sample, or a real application's values. */
+lettersAdmin.get("/sample-data", (c) => c.json(SAMPLE_DATA));
+lettersAdmin.get("/application-data/:ref", async (c) => {
+  const db = getDb(c.env.DB);
+  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, c.req.param("ref"))).limit(1);
+  if (!app) throw new AppError("Application not found.", 404);
+  return c.json(await buildLetterData(db, app));
+});
+
 // ---- shared rules
 
 lettersAdmin.get("/rules", async (c) => c.json(await loadSavedRules(getDb(c.env.DB))));
