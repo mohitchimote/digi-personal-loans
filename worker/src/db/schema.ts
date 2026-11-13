@@ -446,6 +446,9 @@ export const masterTypes = sqliteTable("master_types", {
   labelHe: text("label_he").notNull(),
   description: text("description"),
   parentTypeCode: text("parent_type_code"),
+  // When false, an item may exist without a parent (e.g. a bank's own branches need no zone yet);
+  // when it does have one, the parent must still come from parentTypeCode.
+  parentRequired: integer("parent_required", { mode: "boolean" }).notNull().default(true),
   attributeDefs: text("attribute_defs").notNull().default("[]"),
   // Seeded types: cannot be deleted (other modules may rely on the code), but can be relabelled.
   isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),

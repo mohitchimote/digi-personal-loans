@@ -1,0 +1,1 @@
+ALTER TABLE `master_types` ADD `parent_required` integer DEFAULT true NOT NULL;

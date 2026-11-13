@@ -60,3 +60,6 @@ loadtest/*.log
 
 # Generated architecture diagrams
 .archify/
+
+worker/.cache/
+worker/seed-reference.sql

@@ -1711,4 +1711,8 @@ export const HE: Record<string, string> = {
   'admin.masters.typeDeleted': 'נתון היסוד נמחק.',
   'admin.nav.mastersGroup': 'נתוני יסוד',
   'admin.nav.mastersDesc': 'נתוני יסוד שמוגדרים פעם אחת ונעשה בהם שימוש חוזר: סניפים, מדינות, תארים ועוד.',
+  'admin.masters.parentRequired': 'חובה לבחור אב לכל פריט',
+  'admin.masters.searchParent': 'חיפוש…',
+  'common.previous': 'הקודם',
+  'common.next': 'הבא',
 };

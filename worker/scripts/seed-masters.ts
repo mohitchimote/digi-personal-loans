@@ -8,11 +8,13 @@
  * them in the Masters screen.
  */
 
+import { ISO_COUNTRIES } from "./lib/iso-countries";
+
 const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
 const now = new Date().toISOString();
 
 type Attr = { key: string; label: { en: string; he: string }; kind: "text" | "number" | "boolean"; required?: boolean };
-interface TypeSeed { code: string; en: string; he: string; desc: string; parent?: string; attrs?: Attr[] }
+interface TypeSeed { code: string; en: string; he: string; desc: string; parent?: string; parentOptional?: boolean; attrs?: Attr[] }
 type Row = [code: string, en: string, he: string, extra?: { parent?: string; attrs?: Record<string, unknown> }];
 
 const TYPES: TypeSeed[] = [
@@ -25,18 +27,32 @@ const TYPES: TypeSeed[] = [
   { code: "city", en: "City", he: "עיר", desc: "", parent: "state" },
   { code: "region", en: "Region", he: "אזור", desc: "Operational regions of the bank." },
   { code: "zone", en: "Zone", he: "אזור משנה", desc: "", parent: "region" },
-  { code: "branch", en: "Branch", he: "סניף", desc: "Reused by organisation setup and forms.", parent: "zone",
+  { code: "branch", en: "Branch", he: "סניף", desc: "Reused by organisation setup and forms.", parent: "zone", parentOptional: true,
     attrs: [
       { key: "address", label: { en: "Address", he: "כתובת" }, kind: "text" },
       { key: "phone", label: { en: "Phone", he: "טלפון" }, kind: "text" },
     ] },
   { code: "employment_status", en: "Employment Status", he: "מצב תעסוקתי", desc: "" },
+  { code: "employment_duration", en: "Employment Duration", he: "משך העסקה", desc: "Time in current employment." },
   { code: "residential_status", en: "Residential Status", he: "סטטוס מגורים", desc: "" },
   { code: "education_level", en: "Education Level", he: "השכלה", desc: "" },
   { code: "income_source", en: "Income Source", he: "מקור הכנסה", desc: "" },
   { code: "id_document_type", en: "ID Document Type", he: "סוג מסמך זיהוי", desc: "" },
   { code: "relationship", en: "Relationship", he: "קרבה", desc: "To the applicant: references, next of kin, signatories." },
-  { code: "loan_purpose", en: "Loan Purpose", he: "מטרת ההלוואה", desc: "" },
+  { code: "loan_purpose", en: "Loan Purpose", he: "מטרת ההלוואה", desc: "Personal loans." },
+  { code: "business_loan_purpose", en: "Business Loan Purpose", he: "מטרת הלוואה עסקית", desc: "Business loans." },
+  { code: "document_type", en: "Document Type", he: "סוג מסמך", desc: "Supporting documents the applicant uploads.",
+    attrs: [{ key: "segment", label: { en: "Applies to (personal / business)", he: "חל על (פרטי / עסקי)" }, kind: "text" }] },
+  { code: "decline_reason", en: "Decline Reason", he: "סיבת דחייה", desc: "Staff: why an application was declined." },
+  { code: "send_back_reason", en: "Send-back Reason", he: "סיבת החזרה", desc: "Staff: why an application was sent back to the customer." },
+  { code: "bank", en: "Bank", he: "בנק", desc: "External banks, for direct debit. Source: Bank of Israel." },
+  { code: "bank_branch", en: "Bank Branch", he: "סניף בנק", desc: "Source: Bank of Israel branch directory.", parent: "bank",
+    attrs: [
+      { key: "branchCode", label: { en: "Branch code", he: "מספר סניף" }, kind: "text" },
+      { key: "address", label: { en: "Address", he: "כתובת" }, kind: "text" },
+      { key: "city", label: { en: "City", he: "עיר" }, kind: "text" },
+      { key: "phone", label: { en: "Phone", he: "טלפון" }, kind: "text" },
+    ] },
   { code: "legal_entity_type", en: "Legal Entity Type", he: "סוג תאגיד", desc: "Business applications." },
   { code: "industry_sector", en: "Industry Sector", he: "ענף", desc: "Business applications." },
   { code: "address_type", en: "Address Type", he: "סוג כתובת", desc: "" },
@@ -45,80 +61,16 @@ const TYPES: TypeSeed[] = [
     attrs: [{ key: "symbol", label: { en: "Symbol", he: "סימן" }, kind: "text" }] },
 ];
 
-const COUNTRIES: [string, string, string, string, string][] = [
-  // code, country en, country he, nationality en, nationality he
-  ["IL", "Israel", "ישראל", "Israeli", "ישראלי"], ["US", "United States", "ארצות הברית", "American", "אמריקאי"],
-  ["GB", "United Kingdom", "בריטניה", "British", "בריטי"], ["FR", "France", "צרפת", "French", "צרפתי"],
-  ["DE", "Germany", "גרמניה", "German", "גרמני"], ["RU", "Russia", "רוסיה", "Russian", "רוסי"],
-  ["UA", "Ukraine", "אוקראינה", "Ukrainian", "אוקראיני"], ["ET", "Ethiopia", "אתיופיה", "Ethiopian", "אתיופי"],
-  ["MA", "Morocco", "מרוקו", "Moroccan", "מרוקאי"], ["AR", "Argentina", "ארגנטינה", "Argentine", "ארגנטינאי"],
-  ["CA", "Canada", "קנדה", "Canadian", "קנדי"], ["AU", "Australia", "אוסטרליה", "Australian", "אוסטרלי"],
-  ["IN", "India", "הודו", "Indian", "הודי"], ["ES", "Spain", "ספרד", "Spanish", "ספרדי"],
-  ["IT", "Italy", "איטליה", "Italian", "איטלקי"], ["NL", "Netherlands", "הולנד", "Dutch", "הולנדי"],
-  ["CH", "Switzerland", "שווייץ", "Swiss", "שווייצי"], ["BE", "Belgium", "בלגיה", "Belgian", "בלגי"],
-  ["PL", "Poland", "פולין", "Polish", "פולני"], ["RO", "Romania", "רומניה", "Romanian", "רומני"],
-  ["TR", "Turkey", "טורקיה", "Turkish", "טורקי"], ["EG", "Egypt", "מצרים", "Egyptian", "מצרי"],
-  ["JO", "Jordan", "ירדן", "Jordanian", "ירדני"], ["AE", "United Arab Emirates", "איחוד האמירויות", "Emirati", "אמירתי"],
-  ["BR", "Brazil", "ברזיל", "Brazilian", "ברזילאי"], ["MX", "Mexico", "מקסיקו", "Mexican", "מקסיקני"],
-  ["ZA", "South Africa", "דרום אפריקה", "South African", "דרום אפריקאי"], ["CN", "China", "סין", "Chinese", "סיני"],
-  ["JP", "Japan", "יפן", "Japanese", "יפני"], ["GR", "Greece", "יוון", "Greek", "יווני"],
-  ["CY", "Cyprus", "קפריסין", "Cypriot", "קפריסאי"], ["PT", "Portugal", "פורטוגל", "Portuguese", "פורטוגלי"],
-  ["SE", "Sweden", "שוודיה", "Swedish", "שוודי"], ["AT", "Austria", "אוסטריה", "Austrian", "אוסטרי"],
-  ["HU", "Hungary", "הונגריה", "Hungarian", "הונגרי"], ["CZ", "Czechia", "צ'כיה", "Czech", "צ'כי"],
-  ["BG", "Bulgaria", "בולגריה", "Bulgarian", "בולגרי"], ["FI", "Finland", "פינלנד", "Finnish", "פיני"],
-  ["NO", "Norway", "נורווגיה", "Norwegian", "נורווגי"], ["DK", "Denmark", "דנמרק", "Danish", "דני"],
-  ["IE", "Ireland", "אירלנד", "Irish", "אירי"],
-];
-
-
-// ISO 3166-1 alpha-2: the 249 officially assigned codes. Names come from CLDR via the runtime's
-// Intl.DisplayNames (English and Hebrew), so they are standard and need no hand translation.
-// CLDR also knows non-country codes (EU, UN, XK, ...); this list is what keeps those out.
-const ISO_3166_1 = (
-  "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
-  "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
-  "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
-  "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ " +
-  "NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
-  "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ " +
-  "UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW"
-).split(" ");
-if (ISO_3166_1.length !== 249 || new Set(ISO_3166_1).size !== 249) throw new Error(`ISO list should be 249 unique codes, got ${ISO_3166_1.length}`);
-const regionEn = new Intl.DisplayNames(["en"], { type: "region" });
-const regionHe = new Intl.DisplayNames(["he"], { type: "region" });
-const ISO_COUNTRIES: Row[] = ISO_3166_1.map((c) => {
-  const en = regionEn.of(c), he = regionHe.of(c);
-  if (!en || !he || en === c || he === c) throw new Error(`No CLDR name for ${c}`);
-  return [c, en, he] as Row;
-});
-
-const DISTRICTS: Row[] = [
-  ["IL-N", "Northern", "צפון"], ["IL-HA", "Haifa", "חיפה"], ["IL-M", "Central", "מרכז"], ["IL-TA", "Tel Aviv", "תל אביב"],
-  ["IL-JM", "Jerusalem", "ירושלים"], ["IL-S", "Southern", "דרום"], ["IL-JS", "Judea and Samaria", "יהודה ושומרון"],
-];
-// [slug, en, he, district code]
-const CITIES: [string, string, string, string][] = [
-  ["jerusalem", "Jerusalem", "ירושלים", "IL-JM"], ["tel-aviv-yafo", "Tel Aviv-Yafo", "תל אביב-יפו", "IL-TA"],
-  ["haifa", "Haifa", "חיפה", "IL-HA"], ["rishon-lezion", "Rishon LeZion", "ראשון לציון", "IL-M"],
-  ["petah-tikva", "Petah Tikva", "פתח תקווה", "IL-M"], ["ashdod", "Ashdod", "אשדוד", "IL-S"],
-  ["netanya", "Netanya", "נתניה", "IL-M"], ["beer-sheva", "Beer Sheva", "באר שבע", "IL-S"],
-  ["holon", "Holon", "חולון", "IL-TA"], ["bnei-brak", "Bnei Brak", "בני ברק", "IL-TA"],
-  ["ramat-gan", "Ramat Gan", "רמת גן", "IL-TA"], ["ashkelon", "Ashkelon", "אשקלון", "IL-S"],
-  ["rehovot", "Rehovot", "רחובות", "IL-M"], ["bat-yam", "Bat Yam", "בת ים", "IL-TA"],
-  ["herzliya", "Herzliya", "הרצליה", "IL-TA"], ["kfar-saba", "Kfar Saba", "כפר סבא", "IL-M"],
-  ["hadera", "Hadera", "חדרה", "IL-HA"], ["modiin", "Modi'in-Maccabim-Re'ut", "מודיעין-מכבים-רעות", "IL-M"],
-  ["nazareth", "Nazareth", "נצרת", "IL-N"], ["eilat", "Eilat", "אילת", "IL-S"],
-  ["tiberias", "Tiberias", "טבריה", "IL-N"], ["afula", "Afula", "עפולה", "IL-N"],
-  ["acre", "Acre", "עכו", "IL-N"], ["karmiel", "Karmiel", "כרמיאל", "IL-N"],
-];
-
 const SIMPLE: Record<string, Row[]> = {
   title: [["MR", "Mr", "מר"], ["MRS", "Mrs", "גב׳"], ["MS", "Ms", "גב׳"], ["DR", "Dr", "ד״ר"], ["PROF", "Prof", "פרופ׳"]],
   gender: [["MALE", "Male", "זכר"], ["FEMALE", "Female", "נקבה"], ["OTHER", "Other", "אחר"], ["NOT_SAID", "Prefer not to say", "מעדיף/ה שלא לציין"]],
   marital_status: [["SINGLE", "Single", "רווק/ה"], ["MARRIED", "Married", "נשוי/אה"], ["DIVORCED", "Divorced", "גרוש/ה"],
-    ["WIDOWED", "Widowed", "אלמן/ה"], ["SEPARATED", "Separated", "פרוד/ה"], ["COMMON_LAW", "Common-law partner", "ידוע/ה בציבור"]],
-  employment_status: [["EMPLOYED", "Employed", "שכיר/ה"], ["SELF_EMPLOYED", "Self-employed", "עצמאי/ת"], ["UNEMPLOYED", "Unemployed", "מובטל/ת"],
-    ["RETIRED", "Retired", "פנסיונר/ית"], ["STUDENT", "Student", "סטודנט/ית"], ["HOMEMAKER", "Homemaker", "עקר/ת בית"]],
+    ["WIDOWED", "Widowed", "אלמן/ה"], ["CIVIL_PARTNERSHIP", "Civil Partnership", "ידוע/ה בציבור"], ["SEPARATED", "Separated", "פרוד/ה"]],
+  employment_status: [["FULL_TIME", "Full-Time Employed", "שכיר/ה במשרה מלאה"], ["PART_TIME", "Part-Time Employed", "שכיר/ה במשרה חלקית"],
+    ["SELF_EMPLOYED", "Self-Employed", "עצמאי/ת"], ["CONTRACT", "Contract", "עובד/ת בחוזה"], ["RETIRED", "Retired", "פנסיונר/ית"],
+    ["STUDENT", "Student", "סטודנט/ית"], ["UNEMPLOYED", "Unemployed", "מובטל/ת"]],
+  employment_duration: [["LT_6M", "Less than 6 months", "פחות מ-6 חודשים"], ["M6_12", "6–12 months", "6–12 חודשים"], ["Y1_2", "1–2 years", "1–2 שנים"],
+    ["Y2_5", "2–5 years", "2–5 שנים"], ["Y5_PLUS", "5+ years", "5 שנים ומעלה"]],
   residential_status: [["OWNER", "Owner (no mortgage)", "בעל/ת דירה"], ["MORTGAGED", "Owner with mortgage", "בעל/ת דירה עם משכנתא"],
     ["RENTING", "Renting", "שוכר/ת"], ["WITH_FAMILY", "Living with family", "גר/ה עם משפחה"], ["OTHER", "Other", "אחר"]],
   education_level: [["HIGH_SCHOOL", "High school", "תיכונית"], ["DIPLOMA", "Diploma / technician", "תעודה / הנדסאי"], ["BACHELOR", "Bachelor's degree", "תואר ראשון"],
@@ -129,9 +81,23 @@ const SIMPLE: Record<string, Row[]> = {
     ["DRIVING_LICENCE", "Driving licence", "רישיון נהיגה"], ["RESIDENCE_PERMIT", "Residence permit", "אשרת שהייה"]],
   relationship: [["SPOUSE", "Spouse / partner", "בן/בת זוג"], ["PARENT", "Parent", "הורה"], ["CHILD", "Child", "ילד/ה"], ["SIBLING", "Sibling", "אח/אחות"],
     ["FRIEND", "Friend", "חבר/ה"], ["COLLEAGUE", "Colleague", "עמית לעבודה"], ["OTHER", "Other", "אחר"]],
-  loan_purpose: [["DEBT_CONSOLIDATION", "Debt consolidation", "איחוד הלוואות"], ["HOME_IMPROVEMENT", "Home improvement", "שיפוצים"],
-    ["EDUCATION", "Education", "לימודים"], ["VEHICLE", "Vehicle", "רכב"], ["MEDICAL", "Medical", "רפואי"], ["WEDDING", "Wedding", "חתונה"],
-    ["TRAVEL", "Travel", "נסיעות"], ["BUSINESS", "Business", "עסק"], ["OTHER", "Other", "אחר"]],
+  loan_purpose: [["HOME_IMPROVEMENT", "Home Improvement", "שיפוץ הבית"], ["DEBT_CONSOLIDATION", "Debt Consolidation", "איחוד הלוואות"],
+    ["VEHICLE_PURCHASE", "Vehicle Purchase", "רכישת רכב"], ["EDUCATION", "Education", "לימודים"], ["MEDICAL_EXPENSES", "Medical Expenses", "הוצאות רפואיות"],
+    ["WEDDING", "Wedding", "חתונה"], ["TRAVEL", "Travel", "נסיעות"], ["BUSINESS", "Business", "עסק"], ["OTHER", "Other", "אחר"]],
+  business_loan_purpose: [["WORKING_CAPITAL", "Working Capital", "הון חוזר"], ["EQUIPMENT_PURCHASE", "Equipment Purchase", "רכישת ציוד"],
+    ["BUSINESS_EXPANSION", "Business Expansion", "הרחבת העסק"], ["INVENTORY_FINANCING", "Inventory Financing", "מימון מלאי"],
+    ["DEBT_REFINANCING", "Debt Refinancing", "מיחזור חובות"], ["COMMERCIAL_PROPERTY", "Commercial Property", "נכס מסחרי"], ["OTHER", "Other", "אחר"]],
+  document_type: [
+    ["NATIONAL_ID", "National ID", "תעודת זהות", { attrs: { segment: "personal" } }], ["PAYSLIPS", "Payslips", "תלושי שכר", { attrs: { segment: "personal" } }],
+    ["BANK_STATEMENTS", "Bank Statements", "דפי חשבון בנק", { attrs: { segment: "personal" } }], ["PROOF_OF_ADDRESS", "Proof of Address", "אישור כתובת", { attrs: { segment: "personal" } }],
+    ["CERTIFICATE_OF_INCORPORATION", "Certificate of Incorporation", "תעודת התאגדות", { attrs: { segment: "business" } }],
+    ["FINANCIAL_STATEMENTS", "Financial Statements", "דוחות כספיים", { attrs: { segment: "business" } }],
+    ["BUSINESS_BANK_STATEMENTS", "Business Bank Statements", "דפי חשבון בנק עסקי", { attrs: { segment: "business" } }]],
+  decline_reason: [["AFFORDABILITY", "Affordability", "יכולת החזר"], ["CREDIT_HISTORY", "Credit history", "היסטוריית אשראי"],
+    ["INCOMPLETE_DOCUMENTS", "Incomplete documents", "מסמכים חסרים"], ["IDENTITY_NOT_VERIFIED", "Identity could not be verified", "לא ניתן לאמת זהות"],
+    ["POLICY", "Outside lending policy", "מחוץ למדיניות האשראי"], ["OTHER", "Other", "אחר"]],
+  send_back_reason: [["MISSING_DOCUMENT", "Missing document", "מסמך חסר"], ["INCONSISTENT_INFORMATION", "Inconsistent information", "מידע לא עקבי"],
+    ["NEEDS_CLARIFICATION", "Needs clarification", "נדרש הבהרה"], ["OTHER", "Other", "אחר"]],
   legal_entity_type: [["PRIVATE_COMPANY", "Private company", "חברה פרטית"], ["PUBLIC_COMPANY", "Public company", "חברה ציבורית"],
     ["PARTNERSHIP", "Partnership", "שותפות"], ["SOLE_PROPRIETOR", "Sole proprietor", "עוסק מורשה / יחיד"],
     ["NONPROFIT", "Non-profit", "עמותה"], ["COOPERATIVE", "Cooperative society", "אגודה שיתופית"]],
@@ -150,8 +116,8 @@ const out: string[] = ["-- Generated by scripts/seed-masters.ts - do not edit by
 
 TYPES.forEach((t, i) => {
   out.push(
-    `INSERT OR IGNORE INTO master_types (code, label_en, label_he, description, parent_type_code, attribute_defs, is_system, sort_order, created_at) ` +
-    `VALUES (${q(t.code)}, ${q(t.en)}, ${q(t.he)}, ${t.desc ? q(t.desc) : "NULL"}, ${t.parent ? q(t.parent) : "NULL"}, ${q(JSON.stringify(t.attrs ?? []))}, 1, ${(i + 1) * 10}, ${q(now)});`,
+    `INSERT OR IGNORE INTO master_types (code, label_en, label_he, description, parent_type_code, parent_required, attribute_defs, is_system, sort_order, created_at) ` +
+    `VALUES (${q(t.code)}, ${q(t.en)}, ${q(t.he)}, ${t.desc ? q(t.desc) : "NULL"}, ${t.parent ? q(t.parent) : "NULL"}, ${t.parentOptional ? 0 : 1}, ${q(JSON.stringify(t.attrs ?? []))}, 1, ${(i + 1) * 10}, ${q(now)});`,
   );
 });
 out.push("");
@@ -171,10 +137,13 @@ function items(type: string, rows: Row[], parentType?: string, refreshNames = fa
   out.push("");
 }
 
+// The bank's own customer-facing branches (what the forms' "preferred branch" list uses today).
+SIMPLE.branch = [
+  ["TLV-ROTHSCHILD", "Tel Aviv - Rothschild Blvd", "תל אביב - שדרות רוטשילד"], ["JLM-JAFFA", "Jerusalem - Jaffa Road", "ירושלים - רחוב יפו"],
+  ["HFA-HADAR", "Haifa - Hadar", "חיפה - הדר"], ["BS-OLDCITY", "Beer Sheva - Old City", "באר שבע - העיר העתיקה"],
+  ["NTN-CENTER", "Netanya - City Center", "נתניה - מרכז העיר"], ["ETH-TOURIST", "Eilat - Tourist Center", "אילת - מרכז התיירות"],
+];
 for (const [type, rows] of Object.entries(SIMPLE)) items(type, rows);
-items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")), undefined, true);
-items("nationality", COUNTRIES.map(([c, , , en, he]) => [c, en, he] as Row));
-items("state", DISTRICTS.map(([c, en, he]) => [c, en, he, { parent: "IL" }] as Row), "country");
-items("city", CITIES.map(([c, en, he, d]) => [c, en, he, { parent: d }] as Row), "state");
+items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")).map(([c, en, he]) => [c, en, he] as Row), undefined, true);
 
 console.log(out.join("\n"));

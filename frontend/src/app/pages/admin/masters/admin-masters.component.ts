@@ -2,16 +2,19 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AttributeDef, AttrKind, MasterItem, MasterType, MastersService } from '../../../core/services/masters.service';
+import { AttributeDef, AttrKind, MasterItemRow, MasterType, MastersService } from '../../../core/services/masters.service';
+import { MasterPickerComponent, PickedItem } from './master-picker.component';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
 interface ItemDraft {
+  /** Display label of the chosen parent (the picker shows it while editing). */
+  parentLabel: string;
   code: string; nameEn: string; nameHe: string; parentId: number | null; sortOrder: number; active: boolean;
   attrs: Record<string, string | number | boolean | null>;
 }
 interface TypeDraft {
-  code: string; labelEn: string; labelHe: string; description: string; parentTypeCode: string | null;
+  code: string; labelEn: string; labelHe: string; description: string; parentTypeCode: string | null; parentRequired: boolean;
   attributeDefs: AttributeDef[];
 }
 
@@ -21,15 +24,17 @@ interface TypeDraft {
 @Component({
   selector: 'app-admin-masters',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe, MasterPickerComponent],
   templateUrl: './admin-masters.component.html',
   styleUrl: './admin-masters.component.scss'
 })
 export class AdminMastersComponent implements OnInit {
   types = signal<MasterType[]>([]);
   selectedCode = signal<string | null>(null);
-  items = signal<MasterItem[]>([]);
-  parentItems = signal<MasterItem[]>([]);
+  rows = signal<MasterItemRow[]>([]);
+  total = signal(0);
+  offset = signal(0);
+  readonly pageSize = 50;
   loading = signal(true);
   loadingItems = signal(false);
   error = signal('');
@@ -37,27 +42,22 @@ export class AdminMastersComponent implements OnInit {
 
   search = '';
   itemFilter = '';
-  parentFilter: number | null = null;
+  /** Parent chosen in the table filter (id + label for the picker). */
+  parentFilter: PickedItem = { id: null, label: '' };
+  private itemTimer: ReturnType<typeof setTimeout> | null = null;
+  private searchSig = signal('');
 
   readonly selected = computed(() => this.types().find(t => t.code === this.selectedCode()) ?? null);
   readonly filteredTypes = computed(() => {
     const q = this.searchSig().trim().toLowerCase();
     return q ? this.types().filter(t => (t.labelEn + ' ' + t.labelHe + ' ' + t.code).toLowerCase().includes(q)) : this.types();
   });
-  private searchSig = signal('');
   readonly parentType = computed(() => {
     const p = this.selected()?.parentTypeCode;
     return p ? this.types().find(t => t.code === p) ?? null : null;
   });
-  readonly visibleItems = computed(() => {
-    const q = this.itemFilterSig().trim().toLowerCase();
-    const pf = this.parentFilterSig();
-    return this.items().filter(i =>
-      (pf == null || i.parentId === pf) &&
-      (!q || (i.code + ' ' + i.nameEn + ' ' + i.nameHe).toLowerCase().includes(q)));
-  });
-  private itemFilterSig = signal('');
-  private parentFilterSig = signal<number | null>(null);
+  readonly pageFrom = computed(() => (this.total() === 0 ? 0 : this.offset() + 1));
+  readonly pageTo = computed(() => Math.min(this.offset() + this.pageSize, this.total()));
 
   // Item form
   showItemForm = signal(false);
@@ -77,15 +77,14 @@ export class AdminMastersComponent implements OnInit {
 
   // ---- helpers
   typeLabel(t: MasterType): string { return this.i18n.lang() === 'he' ? t.labelHe : t.labelEn; }
-  itemName(i: MasterItem): string { return this.i18n.lang() === 'he' ? i.nameHe : i.nameEn; }
   attrLabel(d: AttributeDef): string { return this.i18n.lang() === 'he' ? d.label.he : d.label.en; }
-  parentName(id: number | null): string {
-    if (id == null) return '';
-    const p = this.parentItems().find(x => x.id === id);
-    return p ? this.itemName(p) : '';
+  itemName(i: MasterItemRow): string { return this.i18n.lang() === 'he' ? i.nameHe : i.nameEn; }
+  parentName(i: MasterItemRow): string {
+    if (!i.parent) return '';
+    return `${this.i18n.lang() === 'he' ? i.parent.nameHe : i.parent.nameEn} · ${i.parent.code}`;
   }
-  private blankItem(): ItemDraft { return { code: '', nameEn: '', nameHe: '', parentId: null, sortOrder: 0, active: true, attrs: {} }; }
-  private blankType(): TypeDraft { return { code: '', labelEn: '', labelHe: '', description: '', parentTypeCode: null, attributeDefs: [] }; }
+  private blankItem(): ItemDraft { return { parentLabel: '', code: '', nameEn: '', nameHe: '', parentId: null, sortOrder: 0, active: true, attrs: {} }; }
+  private blankType(): TypeDraft { return { code: '', labelEn: '', labelHe: '', description: '', parentTypeCode: null, parentRequired: true, attributeDefs: [] }; }
   private fail(e: unknown, fallbackKey: string): void {
     const msg = e instanceof HttpErrorResponse ? (e.error?.message as string | undefined) : undefined;
     this.error.set(msg || this.i18n.t(fallbackKey));
@@ -93,8 +92,15 @@ export class AdminMastersComponent implements OnInit {
   }
   private ok(key: string): void { this.notice.set(this.i18n.t(key)); this.error.set(''); }
   onSearch(v: string): void { this.search = v; this.searchSig.set(v); }
-  onItemFilter(v: string): void { this.itemFilter = v; this.itemFilterSig.set(v); }
-  onParentFilter(v: number | null): void { this.parentFilter = v; this.parentFilterSig.set(v); }
+  /** Debounced: typing in the item search re-queries the server from the first page. */
+  onItemFilter(v: string): void {
+    this.itemFilter = v;
+    if (this.itemTimer) clearTimeout(this.itemTimer);
+    this.itemTimer = setTimeout(() => { this.offset.set(0); this.reloadItems(); }, 300);
+  }
+  onParentFilter(p: PickedItem): void { this.parentFilter = p; this.offset.set(0); this.reloadItems(); }
+  prevPage(): void { this.offset.set(Math.max(0, this.offset() - this.pageSize)); this.reloadItems(); }
+  nextPage(): void { if (this.offset() + this.pageSize < this.total()) { this.offset.set(this.offset() + this.pageSize); this.reloadItems(); } }
 
   // ---- loading
   private loadTypes(selectCode?: string): void {
@@ -113,34 +119,34 @@ export class AdminMastersComponent implements OnInit {
     if (!force && code === this.selectedCode()) return;
     this.selectedCode.set(code);
     this.cancelItem(); this.cancelType();
-    this.onItemFilter(''); this.onParentFilter(null);
+    this.itemFilter = ''; this.parentFilter = { id: null, label: '' }; this.offset.set(0);
     this.confirmDeleteItemId.set(null); this.confirmDeleteType.set(false);
     this.loadItems(code);
   }
 
-  private loadItems(code: string): void {
+  private loadItems(_code: string): void { this.reloadItems(); }
+
+  private reloadItems(): void {
+    const code = this.selectedCode(); if (!code) return;
     this.loadingItems.set(true);
-    this.svc.items(code).subscribe({
-      next: rows => { this.items.set(rows); this.loadingItems.set(false); },
+    this.svc.items(code, { limit: this.pageSize, offset: this.offset(), q: this.itemFilter.trim(), parentId: this.parentFilter.id }).subscribe({
+      next: page => { this.rows.set(page.items); this.total.set(page.total); this.loadingItems.set(false); },
       error: e => { this.loadingItems.set(false); this.fail(e, 'admin.masters.errLoad'); },
     });
-    const parent = this.types().find(t => t.code === code)?.parentTypeCode;
-    if (parent) this.svc.items(parent).subscribe({ next: rows => this.parentItems.set(rows), error: () => this.parentItems.set([]) });
-    else this.parentItems.set([]);
   }
 
   // ---- items
   openCreateItem(): void {
     this.editingItemId.set(null);
     this.itemDraft = this.blankItem();
-    this.itemDraft.sortOrder = (this.items().reduce((m, i) => Math.max(m, i.sortOrder), 0)) + 10;
-    if (this.parentFilter != null) this.itemDraft.parentId = this.parentFilter;
+    this.itemDraft.sortOrder = 0;
+    if (this.parentFilter.id != null) { this.itemDraft.parentId = this.parentFilter.id; this.itemDraft.parentLabel = this.parentFilter.label; }
     this.showItemForm.set(true);
   }
-  editItem(i: MasterItem): void {
+  editItem(i: MasterItemRow): void {
     this.editingItemId.set(i.id);
     this.itemDraft = {
-      code: i.code, nameEn: i.nameEn, nameHe: i.nameHe, parentId: i.parentId, sortOrder: i.sortOrder, active: i.active,
+      parentLabel: this.parentName(i), code: i.code, nameEn: i.nameEn, nameHe: i.nameHe, parentId: i.parentId, sortOrder: i.sortOrder, active: i.active,
       attrs: { ...(i.attributes as Record<string, string | number | boolean>) },
     };
     this.showItemForm.set(true);
@@ -160,24 +166,26 @@ export class AdminMastersComponent implements OnInit {
     const id = this.editingItemId();
     const call = id == null ? this.svc.createItem(t.code, body) : this.svc.updateItem(id, body);
     call.subscribe({
-      next: () => { this.cancelItem(); this.ok('admin.masters.itemSaved'); this.loadItems(t.code); this.refreshCounts(); },
+      next: () => { this.cancelItem(); this.ok('admin.masters.itemSaved'); this.reloadItems(); this.refreshCounts(); },
       error: e => this.fail(e, 'admin.masters.errSave'),
     });
   }
 
-  toggleActive(i: MasterItem): void {
+  onItemParent(p: PickedItem): void { this.itemDraft.parentId = p.id; this.itemDraft.parentLabel = p.label; }
+
+  toggleActive(i: MasterItemRow): void {
     this.svc.updateItem(i.id, {
       code: i.code, nameEn: i.nameEn, nameHe: i.nameHe, parentId: i.parentId, sortOrder: i.sortOrder, active: !i.active, attributes: i.attributes,
     }).subscribe({
-      next: () => this.loadItems(i.typeCode),
+      next: () => this.reloadItems(),
       error: e => this.fail(e, 'admin.masters.errSave'),
     });
   }
 
-  deleteItem(i: MasterItem): void {
+  deleteItem(i: MasterItemRow): void {
     if (this.confirmDeleteItemId() !== i.id) { this.confirmDeleteItemId.set(i.id); return; }
     this.svc.deleteItem(i.id).subscribe({
-      next: () => { this.confirmDeleteItemId.set(null); this.ok('admin.masters.itemDeleted'); this.loadItems(i.typeCode); this.refreshCounts(); },
+      next: () => { this.confirmDeleteItemId.set(null); this.ok('admin.masters.itemDeleted'); this.reloadItems(); this.refreshCounts(); },
       error: e => { this.confirmDeleteItemId.set(null); this.fail(e, 'admin.masters.errSave'); },
     });
   }
@@ -196,7 +204,7 @@ export class AdminMastersComponent implements OnInit {
     this.editingTypeCode.set(t.code);
     this.typeDraft = {
       code: t.code, labelEn: t.labelEn, labelHe: t.labelHe, description: t.description ?? '',
-      parentTypeCode: t.parentTypeCode, attributeDefs: t.attributeDefs.map(a => ({ ...a, label: { ...a.label } })),
+      parentTypeCode: t.parentTypeCode, parentRequired: t.parentRequired, attributeDefs: t.attributeDefs.map(a => ({ ...a, label: { ...a.label } })),
     };
     this.showTypeForm.set(true);
     this.cancelItem();
@@ -220,7 +228,7 @@ export class AdminMastersComponent implements OnInit {
     if (!d.labelEn.trim() || !d.labelHe.trim() || (!this.editingTypeCode() && !d.code.trim())) { this.error.set(this.i18n.t('admin.masters.errRequired')); return; }
     const body = {
       labelEn: d.labelEn.trim(), labelHe: d.labelHe.trim(), description: d.description.trim() || null,
-      parentTypeCode: d.parentTypeCode, attributeDefs: d.attributeDefs.map(a => ({ ...a, key: a.key.trim(), label: { en: a.label.en.trim(), he: a.label.he.trim() } })),
+      parentTypeCode: d.parentTypeCode, parentRequired: d.parentRequired, attributeDefs: d.attributeDefs.map(a => ({ ...a, key: a.key.trim(), label: { en: a.label.en.trim(), he: a.label.he.trim() } })),
     };
     const code = this.editingTypeCode();
     const call = code ? this.svc.updateType(code, body) : this.svc.createType({ ...body, code: d.code.trim() });

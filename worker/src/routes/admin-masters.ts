@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray, or, like, sql } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { masterTypes, masterItems } from "../db/schema";
@@ -9,7 +9,7 @@ import { AppError } from "../lib/errors";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import {
-  CODE_RE, ITEM_CODE_RE, attributeDefsSchema, validateAttributes, createsCycle, typeCreatesCycle, parseJson,
+  CODE_RE, ITEM_CODE_RE, attributeDefsSchema, validateAttributes, typeCreatesCycle, parseJson,
   type AttributeDef,
 } from "../lib/masters";
 
@@ -26,6 +26,7 @@ const typeBase = z.object({
   labelHe: z.string().trim().min(1),
   description: z.string().trim().nullable().optional(),
   parentTypeCode: z.string().regex(CODE_RE).nullable().optional(),
+  parentRequired: z.boolean().optional(),
   attributeDefs: attributeDefsSchema.optional(),
   sortOrder: z.number().int().optional(),
 });
@@ -75,7 +76,8 @@ mastersAdmin.post("/types", zValidator("json", typeCreate), async (c) => {
   if (body.parentTypeCode && !all.some((t) => t.code === body.parentTypeCode)) throw new AppError("Unknown parent master.");
   const [saved] = await db.insert(masterTypes).values({
     code: body.code, labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null,
-    parentTypeCode: body.parentTypeCode ?? null, attributeDefs: JSON.stringify(body.attributeDefs ?? []),
+    parentTypeCode: body.parentTypeCode ?? null, parentRequired: body.parentRequired ?? true,
+    attributeDefs: JSON.stringify(body.attributeDefs ?? []),
     sortOrder: body.sortOrder ?? 0, isSystem: false, createdAt: new Date().toISOString(),
   }).returning();
   await recordAudit(db, { eventType: "MASTER_TYPE_CREATED", subjectType: "MasterType", subjectId: saved.code, detail: saved.labelEn, ...actorOf(c) });
@@ -102,6 +104,7 @@ mastersAdmin.put("/types/:code", zValidator("json", typeBase), async (c) => {
   // acceptable: items are re-validated only when saved.
   const [saved] = await db.update(masterTypes).set({
     labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null, parentTypeCode,
+    parentRequired: body.parentRequired ?? existing.parentRequired,
     attributeDefs: body.attributeDefs ? JSON.stringify(body.attributeDefs) : existing.attributeDefs,
     sortOrder: body.sortOrder ?? existing.sortOrder,
   }).where(eq(masterTypes.code, existing.code)).returning();
@@ -122,31 +125,66 @@ mastersAdmin.delete("/types/:code", async (c) => {
   return c.body(null, 204);
 });
 
+/** LIKE pattern for a user search term: escapes the wildcards so "50%" matches literally. */
+function likePattern(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+}
+
+// Paged and searchable: a master can hold hundreds of thousands of rows (cities), so the admin screen
+// never loads a whole master. ?limit (<=500, default 100) &offset &q (code or either name) &parentId
 mastersAdmin.get("/types/:code/items", async (c) => {
   const db = getDb(c.env.DB);
   const type = await getType(db, c.req.param("code"));
-  const rows = await db.select().from(masterItems).where(eq(masterItems.typeCode, type.code))
-    .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn));
-  return c.json(rows.map(shapeItem));
+  const limit = Math.min(Math.max(Number(c.req.query("limit")) || 100, 1), 500);
+  const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
+  const q = (c.req.query("q") ?? "").trim().slice(0, 100);
+  const parentId = c.req.query("parentId") ? Number(c.req.query("parentId")) : null;
+  const idFilter = c.req.query("id") ? Number(c.req.query("id")) : null;
+  const conds = [eq(masterItems.typeCode, type.code)];
+  if (idFilter != null && Number.isInteger(idFilter)) conds.push(eq(masterItems.id, idFilter));
+  if (parentId != null && Number.isInteger(parentId)) conds.push(eq(masterItems.parentId, parentId));
+  if (q) {
+    const pat = likePattern(q);
+    conds.push(or(
+      sql`${masterItems.code} LIKE ${pat} ESCAPE '\\'`,
+      sql`${masterItems.nameEn} LIKE ${pat} ESCAPE '\\'`,
+      sql`${masterItems.nameHe} LIKE ${pat} ESCAPE '\\'`,
+    )!);
+  }
+  const where = and(...conds);
+  const [{ n }] = await db.select({ n: count() }).from(masterItems).where(where);
+  const rows = await db.select().from(masterItems).where(where)
+    .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn)).limit(limit).offset(offset);
+  // Parent names for display (one extra query for at most `limit` distinct parents).
+  const pids = [...new Set(rows.map((r) => r.parentId).filter((v): v is number => v != null))];
+  const parents = pids.length ? await db.select().from(masterItems).where(inArray(masterItems.id, pids)) : [];
+  const pById = new Map(parents.map((p) => [p.id, p]));
+  return c.json({
+    items: rows.map((r) => ({
+      ...shapeItem(r),
+      parent: r.parentId != null && pById.has(r.parentId)
+        ? { code: pById.get(r.parentId)!.code, nameEn: pById.get(r.parentId)!.nameEn, nameHe: pById.get(r.parentId)!.nameHe } : null,
+    })),
+    total: n, limit, offset,
+  });
 });
 
 /** Validates parent (right type, no cycle) and attributes; returns the DB values. */
-async function prepareItem(db: Db, type: typeof masterTypes.$inferSelect, body: z.infer<typeof itemSchema>, selfId?: number) {
+async function prepareItem(db: Db, type: typeof masterTypes.$inferSelect, body: z.infer<typeof itemSchema>) {
   const parentId = body.parentId ?? null;
   if (type.parentTypeCode) {
-    if (parentId == null) throw new AppError(`A parent is required (pick a ${type.parentTypeCode.replace(/_/g, " ")}).`);
-    const [parent] = await db.select().from(masterItems).where(eq(masterItems.id, parentId)).limit(1);
-    if (!parent || parent.typeCode !== type.parentTypeCode) throw new AppError("The parent must come from the parent master.");
+    if (parentId == null && type.parentRequired) throw new AppError(`A parent is required (pick a ${type.parentTypeCode.replace(/_/g, " ")}).`);
+    if (parentId != null) {
+      const [parent] = await db.select().from(masterItems).where(eq(masterItems.id, parentId)).limit(1);
+      if (!parent || parent.typeCode !== type.parentTypeCode) throw new AppError("The parent must come from the parent master.");
+    }
   } else if (parentId != null) {
     // Same-type nesting (e.g. an org-style tree) is allowed only if the type points at itself; here
     // the type has no parent master, so a parent makes no sense.
     throw new AppError("This master has no parent master, so items can't have a parent.");
   }
-  if (selfId != null && parentId != null) {
-    const rows = await db.select({ id: masterItems.id, parentId: masterItems.parentId }).from(masterItems);
-    const map = new Map(rows.map((r) => [r.id, r.parentId]));
-    if (createsCycle(selfId, parentId, (id) => map.get(id))) throw new AppError("An item can't be its own ancestor.");
-  }
+  // No item-level cycle check: a parent must come from a different master (type cycles are rejected
+  // when the masters are defined), so an item can never be its own ancestor.
   const attrs = validateAttributes(parseJson<AttributeDef[]>(type.attributeDefs, []), body.attributes);
   if (!attrs.ok) throw new AppError(attrs.message);
   return { parentId, attributes: JSON.stringify(attrs.value) };
@@ -177,7 +215,7 @@ mastersAdmin.put("/items/:id", zValidator("json", itemSchema), async (c) => {
   const body = c.req.valid("json");
   // The code is what other records store, so it can't be edited after creation.
   if (body.code !== existing.code) throw new AppError("An item's code can't be changed - other records refer to it. Add a new item instead.");
-  const prepared = await prepareItem(db, type, body, id);
+  const prepared = await prepareItem(db, type, body);
   const [saved] = await db.update(masterItems).set({
     nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId, sortOrder: body.sortOrder ?? existing.sortOrder,
     active: body.active ?? existing.active, attributes: prepared.attributes, updatedAt: new Date().toISOString(),
@@ -202,12 +240,27 @@ mastersAdmin.delete("/items/:id", async (c) => {
 
 export const masters = new Hono<AppEnv>();
 
-async function pickList(db: Db, typeCode: string, parentCode?: string) {
+async function pickList(db: Db, typeCode: string, parentCode?: string, q?: string, limit = 2000) {
   const [type] = await db.select().from(masterTypes).where(eq(masterTypes.code, typeCode)).limit(1);
   if (!type) throw new AppError("Unknown master.", 404);
-  let rows = await db.select().from(masterItems)
-    .where(and(eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)))
-    .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn));
+  const conds = [eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)];
+  if (parentCode) {
+    if (!type.parentTypeCode) throw new AppError("This master has no parent master.");
+    const [p] = await db.select({ id: masterItems.id }).from(masterItems)
+      .where(and(eq(masterItems.typeCode, type.parentTypeCode), eq(masterItems.code, parentCode))).limit(1);
+    if (!p) return [];
+    conds.push(eq(masterItems.parentId, p.id));
+  }
+  if (q) {
+    const pat = likePattern(q.slice(0, 100));
+    conds.push(or(
+      sql`${masterItems.code} LIKE ${pat} ESCAPE '\\'`,
+      sql`${masterItems.nameEn} LIKE ${pat} ESCAPE '\\'`,
+      sql`${masterItems.nameHe} LIKE ${pat} ESCAPE '\\'`,
+    )!);
+  }
+  const rows = await db.select().from(masterItems).where(and(...conds))
+    .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn)).limit(limit);
   const parentIds = rows.map((r) => r.parentId).filter((v): v is number => v != null);
   const parents = parentIds.length ? await db.select().from(masterItems).where(inArray(masterItems.id, [...new Set(parentIds)])) : [];
   const parentCodeById = new Map(parents.map((p) => [p.id, p.code]));
@@ -217,7 +270,7 @@ async function pickList(db: Db, typeCode: string, parentCode?: string) {
     parentCode: r.parentId != null ? parentCodeById.get(r.parentId) ?? null : null,
     attributes: parseJson<Record<string, unknown>>(r.attributes, {}),
   }));
-  return parentCode ? out.filter((r) => r.parentCode === parentCode) : out;
+  return out;
 }
 
 // GET /api/masters?types=title,gender,country  -> { title: [...], gender: [...], country: [...] }
@@ -231,7 +284,9 @@ masters.get("/", async (c) => {
 });
 
 // GET /api/masters/:type?parent=IL  -> active items, optionally only the children of one parent code
+// Optional ?q= (search code or name) and ?limit= (default 2000, max 5000) for very large masters.
 masters.get("/:type", async (c) => {
   const db = getDb(c.env.DB);
-  return c.json(await pickList(db, c.req.param("type"), c.req.query("parent") || undefined));
+  const limit = Math.min(Math.max(Number(c.req.query("limit")) || 2000, 1), 5000);
+  return c.json(await pickList(db, c.req.param("type"), c.req.query("parent") || undefined, c.req.query("q") || undefined, limit));
 });

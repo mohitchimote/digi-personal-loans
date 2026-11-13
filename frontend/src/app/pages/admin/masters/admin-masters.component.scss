@@ -31,3 +31,7 @@
   .types-card { position: static; max-height: 240px; }
   .attr-row { grid-template-columns: 1fr 1fr; }
 }
+
+.parent-filter { flex: 1; min-width: 220px; }
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 12px; }
+.mt-8 { margin-top: 8px; display: inline-flex; }

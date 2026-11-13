@@ -12,6 +12,7 @@ export interface MasterType {
   labelHe: string;
   description: string | null;
   parentTypeCode: string | null;
+  parentRequired: boolean;
   attributeDefs: AttributeDef[];
   isSystem: boolean;
   sortOrder: number;
@@ -23,6 +24,7 @@ export interface MasterTypeInput {
   labelHe: string;
   description?: string | null;
   parentTypeCode?: string | null;
+  parentRequired?: boolean;
   attributeDefs?: AttributeDef[];
   sortOrder?: number;
 }
@@ -37,6 +39,10 @@ export interface MasterItem {
   active: boolean;
   attributes: Record<string, string | number | boolean>;
 }
+export interface MasterItemRow extends MasterItem { parent: { code: string; nameEn: string; nameHe: string } | null; }
+export interface ItemPage { items: MasterItemRow[]; total: number; limit: number; offset: number; }
+export interface ItemQuery { limit?: number; offset?: number; q?: string; parentId?: number | null; id?: number; }
+
 export interface MasterItemInput {
   code: string;
   nameEn: string;
@@ -67,7 +73,16 @@ export class MastersService {
   createType(t: MasterTypeInput): Observable<MasterType> { return this.http.post<MasterType>(`${ADMIN}/types`, t); }
   updateType(code: string, t: MasterTypeInput): Observable<MasterType> { return this.http.put<MasterType>(`${ADMIN}/types/${code}`, t); }
   deleteType(code: string): Observable<void> { return this.http.delete<void>(`${ADMIN}/types/${code}`); }
-  items(typeCode: string): Observable<MasterItem[]> { return this.http.get<MasterItem[]>(`${ADMIN}/types/${typeCode}/items`); }
+  /** Paged and searchable: a master can hold hundreds of thousands of rows, so never load one whole. */
+  items(typeCode: string, query: ItemQuery = {}): Observable<ItemPage> {
+    const params: Record<string, string> = {};
+    if (query.limit != null) params['limit'] = String(query.limit);
+    if (query.offset) params['offset'] = String(query.offset);
+    if (query.q) params['q'] = query.q;
+    if (query.parentId != null) params['parentId'] = String(query.parentId);
+    if (query.id != null) params['id'] = String(query.id);
+    return this.http.get<ItemPage>(`${ADMIN}/types/${typeCode}/items`, { params });
+  }
   createItem(typeCode: string, i: MasterItemInput): Observable<MasterItem> { return this.http.post<MasterItem>(`${ADMIN}/types/${typeCode}/items`, i); }
   updateItem(id: number, i: MasterItemInput): Observable<MasterItem> { return this.http.put<MasterItem>(`${ADMIN}/items/${id}`, i); }
   deleteItem(id: number): Observable<void> { return this.http.delete<void>(`${ADMIN}/items/${id}`); }

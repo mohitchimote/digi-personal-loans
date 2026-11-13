@@ -53,6 +53,7 @@
             <option *ngFor="let t of parentChoices()" [ngValue]="t.code">{{ typeLabel(t) }}</option>
           </select>
           <small class="text-muted">{{ (parentLocked ? 'admin.masters.parentLocked' : 'admin.masters.parentHint') | translate }}</small>
+          <label class="inline-check mt-8" *ngIf="typeDraft.parentTypeCode"><input type="checkbox" [(ngModel)]="typeDraft.parentRequired" /> {{ 'admin.masters.parentRequired' | translate }}</label>
         </div>
         <div class="db-form-group wide">
           <label>{{ 'admin.masters.description' | translate }}</label>
@@ -114,11 +115,9 @@
             <input class="db-input" type="text" dir="rtl" [(ngModel)]="itemDraft.nameHe" />
           </div>
           <div class="db-form-group" *ngIf="parentType() as p">
-            <label>{{ typeLabel(p) }} <span class="required">*</span></label>
-            <select class="db-input" [(ngModel)]="itemDraft.parentId">
-              <option [ngValue]="null">—</option>
-              <option *ngFor="let pi of parentItems()" [ngValue]="pi.id">{{ itemName(pi) }}</option>
-            </select>
+            <label>{{ typeLabel(p) }} <span class="required" *ngIf="t.parentRequired">*</span></label>
+            <app-master-picker [typeCode]="p.code" [valueId]="itemDraft.parentId" [initialLabel]="itemDraft.parentLabel"
+                               [placeholder]="'admin.masters.searchParent' | translate" (picked)="onItemParent($event)" />
           </div>
           <div class="db-form-group" *ngFor="let d of t.attributeDefs">
             <label>{{ attrLabel(d) }} <span class="required" *ngIf="d.required">*</span></label>
@@ -144,10 +143,10 @@
       <!-- Filters -->
       <div class="filters">
         <input class="db-input" type="search" [ngModel]="itemFilter" (ngModelChange)="onItemFilter($event)" [placeholder]="'admin.masters.filterItems' | translate" />
-        <select class="db-input" *ngIf="parentType() as p" [ngModel]="parentFilter" (ngModelChange)="onParentFilter($event)">
-          <option [ngValue]="null">{{ 'admin.masters.allOf' | translate }} {{ typeLabel(p) }}</option>
-          <option *ngFor="let pi of parentItems()" [ngValue]="pi.id">{{ itemName(pi) }}</option>
-        </select>
+        <div class="parent-filter" *ngIf="parentType() as p">
+          <app-master-picker [typeCode]="p.code" [valueId]="parentFilter.id" [initialLabel]="parentFilter.label"
+                             [placeholder]="('admin.masters.allOf' | translate) + ' ' + typeLabel(p)" (picked)="onParentFilter($event)" />
+        </div>
       </div>
 
       <div class="loading-row" *ngIf="loadingItems()"><div class="spinner"></div></div>
@@ -163,14 +162,14 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngIf="visibleItems().length === 0">
+          <tr *ngIf="rows().length === 0">
             <td colspan="6" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.masters.noItems' | translate }}</td>
           </tr>
-          <tr *ngFor="let i of visibleItems()" [class.row-inactive]="!i.active">
+          <tr *ngFor="let i of rows()" [class.row-inactive]="!i.active">
             <td><code>{{ i.code }}</code></td>
             <td>{{ i.nameEn }}</td>
             <td dir="rtl">{{ i.nameHe }}</td>
-            <td *ngIf="parentType()">{{ parentName(i.parentId) }}</td>
+            <td *ngIf="parentType()">{{ parentName(i) }}</td>
             <td>{{ (i.active ? 'admin.active' : 'admin.org.inactive') | translate }}</td>
             <td class="row-actions">
               <button class="db-btn db-btn--ghost db-btn--sm" (click)="editItem(i)" [attr.aria-label]="'common.edit' | translate"><span class="material-icons mi-sm">edit</span></button>
@@ -185,6 +184,11 @@
           </tr>
         </tbody>
       </table>
+      <div class="pager" *ngIf="total() > 0">
+        <span class="text-muted">{{ pageFrom() }}–{{ pageTo() }} / {{ total() }}</span>
+        <button class="db-btn db-btn--ghost db-btn--sm" (click)="prevPage()" [disabled]="offset() === 0" [attr.aria-label]="'common.previous' | translate"><span class="material-icons mi-sm">chevron_left</span></button>
+        <button class="db-btn db-btn--ghost db-btn--sm" (click)="nextPage()" [disabled]="offset() + pageSize >= total()" [attr.aria-label]="'common.next' | translate"><span class="material-icons mi-sm">chevron_right</span></button>
+      </div>
     </div>
   </section>
 </div>

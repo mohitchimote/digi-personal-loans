@@ -1671,4 +1671,8 @@ export const EN: Record<string, string> = {
   'admin.masters.typeDeleted': 'Master deleted.',
   'admin.nav.mastersGroup': 'Masters',
   'admin.nav.mastersDesc': 'Reference data defined once and reused: branches, countries, titles, and more.',
+  'admin.masters.parentRequired': 'A parent is required for every item',
+  'admin.masters.searchParent': 'Search…',
+  'common.previous': 'Previous',
+  'common.next': 'Next',
 };
