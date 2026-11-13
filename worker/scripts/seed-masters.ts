@@ -70,6 +70,28 @@ const COUNTRIES: [string, string, string, string, string][] = [
   ["IE", "Ireland", "אירלנד", "Irish", "אירי"],
 ];
 
+
+// ISO 3166-1 alpha-2: the 249 officially assigned codes. Names come from CLDR via the runtime's
+// Intl.DisplayNames (English and Hebrew), so they are standard and need no hand translation.
+// CLDR also knows non-country codes (EU, UN, XK, ...); this list is what keeps those out.
+const ISO_3166_1 = (
+  "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+  "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
+  "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
+  "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ " +
+  "NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
+  "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ " +
+  "UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW"
+).split(" ");
+if (ISO_3166_1.length !== 249 || new Set(ISO_3166_1).size !== 249) throw new Error(`ISO list should be 249 unique codes, got ${ISO_3166_1.length}`);
+const regionEn = new Intl.DisplayNames(["en"], { type: "region" });
+const regionHe = new Intl.DisplayNames(["he"], { type: "region" });
+const ISO_COUNTRIES: Row[] = ISO_3166_1.map((c) => {
+  const en = regionEn.of(c), he = regionHe.of(c);
+  if (!en || !he || en === c || he === c) throw new Error(`No CLDR name for ${c}`);
+  return [c, en, he] as Row;
+});
+
 const DISTRICTS: Row[] = [
   ["IL-N", "Northern", "צפון"], ["IL-HA", "Haifa", "חיפה"], ["IL-M", "Central", "מרכז"], ["IL-TA", "Tel Aviv", "תל אביב"],
   ["IL-JM", "Jerusalem", "ירושלים"], ["IL-S", "Southern", "דרום"], ["IL-JS", "Judea and Samaria", "יהודה ושומרון"],
@@ -134,20 +156,23 @@ TYPES.forEach((t, i) => {
 });
 out.push("");
 
-function items(type: string, rows: Row[], parentType?: string) {
+// refreshNames: also bring names of already-seeded rows up to date, but only rows an admin has never
+// edited (updated_at IS NULL), so manual changes in the Masters screen are never overwritten.
+function items(type: string, rows: Row[], parentType?: string, refreshNames = false) {
   rows.forEach(([code, en, he, extra], i) => {
     const parent = extra?.parent && parentType
       ? `(SELECT id FROM master_items WHERE type_code = ${q(parentType)} AND code = ${q(extra.parent)})` : "NULL";
     out.push(
-      `INSERT OR IGNORE INTO master_items (type_code, code, name_en, name_he, parent_id, sort_order, active, attributes, created_at) ` +
-      `VALUES (${q(type)}, ${q(code)}, ${q(en)}, ${q(he)}, ${parent}, ${(i + 1) * 10}, 1, ${q(JSON.stringify(extra?.attrs ?? {}))}, ${q(now)});`,
+      `INSERT ${refreshNames ? "" : "OR IGNORE "}INTO master_items (type_code, code, name_en, name_he, parent_id, sort_order, active, attributes, created_at) ` +
+      `VALUES (${q(type)}, ${q(code)}, ${q(en)}, ${q(he)}, ${parent}, ${(i + 1) * 10}, 1, ${q(JSON.stringify(extra?.attrs ?? {}))}, ${q(now)})` +
+      (refreshNames ? ` ON CONFLICT(type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he, sort_order = excluded.sort_order WHERE master_items.updated_at IS NULL;` : ";"),
     );
   });
   out.push("");
 }
 
 for (const [type, rows] of Object.entries(SIMPLE)) items(type, rows);
-items("country", COUNTRIES.map(([c, en, he]) => [c, en, he] as Row));
+items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")), undefined, true);
 items("nationality", COUNTRIES.map(([c, , , en, he]) => [c, en, he] as Row));
 items("state", DISTRICTS.map(([c, en, he]) => [c, en, he, { parent: "IL" }] as Row), "country");
 items("city", CITIES.map(([c, en, he, d]) => [c, en, he, { parent: d }] as Row), "state");
