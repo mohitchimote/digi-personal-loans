@@ -1686,4 +1686,13 @@ export const EN: Record<string, string> = {
   'admin.org.linked': 'Linked to a master',
   'admin.org.notLinked': 'Not linked',
   'admin.org.pickRequired': 'Pick an item from the list.',
+  'common.selectParentFirst': 'Choose the previous field first',
+  'admin.formOptionsSource': 'Options come from',
+  'admin.formOptionsSourceCustom': 'A list I type here',
+  'admin.formOptionsSourceMaster': 'A master (defined once, reused)',
+  'admin.formMasterPick': 'Master',
+  'admin.formMasterCodesHint': 'Customers choose by name, in their language. The saved value is the item\'s code.',
+  'admin.formMasterDependsOn': 'Show only items under the choice made in',
+  'admin.formMasterDependsNone': 'None - offer every item',
+  'admin.formMasterNoParentField': 'To cascade, add an earlier field in this section that uses the parent master, and put this field after it.',
 };

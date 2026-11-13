@@ -19,6 +19,7 @@ import { withWorkflowInfo } from "../lib/workflow/assignment";
 import type { QueueDef } from "../lib/workflow/types";
 import type { TransitionInput } from "../lib/workflow/types";
 import { resolveActiveSchemaVersion, withResolvedFormVersion, parseSchema } from "../lib/form-versions";
+import { masterValueProblem, loadMasterItemFacts } from "../lib/master-options";
 import { isFieldVisible } from "../lib/form-schema-types";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -124,6 +125,21 @@ async function validateSectionData(
     // regression risk — and for a currently-hidden/not-visible field, matching the required-check's
     // own exemption above (a value left over from before the customer backed away from a now-
     // hidden field shouldn't fail the save).
+    // Master-sourced field: the value must be an existing item's code (and, for a cascade, belong to the
+    // parent chosen in the earlier field). Keeping the previously saved value is always allowed, so old
+    // data never blocks an unrelated edit. Same visibility exemption as above.
+    if (visible && f.optionsSource && value !== undefined && value !== null && value !== "") {
+      const dep = f.optionsSource.dependsOn;
+      const problem = masterValueProblem({
+        item: await loadMasterItemFacts(db, f.optionsSource.master, String(value)),
+        value: String(value),
+        previous: flattenAllSectionValues(app)[`${section}.${f.key}`],
+        dependsOn: !!dep,
+        dependsOnValue: dep ? crossSectionValues[`${section}.${dep.fieldKey}`] : undefined,
+      });
+      if (problem) throw new AppError(`Field '${f.key}' in section '${section}' ${problem}.`);
+    }
+
     if (visible && f.options?.length && value !== undefined && value !== null && value !== "") {
       const allowed = f.optionsDependOn
         ? new Set(f.optionsDependOn.map[String(crossSectionValues[`${section}.${f.optionsDependOn.fieldKey}`] ?? "")] ?? [])

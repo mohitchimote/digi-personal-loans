@@ -1,3 +1,5 @@
+import { assertMasterSources } from "./master-options";
+import { formatZodIssues } from "./section-schemas";
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { formVersions, type loanApplications } from "../db/schema";
@@ -116,7 +118,10 @@ export async function updateDraft(
   if (fields.schemaJson) {
     // Throws with a readable Zod issue list on malformed input — same "validate shape, don't
     // silently accept anything" discipline as section-schemas.ts's .strict() schemas.
-    formVersionSchemaSchema.parse(JSON.parse(fields.schemaJson));
+    const result = formVersionSchemaSchema.safeParse(JSON.parse(fields.schemaJson));
+    // A shape problem is the admin's to fix: say what it is (400) rather than surfacing a bare 500.
+    if (!result.success) throw new AppError(`Invalid form schema: ${formatZodIssues(result.error)}`, 400);
+    await assertMasterSources(db, result.data);
   }
   const [updated] = await db
     .update(formVersions)
@@ -149,6 +154,8 @@ export async function publishVersion(
   const draft = await getVersionById(db, id);
   if (!draft) throw new AppError("Form version not found.", 404);
   if (draft.status !== "DRAFT") throw new AppError("Only a draft version can be published.", 400);
+  // Masters can be changed or removed after the draft was saved: re-check before it goes live.
+  await assertMasterSources(db, parseSchema(draft));
 
   const currentlyPublished = await getPublishedVersion(db, draft.formKey as FormKey);
   if (currentlyPublished) {

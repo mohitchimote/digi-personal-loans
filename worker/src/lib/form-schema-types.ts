@@ -32,6 +32,18 @@ const optionsDependOnSchema = z
   .object({ fieldKey: z.string(), map: z.record(z.string(), z.array(z.string())) })
   .strict();
 
+// A field's options can instead come from a master (reference data defined once, see lib/masters.ts)
+// rather than a typed `options` list. The stored/submitted value is then the master item's `code`.
+// `dependsOn` makes it a cascade: the field offers only the items whose parent is the item currently
+// chosen in an earlier field of the same section (e.g. State depends on Country, City on State). That
+// earlier field must itself be sourced from the master that is this master's parent.
+const optionsSourceSchema = z
+  .object({
+    master: z.string().min(1),
+    dependsOn: z.object({ fieldKey: z.string() }).strict().optional(),
+  })
+  .strict();
+
 // --- Visibility condition engine ------------------------------------------------------
 //
 // A field's `visibility` gates whether it's shown/required right now. Three shapes are
@@ -257,6 +269,7 @@ export const formFieldSchema = z
     order: z.number(),
     options: z.array(fieldOptionSchema).optional(),
     optionsDependOn: optionsDependOnSchema.optional(),
+    optionsSource: optionsSourceSchema.optional(),
     validation: fieldValidationSchema.optional(),
     visibility: visibilityNodeSchema.nullable().optional(),
     // Admin-authored copy shown alongside the field's own live validity state, in place of the
@@ -278,6 +291,11 @@ export const formFieldSchema = z
   .refine((f) => f.labelKey || f.label, {
     message: "a field needs either labelKey (existing i18n key) or an inline label",
     path: ["label"],
+  })
+  // One source of options per field: a typed list (with its own optional dependency map) or a master.
+  .refine((f) => !f.optionsSource || (!f.options?.length && !f.optionsDependOn), {
+    message: "a field's options come either from a typed list or from a master, not both",
+    path: ["optionsSource"],
   });
 
 export const sectionHeaderSchema = z
@@ -336,6 +354,31 @@ export const formSectionSchema = z
           }
         });
       }
+      if (field.optionsSource?.dependsOn) {
+        // Same rule as optionsDependOn: an earlier field of this section. That it is itself sourced
+        // from this master's parent master needs the master definitions, so it is checked on save
+        // (lib/master-options.ts).
+        const trigger = fieldsByKey.get(field.optionsSource.dependsOn.fieldKey);
+        if (!trigger) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Field '${field.key}': dependsOn references unknown field '${field.optionsSource.dependsOn.fieldKey}'`,
+            path: ["fields", fieldIndex, "optionsSource", "dependsOn", "fieldKey"],
+          });
+        } else if (trigger.order >= field.order) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Field '${field.key}': dependsOn field '${trigger.key}' must come before it in display order`,
+            path: ["fields", fieldIndex, "optionsSource", "dependsOn", "fieldKey"],
+          });
+        } else if (!trigger.optionsSource) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Field '${field.key}': dependsOn field '${trigger.key}' must itself take its options from a master`,
+            path: ["fields", fieldIndex, "optionsSource", "dependsOn", "fieldKey"],
+          });
+        }
+      }
       if (field.optionsDependOn) {
         const trigger = fieldsByKey.get(field.optionsDependOn.fieldKey);
         if (!trigger) {
@@ -368,6 +411,7 @@ export const formVersionSchemaSchema = z
 export type BilingualLabel = z.infer<typeof bilingualLabelSchema>;
 export type FieldOption = z.infer<typeof fieldOptionSchema>;
 export type OptionsDependOn = z.infer<typeof optionsDependOnSchema>;
+export type OptionsSource = z.infer<typeof optionsSourceSchema>;
 export type FormField = z.infer<typeof formFieldSchema>;
 export type FormSectionHeader = z.infer<typeof sectionHeaderSchema>;
 export type FormSection = z.infer<typeof formSectionSchema>;

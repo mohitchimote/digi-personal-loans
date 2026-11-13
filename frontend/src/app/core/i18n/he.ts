@@ -1726,4 +1726,13 @@ export const HE: Record<string, string> = {
   'admin.org.linked': 'מקושר לנתון יסוד',
   'admin.org.notLinked': 'לא מקושר',
   'admin.org.pickRequired': 'יש לבחור פריט מהרשימה.',
+  'common.selectParentFirst': 'יש לבחור קודם את השדה הקודם',
+  'admin.formOptionsSource': 'האפשרויות מגיעות מ',
+  'admin.formOptionsSourceCustom': 'רשימה שאקליד כאן',
+  'admin.formOptionsSourceMaster': 'נתון יסוד (מוגדר פעם אחת, בשימוש חוזר)',
+  'admin.formMasterPick': 'נתון יסוד',
+  'admin.formMasterCodesHint': 'הלקוחות בוחרים לפי שם, בשפתם. הערך שנשמר הוא קוד הפריט.',
+  'admin.formMasterDependsOn': 'להציג רק פריטים תחת הבחירה שנעשתה ב',
+  'admin.formMasterDependsNone': 'ללא - להציג את כל הפריטים',
+  'admin.formMasterNoParentField': 'כדי ליצור מדרג, הוסיפו שדה קודם בקטע זה שמשתמש בנתון היסוד האב, והציבו את השדה הזה אחריו.',
 };

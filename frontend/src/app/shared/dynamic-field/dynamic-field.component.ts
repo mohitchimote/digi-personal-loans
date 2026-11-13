@@ -1,7 +1,8 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, OnChanges, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import {
+  FieldOption,
   FormField,
   VisibilityNode,
   ConditionNode,
@@ -9,6 +10,9 @@ import {
   NamedConstant,
 } from '../../core/services/form-builder.service';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { MastersService } from '../../core/services/masters.service';
+import { Subscription } from 'rxjs';
+import { reconcileStoredValue, toFieldOptions } from '../master-options';
 import { TranslatePipe } from '../pipes/translate.pipe';
 
 /** Values a condition's field/computed operands resolve against, flat-keyed
@@ -132,7 +136,7 @@ export function isFieldVisible(field: { visibility?: VisibilityNode | null }, cu
   imports: [CommonModule, ReactiveFormsModule, TranslatePipe],
   templateUrl: './dynamic-field.component.html',
 })
-export class DynamicFieldComponent {
+export class DynamicFieldComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) field!: FormField;
   @Input({ required: true }) control!: FormControl;
   /** The section this field lives in — only matters for upgrading a legacy visibility rule
@@ -142,7 +146,68 @@ export class DynamicFieldComponent {
    * evaluated against — see personal-details.component.ts for how this is built. */
   @Input() evalContext: EvalContext = { constants: [], values: {} };
 
-  constructor(public i18n: I18nService) {}
+  constructor(public i18n: I18nService, private masters: MastersService, private cdr: ChangeDetectorRef) {}
+
+  // ---- options that come from a master (field.optionsSource)
+  /** Options fetched from the master; empty until loaded, or while a cascade's parent is unchosen. */
+  masterOptions: FieldOption[] = [];
+  private loadedKey = '';
+  private sub: Subscription | null = null;
+
+  /** What the select/radio offers: the master's items when sourced from one, else the typed list. */
+  get selectOptions(): FieldOption[] {
+    return this.field.optionsSource ? this.masterOptions : (this.field.options ?? []);
+  }
+
+  /** For a cascade: true while the field it depends on has no value yet (so nothing can be offered). */
+  get waitingForParent(): boolean {
+    const dep = this.field.optionsSource?.dependsOn;
+    return !!dep && !this.parentValue;
+  }
+
+  private get parentValue(): string {
+    const dep = this.field.optionsSource?.dependsOn;
+    if (!dep) return '';
+    const v = this.evalContext.values[`${this.sectionKey}.${dep.fieldKey}`];
+    return v == null ? '' : String(v);
+  }
+
+  ngOnChanges(): void { this.syncMasterOptions(); }
+  ngOnDestroy(): void { this.sub?.unsubscribe(); }
+
+  /** (Re)loads the master's items when the master or the chosen parent changes, then makes sure the
+   * field's current value still makes sense: legacy text is mapped to its code, and a value that no
+   * longer belongs under the new parent is cleared. */
+  private syncMasterOptions(): void {
+    const src = this.field?.optionsSource;
+    if (!src) return;
+    const parent = this.parentValue;
+    const key = `${src.master}|${parent}`;
+    if (key === this.loadedKey) return;
+    this.loadedKey = key;
+    this.sub?.unsubscribe();
+    if (src.dependsOn && !parent) {
+      this.masterOptions = [];
+      if (this.control?.value) this.control.setValue('');
+      this.cdr.markForCheck();
+      return;
+    }
+    this.sub = this.masters.options(src.master, src.dependsOn ? parent : undefined).subscribe({
+      next: items => {
+        this.masterOptions = toFieldOptions(items);
+        const current = this.control?.value;
+        if (current) {
+          const fixed = reconcileStoredValue(this.masterOptions, current);
+          if (fixed === null) this.control.setValue('');
+          else if (fixed !== current) this.control.setValue(fixed);
+        }
+        // The options arrive after the view was last checked, and a parent using OnPush would not
+        // re-check this component on its own.
+        this.cdr.markForCheck();
+      },
+      error: () => { this.masterOptions = []; this.cdr.markForCheck(); },
+    });
+  }
 
   get label(): string {
     if (this.field.labelKey) return this.i18n.t(this.field.labelKey);

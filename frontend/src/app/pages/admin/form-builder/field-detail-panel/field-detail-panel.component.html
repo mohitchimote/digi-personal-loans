@@ -48,7 +48,34 @@
     ></app-condition-group>
   </div>
 
-  <div class="field-detail__options" *ngIf="hasOptions()">
+  <div class="field-detail__source" *ngIf="hasOptions()">
+    <div class="db-form-group">
+      <label>{{ 'admin.formOptionsSource' | translate }}</label>
+      <select class="db-select" [disabled]="disabled" [ngModel]="isMasterMode() ? 'master' : 'custom'" (ngModelChange)="setOptionsMode($event)">
+        <option value="custom">{{ 'admin.formOptionsSourceCustom' | translate }}</option>
+        <option value="master">{{ 'admin.formOptionsSourceMaster' | translate }}</option>
+      </select>
+    </div>
+    <ng-container *ngIf="isMasterMode()">
+      <div class="db-form-group">
+        <label>{{ 'admin.formMasterPick' | translate }}</label>
+        <select class="db-select" [disabled]="disabled" [ngModel]="field.optionsSource?.master" (ngModelChange)="setMaster($event)">
+          <option *ngFor="let t of masterTypes" [value]="t.code">{{ masterLabel(t) }}</option>
+        </select>
+        <small class="text-muted">{{ 'admin.formMasterCodesHint' | translate }}</small>
+      </div>
+      <div class="db-form-group" *ngIf="masterParentType() as parent">
+        <label>{{ 'admin.formMasterDependsOn' | translate }} ({{ masterLabel(parent) }})</label>
+        <select class="db-select" [disabled]="disabled || !masterTriggerFields().length" [ngModel]="field.optionsSource?.dependsOn?.fieldKey || ''" (ngModelChange)="setMasterDependsOn($event)">
+          <option value="">{{ 'admin.formMasterDependsNone' | translate }}</option>
+          <option *ngFor="let f of masterTriggerFields()" [value]="f.key">{{ f.label?.en || (f.labelKey ? (f.labelKey | translate) : f.key) }}</option>
+        </select>
+        <small class="text-muted" *ngIf="!masterTriggerFields().length">{{ 'admin.formMasterNoParentField' | translate }}</small>
+      </div>
+    </ng-container>
+  </div>
+
+  <div class="field-detail__options" *ngIf="hasOptions() && !isMasterMode()">
     <label>{{ 'admin.formOptionsHeader' | translate }}</label>
     <div class="option-row" *ngFor="let opt of field.options; let oi = index">
       <input class="db-input" [disabled]="disabled" [ngModel]="opt.value" (ngModelChange)="setOptionField(opt, 'value', $event)" [placeholder]="'admin.formOptionValue' | translate" />
@@ -60,7 +87,7 @@
     <button type="button" class="db-btn db-btn--ghost db-btn--sm mt-8" *ngIf="!disabled" (click)="addOption()">{{ 'admin.formAddOption' | translate }}</button>
   </div>
 
-  <div class="field-detail__options-dependency" *ngIf="hasOptions() && eligibleTriggerFields().length">
+  <div class="field-detail__options-dependency" *ngIf="hasOptions() && !isMasterMode() && eligibleTriggerFields().length">
     <label class="db-checkbox">
       <input type="checkbox" [checked]="hasOptionsDependency()" [disabled]="disabled" (change)="toggleOptionsDependency()" />
       <span>{{ 'admin.formOptionsDependOn' | translate }}</span>

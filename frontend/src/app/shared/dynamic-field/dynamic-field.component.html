@@ -27,12 +27,12 @@
   <textarea *ngIf="field.type === 'textarea'" class="db-textarea" rows="3" [formControl]="control"></textarea>
 
   <select *ngIf="field.type === 'select'" class="db-select" [formControl]="control">
-    <option value="">{{ 'common.select' | translate }}</option>
-    <option *ngFor="let opt of field.options" [value]="opt.value">{{ optionLabel(opt) }}</option>
+    <option value="">{{ (waitingForParent ? 'common.selectParentFirst' : 'common.select') | translate }}</option>
+    <option *ngFor="let opt of selectOptions" [value]="opt.value">{{ optionLabel(opt) }}</option>
   </select>
 
   <div class="declaration-toggle" *ngIf="field.type === 'radio'">
-    <label class="toggle-label" *ngFor="let opt of field.options">
+    <label class="toggle-label" *ngFor="let opt of selectOptions">
       <input type="radio" [formControl]="control" [value]="opt.value" />
       {{ optionLabel(opt) }}
     </label>

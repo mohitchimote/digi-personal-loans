@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -12,6 +12,8 @@ import {
 import { toConditionNode } from '../../../../shared/dynamic-field/dynamic-field.component';
 import { ConditionGroupComponent, FieldPickerOption } from '../condition-group/condition-group.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
+import { MasterType, MastersService } from '../../../../core/services/masters.service';
+import { I18nService } from '../../../../core/i18n/i18n.service';
 
 type BilingualProp = 'label' | 'helpText' | 'tooltip' | 'errorMessage' | 'successMessage' | 'warningMessage';
 
@@ -37,13 +39,71 @@ const EXISTING_OPTION_FIELD_KEYS = ['maritalStatus', 'nationality', 'preferredBr
   templateUrl: './field-detail-panel.component.html',
   styleUrl: './field-detail-panel.component.scss',
 })
-export class FieldDetailPanelComponent implements OnChanges {
+export class FieldDetailPanelComponent implements OnChanges, OnInit {
   @Input({ required: true }) field!: FormField;
   @Input({ required: true }) section!: FormSection;
   @Input({ required: true }) schema!: FormVersionSchema;
   @Input({ required: true }) fieldPickerOptions!: FieldPickerOption[];
   @Input() disabled = false;
   @Output() changed = new EventEmitter<void>();
+
+  masterTypes: MasterType[] = [];
+
+  constructor(private masters: MastersService, private i18n: I18nService, private cdr: ChangeDetectorRef) {}
+
+  ngOnInit(): void {
+    // The list arrives after the first render; a parent that doesn't re-check on its own would never show it.
+    this.masters.types().subscribe({
+      next: t => { this.masterTypes = t; this.cdr.markForCheck(); },
+      error: () => { this.masterTypes = []; this.cdr.markForCheck(); },
+    });
+  }
+
+  // ---- options that come from a master
+  isMasterMode(): boolean { return !!this.field.optionsSource; }
+
+  setOptionsMode(mode: 'custom' | 'master'): void {
+    if (mode === 'master') {
+      // One source per field: drop the typed list and its dependency map (the schema rejects both).
+      this.field.options = undefined;
+      this.field.optionsDependOn = undefined;
+      this.field.optionsSource = { master: this.masterTypes[0]?.code ?? '' };
+    } else {
+      this.field.optionsSource = undefined;
+      this.field.options = [];
+    }
+    this.changed.emit();
+  }
+
+  masterLabel(t: MasterType): string { return this.i18n.lang() === 'he' ? t.labelHe : t.labelEn; }
+
+  setMaster(code: string): void {
+    this.field.optionsSource = { master: code };   // a different master invalidates any cascade
+    this.changed.emit();
+  }
+
+  /** The master that the chosen master belongs to (State -> Country), if it has one. */
+  masterParentType(): MasterType | null {
+    const t = this.masterTypes.find(x => x.code === this.field.optionsSource?.master);
+    return t?.parentTypeCode ? this.masterTypes.find(x => x.code === t.parentTypeCode) ?? null : null;
+  }
+
+  /** Earlier fields of this section that take their options from this master's parent master. */
+  masterTriggerFields(): FormField[] {
+    const parent = this.masterParentType();
+    if (!parent) return [];
+    return this.section.fields
+      .filter(f => f.key !== this.field.key && f.order < this.field.order && f.optionsSource?.master === parent.code)
+      .sort((a, b) => a.order - b.order);
+  }
+
+  setMasterDependsOn(fieldKey: string): void {
+    if (!this.field.optionsSource) return;
+    this.field.optionsSource = fieldKey
+      ? { master: this.field.optionsSource.master, dependsOn: { fieldKey } }
+      : { master: this.field.optionsSource.master };
+    this.changed.emit();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['field'] && this.field) this.upgradeLegacyVisibility();
@@ -161,7 +221,7 @@ export class FieldDetailPanelComponent implements OnChanges {
    * sense against a field the customer has already answered earlier in this same section. */
   eligibleTriggerFields(): FormField[] {
     return this.section.fields
-      .filter((f) => f.key !== this.field.key && f.order < this.field.order && this.isOptionBearing(f))
+      .filter((f) => f.key !== this.field.key && f.order < this.field.order && this.isOptionBearing(f) && !f.optionsSource)
       .sort((a, b) => a.order - b.order);
   }
 

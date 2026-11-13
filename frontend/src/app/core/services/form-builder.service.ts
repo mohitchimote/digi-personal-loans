@@ -29,6 +29,15 @@ export interface OptionsDependOn {
   map: Record<string, string[]>;
 }
 
+// A field's options can come from a master (reference data defined once) instead of a typed list —
+// mirrors worker/src/lib/form-schema-types.ts's optionsSourceSchema. The stored value is the master
+// item's `code`. `dependsOn` makes it a cascade: only items whose parent is the item chosen in an
+// earlier field of the same section are offered (State depends on Country, City on State).
+export interface OptionsSource {
+  master: string;
+  dependsOn?: { fieldKey: string };
+}
+
 // --- Visibility condition engine — mirrors worker/src/lib/form-schema-types.ts. Kept in sync
 // by hand since the worker and this app are separate deployable projects with no shared
 // package; see that file for the full design rationale. ---
@@ -105,6 +114,7 @@ export interface FormField {
   order: number;
   options?: FieldOption[];
   optionsDependOn?: OptionsDependOn;
+  optionsSource?: OptionsSource;
   validation?: FieldValidation;
   visibility?: VisibilityNode | null;
   errorMessage?: BilingualLabel;
