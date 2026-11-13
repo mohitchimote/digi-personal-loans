@@ -48,6 +48,25 @@ export function forEmbeddedFont(visual: string): string {
   return visual;
 }
 
+/**
+ * Splits a line already in drawing order into runs of one script, each ready to hand to the font library.
+ * The library picks one direction for whatever string it is given, from the first letter that has a script,
+ * so a line mixing Latin and Hebrew ("Noa Levi שלום") cannot go through it whole: one of the scripts would be
+ * reversed. Signs, spaces and digits go with the run they follow (leading ones with the first run).
+ */
+export function embeddedRuns(visual: string): string[] {
+  const runs: { text: string; script: "H" | "L" | null }[] = [];
+  let cur = { text: "", script: null as "H" | "L" | null };
+  for (const ch of visual) {
+    const script = HEBREW.test(ch) ? "H" : LATIN.test(ch) ? "L" : null;
+    if (script && cur.script && script !== cur.script) { runs.push(cur); cur = { text: "", script: null }; }
+    cur.text += ch;
+    if (script && !cur.script) cur.script = script;
+  }
+  if (cur.text) runs.push(cur);
+  return runs.map((r) => (r.script === "H" ? [...r.text].reverse().join("") : r.text));
+}
+
 /** Embeds the letter fonts into a document. `regular` and `bold` are the TTF bytes. */
 export async function embedLetterFonts(doc: PDFDocument, bytes: { regular: Uint8Array | ArrayBuffer; bold: Uint8Array | ArrayBuffer }): Promise<LetterFonts> {
   doc.registerFontkit(fontkit);
@@ -88,9 +107,11 @@ export interface TextStyle { lang: Lang; size?: number; bold?: boolean; color?: 
 /** Draws one line, aligned to the leading edge of its language (left for English, right for Hebrew). */
 export function drawLine(page: PDFPage, fonts: LetterFonts, line: string, x: number, y: number, width: number, s: TextStyle): void {
   const font = s.bold ? fonts.bold : fonts.regular, size = s.size ?? 11;
-  const visual = forEmbeddedFont(visualOrder(drawable(line, font), s.lang === "he" ? "rtl" : "ltr"));
-  const w = font.widthOfTextAtSize(visual, size);
-  page.drawText(visual, { x: s.lang === "he" ? x + width - w : x, y, size, font, color: s.color ?? rgb(0.1, 0.12, 0.16) });
+  const runs = embeddedRuns(visualOrder(drawable(line, font), s.lang === "he" ? "rtl" : "ltr"));
+  const widths = runs.map((r) => font.widthOfTextAtSize(r, size));
+  const total = widths.reduce((a, b) => a + b, 0);
+  let cx = s.lang === "he" ? x + width - total : x;
+  runs.forEach((r, i) => { page.drawText(r, { x: cx, y, size, font, color: s.color ?? rgb(0.1, 0.12, 0.16) }); cx += widths[i]; });
 }
 
 /** Draws a wrapped paragraph and returns the y position below it. */

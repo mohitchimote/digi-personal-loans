@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { formatValue } from "../src/lib/letters/formats";
 import { evalRule, type EvalContext } from "../src/lib/letters/rules";
 import { resolveLetter } from "../src/lib/letters/resolve";
+import { validateLetter } from "../src/lib/letters/validate";
 import type { Dictionary, Lang, LetterDocument, Rule, SavedRule } from "../src/lib/letters/types";
 
 // Runs letter-spec/vectors/*.json against the Worker's letter engine. The Java engine runs the same
@@ -62,6 +63,17 @@ describe("letter-spec resolve", () => {
         const got = resolveLetter({ document: v.document as LetterDocument, dictionary, savedRules: file.savedRules, data: v.data, today: v.today ?? file.today }, "en");
         expect(matches(got.decisions, v.expect.decisions, "$.decisions")).toBeNull();
       }
+    });
+  }
+});
+
+describe("letter-spec validate", () => {
+  const file = readJson("vectors/validate.json");
+  const dictionary: Dictionary = readJson(file.dictionary);
+  for (const v of file.vectors) {
+    it(v.name, () => {
+      const issues = validateLetter(v.document as LetterDocument, dictionary, (v.savedRules ?? []) as SavedRule[], v.knownImageIds ? { knownImageIds: new Set<string>(v.knownImageIds) } : {});
+      expect(issues.map((i) => `${i.severity}:${i.code}`).sort()).toEqual(v.expect);
     });
   }
 });

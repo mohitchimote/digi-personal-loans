@@ -108,11 +108,22 @@ Blocks: `heading` / `paragraph` (`text`), `list` (`items[]`), `table` (`rows[{la
 - `decisions` are recorded in document order for `when`, `repeat` and `alternatives` nodes **outside** repeats (what happened inside a repeat is not recorded per entry). For `alternatives`, `variant` is the zero-based variant used; for `repeat`, `items` is how many entries were shown. The same decisions result for both languages, so the two cannot disagree.
 - `missing` is sorted. A letter with anything in `missing` should not be issued.
 
+## Validating
+
+A template is checked against the data dictionary and the saved rules before it can be published. `error` issues block publishing; `warning` issues are shown and allowed. Each issue has a stable `code`, a human message and, where it concerns one block, that block's `nodeId`. Implementations must raise the same codes (`vectors/validate.json`); wording of messages is free. An identical issue (same severity, code, node and message) is reported once.
+
+Errors: `field.unknown` (a token, condition, comparison field or repeat names a path that is not in the dictionary, or an `item.*` key the list does not have), `field.itemOutsideList` (`item.*` outside a repeat or list condition), `token.formatUnknown`, `token.formatType` (formats allowed: `int dec` on number/money/percent, `money money2` on number/money, `pct` on number/percent, `term` on number, `date` on date, `yesno` on bool), `token.list` (a list printed as a token), `rule.opType` (operators allowed by type: text `eq ne contains in empty notEmpty`; number/money/percent `eq ne gt gte lt lte between empty notEmpty`; date `eq ne before after withinDays ageAtLeast ageBelow empty notEmpty`; bool `isYes isNo empty notEmpty`; choice `eq ne in empty notEmpty`; list `empty notEmpty anyMatch noneMatch`), `rule.valueMissing` (no comparison value; `in` with no list; `between` without two numbers; `withinDays` / `ageAtLeast` / `ageBelow` without a number), `rule.betweenOrder` (first number above second), `rule.choiceUnknown` (a value that is not one of the field's choices), `rule.compareTypes` (field compared with a field of another type; number, money and percent are alike), `rule.nestedNotList`, `rule.refMissing`, `rule.refCycle` (saved rules refer to each other in a loop; also raised once for each saved rule on the loop), `rule.tooDeep` (more than 20 levels), `node.duplicateId`, `repeat.notList`, `image.unknown` (only when the set of known image ids is supplied).
+
+Warnings: `token.pageInBody`, `text.tokensDiffer` (English and Hebrew name different fields), `text.emptyEn` / `text.emptyHe`, `rule.emptyGroup`, `rule.noMatchCondition` (a list match without a condition for the entries), `when.noRule`, `alternatives.empty`, `alternatives.unreachable` (a variant without a condition that is followed by others), `image.missing`.
+
+Saved rules are also checked on their own, so a faulty one is caught before any template uses it.
+
 ## Conformance
 
 The vectors are the contract. Each side runs them:
 
 - Worker: `worker/test/letter-vectors.test.ts`.
+- `vectors/validate.json`: each vector is a document (plus optional `savedRules`, `knownImageIds`); `expect` is the sorted list of `severity:code`.
 - Java: to be added next to the workflow engine's `VectorsTest`. Expected values were derived by hand from this document, not copied from the Worker's output.
 
 Matching rule in `resolve.json`: every key in `expect` must equal the result; arrays must match in length and order.

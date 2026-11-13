@@ -1,3 +1,4 @@
+import { computeCalculated } from "../calculated";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Context } from "hono";
 import { getDb, type Db } from "../../db/client";
@@ -163,7 +164,11 @@ async function persist(
   if (r.hostEffects.some((e) => e.type === "PIN_FORM_VERSION")) set.formVersionId = (await resolveActiveSchemaVersion(db, app))?.id ?? null;
   if (r.hostEffects.some((e) => e.type === "UNPIN_FORM_VERSION")) set.formVersionId = null;
   // select-product re-enters the same status; nothing to write unless something else changed.
-  if (Object.keys(set).length > 0) set.updatedAt = now;
+  if (Object.keys(set).length > 0) {
+    set.updatedAt = now;
+    // Anything that changed the loan, product or approval refreshes the derived values in the same write.
+    set.calculatedJson = JSON.stringify(computeCalculated({ ...app, ...set } as never));
+  }
 
   // A case entering a new stage loses its previous owner and, if that stage routes automatically,
   // is handed to the next eligible person in the same atomic write as the move.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { PDFFont } from "pdf-lib";
-import { visualOrder, forEmbeddedFont, wrapLines, drawable } from "../src/lib/pdf/bilingual";
+import { embeddedRuns, visualOrder, forEmbeddedFont, wrapLines, drawable } from "../src/lib/pdf/bilingual";
 
 // A stand-in font: every character is 1 unit wide and "supports" Latin, Hebrew, digits and common signs.
 const fakeFont = {
@@ -60,5 +60,22 @@ describe("wrapLines and drawable", () => {
   });
   it("replaces characters the font cannot draw", () => {
     expect(drawable("a€b\nc", fakeFont)).toBe("a b\nc");
+  });
+});
+
+describe("embeddedRuns", () => {
+  it("gives each script its own run so the font library cannot flip the wrong one", () => {
+    // drawing order of "Noa Levi שלום" in a right-to-left line: Hebrew on the left, the name on the right
+    const visual = visualOrder("Noa Levi שלום", "rtl");
+    expect(visual).toBe("םולש Noa Levi");
+    // Hebrew run is handed over pre-reversed (the library reverses it back); the Latin run is untouched.
+    expect(embeddedRuns(visual)).toEqual([" שלום", "Noa Levi"]);
+  });
+  it("keeps a line of one script as one run", () => {
+    expect(embeddedRuns("hello world")).toEqual(["hello world"]);
+    expect(embeddedRuns("21,500 הסנכה")).toEqual([[..."21,500 הסנכה"].reverse().join("")]);
+  });
+  it("leaves digits and signs alone when there is no script at all", () => {
+    expect(embeddedRuns("₪ 150")).toEqual(["₪ 150"]);
   });
 });

@@ -1,0 +1,1 @@
+ALTER TABLE `loan_applications` ADD `calculated_json` text;

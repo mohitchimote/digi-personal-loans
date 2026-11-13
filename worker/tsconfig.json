@@ -14,5 +14,5 @@
     "noUnusedParameters": false
   },
   "include": ["src", "scripts", "drizzle.config.ts"],
-  "exclude": ["scripts/pdf-smoke-test.ts", "scripts/seed-reference.ts", "scripts/pdf-bilingual-spike.ts", "scripts/lib/iso-countries.ts", "scripts/seed-personal-details-options.ts"]
+  "exclude": ["scripts/pdf-smoke-test.ts", "scripts/seed-reference.ts", "scripts/pdf-bilingual-spike.ts", "scripts/letter-render-spike.ts", "scripts/lib/iso-countries.ts", "scripts/seed-personal-details-options.ts"]
 }

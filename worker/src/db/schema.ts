@@ -211,6 +211,8 @@ export const loanApplications = sqliteTable("loan_applications", {
   selectedProductId: text("selected_product_id"),
   selectedProductJson: text("selected_product_json"),
   affordabilityResultJson: text("affordability_result_json"),
+  // Values worked out by the backend whenever their inputs exist (lib/calculated.ts): repayment, total payable ...
+  calculatedJson: text("calculated_json"),
   dataVerificationJson: text("data_verification_json"),
 
   // Business journey — parallel section columns.
@@ -485,4 +487,74 @@ export const masterItems = sqliteTable("master_items", {
 }, (t) => ({
   typeCodeUnique: uniqueIndex("master_items_type_code_unique").on(t.typeCode, t.code),
   typeIdx: index("master_items_type_idx").on(t.typeCode),
+}));
+
+// ---- Letters. Model and rules: letter-spec/. A letter template is versioned like a form: DRAFT while
+// being edited, PUBLISHED when issuable (one per template), ARCHIVED when replaced. An issued letter keeps
+// the template version and the data it was produced from, so it can be explained and reproduced for audit.
+export const letterTemplates = sqliteTable("letter_templates", {
+  // Generated from the English name, never typed.
+  key: text("key").primaryKey(),
+  nameEn: text("name_en").notNull(),
+  nameHe: text("name_he").notNull().default(""),
+  description: text("description"),
+  // PERSONAL, BUSINESS or BOTH: which applications the letter can be produced for.
+  appliesTo: text("applies_to").notNull().default("BOTH"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+});
+
+export const letterVersions = sqliteTable("letter_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  templateKey: text("template_key").notNull(),
+  version: integer("version").notNull(),
+  status: text("status").notNull().default("DRAFT"),
+  documentJson: text("document_json").notNull(),
+  changeNote: text("change_note"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+  publishedAt: text("published_at"),
+  publishedBy: text("published_by"),
+}, (t) => ({
+  templateVersionUnique: uniqueIndex("letter_versions_template_version_unique").on(t.templateKey, t.version),
+}));
+
+// Named rules shared by every template ("Rate can change"); a condition can refer to one by id.
+export const letterSavedRules = sqliteTable("letter_saved_rules", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  ruleJson: text("rule_json").notNull(),
+  updatedAt: text("updated_at"),
+  updatedBy: text("updated_by"),
+});
+
+// Logos, signatures and seals live in the database (PNG or JPEG, size-capped) so a letter and its
+// pictures cannot drift apart. `dataBase64` is the file itself.
+export const letterImages = sqliteTable("letter_images", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  kind: text("kind").notNull().default("other"),
+  mimeType: text("mime_type").notNull(),
+  width: integer("width"),
+  height: integer("height"),
+  sizeBytes: integer("size_bytes").notNull(),
+  dataBase64: text("data_base64").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by"),
+});
+
+export const lettersIssued = sqliteTable("letters_issued", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  templateKey: text("template_key").notNull(),
+  templateVersion: integer("template_version").notNull(),
+  applicationRef: text("application_ref").notNull(),
+  issuedAt: text("issued_at").notNull(),
+  issuedBy: text("issued_by"),
+  // The values the letter was built from, and which conditional parts were shown, as they were at issue.
+  dataJson: text("data_json").notNull(),
+  decisionsJson: text("decisions_json").notNull(),
+  // The PDF itself (English and Hebrew in one file), recorded in generated_documents.
+  generatedDocumentId: integer("generated_document_id"),
+}, (t) => ({
+  appIdx: index("letters_issued_app_idx").on(t.applicationRef),
 }));

@@ -1,0 +1,816 @@
+{
+  "description": "Validating a letter template before it can be published. `expect` is every issue as severity:code, sorted; the same issue raised twice in one place counts once. See README, Validating.",
+  "dictionary": "dictionary.sample.json",
+  "vectors": [
+    {
+      "name": "a clean letter has no issues",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "Loan {{loan.amount}} over {{loan.termMonths}}",
+              "he": "Loan {{loan.amount}} over {{loan.termMonths}}"
+            }
+          },
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.rateType",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": "VARIABLE"
+              }
+            },
+            "children": [
+              {
+                "id": "p2",
+                "t": "paragraph",
+                "text": {
+                  "en": "Variable",
+                  "he": "Variable"
+                }
+              }
+            ]
+          },
+          {
+            "id": "r1",
+            "t": "repeat",
+            "over": "applicants",
+            "where": {
+              "t": "condition",
+              "field": "item.role",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": "MAIN"
+              }
+            },
+            "children": [
+              {
+                "id": "p3",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{item.fullName}}",
+                  "he": "{{item.fullName}}"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "expect": []
+    },
+    {
+      "name": "a token naming a field that is not in the dictionary",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{nope.field}}",
+              "he": "{{nope.field}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:field.unknown"
+      ]
+    },
+    {
+      "name": "item.* outside a repeat",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{item.fullName}}",
+              "he": "{{item.fullName}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:field.itemOutsideList"
+      ]
+    },
+    {
+      "name": "item.* naming a field the list does not have",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r1",
+            "t": "repeat",
+            "over": "applicants",
+            "where": null,
+            "children": [
+              {
+                "id": "p1",
+                "t": "paragraph",
+                "text": {
+                  "en": "{{item.bogus}}",
+                  "he": "{{item.bogus}}"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:field.unknown"
+      ]
+    },
+    {
+      "name": "a format that does not exist",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{loan.amount|bogus}}",
+              "he": "{{loan.amount|bogus}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:token.formatUnknown"
+      ]
+    },
+    {
+      "name": "a format that does not fit the field type",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{loan.amount|date}}",
+              "he": "{{loan.amount|date}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:token.formatType"
+      ]
+    },
+    {
+      "name": "a list printed as a token",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{applicants}}",
+              "he": "{{applicants}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:token.list"
+      ]
+    },
+    {
+      "name": "page tokens in the body",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "Page {{page.number}}",
+              "he": "Page {{page.number}}"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:token.pageInBody"
+      ]
+    },
+    {
+      "name": "English and Hebrew use different fields",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "{{loan.amount}}",
+              "he": "סכום"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:text.tokensDiffer"
+      ]
+    },
+    {
+      "name": "Hebrew text left empty",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "Hello",
+              "he": ""
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:text.emptyHe"
+      ]
+    },
+    {
+      "name": "an operator the field type does not support",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "application.reference",
+              "op": "gt",
+              "rhs": {
+                "k": "value",
+                "v": 5
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.opType"
+      ]
+    },
+    {
+      "name": "a comparison with no value",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.amount",
+              "op": "eq"
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.valueMissing"
+      ]
+    },
+    {
+      "name": "'in' with no values",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.rateType",
+              "op": "in",
+              "rhs": {
+                "k": "value",
+                "list": []
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.valueMissing"
+      ]
+    },
+    {
+      "name": "'between' with its numbers the wrong way round",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.amount",
+              "op": "between",
+              "rhs": {
+                "k": "value",
+                "v": 10,
+                "v2": 5
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.betweenOrder"
+      ]
+    },
+    {
+      "name": "a choice value that is not one of the choices",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.rateType",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": "NOPE"
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.choiceUnknown"
+      ]
+    },
+    {
+      "name": "comparing fields of different types",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.amount",
+              "op": "eq",
+              "rhs": {
+                "k": "field",
+                "v": "application.reference"
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.compareTypes"
+      ]
+    },
+    {
+      "name": "a list condition without a condition for the entries",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "documents.checklist",
+              "op": "anyMatch"
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:rule.noMatchCondition"
+      ]
+    },
+    {
+      "name": "a condition for entries on a field that is not a list",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "loan.amount",
+              "op": "eq",
+              "rhs": {
+                "k": "value",
+                "v": 5
+              },
+              "nested": {
+                "t": "group",
+                "op": "all",
+                "items": []
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.nestedNotList"
+      ]
+    },
+    {
+      "name": "a saved rule that does not exist",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "ref",
+              "id": "ghost"
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.refMissing"
+      ]
+    },
+    {
+      "name": "saved rules that refer to each other",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "ref",
+              "id": "a"
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.refCycle",
+        "error:rule.refCycle",
+        "error:rule.refCycle"
+      ],
+      "savedRules": [
+        {
+          "id": "a",
+          "name": "A",
+          "rule": {
+            "t": "ref",
+            "id": "b"
+          }
+        },
+        {
+          "id": "b",
+          "name": "B",
+          "rule": {
+            "t": "ref",
+            "id": "a"
+          }
+        }
+      ]
+    },
+    {
+      "name": "two blocks with the same id",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "One",
+              "he": "One"
+            }
+          },
+          {
+            "id": "p1",
+            "t": "paragraph",
+            "text": {
+              "en": "Two",
+              "he": "Two"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:node.duplicateId"
+      ]
+    },
+    {
+      "name": "repeating something that is not a list",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r1",
+            "t": "repeat",
+            "over": "loan.amount",
+            "where": null,
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:repeat.notList"
+      ]
+    },
+    {
+      "name": "repeating a field that does not exist",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "r1",
+            "t": "repeat",
+            "over": "nope",
+            "where": null,
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:field.unknown"
+      ]
+    },
+    {
+      "name": "a conditional block with no condition",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": null,
+            "children": [
+              {
+                "id": "p1",
+                "t": "paragraph",
+                "text": {
+                  "en": "Always",
+                  "he": "Always"
+                }
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:when.noRule"
+      ]
+    },
+    {
+      "name": "a variant with no condition before others",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "x1",
+            "t": "alternatives",
+            "variants": [
+              {
+                "rule": null,
+                "children": [
+                  {
+                    "id": "p1",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "A",
+                      "he": "A"
+                    }
+                  }
+                ]
+              },
+              {
+                "rule": {
+                  "t": "condition",
+                  "field": "loan.rateType",
+                  "op": "eq",
+                  "rhs": {
+                    "k": "value",
+                    "v": "FIXED_FOR_TERM"
+                  }
+                },
+                "children": [
+                  {
+                    "id": "p2",
+                    "t": "paragraph",
+                    "text": {
+                      "en": "B",
+                      "he": "B"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:alternatives.unreachable"
+      ]
+    },
+    {
+      "name": "an image block with no image chosen",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "i1",
+            "t": "image",
+            "alt": {
+              "en": "Logo",
+              "he": "לוגו"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:image.missing"
+      ]
+    },
+    {
+      "name": "an image that does not exist",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "i1",
+            "t": "image",
+            "imageId": "img9",
+            "alt": {
+              "en": "Logo",
+              "he": "לוגו"
+            }
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:image.unknown"
+      ],
+      "knownImageIds": [
+        "img1"
+      ]
+    },
+    {
+      "name": "an empty condition group",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "group",
+              "op": "all",
+              "items": []
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "warning:rule.emptyGroup"
+      ]
+    },
+    {
+      "name": "an age test with no number",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "application.submittedAt",
+              "op": "ageAtLeast"
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.valueMissing"
+      ]
+    },
+    {
+      "name": "an age test on a text field",
+      "document": {
+        "formatVersion": 1,
+        "header": [],
+        "body": [
+          {
+            "id": "w1",
+            "t": "when",
+            "rule": {
+              "t": "condition",
+              "field": "application.reference",
+              "op": "ageAtLeast",
+              "rhs": {
+                "k": "value",
+                "v": 18
+              }
+            },
+            "children": []
+          }
+        ],
+        "footer": []
+      },
+      "expect": [
+        "error:rule.opType"
+      ]
+    }
+  ]
+}

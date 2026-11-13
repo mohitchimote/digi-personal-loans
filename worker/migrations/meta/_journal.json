@@ -134,6 +134,20 @@
       "when": 1794586084371,
       "tag": "0018_public_speed",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794596080540,
+      "tag": "0019_warm_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794596159604,
+      "tag": "0020_familiar_legion",
+      "breakpoints": true
     }
   ]
 }
