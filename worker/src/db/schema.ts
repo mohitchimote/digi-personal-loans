@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 
 // Money fields use `real()` (float) rather than a fixed-point type — D1/SQLite
 // has no native DECIMAL. Acceptable for a sandbox demo at these amounts; if
@@ -433,3 +433,42 @@ export const formVersions = sqliteTable("form_versions", {
   publishedAt: text("published_at"),
   publishedBy: text("published_by"),
 });
+
+// Masters - define-once reference data (Country, State, Branch, Title, Gender ...) reused by org
+// setup, the form builder and anything else that needs a pick-list. Types are data, not code: an
+// admin can add a new master without a deploy. `parentTypeCode` says which type an item's
+// `parentId` must come from (State -> Country), which is what gives cascading dropdowns.
+// `attributeDefs` is a JSON array of {key,label:{en,he},kind:"text"|"number"|"boolean",required?}
+// describing the extra fields items of this type carry (e.g. a branch's address).
+export const masterTypes = sqliteTable("master_types", {
+  code: text("code").primaryKey(),
+  labelEn: text("label_en").notNull(),
+  labelHe: text("label_he").notNull(),
+  description: text("description"),
+  parentTypeCode: text("parent_type_code"),
+  attributeDefs: text("attribute_defs").notNull().default("[]"),
+  // Seeded types: cannot be deleted (other modules may rely on the code), but can be relabelled.
+  isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
+// Consumers store an item's `code` (stable, human-readable), never its id or its name, so renaming
+// or translating an item never breaks stored data. Deactivate rather than delete an item that has
+// been used: inactive items drop out of pick-lists but still resolve for existing records.
+export const masterItems = sqliteTable("master_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  typeCode: text("type_code").notNull(),
+  code: text("code").notNull(),
+  nameEn: text("name_en").notNull(),
+  nameHe: text("name_he").notNull(),
+  parentId: integer("parent_id"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  attributes: text("attributes").notNull().default("{}"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at"),
+}, (t) => ({
+  typeCodeUnique: uniqueIndex("master_items_type_code_unique").on(t.typeCode, t.code),
+  typeIdx: index("master_items_type_idx").on(t.typeCode),
+}));

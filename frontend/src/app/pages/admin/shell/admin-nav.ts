@@ -28,6 +28,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    id: 'masters',
+    labelKey: 'admin.nav.mastersGroup',
+    items: [
+      { route: '/admin/masters', labelKey: 'admin.masters', descKey: 'admin.nav.mastersDesc', icon: 'storage' },
+    ],
+  },
+  {
     id: 'products',
     labelKey: 'admin.nav.productsRules',
     items: [

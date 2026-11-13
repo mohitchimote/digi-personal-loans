@@ -1,0 +1,190 @@
+<div class="page-header mb-24">
+  <h2>{{ 'admin.masters' | translate }}</h2>
+  <p class="page-sub">{{ 'admin.masters.subtitle' | translate }}</p>
+</div>
+
+<div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+<div class="db-alert db-alert--success mb-16" *ngIf="notice()"><span class="material-icons mi-sm">check_circle</span> {{ notice() }}</div>
+<div class="loading-row" *ngIf="loading()"><div class="spinner"></div></div>
+
+<div class="masters-layout" *ngIf="!loading()">
+  <!-- LEFT: list of masters -->
+  <aside class="db-card types-card">
+    <div class="types-head">
+      <input class="db-input" type="search" [ngModel]="search" (ngModelChange)="onSearch($event)" [placeholder]="'admin.masters.search' | translate" />
+      <button class="db-btn db-btn--primary db-btn--sm" (click)="openCreateType()" [attr.aria-label]="'admin.masters.newMaster' | translate" [title]="'admin.masters.newMaster' | translate">
+        <span class="material-icons mi-sm">add</span>
+      </button>
+    </div>
+    <ul class="types-list">
+      <li *ngFor="let t of filteredTypes()">
+        <button type="button" class="type-row" [class.active]="t.code === selectedCode()" (click)="select(t.code)">
+          <span class="type-name">{{ typeLabel(t) }}</span>
+          <span class="type-count">{{ t.itemCount }}</span>
+        </button>
+      </li>
+      <li class="text-muted empty" *ngIf="filteredTypes().length === 0">{{ 'admin.masters.noMatch' | translate }}</li>
+    </ul>
+  </aside>
+
+  <!-- RIGHT: the selected master -->
+  <section class="items-col">
+    <!-- New / edit master -->
+    <div class="db-card mb-16" *ngIf="showTypeForm()">
+      <div class="card-header"><h3>{{ (editingTypeCode() ? 'admin.masters.editMaster' : 'admin.masters.newMaster') | translate }}</h3></div>
+      <div class="form-grid">
+        <div class="db-form-group" *ngIf="!editingTypeCode()">
+          <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" maxlength="64" [(ngModel)]="typeDraft.code" placeholder="marital_status" />
+          <small class="text-muted">{{ 'admin.masters.typeCodeHint' | translate }}</small>
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.wf.labelEn' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" [(ngModel)]="typeDraft.labelEn" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.wf.labelHe' | translate }} <span class="required">*</span></label>
+          <input class="db-input" type="text" dir="rtl" [(ngModel)]="typeDraft.labelHe" />
+        </div>
+        <div class="db-form-group">
+          <label>{{ 'admin.masters.parentMaster' | translate }}</label>
+          <select class="db-input" [(ngModel)]="typeDraft.parentTypeCode" [disabled]="parentLocked">
+            <option [ngValue]="null">{{ 'admin.masters.noParentMaster' | translate }}</option>
+            <option *ngFor="let t of parentChoices()" [ngValue]="t.code">{{ typeLabel(t) }}</option>
+          </select>
+          <small class="text-muted">{{ (parentLocked ? 'admin.masters.parentLocked' : 'admin.masters.parentHint') | translate }}</small>
+        </div>
+        <div class="db-form-group wide">
+          <label>{{ 'admin.masters.description' | translate }}</label>
+          <input class="db-input" type="text" [(ngModel)]="typeDraft.description" />
+        </div>
+      </div>
+
+      <h4 class="mt-16">{{ 'admin.masters.attributes' | translate }}</h4>
+      <p class="text-muted" style="font-size:0.85rem">{{ 'admin.masters.attributesHint' | translate }}</p>
+      <div class="attr-row" *ngFor="let a of typeDraft.attributeDefs; let i = index">
+        <input class="db-input" type="text" [(ngModel)]="a.key" [placeholder]="'admin.wf.key' | translate" />
+        <input class="db-input" type="text" [(ngModel)]="a.label.en" [placeholder]="'admin.wf.labelEn' | translate" />
+        <input class="db-input" type="text" dir="rtl" [(ngModel)]="a.label.he" [placeholder]="'admin.wf.labelHe' | translate" />
+        <select class="db-input" [(ngModel)]="a.kind">
+          <option *ngFor="let k of kinds" [value]="k">{{ 'admin.masters.kind.' + k | translate }}</option>
+        </select>
+        <label class="inline-check"><input type="checkbox" [(ngModel)]="a.required" /> {{ 'admin.masters.required' | translate }}</label>
+        <button class="db-btn db-btn--ghost db-btn--sm" (click)="removeAttr(i)" [attr.aria-label]="'common.delete' | translate"><span class="material-icons mi-sm">delete_outline</span></button>
+      </div>
+      <button class="db-btn db-btn--ghost db-btn--sm" (click)="addAttr()"><span class="material-icons mi-sm">add</span> {{ 'admin.masters.addAttribute' | translate }}</button>
+
+      <div class="form-actions mt-16">
+        <button class="db-btn db-btn--ghost" (click)="cancelType()">{{ 'common.cancel' | translate }}</button>
+        <button class="db-btn db-btn--primary" (click)="saveType()">{{ 'common.save' | translate }}</button>
+      </div>
+    </div>
+
+    <div class="db-card" *ngIf="selected() as t">
+      <div class="card-header">
+        <div>
+          <h3>{{ typeLabel(t) }} <span class="code-chip">{{ t.code }}</span></h3>
+          <p class="text-muted" style="margin:2px 0 0; font-size:0.85rem" *ngIf="t.description">{{ t.description }}</p>
+          <p class="text-muted" style="margin:2px 0 0; font-size:0.85rem" *ngIf="parentType() as p">{{ 'admin.masters.belongsTo' | translate }} {{ typeLabel(p) }}</p>
+        </div>
+        <div class="head-actions">
+          <button class="db-btn db-btn--ghost db-btn--sm" (click)="editType()"><span class="material-icons mi-sm">tune</span> {{ 'admin.masters.editMaster' | translate }}</button>
+          <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="!t.isSystem" (click)="deleteType()">
+            <span class="material-icons mi-sm">delete_outline</span>
+            {{ (confirmDeleteType() ? 'admin.masters.confirmDelete' : 'admin.masters.deleteMaster') | translate }}
+          </button>
+          <button class="db-btn db-btn--primary db-btn--sm" *ngIf="!showItemForm()" (click)="openCreateItem()"><span class="material-icons mi-sm">add</span> {{ 'admin.masters.addItem' | translate }}</button>
+        </div>
+      </div>
+
+      <!-- Item form -->
+      <div class="unit-form" *ngIf="showItemForm()">
+        <div class="form-grid">
+          <div class="db-form-group">
+            <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" maxlength="64" [(ngModel)]="itemDraft.code" [disabled]="editingItemId() !== null" />
+            <small class="text-muted" *ngIf="editingItemId() !== null">{{ 'admin.masters.itemCodeLocked' | translate }}</small>
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'admin.wf.labelEn' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" [(ngModel)]="itemDraft.nameEn" />
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'admin.wf.labelHe' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" dir="rtl" [(ngModel)]="itemDraft.nameHe" />
+          </div>
+          <div class="db-form-group" *ngIf="parentType() as p">
+            <label>{{ typeLabel(p) }} <span class="required">*</span></label>
+            <select class="db-input" [(ngModel)]="itemDraft.parentId">
+              <option [ngValue]="null">—</option>
+              <option *ngFor="let pi of parentItems()" [ngValue]="pi.id">{{ itemName(pi) }}</option>
+            </select>
+          </div>
+          <div class="db-form-group" *ngFor="let d of t.attributeDefs">
+            <label>{{ attrLabel(d) }} <span class="required" *ngIf="d.required">*</span></label>
+            <input *ngIf="d.kind === 'text'" class="db-input" type="text" [(ngModel)]="itemDraft.attrs[d.key]" />
+            <input *ngIf="d.kind === 'number'" class="db-input" type="number" [(ngModel)]="itemDraft.attrs[d.key]" />
+            <label *ngIf="d.kind === 'boolean'" class="inline-check"><input type="checkbox" [(ngModel)]="itemDraft.attrs[d.key]" /> {{ 'common.yes' | translate }}</label>
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'admin.masters.sortOrder' | translate }}</label>
+            <input class="db-input" type="number" [(ngModel)]="itemDraft.sortOrder" />
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'dashboard.status' | translate }}</label>
+            <label class="inline-check"><input type="checkbox" [(ngModel)]="itemDraft.active" /> {{ 'admin.active' | translate }}</label>
+          </div>
+        </div>
+        <div class="form-actions mt-16">
+          <button class="db-btn db-btn--ghost" (click)="cancelItem()">{{ 'common.cancel' | translate }}</button>
+          <button class="db-btn db-btn--primary" (click)="saveItem()">{{ 'common.save' | translate }}</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <input class="db-input" type="search" [ngModel]="itemFilter" (ngModelChange)="onItemFilter($event)" [placeholder]="'admin.masters.filterItems' | translate" />
+        <select class="db-input" *ngIf="parentType() as p" [ngModel]="parentFilter" (ngModelChange)="onParentFilter($event)">
+          <option [ngValue]="null">{{ 'admin.masters.allOf' | translate }} {{ typeLabel(p) }}</option>
+          <option *ngFor="let pi of parentItems()" [ngValue]="pi.id">{{ itemName(pi) }}</option>
+        </select>
+      </div>
+
+      <div class="loading-row" *ngIf="loadingItems()"><div class="spinner"></div></div>
+      <table class="db-table" *ngIf="!loadingItems()">
+        <thead>
+          <tr>
+            <th>{{ 'admin.org.code' | translate }}</th>
+            <th>{{ 'admin.wf.labelEn' | translate }}</th>
+            <th>{{ 'admin.wf.labelHe' | translate }}</th>
+            <th *ngIf="parentType() as p">{{ typeLabel(p) }}</th>
+            <th>{{ 'dashboard.status' | translate }}</th>
+            <th>{{ 'admin.actions' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="visibleItems().length === 0">
+            <td colspan="6" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.masters.noItems' | translate }}</td>
+          </tr>
+          <tr *ngFor="let i of visibleItems()" [class.row-inactive]="!i.active">
+            <td><code>{{ i.code }}</code></td>
+            <td>{{ i.nameEn }}</td>
+            <td dir="rtl">{{ i.nameHe }}</td>
+            <td *ngIf="parentType()">{{ parentName(i.parentId) }}</td>
+            <td>{{ (i.active ? 'admin.active' : 'admin.org.inactive') | translate }}</td>
+            <td class="row-actions">
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="editItem(i)" [attr.aria-label]="'common.edit' | translate"><span class="material-icons mi-sm">edit</span></button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleActive(i)" [title]="(i.active ? 'admin.org.deactivate' : 'admin.org.activate') | translate">
+                <span class="material-icons mi-sm">{{ i.active ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="deleteItem(i)">
+                <span class="material-icons mi-sm">delete_outline</span>
+                <span *ngIf="confirmDeleteItemId() === i.id">{{ 'admin.masters.confirmDelete' | translate }}</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

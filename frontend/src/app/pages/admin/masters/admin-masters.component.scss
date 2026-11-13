@@ -1,0 +1,33 @@
+.masters-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+.types-card { padding: 12px; position: sticky; top: 0; max-height: calc(100vh - 160px); display: flex; flex-direction: column; }
+.types-head { display: flex; gap: 8px; margin-bottom: 8px; .db-input { flex: 1; min-width: 0; } }
+.types-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+.type-row {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 9px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;
+  font: inherit; text-align: start; color: inherit;
+  &:hover { background: rgba(0, 63, 121, 0.07); }
+  &.active { background: rgba(0, 63, 121, 0.12); font-weight: 600; color: var(--tcs-blue, #003F79); }
+  &:focus-visible { outline: 2px solid var(--tcs-blue, #003F79); outline-offset: -2px; }
+}
+.type-count { font-size: 0.75rem; padding: 1px 8px; border-radius: 10px; background: rgba(0, 0, 0, 0.07); }
+.empty { padding: 12px; }
+
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.head-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.code-chip { margin-inline-start: 8px; font-size: 0.72rem; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.07); font-family: ui-monospace, monospace; }
+
+.unit-form { padding: 16px; margin: 12px 0 16px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; .wide { grid-column: 1 / -1; } }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.attr-row { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr 110px auto auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.inline-check { display: inline-flex; align-items: center; gap: 6px; font-weight: normal; }
+.filters { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; .db-input { flex: 1; min-width: 180px; } }
+.row-inactive td { opacity: 0.55; }
+.row-actions { white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .masters-layout { grid-template-columns: 1fr; }
+  .types-card { position: static; max-height: 240px; }
+  .attr-row { grid-template-columns: 1fr 1fr; }
+}
