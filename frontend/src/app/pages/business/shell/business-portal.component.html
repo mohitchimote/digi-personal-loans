@@ -1,7 +1,7 @@
 <div class="app-shell">
   <div class="sidebar-overlay" [class.visible]="!sidebarCollapsed()" (click)="closeSidebar()"></div>
   <app-sidebar [application]="application()" [collapsed]="sidebarCollapsed()"
-               basePath="/business" [applicationSteps]="businessSteps" [sectionValues]="sectionValues" />
+               basePath="/business" [applicationSteps]="businessSteps()" [sectionValues]="sectionValues" />
 
   <div class="main-content" [class.sidebar-collapsed]="sidebarCollapsed()">
     <header class="portal-header">

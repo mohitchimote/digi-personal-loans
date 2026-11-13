@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
@@ -70,8 +70,16 @@ export class PortalComponent implements OnInit {
   }
 
   /** Guarantor Details is only inserted when an underwriter has flagged guarantorRequired (see
-   * ApplicationService.sendBackApplication) — never shown in the first pass. */
-  get applicationSteps(): NavItem[] {
+   * ApplicationService.sendBackApplication) — never shown in the first pass.
+   *
+   * A `computed()` (not a plain getter) is required here: this array is bound into the sidebar's
+   * `*ngFor` loops, and a getter re-allocates a brand-new array (and new object literals) on every
+   * single change-detection check, which — with no `trackBy` on those loops — forces Angular to
+   * destroy and recreate the entire step nav on every tick. Combined with ConnectionWatchdogService's
+   * 1s polling interval keeping CD ticking continuously, that churn was severe enough to make
+   * /portal/apply/* feel completely hung. `computed()` only re-runs when `application()` actually
+   * changes, so the same array reference is returned otherwise. */
+  applicationSteps = computed<NavItem[]>(() => {
     const steps: NavItem[] = [
       { labelKey: 'steps.loanRequirements', route: '/portal/apply/loan-requirements', sectionKey: 'loanRequirements' },
       { labelKey: 'steps.personalDetails',  route: '/portal/apply/personal-details',  sectionKey: 'personalDetails' },
@@ -89,5 +97,5 @@ export class PortalComponent implements OnInit {
       { labelKey: 'steps.reviewSubmit',       route: '/portal/apply/review-submit',       sectionKey: 'reviewSubmit' },
     );
     return steps;
-  }
+  });
 }

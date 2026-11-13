@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
@@ -25,8 +25,12 @@ export class BusinessPortalComponent implements OnInit {
   constructor(private appSvc: ApplicationService, public auth: AuthService, private router: Router) {}
 
   /** Guarantor Details is only inserted when an underwriter has flagged guarantorRequired (see
-   * ApplicationService.sendBackApplication) — never shown in the first pass. */
-  get businessSteps(): NavItem[] {
+   * ApplicationService.sendBackApplication) — never shown in the first pass.
+   *
+   * `computed()`, not a plain getter: see PortalComponent.applicationSteps for why a getter here
+   * (re-allocating a new array/objects on every CD check, bound into the sidebar's trackBy-less
+   * `*ngFor`) caused the personal-loan wizard to hang, and would do the same here. */
+  businessSteps = computed<NavItem[]>(() => {
     const steps: NavItem[] = [
       { labelKey: 'company.stepCompanyDetails', route: '/business/apply/company-details', sectionKey: 'companyDetails' },
       { labelKey: 'company.stepSignatories',    route: '/business/apply/signatories',     sectionKey: 'signatories' },
@@ -44,7 +48,7 @@ export class BusinessPortalComponent implements OnInit {
       { labelKey: 'steps.reviewSubmit',             route: '/business/apply/review-submit',        sectionKey: 'reviewSubmit' },
     );
     return steps;
-  }
+  });
 
   /** See PortalComponent's identical ngOnInit for why the router-events subscription alone is
    * sufficient (it fires for the very first navigation too) and a direct call here would

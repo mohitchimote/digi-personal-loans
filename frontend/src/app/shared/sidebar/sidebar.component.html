@@ -71,7 +71,7 @@
           </div>
         </div>
         <ng-container *ngIf="isEditableApplication">
-          <a *ngFor="let step of applicationSteps; let i = index"
+          <a *ngFor="let step of applicationSteps; trackBy: trackByStep; let i = index"
              class="section-step"
              [class.completed]="isStepCompleted(step.sectionKey!)"
              [routerLink]="step.route"
@@ -85,7 +85,7 @@
         </ng-container>
 
         <ng-container *ngIf="application && !isEditableApplication">
-          <a class="section-step section-step--readonly" *ngFor="let step of applicationSteps; let i = index"
+          <a class="section-step section-step--readonly" *ngFor="let step of applicationSteps; trackBy: trackByStep; let i = index"
              [routerLink]="sectionLinkRoute(step)"
              [fragment]="sectionLinkFragment(step)">
             <span class="step-number">
