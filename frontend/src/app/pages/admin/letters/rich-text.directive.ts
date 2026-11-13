@@ -16,16 +16,25 @@ export class RichTextDirective implements DoCheck {
   @Input() chip: (path: string, fmt: string | undefined) => Chip = (p) => ({ label: p, ok: true });
   /** Changes whenever the chip texts could differ (view, sample data, language), so chips are redrawn. */
   @Input() renderKey = '';
+  /** 'break': Enter makes a line break (table cells). 'emit': Enter is left to the owner, who starts a new paragraph or point. */
+  @Input() enter: 'break' | 'emit' = 'break';
   @Output() textChange = new EventEmitter<string>();
   @Output() slash = new EventEmitter<DOMRect | null>();
   @Output() focused = new EventEmitter<void>();
   @Output() cursor = new EventEmitter<Range | null>();
+  @Output() enterKey = new EventEmitter<void>();
+  /** Backspace pressed with nothing typed yet. */
+  @Output() backspaceEmpty = new EventEmitter<void>();
+  /** Tab (false) or Shift+Tab (true): indent or outdent. */
+  @Output() tabKey = new EventEmitter<boolean>();
 
   private last = '';
   constructor(private ref: ElementRef<HTMLElement>) {}
 
+  /** Stored text is already HTML-shaped (<b> <i> <u>, &amp; &lt; &gt;); anything else that looks like a tag is shown as text. */
   private html(): string {
-    return esc(this.text ?? '').replace(TOKEN, (_all, path: string, fmt?: string) => {
+    const safe = (this.text ?? '').replace(/<(?!\/?[biu]>)/g, '&lt;').replace(/&(?!(amp|lt|gt);)/g, '&amp;');
+    return safe.replace(TOKEN, (_all, path: string, fmt?: string) => {
       const c = this.chip(path, fmt);
       const raw = path + (fmt ? '|' + fmt : '');
       return `<span class="tok${c.ok ? '' : ' bad'}" contenteditable="false" data-t="${esc(raw)}" title="${esc(path)}">${esc(c.label || '·')}</span>`;
@@ -74,7 +83,14 @@ export class RichTextDirective implements DoCheck {
       this.cursor.emit(r);
       const rect = r && (r.getBoundingClientRect().width + r.getBoundingClientRect().height) ? r.getBoundingClientRect() : this.ref.nativeElement.getBoundingClientRect();
       this.slash.emit(rect);
-    } else if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey || this.enter === 'break') document.execCommand('insertLineBreak'); else this.enterKey.emit();
+    } else if (e.key === 'Backspace' && this.enter === 'emit' && RichTextDirective.serialize(this.ref.nativeElement) === '') {
+      e.preventDefault(); this.backspaceEmpty.emit();
+    } else if (e.key === 'Tab' && this.enter === 'emit') {
+      e.preventDefault(); this.tabKey.emit(e.shiftKey);
+    }
   }
   @HostListener('paste', ['$event']) onPaste(e: ClipboardEvent): void {
     e.preventDefault();

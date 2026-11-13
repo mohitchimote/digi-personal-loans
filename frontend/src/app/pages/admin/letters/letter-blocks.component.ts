@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Dictionary, LetterImage, LetterIssue, LetterNode, SavedRule } from '../../../core/services/letters.service';
@@ -11,6 +11,8 @@ import { RuleEditorComponent } from './rule-editor.component';
 @Component({
   selector: 'app-letter-blocks',
   standalone: true,
+  // Edits are made in place on the letter, so these must be checked on every pass, not only when an input changes.
+  changeDetection: ChangeDetectionStrategy.Default,
   imports: [CommonModule, FormsModule, BiTextComponent, RuleEditorComponent, LetterBlocksComponent],
   styles: [`
     .blk { border: 1px solid var(--border, #d6dde6); border-radius: 6px; background: #fff; margin: 0 0 10px; }

@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Bi, Dictionary } from '../../../core/services/letters.service';
@@ -8,6 +8,8 @@ import { FieldChoice, fieldChoices } from './letter-model';
 @Component({
   selector: 'app-bi-text',
   standalone: true,
+  // Edits are made in place on the letter, so these must be checked on every pass, not only when an input changes.
+  changeDetection: ChangeDetectionStrategy.Default,
   imports: [CommonModule, FormsModule],
   styles: [`
     .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

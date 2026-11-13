@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -23,6 +23,8 @@ const TAG: Record<string, string> = { heading: 'Heading', paragraph: 'Text', lis
 @Component({
   selector: 'app-letter-editor',
   standalone: true,
+  // Edits are made in place on the letter, so these must be checked on every pass, not only when an input changes.
+  changeDetection: ChangeDetectionStrategy.Default,
   imports: [CommonModule, FormsModule, RouterLink, LetterBlocksComponent, LetterListComponent, RuleEditorComponent],
   styles: [`
     .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
@@ -30,8 +32,9 @@ const TAG: Record<string, string> = { heading: 'Heading', paragraph: 'Text', lis
     .chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #e8eef5; color: #234; }
     .chip.pub { background: #e3f4e6; color: #1b5e2a; } .chip.dirty { background: #fff1d6; color: #7a4b00; }
     .toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--border, #d6dde6); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
-    .grp { display: flex; gap: 6px; align-items: center; } .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #667; }
+    .grp { display: flex; flex: 0 0 auto; gap: 6px; align-items: center; flex-wrap: wrap; } .grp select { width: auto; min-width: 110px; } .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #667; }
     .segs { display: inline-flex; border: 1px solid var(--border, #cfd8e3); border-radius: 6px; overflow: hidden; }
+    .seg.fb { min-width: 30px; padding: 5px 8px; }
     .seg { background: #fff; border: 0; padding: 5px 10px; cursor: pointer; font-size: 13px; } .seg.on { background: #003f79; color: #fff; }
     .doc { display: grid; grid-template-columns: 210px minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
     .panel { background: #fff; border: 1px solid var(--border, #d6dde6); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
@@ -101,6 +104,23 @@ const TAG: Record<string, string> = { heading: 'Heading', paragraph: 'Text', lis
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="wrap('when')">Show only if…</button>
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="wrap('repeat')">Repeat for each…</button>
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="wrap('alternatives')">Alternatives</button></div>
+        <div class="grp" (mousedown)="keepFocus($event)"><span class="lbl">Format</span>
+          <select class="db-select" [ngModel]="styleOfSelected()" (ngModelChange)="setStyle($event)" [disabled]="!canStyle()" title="Paragraph style">
+            <option value="p">Normal</option><option value="1">Heading 1</option><option value="2">Heading 2</option><option value="3">Heading 3</option></select>
+          <span class="segs">
+            <button class="seg fb" [class.on]="fmtB()" title="Bold (Ctrl+B)" (click)="fmt('bold')"><b>B</b></button>
+            <button class="seg fb" [class.on]="fmtI()" title="Italic (Ctrl+I)" (click)="fmt('italic')"><i>I</i></button>
+            <button class="seg fb" [class.on]="fmtU()" title="Underline (Ctrl+U)" (click)="fmt('underline')"><u>U</u></button></span>
+          <span class="segs">
+            <button class="seg fb" [class.on]="alignOfSelected() === 'start'" title="Align to the start (left in English, right in Hebrew)" [disabled]="!canStyle()" (click)="setAlign('start')">⇤</button>
+            <button class="seg fb" [class.on]="alignOfSelected() === 'center'" title="Centre" [disabled]="!canStyle()" (click)="setAlign('center')">↔</button>
+            <button class="seg fb" [class.on]="alignOfSelected() === 'end'" title="Align to the end" [disabled]="!canStyle()" (click)="setAlign('end')">⇥</button></span>
+          <span class="segs">
+            <button class="seg fb" [class.on]="listKind() === 'bullets'" title="Bullets" (click)="toggleList(false)">• List</button>
+            <button class="seg fb" [class.on]="listKind() === 'numbers'" title="Numbering" (click)="toggleList(true)">1. List</button>
+            <button class="seg fb" title="Decrease indent (Shift+Tab in a list)" (click)="indent(-1)">⇠</button>
+            <button class="seg fb" title="Increase indent (Tab in a list)" (click)="indent(1)">⇢</button></span>
+        </div>
         <div class="grp">
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="insertFieldFromToolbar()">Insert field <code>/</code></button>
           <button class="db-btn db-btn--ghost db-btn--sm" (click)="undo()" [disabled]="!history.length">Undo</button></div>
@@ -127,7 +147,7 @@ const TAG: Record<string, string> = { heading: 'Heading', paragraph: 'Text', lis
       </div>
 
       <div class="pages" [class.both]="show() === 'both'" (click)="select(null)">
-        <div class="paper" *ngFor="let l of langs()">
+        <div class="paper" *ngFor="let l of langs()" [attr.data-lang]="l">
           <div class="lang">{{ l === 'en' ? 'English' : 'עברית' }}</div>
           <ng-container *ngFor="let z of zones">
             <div class="zone" [class.hf]="z !== 'body'" *ngIf="z === 'body' || d[z].length || mode() === 'structure'">
@@ -279,6 +299,8 @@ export class LetterEditorComponent implements OnInit, OnDestroy, PageHost {
   history: string[] = [];
   picker = signal<{ x: number; y: number; q: string; lang: Lang; list?: string } | null>(null);
   private pickTarget: { el: HTMLElement; range: Range | null } | null = null;
+  selectedItem: number | null = null;
+  fmtB = signal(false); fmtI = signal(false); fmtU = signal(false);
   private lastEd: { el: HTMLElement; range: Range | null; lang: Lang; list?: string } | null = null;
   private imgUrls = new Map<string, string | null>();
   private readonly today = new Date().toISOString().slice(0, 10);
@@ -287,12 +309,17 @@ export class LetterEditorComponent implements OnInit, OnDestroy, PageHost {
   ctx = computed<EvalContext>(() => ({ data: this.data(), today: this.today, dictionary: (this.dictionary() ?? { formatVersion: 1, fields: {} }) as never, saved: new Map(this.saved().map((s) => [s.id, s])) as never }));
   private beforeUnload = (e: BeforeUnloadEvent) => { if (this.dirty()) e.preventDefault(); };
   private onDocMouseDown = () => this.closePicker();
+  private onSelChange = () => {
+    const a = document.activeElement as HTMLElement | null;
+    if (!a?.classList.contains('ed')) return;
+    this.fmtB.set(document.queryCommandState('bold')); this.fmtI.set(document.queryCommandState('italic')); this.fmtU.set(document.queryCommandState('underline'));
+  };
 
   constructor(private route: ActivatedRoute, private svc: LettersService) {}
 
   // ---- PageHost
   view(): 'letter' | 'structure' { return this.mode() === 'structure' ? 'structure' : 'letter'; }
-  select(id: string | null): void { this.selected.set(id); }
+  select(id: string | null, item?: number): void { this.selected.set(id); this.selectedItem = item ?? null; }
   baseCtx(): EvalContext { return this.ctx(); }
   snap(): void { const d = this.doc(); if (!d) return; this.history.push(JSON.stringify(d)); if (this.history.length > 80) this.history.shift(); }
   touch(): void { this.dirty.set(true); this.notice.set(''); this.checked.set(false); }
@@ -319,6 +346,7 @@ export class LetterEditorComponent implements OnInit, OnDestroy, PageHost {
   ngOnInit(): void {
     window.addEventListener('beforeunload', this.beforeUnload);
     document.addEventListener('mousedown', this.onDocMouseDown);
+    document.addEventListener('selectionchange', this.onSelChange);
     this.key = this.route.snapshot.paramMap.get('key') ?? '';
     this.svc.dictionary().subscribe((d) => this.dictionary.set(d));
     this.svc.rules().subscribe((r) => this.saved.set(r));
@@ -329,6 +357,7 @@ export class LetterEditorComponent implements OnInit, OnDestroy, PageHost {
   ngOnDestroy(): void {
     window.removeEventListener('beforeunload', this.beforeUnload);
     document.removeEventListener('mousedown', this.onDocMouseDown);
+    document.removeEventListener('selectionchange', this.onSelChange);
     this.imgUrls.forEach((u) => u && URL.revokeObjectURL(u));
   }
 
@@ -421,6 +450,112 @@ export class LetterEditorComponent implements OnInit, OnDestroy, PageHost {
     this.doc.set(JSON.parse(s));
     if (!this.find(this.selected())) this.selected.set(null);
     this.touch();
+  }
+
+  // ---- formatting (the Format group of the toolbar)
+
+  /** Toolbar buttons must not take the cursor away from the text being formatted. */
+  keepFocus(e: Event): void { if (!(e.target as HTMLElement).closest('select')) e.preventDefault(); }
+  fmt(cmd: 'bold' | 'italic' | 'underline'): void {
+    const a = document.activeElement as HTMLElement | null;
+    if (!a?.classList.contains('ed')) { this.notice.set('Click inside the text you want to format, select some words, then press the button.'); return; }
+    document.execCommand('styleWithCSS', false, 'false');
+    document.execCommand(cmd);
+    this.onSelChange();
+  }
+  private current(): Found | null { return this.find(this.selected()); }
+  canStyle(): boolean { const t = this.current()?.node.t; return t === 'heading' || t === 'paragraph'; }
+  styleOfSelected(): string { const n = this.current()?.node; return n?.t === 'heading' ? String(n.level ?? 1) : 'p'; }
+  alignOfSelected(): string { const n = this.current()?.node; return n && (n.t === 'heading' || n.t === 'paragraph') ? (n.align ?? 'start') : ''; }
+  listKind(): 'bullets' | 'numbers' | '' { const n = this.current()?.node; return n?.t === 'list' ? (n.ordered ? 'numbers' : 'bullets') : ''; }
+
+  private swap(f: Found, to: LetterNode): void { f.list.splice(f.list.indexOf(f.node), 1, to); this.selected.set(to.id); this.touch(); }
+
+  setStyle(v: string): void {
+    const f = this.current(); if (!f || (f.node.t !== 'heading' && f.node.t !== 'paragraph')) return;
+    this.snap();
+    const n = f.node;
+    // A converted block gets a new id so the page builds it fresh rather than trying to morph the old one.
+    const common = { id: newId(), text: n.text, ...(n.align ? { align: n.align } : {}), ...(n.indent ? { indent: n.indent } : {}) };
+    this.swap(f, v === 'p' ? { ...common, t: 'paragraph' } : { ...common, t: 'heading', level: Number(v) as 1 | 2 | 3 });
+  }
+  setAlign(a: 'start' | 'center' | 'end'): void {
+    const n = this.current()?.node; if (!n || (n.t !== 'heading' && n.t !== 'paragraph')) return;
+    this.snap(); if (a === 'start') delete n.align; else n.align = a; this.touch();
+  }
+  /** Bullets / Numbering: turns a paragraph into a list, switches a list between bullets and numbers, or turns it back into paragraphs. */
+  toggleList(ordered: boolean): void {
+    const f = this.current(); if (!f) { this.notice.set('Click a paragraph first.'); return; }
+    const n = f.node;
+    if (n.t === 'paragraph' || n.t === 'heading') {
+      this.snap(); this.swap(f, { id: newId(), t: 'list', ordered, items: [{ en: n.text.en, he: n.text.he }] });
+    } else if (n.t === 'list') {
+      this.snap();
+      if (!!n.ordered === ordered) {
+        const paras: LetterNode[] = n.items.map((it, i) => ({ id: newId(), t: 'paragraph' as const, text: { en: it.en, he: it.he }, ...(it.level ? { indent: it.level } : {}) }));
+        f.list.splice(f.list.indexOf(n), 1, ...paras); this.selected.set(paras[0]?.id ?? null); this.touch();
+      } else { n.ordered = ordered; this.touch(); }
+    }
+  }
+  indent(dir: 1 | -1): void {
+    const n = this.current()?.node; if (!n) return;
+    if (n.t === 'list') {
+      const k = this.selectedItem ?? n.items.length - 1, it = n.items[k]; if (!it) return;
+      const lv = Math.max(0, Math.min(2, (it.level ?? 0) + dir)); this.snap(); if (lv) it.level = lv; else delete it.level; this.touch();
+    } else if (n.t === 'heading' || n.t === 'paragraph') {
+      const ind = Math.max(0, Math.min(4, (n.indent ?? 0) + dir)); this.snap(); if (ind) n.indent = ind; else delete n.indent; this.touch();
+    }
+  }
+
+  // ---- Enter, Backspace and Tab on the page
+
+  private focusLater(id: string, lang: Lang, item?: number): void {
+    setTimeout(() => {
+      const root = document.querySelector(`.paper[data-lang="${lang}"] [data-nid="${id}"]`);
+      const el = (item !== undefined ? root?.querySelectorAll('.li .ed')[item] : root?.querySelector('.ed')) as HTMLElement | undefined;
+      if (!el) return;
+      el.focus();
+      const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+      const s = getSelection(); s?.removeAllRanges(); s?.addRange(r);
+    }, 40);
+  }
+  enterFrom(id: string, lang: Lang, item?: number): void {
+    const f = this.find(id); if (!f) return;
+    this.snap();
+    if (f.node.t === 'list' && item !== undefined) {
+      const k = item + 1;
+      f.node.items.splice(k, 0, { en: '', he: '', ...(f.node.items[item]?.level ? { level: f.node.items[item].level } : {}) });
+      this.touch(); this.focusLater(id, lang, k);
+    } else if (f.node.t === 'paragraph' || f.node.t === 'heading') {
+      const n: LetterNode = { id: newId(), t: 'paragraph', text: { en: '', he: '' }, ...(f.node.align ? { align: f.node.align } : {}), ...(f.node.indent ? { indent: f.node.indent } : {}) };
+      f.list.splice(f.list.indexOf(f.node) + 1, 0, n);
+      this.selected.set(n.id); this.touch(); this.focusLater(n.id, lang);
+    }
+  }
+  backspaceFrom(id: string, lang: Lang, item: number): void {
+    const f = this.find(id); if (!f) return;
+    // Only when the block is empty in both languages, so a Backspace never throws away the other language's text.
+    if (f.node.t === 'list') {
+      const it = f.node.items[item]; if (!it || it.en.trim() || it.he.trim()) return;
+      this.snap();
+      if (it.level) { delete it.level; this.touch(); return; }
+      f.node.items.splice(item, 1);
+      if (!f.node.items.length) { f.list.splice(f.list.indexOf(f.node), 1); this.selected.set(null); }
+      else this.focusLater(id, lang, Math.max(0, item - 1));
+      this.touch();
+    } else if (f.node.t === 'paragraph' || f.node.t === 'heading') {
+      if (f.node.text.en.trim() || f.node.text.he.trim()) return;
+      const i = f.list.indexOf(f.node); if (i < 0 || f.list.length < 2) return;
+      this.snap(); f.list.splice(i, 1);
+      const prev = f.list[Math.max(0, i - 1)]; this.selected.set(prev?.id ?? null); this.touch();
+      if (prev && (prev.t === 'paragraph' || prev.t === 'heading')) this.focusLater(prev.id, lang);
+    }
+  }
+  tabFrom(id: string, item: number, outdent: boolean): void {
+    const f = this.find(id); if (!f || f.node.t !== 'list') return;
+    const it = f.node.items[item]; if (!it) return;
+    const lv = Math.max(0, Math.min(2, (it.level ?? 0) + (outdent ? -1 : 1)));
+    this.snap(); if (lv) it.level = lv; else delete it.level; this.touch();
   }
 
   // ---- outline

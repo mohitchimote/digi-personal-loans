@@ -5,7 +5,13 @@ import { EvalContext } from '../../../core/letters/rules';
 export interface PageHost {
   view(): 'letter' | 'structure';
   selected(): string | null;
-  select(id: string | null): void;
+  select(id: string | null, item?: number): void;
+  /** Enter at the end of a paragraph, heading or point: start the next one and move into it. */
+  enterFrom(id: string, lang: Lang, item?: number): void;
+  /** Backspace in an empty point: remove it. */
+  backspaceFrom(id: string, lang: Lang, item: number): void;
+  /** Tab / Shift+Tab on a point: change its level. */
+  tabFrom(id: string, item: number, outdent: boolean): void;
   dictionary(): Dictionary | null;
   saved(): SavedRule[];
   images(): LetterImage[];

@@ -5,6 +5,8 @@ import { API_BASE } from './api-base';
 
 // Mirrors worker/src/lib/letters/types.ts (language-neutral model: letter-spec/README.md).
 export type Lang = 'en' | 'he';
+export type Align = 'start' | 'center' | 'end';
+export interface ListItem extends Bi { level?: number }
 export interface Bi { en: string; he: string }
 export type FieldType = 'text' | 'number' | 'money' | 'percent' | 'date' | 'bool' | 'choice' | 'list';
 export interface Choice { v: string; en: string; he: string }
@@ -20,9 +22,9 @@ export type Rule = ConditionRule | GroupRule | RefRule;
 export interface SavedRule { id: string; name: string; rule: Rule }
 
 export type LetterNode =
-  | { id: string; t: 'heading'; text: Bi }
-  | { id: string; t: 'paragraph'; text: Bi }
-  | { id: string; t: 'list'; items: Bi[] }
+  | { id: string; t: 'heading'; text: Bi; level?: 1 | 2 | 3; align?: Align; indent?: number }
+  | { id: string; t: 'paragraph'; text: Bi; align?: Align; indent?: number }
+  | { id: string; t: 'list'; ordered?: boolean; items: ListItem[] }
   | { id: string; t: 'table'; rows: { label: Bi; value: Bi }[] }
   | { id: string; t: 'image'; imageId?: string; kind?: string; alt: Bi }
   | { id: string; t: 'signature'; imageId?: string; caption: Bi }

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LetterNode, Lang } from '../../../core/services/letters.service';
 import { EvalContext, evalRule, getPath, isMissing, metaOf } from '../../../core/letters/rules';
@@ -17,6 +17,8 @@ const TAGS: Record<string, string> = { heading: 'Heading', paragraph: 'Text', li
 @Component({
   selector: 'app-letter-list',
   standalone: true,
+  // Edits are made in place on the letter, so these must be checked on every pass, not only when an input changes.
+  changeDetection: ChangeDetectionStrategy.Default,
   imports: [CommonModule, RichTextDirective, LetterListComponent],
   styles: [`
     :host { display: block; }
@@ -33,7 +35,7 @@ const TAGS: Record<string, string> = { heading: 'Heading', paragraph: 'Text', li
     .ed { min-height: 1.3em; outline: none; }
     h3.ed { font-size: 17px; color: #003f79; margin: 14px 0 6px; }
     p.ed { margin: 6px 0; line-height: 1.55; }
-    ul { margin: 6px 0; padding-inline-start: 22px; } li.ed { margin: 2px 0; }
+    .li { display: flex; gap: 8px; align-items: baseline; margin: 2px 0; } .li .ed { flex: 1; } .mk { min-width: 18px; color: #556; user-select: none; }
     table { width: 100%; border-collapse: collapse; margin: 8px 0; } td { border-top: 1px solid #e2e7ee; border-bottom: 1px solid #e2e7ee; padding: 6px 4px; vertical-align: top; } td:last-child { font-weight: 600; text-align: end; width: 38%; }
     .pic { display: block; max-width: 170px; max-height: 80px; margin: 6px 0; } .nopic { display: inline-block; border: 1px dashed #9aa8bd; color: #778; font-size: 12px; padding: 14px 18px; border-radius: 4px; margin: 6px 0; }
     .sig { margin: 18px 0 8px; } .sig .line { border-top: 1px solid #667; width: 180px; margin-top: 4px; } .sig .ed { font-size: 12px; color: #556; margin-top: 4px; }
@@ -46,17 +48,20 @@ const TAGS: Record<string, string> = { heading: 'Heading', paragraph: 'Text', li
 
       <div *ngSwitchCase="'heading'" class="blk" [attr.data-nid]="n.id" [class.sel]="isSel(n)" (click)="pick($event, n)">
         <span class="tag">{{ tag(n) }}</span>
-        <h3 [appRich]="$any(n).text[lang]" [lang]="lang" [chip]="chipFn()" (textChange)="$any(n).text[lang] = $event; host.touch()" (focused)="focus(n)" (slash)="slash($event)" (cursor)="cur($event)"></h3>
+        <h3 [appRich]="$any(n).text[lang]" [lang]="lang" [chip]="chipFn()" enter="emit" (enterKey)="host.enterFrom(n.id, lang)" (backspaceEmpty)="host.backspaceFrom(n.id, lang, -1)" (textChange)="$any(n).text[lang] = $event; host.touch()" (focused)="focus(n)" (slash)="slash($event)" (cursor)="cur($event)" [style.text-align]="$any(n).align || null" [style.margin-inline-start.px]="($any(n).indent || 0) * 18" [style.font-size.px]="headingSize($any(n).level)"></h3>
       </div>
 
       <div *ngSwitchCase="'paragraph'" class="blk" [attr.data-nid]="n.id" [class.sel]="isSel(n)" (click)="pick($event, n)">
         <span class="tag">{{ tag(n) }}</span>
-        <p [appRich]="$any(n).text[lang]" [lang]="lang" [chip]="chipFn()" (textChange)="$any(n).text[lang] = $event; host.touch()" (focused)="focus(n)" (slash)="slash($event)" (cursor)="cur($event)"></p>
+        <p [appRich]="$any(n).text[lang]" [lang]="lang" [chip]="chipFn()" enter="emit" (enterKey)="host.enterFrom(n.id, lang)" (backspaceEmpty)="host.backspaceFrom(n.id, lang, -1)" (textChange)="$any(n).text[lang] = $event; host.touch()" (focused)="focus(n)" (slash)="slash($event)" (cursor)="cur($event)" [style.text-align]="$any(n).align || null" [style.margin-inline-start.px]="($any(n).indent || 0) * 18"></p>
       </div>
 
       <div *ngSwitchCase="'list'" class="blk" [attr.data-nid]="n.id" [class.sel]="isSel(n)" (click)="pick($event, n)">
         <span class="tag">{{ tag(n) }}</span>
-        <ul><li *ngFor="let it of $any(n).items" [appRich]="it[lang]" [lang]="lang" [chip]="chipFn()" (textChange)="it[lang] = $event; host.touch()" (focused)="focus(n)" (slash)="slash($event)" (cursor)="cur($event)"></li></ul>
+        <div class="li" *ngFor="let it of $any(n).items; let k = index" [style.margin-inline-start.px]="(it.level || 0) * 20">
+          <span class="mk" contenteditable="false">{{ markers($any(n))[k] }}</span>
+          <div [appRich]="it[lang]" [lang]="lang" [chip]="chipFn()" enter="emit" (enterKey)="host.enterFrom(n.id, lang, k)" (backspaceEmpty)="host.backspaceFrom(n.id, lang, k)" (tabKey)="host.tabFrom(n.id, k, $event)" (textChange)="it[lang] = $event; host.touch()" (focused)="focus(n, k)" (slash)="slash($event)" (cursor)="cur($event)"></div>
+        </div>
       </div>
 
       <div *ngSwitchCase="'table'" class="blk" [attr.data-nid]="n.id" [class.sel]="isSel(n)" (click)="pick($event, n)">
@@ -134,7 +139,17 @@ export class LetterListComponent {
   tag = (n: LetterNode) => TAGS[n.t];
   isSel = (n: LetterNode) => this.host.selected() === n.id;
   pick(e: Event, n: LetterNode) { e.stopPropagation(); this.host.select(n.id); }
-  focus(n: LetterNode) { this.host.snap(); this.host.select(n.id); }
+  focus(n: LetterNode, item?: number) { this.host.snap(); this.host.select(n.id, item); }
+  headingSize = (level?: number) => (level === 3 ? 14 : level === 2 ? 15.5 : 18);
+  /** The marker in front of each point: a bullet, or a number that restarts below a shallower point. */
+  markers(n: { ordered?: boolean; items: { level?: number }[] }): string[] {
+    const counters = [0, 0, 0];
+    return n.items.map((it) => {
+      const level = Math.min(2, it.level ?? 0);
+      counters[level]++; for (let d = level + 1; d < 3; d++) counters[d] = 0;
+      return n.ordered ? `${counters[level]}.` : level === 0 ? '•' : '–';
+    });
+  }
 
   holds = (r: any) => evalRule(r, this.ctx);
   describe = (r: any, list?: string) => describeRule(r, this.host.dictionary(), this.host.saved(), list ?? this.ctx.list);
