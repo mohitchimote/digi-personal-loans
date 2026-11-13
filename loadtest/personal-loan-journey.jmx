@@ -419,7 +419,7 @@ poolFile.append(line)
             <collectionProp name="Arguments.arguments">
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{&quot;section&quot;: &quot;reviewSubmit&quot;, &quot;data&quot;: {&quot;agreedToTerms&quot;: true, &quot;agreedToPrivacyPolicy&quot;: true, &quot;electronicSignature&quot;: &quot;Load Test&quot;, &quot;submittedAt&quot;: &quot;${__time(yyyy-MM-dd&apos;T&apos;HH:mm:ss)}&quot;}}</stringProp>
+                <stringProp name="Argument.value">{&quot;section&quot;: &quot;reviewSubmit&quot;, &quot;data&quot;: {&quot;agreedToTerms&quot;: true, &quot;agreedToPrivacy&quot;: true, &quot;agreedToCredit&quot;: true, &quot;signature&quot;: &quot;Load Test&quot;}}</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
               </elementProp>
             </collectionProp>

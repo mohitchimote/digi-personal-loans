@@ -11,23 +11,24 @@ public class ReviewSubmitDto {
     @AssertTrue(message = "agreedToTerms must be true")
     private Boolean agreedToTerms;
 
-    @NotNull(message = "agreedToPrivacyPolicy is required")
-    @AssertTrue(message = "agreedToPrivacyPolicy must be true")
-    private Boolean agreedToPrivacyPolicy;
+    @NotNull(message = "agreedToPrivacy is required")
+    @AssertTrue(message = "agreedToPrivacy must be true")
+    private Boolean agreedToPrivacy;
 
-    @NotBlank(message = "electronicSignature is required")
-    @Size(min = 2, message = "electronicSignature must be at least 2 characters")
-    private String electronicSignature;
+    @NotNull(message = "agreedToCredit is required")
+    @AssertTrue(message = "agreedToCredit must be true")
+    private Boolean agreedToCredit;
 
-    @NotBlank(message = "submittedAt is required")
-    private String submittedAt;
+    @NotBlank(message = "signature is required")
+    @Size(min = 2, message = "signature must be at least 2 characters")
+    private String signature;
 
     public Boolean getAgreedToTerms() { return agreedToTerms; }
     public void setAgreedToTerms(Boolean agreedToTerms) { this.agreedToTerms = agreedToTerms; }
-    public Boolean getAgreedToPrivacyPolicy() { return agreedToPrivacyPolicy; }
-    public void setAgreedToPrivacyPolicy(Boolean agreedToPrivacyPolicy) { this.agreedToPrivacyPolicy = agreedToPrivacyPolicy; }
-    public String getElectronicSignature() { return electronicSignature; }
-    public void setElectronicSignature(String electronicSignature) { this.electronicSignature = electronicSignature; }
-    public String getSubmittedAt() { return submittedAt; }
-    public void setSubmittedAt(String submittedAt) { this.submittedAt = submittedAt; }
+    public Boolean getAgreedToPrivacy() { return agreedToPrivacy; }
+    public void setAgreedToPrivacy(Boolean agreedToPrivacy) { this.agreedToPrivacy = agreedToPrivacy; }
+    public Boolean getAgreedToCredit() { return agreedToCredit; }
+    public void setAgreedToCredit(Boolean agreedToCredit) { this.agreedToCredit = agreedToCredit; }
+    public String getSignature() { return signature; }
+    public void setSignature(String signature) { this.signature = signature; }
 }
