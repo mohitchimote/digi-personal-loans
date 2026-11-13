@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { masterTypes, masterItems } from "../db/schema";
+import { masterTypes, masterItems, orgLevels, orgUnits } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
@@ -267,6 +267,12 @@ mastersAdmin.put("/items/:id", zValidator("json", itemSchema), async (c) => {
     nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId, sortOrder: body.sortOrder ?? existing.sortOrder,
     active: body.active ?? existing.active, attributes: prepared.attributes, updatedAt: new Date().toISOString(),
   }).where(eq(masterItems.id, id)).returning();
+  // Organisation units picked from this item carry a copy of its names: keep them in step.
+  const levels = await db.select({ id: orgLevels.id }).from(orgLevels).where(eq(orgLevels.masterTypeCode, type.code));
+  if (levels.length) {
+    await db.update(orgUnits).set({ name: saved.nameEn, nameHe: saved.nameHe })
+      .where(and(inArray(orgUnits.levelId, levels.map((l) => l.id)), eq(orgUnits.masterCode, saved.code)));
+  }
   await recordAudit(db, { eventType: "MASTER_ITEM_UPDATED", subjectType: "MasterItem", subjectId: `${type.code}:${saved.code}`, detail: saved.nameEn, ...actorOf(c) });
   return c.json(shapeItem(saved));
 });

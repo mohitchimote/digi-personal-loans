@@ -17,9 +17,11 @@ export interface UserSummary {
   orgUnitId?: number | null;
 }
 
-export interface OrgLevel { id: number; name: string; depth: number; }
-export interface OrgUnit { id: number; code: string; name: string; levelId: number; parentId: number | null; active: boolean; }
-export interface OrgUnitInput { code: string; name: string; levelId: number; parentId: number | null; active?: boolean; }
+export interface OrgLevel { id: number; name: string; depth: number; masterTypeCode: string | null; }
+export interface OrgLevelInput { name: string; depth: number; masterTypeCode?: string | null; }
+export interface OrgUnit { id: number; code: string; name: string; nameHe: string | null; masterCode: string | null; levelId: number; parentId: number | null; active: boolean; }
+/** At a level with a source master send masterCode (code and names are copied from the master item); otherwise code and name. */
+export interface OrgUnitInput { code?: string; name?: string; masterCode?: string | null; levelId: number; parentId: number | null; active?: boolean; }
 
 export interface EntitlementDef { key: string; group: string; label: string; description: string; }
 export type RoleScope = 'ALL' | 'UNIT_TREE' | 'UNIT_ONLY';
@@ -100,10 +102,10 @@ export class AdminService {
   getOrg(): Observable<{ levels: OrgLevel[]; units: OrgUnit[] }> {
     return this.http.get<{ levels: OrgLevel[]; units: OrgUnit[] }>(`${API}/org`);
   }
-  createOrgLevel(l: { name: string; depth: number }): Observable<OrgLevel> {
+  createOrgLevel(l: OrgLevelInput): Observable<OrgLevel> {
     return this.http.post<OrgLevel>(`${API}/org/levels`, l);
   }
-  updateOrgLevel(id: number, l: { name: string; depth: number }): Observable<OrgLevel> {
+  updateOrgLevel(id: number, l: OrgLevelInput): Observable<OrgLevel> {
     return this.http.put<OrgLevel>(`${API}/org/levels/${id}`, l);
   }
   deleteOrgLevel(id: number): Observable<void> {

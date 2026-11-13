@@ -11,14 +11,20 @@
   <!-- LEVELS -->
   <div class="db-card mb-24">
     <div class="card-header"><h3>{{ 'admin.org.levels' | translate }}</h3></div>
-    <p class="text-muted mb-16" style="font-size:0.85rem">{{ 'admin.org.levelsIntro' | translate }}</p>
+    <p class="text-muted mb-16" style="font-size:0.85rem">{{ 'admin.org.levelsIntro' | translate }} {{ 'admin.org.sourceMasterHint' | translate }}</p>
     <table class="db-table">
-      <thead><tr><th>{{ 'admin.org.depth' | translate }}</th><th>{{ 'admin.name' | translate }}</th><th>{{ 'admin.actions' | translate }}</th></tr></thead>
+      <thead><tr><th>{{ 'admin.org.depth' | translate }}</th><th>{{ 'admin.name' | translate }}</th><th>{{ 'admin.org.sourceMaster' | translate }}</th><th>{{ 'admin.actions' | translate }}</th></tr></thead>
       <tbody>
         <tr *ngFor="let l of levels()">
           <ng-container *ngIf="editingLevelId() === l.id; else levelView">
             <td><input class="db-input" type="number" min="1" style="width:80px" [(ngModel)]="levelDraft.depth" /></td>
             <td><input class="db-input" type="text" [(ngModel)]="levelDraft.name" /></td>
+            <td>
+              <select class="db-input" [(ngModel)]="levelDraft.masterTypeCode">
+                <option [ngValue]="null">{{ 'admin.org.noSourceMaster' | translate }}</option>
+                <option *ngFor="let t of masterTypes()" [ngValue]="t.code">{{ masterLabel(t) }}</option>
+              </select>
+            </td>
             <td>
               <button class="db-btn db-btn--primary db-btn--sm" (click)="saveLevel(l)">{{ 'common.save' | translate }}</button>
               <button class="db-btn db-btn--ghost db-btn--sm" (click)="editingLevelId.set(null)">{{ 'common.cancel' | translate }}</button>
@@ -28,6 +34,10 @@
             <td>{{ l.depth }}</td>
             <td>{{ l.name }}</td>
             <td>
+              <span *ngIf="levelMaster(l) as m" class="db-badge">{{ masterLabel(m) }}</span>
+              <span *ngIf="!levelMaster(l)" class="text-muted">{{ 'admin.org.noSourceMaster' | translate }}</span>
+            </td>
+            <td>
               <button class="db-btn db-btn--ghost db-btn--sm" (click)="editLevel(l)"><span class="material-icons mi-sm">edit</span></button>
               <button class="db-btn db-btn--ghost db-btn--sm" (click)="removeLevel(l)"><span class="material-icons mi-sm">delete_outline</span></button>
             </td>
@@ -36,6 +46,12 @@
         <tr>
           <td><input class="db-input" type="number" min="1" style="width:80px" [(ngModel)]="newLevel.depth" /></td>
           <td><input class="db-input" type="text" [(ngModel)]="newLevel.name" [placeholder]="'admin.org.newLevelName' | translate" /></td>
+          <td>
+            <select class="db-input" [(ngModel)]="newLevel.masterTypeCode">
+              <option [ngValue]="null">{{ 'admin.org.noSourceMaster' | translate }}</option>
+              <option *ngFor="let t of masterTypes()" [ngValue]="t.code">{{ masterLabel(t) }}</option>
+            </select>
+          </td>
           <td><button class="db-btn db-btn--primary db-btn--sm" (click)="addLevel()">{{ 'admin.org.addLevel' | translate }}</button></td>
         </tr>
       </tbody>
@@ -54,19 +70,29 @@
     <div class="unit-form" *ngIf="showUnitForm()">
       <div class="create-form-grid">
         <div class="db-form-group">
-          <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="text" maxlength="32" [(ngModel)]="unitDraft.code" />
-        </div>
-        <div class="db-form-group">
-          <label>{{ 'admin.name' | translate }} <span class="required">*</span></label>
-          <input class="db-input" type="text" [(ngModel)]="unitDraft.name" />
-        </div>
-        <div class="db-form-group">
           <label>{{ 'admin.org.level' | translate }} <span class="required">*</span></label>
-          <select class="db-input" [(ngModel)]="unitDraft.levelId">
+          <select class="db-input" [(ngModel)]="unitDraft.levelId" (ngModelChange)="onLevelChanged()">
             <option *ngFor="let l of levels()" [ngValue]="l.id">{{ l.name }}</option>
           </select>
         </div>
+        <ng-container *ngIf="levelMaster(draftLevel()) as m; else typedUnit">
+          <div class="db-form-group wide">
+            <label>{{ masterLabel(m) }} <span class="required">*</span></label>
+            <app-master-picker [typeCode]="m.code" [valueCode]="unitDraft.masterCode" [initialLabel]="unitDraft.masterLabel"
+                               [placeholder]="'admin.org.pickFromMaster' | translate" (picked)="onMasterPicked($event)" />
+            <small class="text-muted">{{ (editingUnitId() !== null && !unitDraft.masterCode ? 'admin.org.linkHint' : 'admin.org.pickHint') | translate }}</small>
+          </div>
+        </ng-container>
+        <ng-template #typedUnit>
+          <div class="db-form-group">
+            <label>{{ 'admin.org.code' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" maxlength="32" [(ngModel)]="unitDraft.code" />
+          </div>
+          <div class="db-form-group">
+            <label>{{ 'admin.name' | translate }} <span class="required">*</span></label>
+            <input class="db-input" type="text" [(ngModel)]="unitDraft.name" />
+          </div>
+        </ng-template>
         <div class="db-form-group">
           <label>{{ 'admin.org.parent' | translate }}</label>
           <select class="db-input" [(ngModel)]="unitDraft.parentId">
@@ -95,7 +121,10 @@
           <td colspan="5" class="text-muted" style="text-align:center; padding:32px">{{ 'admin.org.noUnits' | translate }}</td>
         </tr>
         <tr *ngFor="let r of rows()">
-          <td [style.padding-inline-start.px]="16 + r.indent * 24">{{ r.unit.name }}</td>
+          <td [style.padding-inline-start.px]="16 + r.indent * 24">{{ r.unit.name }}
+            <span *ngIf="r.unit.masterCode" class="material-icons mi-sm linked" [title]="'admin.org.linked' | translate">link</span>
+            <span *ngIf="!r.unit.masterCode && levelMasterOf(r.unit)" class="not-linked" [title]="'admin.org.linkHint' | translate">{{ 'admin.org.notLinked' | translate }}</span>
+          </td>
           <td>{{ r.unit.code }}</td>
           <td>{{ r.levelName }}</td>
           <td>

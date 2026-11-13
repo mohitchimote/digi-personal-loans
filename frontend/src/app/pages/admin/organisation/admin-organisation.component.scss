@@ -1,3 +1,7 @@
 .unit-form { padding: 16px; margin-bottom: 16px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
 .create-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.linked { vertical-align: middle; margin-inline-start: 4px; color: var(--tcs-blue, #003F79); }
+.not-linked { margin-inline-start: 8px; font-size: 0.72rem; padding: 1px 8px; border-radius: 10px; background: rgba(245, 162, 0, 0.18); color: #8a5a00; }
+.create-form-grid .wide { grid-column: 1 / -1; }

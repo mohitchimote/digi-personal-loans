@@ -138,6 +138,8 @@ function items(type: string, rows: Row[], parentType?: string, refreshNames = fa
 }
 
 // The bank's own customer-facing branches (what the forms' "preferred branch" list uses today).
+// Regions matching the demo organisation (North / Central / South), so those units can be linked.
+SIMPLE.region = [["NORTH", "North", "צפון"], ["CENTRAL", "Central", "מרכז"], ["SOUTH", "South", "דרום"]];
 SIMPLE.branch = [
   ["TLV-ROTHSCHILD", "Tel Aviv - Rothschild Blvd", "תל אביב - שדרות רוטשילד"], ["JLM-JAFFA", "Jerusalem - Jaffa Road", "ירושלים - רחוב יפו"],
   ["HFA-HADAR", "Haifa - Hadar", "חיפה - הדר"], ["BS-OLDCITY", "Beer Sheva - Old City", "באר שבע - העיר העתיקה"],
@@ -145,5 +147,14 @@ SIMPLE.branch = [
 ];
 for (const [type, rows] of Object.entries(SIMPLE)) items(type, rows);
 items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")).map(([c, en, he]) => [c, en, he] as Row), undefined, true);
+
+// Organisation levels named Region / Branch pick their units from the matching masters by default.
+// Only fills a level that has no source master yet, so an admin's own choice is never overwritten.
+for (const [level, master] of [["Region", "region"], ["Branch", "branch"]]) {
+  out.push(
+    `UPDATE org_levels SET master_type_code = ${q(master)} WHERE name = ${q(level)} AND master_type_code IS NULL ` +
+    `AND EXISTS (SELECT 1 FROM master_types WHERE code = ${q(master)});`,
+  );
+}
 
 console.log(out.join("\n"));

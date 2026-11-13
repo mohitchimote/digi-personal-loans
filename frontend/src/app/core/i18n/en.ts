@@ -1677,4 +1677,13 @@ export const EN: Record<string, string> = {
   'common.next': 'Next',
   'admin.masters.codeAuto': 'The code is generated from the English name when you save.',
   'admin.masters.codeFixed': 'Generated automatically; can\'t be changed, so other records stay valid.',
+  'admin.org.sourceMaster': 'Pick units from',
+  'admin.org.noSourceMaster': 'Typed by hand',
+  'admin.org.sourceMasterHint': 'A level can pick its units from a master (for example Branch), so each is defined once and reused.',
+  'admin.org.pickFromMaster': 'Search the list…',
+  'admin.org.pickHint': 'Name and code are taken from the master, and follow it if it is renamed there.',
+  'admin.org.linkHint': 'Not linked to a master yet. Pick the matching item to link it; its code and names then come from the master.',
+  'admin.org.linked': 'Linked to a master',
+  'admin.org.notLinked': 'Not linked',
+  'admin.org.pickRequired': 'Pick an item from the list.',
 };

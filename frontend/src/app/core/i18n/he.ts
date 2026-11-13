@@ -1717,4 +1717,13 @@ export const HE: Record<string, string> = {
   'common.next': 'הבא',
   'admin.masters.codeAuto': 'הקוד נוצר מהשם באנגלית בעת השמירה.',
   'admin.masters.codeFixed': 'נוצר אוטומטית ולא ניתן לשינוי, כך שרשומות אחרות נשארות תקינות.',
+  'admin.org.sourceMaster': 'יחידות נבחרות מתוך',
+  'admin.org.noSourceMaster': 'הקלדה ידנית',
+  'admin.org.sourceMasterHint': 'רמה יכולה לבחור את יחידותיה מנתון יסוד (לדוגמה סניף), כך שכל אחת מוגדרת פעם אחת ומשמשת שוב.',
+  'admin.org.pickFromMaster': 'חיפוש ברשימה…',
+  'admin.org.pickHint': 'השם והקוד נלקחים מנתון היסוד ומתעדכנים אם שמו משתנה שם.',
+  'admin.org.linkHint': 'עדיין לא מקושר לנתון יסוד. בחרו את הפריט המתאים כדי לקשר; הקוד והשמות יגיעו ממנו.',
+  'admin.org.linked': 'מקושר לנתון יסוד',
+  'admin.org.notLinked': 'לא מקושר',
+  'admin.org.pickRequired': 'יש לבחור פריט מהרשימה.',
 };

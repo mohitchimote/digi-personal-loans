@@ -127,6 +127,13 @@
       "when": 1794583172814,
       "tag": "0017_bitter_quentin_quire",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794586084371,
+      "tag": "0018_public_speed",
+      "breakpoints": true
     }
   ]
 }

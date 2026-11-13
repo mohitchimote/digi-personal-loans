@@ -51,6 +51,9 @@ export const orgLevels = sqliteTable("org_levels", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
   depth: integer("depth").notNull(),
+  // When set, units at this level are picked from this master (e.g. Branch -> the "branch" master)
+  // instead of typed: their code and names come from the master item, so a branch is defined once.
+  masterTypeCode: text("master_type_code"),
 });
 
 // Y1 — a node in the hierarchy. parentId null = root. A unit's level must be deeper than its
@@ -59,11 +62,19 @@ export const orgUnits = sqliteTable("org_units", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
+  // Hebrew name; only known for units linked to a master item (copied from it and kept in sync).
+  nameHe: text("name_he"),
+  // Code of the master item this unit was picked from (master type = its level's masterTypeCode).
+  // Null for units typed by hand (legacy units, or levels with no source master).
+  masterCode: text("master_code"),
   levelId: integer("level_id").notNull(),
   parentId: integer("parent_id"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull(),
-});
+}, (t) => ({
+  // One unit per master item within a level (nulls are distinct, so unlinked units are unaffected).
+  masterPerLevel: uniqueIndex("org_units_level_master_unique").on(t.levelId, t.masterCode),
+}));
 
 // Phase 2 - admin-defined staff roles. Customer roles (CUSTOMER, BUSINESS_OWNER) are built in and
 // deliberately absent. `scope` is the case-visibility rule: ALL | UNIT_TREE (own org unit and
