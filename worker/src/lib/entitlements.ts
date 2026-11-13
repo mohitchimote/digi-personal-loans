@@ -30,6 +30,8 @@ export const ENTITLEMENT_CATALOG: EntitlementDef[] = [
   { key: "case.resolveVerification", group: "Case actions", label: "Resolve data-verification flags", description: "Accept or reject data-verification rule results." },
   { key: "case.actAsCustomer", group: "Case actions", label: "Act on a customer's behalf", description: "Open and edit a customer's application, and register customers (assisted origination)." },
 
+  { key: "letters.issue", group: "Case actions", label: "Issue letters", description: "Produce a published letter (PDF, English and Hebrew) for an application and download the ones already issued." },
+
   { key: "mandates.view", group: "Configuration", label: "View approval mandates", description: "Read the approval-limit table." },
 ];
 

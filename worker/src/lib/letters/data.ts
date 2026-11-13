@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import type { loanApplications } from "../../db/schema";
+import { computeCalculated } from "../calculated";
 import { masterItemNames } from "../master-options";
 
 type App = InferSelectModel<typeof loanApplications>;
@@ -26,7 +27,8 @@ export async function buildLetterData(db: Db, app: App, extra: { decisionReason?
   const income = parse(app.incomeEmploymentJson);
   const guarantor = parse(app.guarantorDetailsJson);
   const product = parse(app.selectedProductJson);
-  const calc = parse(app.calculatedJson);
+  // Normally stored by the backend on every change; applications saved before that existed are worked out here.
+  const calc = app.calculatedJson ? parse(app.calculatedJson) : (computeCalculated(app) as Record<string, unknown>);
   const applicant2 = (personal.applicant2 ?? null) as Record<string, unknown> | null;
   const addr = business ? company : personal;
   const branchCode = business ? company.preferredBranch : personal.preferredBranch;
