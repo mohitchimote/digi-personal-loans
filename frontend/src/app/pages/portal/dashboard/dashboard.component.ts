@@ -5,7 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { ProductService } from '../../../core/services/product.service';
-import { LoanApplication, PreApprovedOffer, UnderwritingNote, BankRelationshipAccount, DIGIBANK_BRANCHES } from '../../../core/models';
+import { LoanApplication, PreApprovedOffer, UnderwritingNote, BankRelationshipAccount } from '../../../core/models';
+import { MasterListsService } from '../../../core/services/master-lists.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -32,7 +33,13 @@ export class DashboardComponent implements OnInit {
   startingApplication = signal(false);
   preApprovedOffer = signal<PreApprovedOffer | null>(null);
   startingPreApproved = signal(false);
-  relationshipAccounts = signal<BankRelationshipAccount[]>([]);
+  /** Whose demo relationship accounts to show (set once a pre-approved offer is found). */
+  private relationshipNationalId = signal<string | null>(null);
+  /** Computed, not set once: the branch it names comes from the Branch master, which may load after the offer. */
+  relationshipAccounts = computed<BankRelationshipAccount[]>(() => {
+    const id = this.relationshipNationalId();
+    return id ? this.buildRelationshipAccounts(id) : [];
+  });
   loanAccounts = signal<BankRelationshipAccount[]>([]);
   allAccounts = computed(() => [...this.relationshipAccounts(), ...this.loanAccounts()]);
 
@@ -99,7 +106,9 @@ export class DashboardComponent implements OnInit {
   }
 
   constructor(public auth: AuthService, private appSvc: ApplicationService, private productSvc: ProductService,
-              public i18n: I18nService, private router: Router) {}
+              public i18n: I18nService, private router: Router, private lists: MasterListsService) {
+    this.lists.load(['branch']);
+  }
 
   startOrResumeApplication(): void {
     const userId = this.auth.userId; const email = this.auth.userEmail;
@@ -137,7 +146,7 @@ export class DashboardComponent implements OnInit {
     if (nationalId) {
       this.productSvc.getPreApprovedOffer(nationalId).subscribe(offer => {
         this.preApprovedOffer.set(offer);
-        if (offer) this.relationshipAccounts.set(this.buildRelationshipAccounts(nationalId));
+        if (offer) this.relationshipNationalId.set(nationalId);
       });
     }
   }
@@ -148,7 +157,9 @@ export class DashboardComponent implements OnInit {
    * ones) so it works for any pre-approved persona without hardcoding specific names/numbers. */
   private buildRelationshipAccounts(nationalId: string): BankRelationshipAccount[] {
     const rand = this.seededRandom(nationalId);
-    const branch = DIGIBANK_BRANCHES[Math.floor(rand() * DIGIBANK_BRANCHES.length)];
+    const branches = this.lists.items('branch');
+    const picked = branches.length ? branches[Math.floor(rand() * branches.length)] : undefined;
+    const branch = picked ? picked.name.en : '';
     const customerSinceYear = 2015 + Math.floor(rand() * 8);
 
     const accounts: BankRelationshipAccount[] = [{

@@ -38,7 +38,7 @@
           <label>{{ 'directDebit.bankNameLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="bankCode">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let b of banks" [value]="b.code">{{ b.name }} ({{ b.code }})</option>
+            <option *ngFor="let b of bankOptions()" [value]="b.value">{{ optionLabel(b) }} ({{ b.value }})</option>
           </select>
           <div class="db-error-msg" *ngIf="f('bankCode')?.invalid && f('bankCode')?.touched">{{ 'common.required' | translate }}</div>
         </div>
@@ -46,7 +46,7 @@
           <label>{{ 'directDebit.branchCodeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="branchCode" [disabled]="!selectedBank">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let br of selectedBankBranches" [value]="br.code">{{ br.name }} ({{ br.code }})</option>
+            <option *ngFor="let br of branchOptions()" [value]="br.value">{{ optionLabel(br) }} ({{ br.value }})</option>
           </select>
           <div class="db-error-msg" *ngIf="f('branchCode')?.invalid && f('branchCode')?.touched">{{ 'common.required' | translate }}</div>
         </div>
@@ -116,14 +116,14 @@
           <label>{{ 'directDebit.bankNameLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="bankCode">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let b of banks" [value]="b.code">{{ b.name }} ({{ b.code }})</option>
+            <option *ngFor="let b of bankOptions()" [value]="b.value">{{ optionLabel(b) }} ({{ b.value }})</option>
           </select>
         </div>
         <div class="dense-field">
           <label>{{ 'directDebit.branchCodeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="branchCode" [disabled]="!selectedBank">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let br of selectedBankBranches" [value]="br.code">{{ br.name }} ({{ br.code }})</option>
+            <option *ngFor="let br of branchOptions()" [value]="br.value">{{ optionLabel(br) }} ({{ br.value }})</option>
           </select>
         </div>
         <div class="dense-field">

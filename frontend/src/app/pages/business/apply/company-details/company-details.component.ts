@@ -1,10 +1,12 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, effect, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
-import { BUSINESS_LOAN_PURPOSES, DIGIBANK_BRANCHES, DIGIBANK_BRANCH_STAFF } from '../../../../core/models';
+import { MasterListsService } from '../../../../core/services/master-lists.service';
+import { FieldOption } from '../../../../core/services/form-builder.service';
+import { reconcileStoredValue } from '../../../../shared/master-options';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -23,16 +25,18 @@ export class CompanyDetailsComponent implements OnInit {
   saving = signal(false);
   appRef = signal('');
   readOnly = signal(false);
-  purposes = BUSINESS_LOAN_PURPOSES;
-  branches = DIGIBANK_BRANCHES;
 
   constructor(
     private fb: FormBuilder,
     private appSvc: ApplicationService,
     public identity: EffectiveIdentityService,
     private router: Router,
-    private i18n: I18nService
+    private i18n: I18nService,
+    private lists: MasterListsService
   ) {
+    this.lists.load(['business_loan_purpose', 'branch', 'branch_staff']);
+    // A saved record may hold the old display text ("Working Capital", a branch name): map it to the code once the lists arrive.
+    effect(() => { ['business_loan_purpose', 'branch', 'branch_staff'].forEach((m) => this.lists.options(m)); this.reconcileLegacyValues(); });
     this.form = this.fb.group({
       companyName:               ['', Validators.required],
       companyRegistrationNumber: ['', Validators.required],
@@ -51,14 +55,33 @@ export class CompanyDetailsComponent implements OnInit {
     });
   }
 
-  staffOptionsForBranch(): string[] {
-    return DIGIBANK_BRANCH_STAFF[this.f('preferredBranch')?.value] || [];
+  purposeOptions(): FieldOption[] { return this.lists.options('business_loan_purpose'); }
+  branchOptions(): FieldOption[] { return this.lists.options('branch'); }
+  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+
+  /** Staff the customer can name at the chosen branch: the Branch Staff master's items under it. */
+  staffOptionsForBranch(): FieldOption[] {
+    const branch = this.f('preferredBranch')?.value;
+    return branch ? this.lists.optionsUnder('branch_staff', branch) : [];
   }
 
   onBranchChange(): void {
-    if (!this.staffOptionsForBranch().includes(this.f('staffName')?.value)) {
+    if (!this.staffOptionsForBranch().some((o) => o.value === this.f('staffName')?.value)) {
       this.f('staffName')?.setValue('');
     }
+  }
+
+  private reconcileLegacyValues(): void {
+    const fix = (name: string, options: FieldOption[]) => {
+      const c = this.form?.get(name);
+      if (!c?.value || !options.length) return;
+      const fixed = reconcileStoredValue(options, c.value);
+      if (fixed === null) c.setValue('', { emitEvent: false });
+      else if (fixed !== c.value) c.setValue(fixed, { emitEvent: false });
+    };
+    fix('loanPurpose', this.purposeOptions());
+    fix('preferredBranch', this.branchOptions());
+    fix('staffName', this.staffOptionsForBranch());
   }
 
   ngOnInit(): void {
@@ -80,6 +103,8 @@ export class CompanyDetailsComponent implements OnInit {
             yearFounded: this.identity.companyFoundedYear ?? null,
           });
         }
+        // The lists may have arrived before this record did: map any old display text now.
+        this.reconcileLegacyValues();
         if (this.readOnly()) this.form.disable();
       }
     });

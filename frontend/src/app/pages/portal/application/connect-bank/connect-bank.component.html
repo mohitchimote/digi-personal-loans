@@ -51,14 +51,14 @@
           <label>{{ 'connectBank.manualBankLabel' | translate }}</label>
           <select class="db-select" [(ngModel)]="manualBankCode" (ngModelChange)="onManualBankChange()">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let b of israeliBanks" [value]="b.code">{{ b.name }}</option>
+            <option *ngFor="let b of bankOptions()" [value]="b.value">{{ optionLabel(b) }}</option>
           </select>
         </div>
         <div class="db-form-group">
           <label>{{ 'connectBank.manualBranchLabel' | translate }}</label>
           <select class="db-select" [(ngModel)]="manualBranchCode" [disabled]="!manualBankCode">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let br of manualBranches" [value]="br.code">{{ br.name }}</option>
+            <option *ngFor="let br of manualBranchOptions()" [value]="br.value">{{ optionLabel(br) }}</option>
           </select>
         </div>
       </div>
@@ -163,14 +163,14 @@
           <label>{{ 'connectBank.manualBankLabel' | translate }}</label>
           <select class="db-select" [(ngModel)]="manualBankCode" (ngModelChange)="onManualBankChange()">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let b of israeliBanks" [value]="b.code">{{ b.name }}</option>
+            <option *ngFor="let b of bankOptions()" [value]="b.value">{{ optionLabel(b) }}</option>
           </select>
         </div>
         <div class="dense-field">
           <label>{{ 'connectBank.manualBranchLabel' | translate }}</label>
           <select class="db-select" [(ngModel)]="manualBranchCode" [disabled]="!manualBankCode">
             <option value="">{{ 'common.select' | translate }}</option>
-            <option *ngFor="let br of manualBranches" [value]="br.code">{{ br.name }}</option>
+            <option *ngFor="let br of manualBranchOptions()" [value]="br.value">{{ optionLabel(br) }}</option>
           </select>
         </div>
         <div class="dense-field">

@@ -63,3 +63,5 @@ loadtest/*.log
 
 worker/.cache/
 worker/seed-reference.sql
+
+.wrangler/

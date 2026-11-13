@@ -65,7 +65,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ optLabel('businessLoanPurpose', p) }}</option>
+            <option *ngFor="let o of purposeOptions()" [value]="o.value">{{ optionLabel(o) }}</option>
           </select>
         </div>
       </div>
@@ -90,14 +90,14 @@
         <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
         <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
           <option value="">{{ 'common.select' | translate }}</option>
-          <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+          <option *ngFor="let o of branchOptions()" [value]="o.value">{{ optionLabel(o) }}</option>
         </select>
       </div>
       <div class="db-form-group mt-16" style="max-width:360px" *ngIf="f('assistedByStaff')?.value === true">
         <label>{{ 'personal.staffNameLabel' | translate }}</label>
         <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
           <option value="">{{ 'common.select' | translate }}</option>
-          <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+          <option *ngFor="let o of staffOptionsForBranch()" [value]="o.value">{{ optionLabel(o) }}</option>
         </select>
         <small class="text-muted">{{ 'personal.staffNameHint' | translate }}</small>
       </div>
@@ -165,7 +165,7 @@
           <label>{{ 'loanReq.purposeLabel' | translate }} <span class="required">*</span></label>
           <select class="db-select" formControlName="loanPurpose">
             <option value="">{{ 'loanReq.purposeSelect' | translate }}</option>
-            <option *ngFor="let p of purposes" [value]="p">{{ optLabel('businessLoanPurpose', p) }}</option>
+            <option *ngFor="let o of purposeOptions()" [value]="o.value">{{ optionLabel(o) }}</option>
           </select>
         </div>
         <div class="dense-field">
@@ -188,14 +188,14 @@
             <label>{{ 'personal.preferredBranchLabel' | translate }}</label>
             <select class="db-select" formControlName="preferredBranch" (change)="onBranchChange()">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let b of branches" [value]="b">{{ b }}</option>
+              <option *ngFor="let o of branchOptions()" [value]="o.value">{{ optionLabel(o) }}</option>
             </select>
           </div>
           <div class="dense-field">
             <label>{{ 'personal.staffNameLabel' | translate }}</label>
             <select class="db-select" formControlName="staffName" [disabled]="!f('preferredBranch')?.value">
               <option value="">{{ 'common.select' | translate }}</option>
-              <option *ngFor="let name of staffOptionsForBranch()" [value]="name">{{ name }}</option>
+              <option *ngFor="let o of staffOptionsForBranch()" [value]="o.value">{{ optionLabel(o) }}</option>
             </select>
           </div>
         </ng-container>

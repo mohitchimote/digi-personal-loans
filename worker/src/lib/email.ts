@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../db/client";
 import type { Env } from "../types";
 import { emailTemplates, brandingSettings, type loanApplications } from "../db/schema";
-import { applicantFirstName, loanPurpose } from "./app-format";
+import { applicantFirstName, loanPurpose, warmLoanPurposeNames } from "./app-format";
 import { withTimeout, withRetry, CircuitBreaker, TimeoutError } from "./resilience";
 import { logError } from "./log";
 
@@ -192,6 +192,7 @@ export async function sendTemplatedEmail(
     if (!to) return;
     const cc = splitAddresses(template.ccAddress);
 
+    await warmLoanPurposeNames(db);
     const variables: Record<string, string> = {
       applicantName: applicantFirstName(app),
       applicationRef: app.applicationRef,

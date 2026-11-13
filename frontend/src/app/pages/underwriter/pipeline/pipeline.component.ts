@@ -1,3 +1,4 @@
+import { MasterLabelPipe } from '../../../shared/pipes/master-label.pipe';
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { WorkflowService } from '../../../core/services/workflow.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -20,7 +21,7 @@ const PIPELINE_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'CONDITIONALLY_APPROVED'
 @Component({
   selector: 'app-uw-pipeline',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, SlaSummaryComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, SlaSummaryComponent, MasterLabelPipe],
   templateUrl: './pipeline.component.html',
   styleUrl: './pipeline.component.scss'
 })

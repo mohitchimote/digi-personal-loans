@@ -73,7 +73,7 @@
         </td>
         <td>{{ applicantName(app) }}</td>
         <td>₪{{ loanAmount(app) | number }}</td>
-        <td>{{ loanPurpose(app) || '—' }}</td>
+        <td>{{ (loanPurpose(app) | masterLabel:(isBusiness(app) ? 'business_loan_purpose' : 'loan_purpose')) || '—' }}</td>
         <td>{{ loanTerm(app) ? (loanTerm(app) + ' ' + ('reviewSubmit.months' | translate)) : '—' }}</td>
         <td>
           <span class="db-badge db-badge--in-progress">{{ effectiveStatusLabel(app) }}</span>

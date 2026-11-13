@@ -1,3 +1,4 @@
+import { MasterLabelPipe } from '../../../shared/pipes/master-label.pipe';
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { WorkflowService } from '../../../core/services/workflow.service';
 import { CommonModule } from '@angular/common';
@@ -12,7 +13,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 @Component({
   selector: 'app-business-view-application',
   standalone: true,
-  imports: [CommonModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, RouterLink, TranslatePipe, MasterLabelPipe],
   templateUrl: './business-view-application.component.html',
   styleUrl: './business-view-application.component.scss'
 })

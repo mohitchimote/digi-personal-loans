@@ -1,10 +1,11 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DocumentService } from '../../../core/services/document.service';
 import { ApplicationService } from '../../../core/services/application.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES } from '../../../core/models';
+import { GeneratedDocument, UploadedDocument } from '../../../core/models';
+import { MasterListsService } from '../../../core/services/master-lists.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 
@@ -24,20 +25,36 @@ export class DocumentsComponent implements OnInit {
   dragOver  = signal(false);
   uploadError = signal('');
 
-  requiredTypes = REQUIRED_DOCUMENT_TYPES;
-  selectedDocType = REQUIRED_DOCUMENT_TYPES[0].type;
+  /** Which set of documents applies: each Document Type master item says personal or business. */
+  segment = signal<'personal' | 'business'>('personal');
+  selectedDocType = '';
+
+  requiredTypes = computed(() => {
+    const he = this.i18n.lang() === 'he';
+    return this.lists.items('document_type')
+      .filter(i => i.attributes['segment'] === this.segment())
+      .map(i => ({ type: i.code, label: he ? i.name.he || i.name.en : i.name.en }));
+  });
 
   checklist = computed(() => {
     const receivedTypes = new Set(this.uploaded().map(u => u.documentType));
-    return this.requiredTypes.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
+    return this.requiredTypes().map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
   });
 
   constructor(
     private docSvc: DocumentService,
     private appSvc: ApplicationService,
     private auth: AuthService,
-    private i18n: I18nService
-  ) {}
+    private i18n: I18nService,
+    private lists: MasterListsService
+  ) {
+    this.lists.load(['document_type']);
+    // Keep the upload dropdown on a valid choice as the list arrives or the segment changes.
+    effect(() => {
+      const types = this.requiredTypes();
+      if (!types.some(t => t.type === this.selectedDocType)) this.selectedDocType = types[0]?.type ?? '';
+    });
+  }
 
   ngOnInit(): void {
     const userId = this.auth.userId;
@@ -47,10 +64,7 @@ export class DocumentsComponent implements OnInit {
     this.appSvc.getCurrent(userId).subscribe({
       next: app => {
         this.appRef.set(app.applicationRef);
-        if (app.applicationType === 'BUSINESS') {
-          this.requiredTypes = BUSINESS_REQUIRED_DOCUMENT_TYPES;
-          this.selectedDocType = BUSINESS_REQUIRED_DOCUMENT_TYPES[0].type;
-        }
+        if (app.applicationType === 'BUSINESS') this.segment.set('business');
         this.docSvc.getGenerated(userId).subscribe({
           next: docs => { this.generated.set(docs); this.loading.set(false); },
           error: () => this.loading.set(false)
@@ -108,8 +122,8 @@ export class DocumentsComponent implements OnInit {
   }
 
   uploadedTypeLabel(type: string): string {
-    const match = this.requiredTypes.find(t => t.type === type);
-    return match ? this.i18n.t(match.labelKey) : type;
+    const match = this.requiredTypes().find(t => t.type === type);
+    return match ? match.label : type;
   }
 
   docIcon(type: string): string {

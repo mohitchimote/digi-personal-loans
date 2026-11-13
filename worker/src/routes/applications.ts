@@ -273,7 +273,7 @@ applications.post("/start-pre-approved", async (c) => {
 
   const loanRequirementsJson = JSON.stringify({
     loanAmount: offer.amount,
-    loanPurpose: "Pre-Approved Offer",
+    loanPurpose: "PRE_APPROVED_OFFER",
     loanTerm: offer.termMonths,
     numberOfApplicants: 1,
   });
@@ -284,8 +284,8 @@ applications.post("/start-pre-approved", async (c) => {
     dateOfBirth: "1988-04-12",
     nationalId,
     idIssueDate: "2018-01-01",
-    nationality: "Israeli",
-    maritalStatus: "Married",
+    nationality: "IL",
+    maritalStatus: "MARRIED",
     dependents: 1,
     phoneNumber: "+972 50 123 4567",
     email: customerEmail,
@@ -309,19 +309,19 @@ applications.post("/start-pre-approved", async (c) => {
   });
 
   const incomeEmploymentJson = JSON.stringify({
-    employmentStatus: "Employed",
+    employmentStatus: "FULL_TIME",
     employer: "Teva Pharmaceutical Industries",
     jobTitle: "Senior Operations Manager",
-    employmentDuration: "6 years",
+    employmentDuration: "Y5_PLUS",
     monthlyGrossIncome: 28000,
     monthlyNetIncome: 21500,
     otherIncome: 0,
     employments: [
       {
-        employmentStatus: "Employed",
+        employmentStatus: "FULL_TIME",
         employer: "Teva Pharmaceutical Industries",
         jobTitle: "Senior Operations Manager",
-        employmentDuration: "6 years",
+        employmentDuration: "Y5_PLUS",
         monthlyGrossIncome: 28000,
         monthlyNetIncome: 21500,
         otherIncome: 0,

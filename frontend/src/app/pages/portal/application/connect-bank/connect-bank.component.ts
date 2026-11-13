@@ -6,7 +6,9 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
-import { ISRAELI_BANKS, IsraeliBank, IsraeliBankBranch } from '../../../../core/models';
+import { MasterListsService } from '../../../../core/services/master-lists.service';
+import { FieldOption } from '../../../../core/services/form-builder.service';
+import { I18nService } from '../../../../core/i18n/i18n.service';
 
 interface BankOption { id: string; name: string; icon: string; }
 type BankConnectionSummary = { accountMasked: string; avgBalance: number; transactions: number };
@@ -49,7 +51,6 @@ export class ConnectBankComponent implements OnInit {
   manualBankCode = '';
   manualBranchCode = '';
   manualAccountNumber = '';
-  israeliBanks: IsraeliBank[] = ISRAELI_BANKS;
 
   // Applicant 2 (joint applications only) — unchanged single-account flow.
   connecting2 = signal(false);
@@ -68,8 +69,12 @@ export class ConnectBankComponent implements OnInit {
   constructor(
     private appSvc: ApplicationService,
     public identity: EffectiveIdentityService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private lists: MasterListsService,
+    private i18n: I18nService
+  ) {
+    this.lists.load(['bank']);
+  }
 
   ngOnInit(): void {
     const userId = this.identity.userId; const email = this.identity.userEmail;
@@ -161,16 +166,13 @@ export class ConnectBankComponent implements OnInit {
     this.primaryAccountId.set(id);
   }
 
-  get manualBank(): IsraeliBank | undefined {
-    return this.israeliBanks.find(b => b.code === this.manualBankCode);
-  }
-
-  get manualBranches(): IsraeliBankBranch[] {
-    return this.manualBank?.branches || [];
-  }
+  bankOptions(): FieldOption[] { return this.lists.options('bank'); }
+  manualBranchOptions(): FieldOption[] { return this.lists.bankBranchOptions(this.manualBankCode); }
+  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
 
   onManualBankChange(): void {
     this.manualBranchCode = '';
+    if (this.manualBankCode) this.lists.loadChildren('bank_branch', this.manualBankCode);
   }
 
   get manualFormValid(): boolean {
@@ -179,11 +181,11 @@ export class ConnectBankComponent implements OnInit {
 
   addManualAccount(): void {
     if (!this.manualFormValid) return;
-    const bank = this.manualBank;
+    const bank = this.lists.items('bank').find(b => b.code === this.manualBankCode);
     const last4 = this.manualAccountNumber.slice(-4);
     this.addAccount({
       id: crypto.randomUUID(),
-      bankName: bank?.name || '',
+      bankName: bank?.name.en || '',
       accountMasked: '**** **** **** ' + last4,
       avgBalance: null,
       transactions: null,

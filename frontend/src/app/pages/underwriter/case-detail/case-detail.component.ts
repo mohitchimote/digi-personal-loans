@@ -1,3 +1,6 @@
+import { MasterListsService } from '../../../core/services/master-lists.service';
+import { FieldOption } from '../../../core/services/form-builder.service';
+import { MasterLabelPipe } from '../../../shared/pipes/master-label.pipe';
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,7 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { DocumentService } from '../../../core/services/document.service';
 import { CaseOwnershipComponent } from '../../../shared/case-ownership/case-ownership.component';
 import { WorkflowService, CaseActions, CaseAction } from '../../../core/services/workflow.service';
-import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, REQUIRED_DOCUMENT_TYPES, BUSINESS_REQUIRED_DOCUMENT_TYPES, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
+import { LoanApplication, UnderwritingNote, GeneratedDocument, UploadedDocument, DataVerificationSummary, DataVerificationRule, DataVerificationAction, CaseMandate, CaseReferral, BusinessFinancialsAnalysis } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ficoToLenderGrade, dnbScoreToLenderGrade, dnbScoreToRiskClass } from '../../../core/utils/credit-score.util';
@@ -21,7 +24,7 @@ type TabKey = 'overview' | 'identity' | 'affordability' | 'creditRisk' | 'dataVe
 @Component({
   selector: 'app-uw-case-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent, WorkflowActionsComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe, CaseSectionNavComponent, CaseOwnershipComponent, WorkflowActionsComponent, MasterLabelPipe],
   templateUrl: './case-detail.component.html',
   styleUrl: './case-detail.component.scss'
 })
@@ -31,14 +34,16 @@ export class CaseDetailComponent implements OnInit {
   notes = signal<UnderwritingNote[]>([]);
   generatedDocs = signal<GeneratedDocument[]>([]);
   uploadedDocs = signal<UploadedDocument[]>([]);
-  requiredTypes = REQUIRED_DOCUMENT_TYPES;
+  /** The documents expected for this case: the Document Type master items for its segment (personal or
+   * business), plus the guarantor's once a guarantor has been requested. */
   checklist = computed(() => {
     const receivedTypes = new Set(this.uploadedDocs().map(u => u.documentType));
-    const baseTypes = this.application()?.applicationType === 'BUSINESS' ? BUSINESS_REQUIRED_DOCUMENT_TYPES : this.requiredTypes;
-    const types = this.application()?.guarantorRequired
-      ? [...baseTypes, { type: 'GUARANTOR_ID', labelKey: 'docs.requiredGuarantorId' }]
-      : baseTypes;
-    return types.map(rt => ({ ...rt, received: receivedTypes.has(rt.type) }));
+    const app = this.application();
+    const segments = [app?.applicationType === 'BUSINESS' ? 'business' : 'personal', ...(app?.guarantorRequired ? ['guarantor'] : [])];
+    const he = this.i18n.lang() === 'he';
+    return this.lists.items('document_type')
+      .filter(i => segments.includes(String(i.attributes['segment'])))
+      .map(i => ({ type: i.code, label: he ? i.name.he || i.name.en : i.name.en, received: receivedTypes.has(i.code) }));
   });
   loading = signal(true);
   error = signal('');
@@ -193,6 +198,9 @@ export class CaseDetailComponent implements OnInit {
     return (this.approvedAmount ?? 0) > limit;
   }
 
+  /** Master lists for labels and the employment-status dropdown shown while editing. */
+  readonly lists = inject(MasterListsService);
+
   constructor(
     private route: ActivatedRoute,
     private appSvc: ApplicationService,
@@ -200,7 +208,9 @@ export class CaseDetailComponent implements OnInit {
     private docSvc: DocumentService,
     private router: Router,
     private i18n: I18nService
-  ) {}
+  ) {
+    this.lists.load(['document_type']);
+  }
 
   statusLabel(status: string): string {
     return this.i18n.t('status.' + status);
@@ -512,8 +522,7 @@ export class CaseDetailComponent implements OnInit {
   }
 
   uploadedTypeLabel(type: string): string {
-    const match = this.requiredTypes.find(t => t.type === type);
-    return match ? this.i18n.t(match.labelKey) : type;
+    return this.lists.label('document_type', type);
   }
 
   docLabel(type: string): string {
@@ -544,8 +553,9 @@ export class CaseDetailComponent implements OnInit {
 
   staffContactHint(): string {
     const p = this.personal;
-    if (p.staffName) return p.staffName;
-    if (p.preferredBranch) return p.preferredBranch;
+    this.lists.load(['branch', 'branch_staff']);
+    if (p.staffName) return this.lists.label('branch_staff', p.staffName);
+    if (p.preferredBranch) return this.lists.label('branch', p.preferredBranch);
     return '';
   }
 
@@ -583,6 +593,9 @@ export class CaseDetailComponent implements OnInit {
     return this.notes().filter(n => n.section === sectionKey);
   }
 
+  statusOptions(): FieldOption[] { return this.lists.options('employment_status'); }
+  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+
   isEditing(section: string): boolean {
     return this.editingSection() === section;
   }
@@ -590,6 +603,11 @@ export class CaseDetailComponent implements OnInit {
   startEdit(section: string, current: any): void {
     this.editingSection.set(section);
     this.editBuffer = JSON.parse(JSON.stringify(current || {}));
+    // Older records hold the status as display text; show it as the matching choice.
+    if (section === 'incomeEmployment' && this.editBuffer.employmentStatus) {
+      this.lists.load(['employment_status']);
+      this.editBuffer.employmentStatus = this.lists.normalise('employment_status', this.editBuffer.employmentStatus) ?? this.editBuffer.employmentStatus;
+    }
   }
 
   cancelEdit(): void {

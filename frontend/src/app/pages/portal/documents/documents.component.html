@@ -38,7 +38,7 @@
     <div class="checklist">
       <div class="checklist-item" *ngFor="let item of checklist()" [class.received]="item.received">
         <span class="checklist-icon">{{ item.received ? '✅' : '⬜' }}</span>
-        <span class="checklist-label">{{ item.labelKey | translate }}</span>
+        <span class="checklist-label">{{ item.label }}</span>
         <span class="checklist-status">{{ item.received ? ('docs.received' | translate) : ('docs.notReceived' | translate) }}</span>
       </div>
     </div>
@@ -52,7 +52,7 @@
     <div class="db-form-group" style="max-width:320px">
       <label>{{ 'docs.whichDocument' | translate }}</label>
       <select class="db-select" [(ngModel)]="selectedDocType">
-        <option *ngFor="let t of requiredTypes" [value]="t.type">{{ t.labelKey | translate }}</option>
+        <option *ngFor="let t of requiredTypes()" [value]="t.type">{{ t.label }}</option>
       </select>
     </div>
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, effect, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -6,7 +6,9 @@ import { ApplicationService } from '../../../../core/services/application.servic
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
-import { ISRAELI_BANKS, IsraeliBank, IsraeliBankBranch } from '../../../../core/models';
+import { MasterListsService } from '../../../../core/services/master-lists.service';
+import { FieldOption } from '../../../../core/services/form-builder.service';
+import { I18nService } from '../../../../core/i18n/i18n.service';
 
 /** Business equivalent of DirectDebitComponent — repayment account capture is identical in shape,
  * just simplified to a single business account (no joint-applicant account-source picker). */
@@ -24,9 +26,12 @@ export class BusinessDirectDebitComponent implements OnInit {
   readOnly = signal(false);
   prefilledFromBank = signal(false);
   repaymentDays = Array.from({ length: 28 }, (_, i) => i + 1);
-  banks: IsraeliBank[] = ISRAELI_BANKS;
+  /** Set when a bank is filled in for the customer: pick that bank's first branch once its branches arrive. */
+  private wantDefaultBranch = false;
 
-  constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router) {
+  constructor(private fb: FormBuilder, private appSvc: ApplicationService, public identity: EffectiveIdentityService, private router: Router,
+              private lists: MasterListsService, private i18n: I18nService) {
+    this.lists.load(['bank']);
     this.form = this.fb.group({
       accountHolderName: ['', Validators.required],
       bankCode:          ['', Validators.required],
@@ -36,23 +41,35 @@ export class BusinessDirectDebitComponent implements OnInit {
       confirmAuthorisation: [false, Validators.requiredTrue],
     });
 
-    this.form.get('bankCode')!.valueChanges.subscribe(() => this.form.patchValue({ branchCode: '' }, { emitEvent: false }));
+    this.form.get('bankCode')!.valueChanges.subscribe((code) => {
+      this.form.patchValue({ branchCode: '' }, { emitEvent: false });
+      if (code) this.lists.loadChildren('bank_branch', code);
+    });
+    // Once a filled-in bank's branches have arrived, choose the first (what the old list did).
+    effect(() => {
+      const branches = this.lists.bankBranchOptions(this.form.value.bankCode);
+      if (this.wantDefaultBranch && branches.length && !this.form.value.branchCode) {
+        this.wantDefaultBranch = false;
+        this.form.patchValue({ branchCode: branches[0].value }, { emitEvent: false });
+      }
+    });
   }
 
-  get selectedBank(): IsraeliBank | undefined {
-    return this.banks.find(b => b.code === this.form.value.bankCode);
+  get selectedBank(): { code: string } | undefined {
+    return this.lists.items('bank').find(b => b.code === this.form.value.bankCode);
   }
 
-  get selectedBankBranches(): IsraeliBankBranch[] {
-    return this.selectedBank?.branches || [];
-  }
+  bankOptions(): FieldOption[] { return this.lists.options('bank'); }
+  branchOptions(): FieldOption[] { return this.lists.bankBranchOptions(this.form.value.bankCode); }
+  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
 
+  /** Names are stored on the mandate in English, as before. */
   private bankDisplayName(code: string): string {
-    return this.banks.find(b => b.code === code)?.name || '';
+    return this.lists.items('bank').find(b => b.code === code)?.name.en || '';
   }
 
   get selectedBranchName(): string {
-    return this.selectedBankBranches.find(b => b.code === this.form.value.branchCode)?.name || '';
+    return this.branchOptions().find(b => b.value === this.form.value.branchCode)?.label.en || '';
   }
 
   ngOnInit(): void {
@@ -66,6 +83,7 @@ export class BusinessDirectDebitComponent implements OnInit {
         if (app.directDebitJson) {
           const data = JSON.parse(app.directDebitJson);
           this.form.patchValue(data);
+          if (data.bankCode) this.lists.loadChildren('bank_branch', data.bankCode);
           return;
         }
 
@@ -73,13 +91,15 @@ export class BusinessDirectDebitComponent implements OnInit {
         const bankConnection = JSON.parse(app.businessBankConnectionJson);
         const company = app.companyDetailsJson ? JSON.parse(app.companyDetailsJson) : {};
         if (bankConnection.connected) {
-          const match = this.banks.find(b => bankConnection.bankName?.includes(b.name) || b.name.includes(bankConnection.bankName));
+          const match = this.lists.bankByName(bankConnection.bankName || '');
           this.form.patchValue({
             accountHolderName: company.companyName || this.identity.companyName || '',
             bankCode: match?.code || '',
-            branchCode: match?.branches[0]?.code || '',
+            branchCode: '',
             accountNumber: String(Math.floor(10000000 + Math.random() * 89999999)),
           });
+          this.wantDefaultBranch = !!match;
+          if (match) this.lists.loadChildren('bank_branch', match.code);
           this.prefilledFromBank.set(true);
         }
       }

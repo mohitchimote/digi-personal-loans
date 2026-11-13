@@ -10,6 +10,7 @@ import { allRoleConfigs } from "../roles";
 import { recordAudit } from "../audit";
 import { sendNotification, getPreferredLanguage } from "../notifications";
 import { sendTemplatedEmail } from "../email";
+import { warmLoanPurposeNames } from "../app-format";
 import { getAutoApprovalThreshold } from "../affordability-rules";
 import { generateOfferPack } from "../document-pack";
 import { authoriseCardPayment } from "../card-payment";
@@ -224,6 +225,7 @@ async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: Trans
         lastNote = await insertNote(db, app.applicationRef, String(e.section ?? "general"), String(e.text ?? ""), String(e.noteType ?? "NOTE"), actor.name);
         break;
       case "NOTIFY": {
+        await warmLoanPurposeNames(db);
         const spec = buildNotification(String(e.template), app, await language(), (e.vars ?? {}) as Vars);
         if (spec) await sendNotification(db, app.customerId, spec.title, spec.message, spec.type, app.applicationRef);
         break;

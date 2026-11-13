@@ -32,7 +32,9 @@ const TYPES: TypeSeed[] = [
       { key: "address", label: { en: "Address", he: "כתובת" }, kind: "text" },
       { key: "phone", label: { en: "Phone", he: "טלפון" }, kind: "text" },
     ] },
-  { code: "employment_status", en: "Employment Status", he: "מצב תעסוקתי", desc: "" },
+  { code: "branch_staff", en: "Branch Staff", he: "צוות סניף", desc: "Staff a customer can name when assisted at a branch (demo data).", parent: "branch" },
+  { code: "employment_status", en: "Employment Status", he: "מצב תעסוקתי", desc: "",
+    attrs: [{ key: "isEmployed", label: { en: "Has employment details (employer, job title)", he: "יש פרטי תעסוקה (מעסיק, תפקיד)" }, kind: "boolean" }] },
   { code: "employment_duration", en: "Employment Duration", he: "משך העסקה", desc: "Time in current employment." },
   { code: "residential_status", en: "Residential Status", he: "סטטוס מגורים", desc: "" },
   { code: "education_level", en: "Education Level", he: "השכלה", desc: "" },
@@ -42,7 +44,7 @@ const TYPES: TypeSeed[] = [
   { code: "loan_purpose", en: "Loan Purpose", he: "מטרת ההלוואה", desc: "Personal loans." },
   { code: "business_loan_purpose", en: "Business Loan Purpose", he: "מטרת הלוואה עסקית", desc: "Business loans." },
   { code: "document_type", en: "Document Type", he: "סוג מסמך", desc: "Supporting documents the applicant uploads.",
-    attrs: [{ key: "segment", label: { en: "Applies to (personal / business)", he: "חל על (פרטי / עסקי)" }, kind: "text" }] },
+    attrs: [{ key: "segment", label: { en: "Applies to (personal / business / guarantor)", he: "חל על (פרטי / עסקי / ערב)" }, kind: "text" }] },
   { code: "decline_reason", en: "Decline Reason", he: "סיבת דחייה", desc: "Staff: why an application was declined." },
   { code: "send_back_reason", en: "Send-back Reason", he: "סיבת החזרה", desc: "Staff: why an application was sent back to the customer." },
   { code: "bank", en: "Bank", he: "בנק", desc: "External banks, for direct debit. Source: Bank of Israel." },
@@ -66,9 +68,12 @@ const SIMPLE: Record<string, Row[]> = {
   gender: [["MALE", "Male", "זכר"], ["FEMALE", "Female", "נקבה"], ["OTHER", "Other", "אחר"], ["NOT_SAID", "Prefer not to say", "מעדיף/ה שלא לציין"]],
   marital_status: [["SINGLE", "Single", "רווק/ה"], ["MARRIED", "Married", "נשוי/אה"], ["DIVORCED", "Divorced", "גרוש/ה"],
     ["WIDOWED", "Widowed", "אלמן/ה"], ["CIVIL_PARTNERSHIP", "Civil Partnership", "ידוע/ה בציבור"], ["SEPARATED", "Separated", "פרוד/ה"]],
-  employment_status: [["FULL_TIME", "Full-Time Employed", "שכיר/ה במשרה מלאה"], ["PART_TIME", "Part-Time Employed", "שכיר/ה במשרה חלקית"],
-    ["SELF_EMPLOYED", "Self-Employed", "עצמאי/ת"], ["CONTRACT", "Contract", "עובד/ת בחוזה"], ["RETIRED", "Retired", "פנסיונר/ית"],
-    ["STUDENT", "Student", "סטודנט/ית"], ["UNEMPLOYED", "Unemployed", "מובטל/ת"]],
+  // isEmployed drives whether the form asks for employer details: data, not hard-coded status names.
+  employment_status: [["FULL_TIME", "Full-Time Employed", "שכיר/ה במשרה מלאה", { attrs: { isEmployed: true } }],
+    ["PART_TIME", "Part-Time Employed", "שכיר/ה במשרה חלקית", { attrs: { isEmployed: true } }],
+    ["SELF_EMPLOYED", "Self-Employed", "עצמאי/ת", { attrs: { isEmployed: true } }], ["CONTRACT", "Contract", "עובד/ת בחוזה", { attrs: { isEmployed: true } }],
+    ["RETIRED", "Retired", "פנסיונר/ית", { attrs: { isEmployed: false } }],
+    ["STUDENT", "Student", "סטודנט/ית", { attrs: { isEmployed: false } }], ["UNEMPLOYED", "Unemployed", "מובטל/ת", { attrs: { isEmployed: false } }]],
   employment_duration: [["LT_6M", "Less than 6 months", "פחות מ-6 חודשים"], ["M6_12", "6–12 months", "6–12 חודשים"], ["Y1_2", "1–2 years", "1–2 שנים"],
     ["Y2_5", "2–5 years", "2–5 שנים"], ["Y5_PLUS", "5+ years", "5 שנים ומעלה"]],
   residential_status: [["OWNER", "Owner (no mortgage)", "בעל/ת דירה"], ["MORTGAGED", "Owner with mortgage", "בעל/ת דירה עם משכנתא"],
@@ -83,7 +88,9 @@ const SIMPLE: Record<string, Row[]> = {
     ["FRIEND", "Friend", "חבר/ה"], ["COLLEAGUE", "Colleague", "עמית לעבודה"], ["OTHER", "Other", "אחר"]],
   loan_purpose: [["HOME_IMPROVEMENT", "Home Improvement", "שיפוץ הבית"], ["DEBT_CONSOLIDATION", "Debt Consolidation", "איחוד הלוואות"],
     ["VEHICLE_PURCHASE", "Vehicle Purchase", "רכישת רכב"], ["EDUCATION", "Education", "לימודים"], ["MEDICAL_EXPENSES", "Medical Expenses", "הוצאות רפואיות"],
-    ["WEDDING", "Wedding", "חתונה"], ["TRAVEL", "Travel", "נסיעות"], ["BUSINESS", "Business", "עסק"], ["OTHER", "Other", "אחר"]],
+    ["WEDDING", "Wedding", "חתונה"], ["TRAVEL", "Travel", "נסיעות"], ["BUSINESS", "Business", "עסק"], ["OTHER", "Other", "אחר"],
+    // Set by the pre-approved-offer journey, which fills the application in for the customer.
+    ["PRE_APPROVED_OFFER", "Pre-Approved Offer", "הצעה מאושרת מראש"]],
   business_loan_purpose: [["WORKING_CAPITAL", "Working Capital", "הון חוזר"], ["EQUIPMENT_PURCHASE", "Equipment Purchase", "רכישת ציוד"],
     ["BUSINESS_EXPANSION", "Business Expansion", "הרחבת העסק"], ["INVENTORY_FINANCING", "Inventory Financing", "מימון מלאי"],
     ["DEBT_REFINANCING", "Debt Refinancing", "מיחזור חובות"], ["COMMERCIAL_PROPERTY", "Commercial Property", "נכס מסחרי"], ["OTHER", "Other", "אחר"]],
@@ -92,7 +99,9 @@ const SIMPLE: Record<string, Row[]> = {
     ["BANK_STATEMENTS", "Bank Statements", "דפי חשבון בנק", { attrs: { segment: "personal" } }], ["PROOF_OF_ADDRESS", "Proof of Address", "אישור כתובת", { attrs: { segment: "personal" } }],
     ["CERTIFICATE_OF_INCORPORATION", "Certificate of Incorporation", "תעודת התאגדות", { attrs: { segment: "business" } }],
     ["FINANCIAL_STATEMENTS", "Financial Statements", "דוחות כספיים", { attrs: { segment: "business" } }],
-    ["BUSINESS_BANK_STATEMENTS", "Business Bank Statements", "דפי חשבון בנק עסקי", { attrs: { segment: "business" } }]],
+    ["BUSINESS_BANK_STATEMENTS", "Business Bank Statements", "דפי חשבון בנק עסקי", { attrs: { segment: "business" } }],
+    // Only expected once a guarantor has been requested on the case.
+    ["GUARANTOR_ID", "Guarantor ID", "תעודת זהות של ערב", { attrs: { segment: "guarantor" } }]],
   decline_reason: [["AFFORDABILITY", "Affordability", "יכולת החזר"], ["CREDIT_HISTORY", "Credit history", "היסטוריית אשראי"],
     ["INCOMPLETE_DOCUMENTS", "Incomplete documents", "מסמכים חסרים"], ["IDENTITY_NOT_VERIFIED", "Identity could not be verified", "לא ניתן לאמת זהות"],
     ["POLICY", "Outside lending policy", "מחוץ למדיניות האשראי"], ["OTHER", "Other", "אחר"]],
@@ -120,6 +129,12 @@ TYPES.forEach((t, i) => {
     `VALUES (${q(t.code)}, ${q(t.en)}, ${q(t.he)}, ${t.desc ? q(t.desc) : "NULL"}, ${t.parent ? q(t.parent) : "NULL"}, ${t.parentOptional ? 0 : 1}, ${q(JSON.stringify(t.attrs ?? []))}, 1, ${(i + 1) * 10}, ${q(now)});`,
   );
 });
+// Databases seeded before a type had extra fields: fill them in, but only where nobody has set any.
+for (const t of TYPES) {
+  if (t.attrs?.length) {
+    out.push(`UPDATE master_types SET attribute_defs = ${q(JSON.stringify(t.attrs))} WHERE code = ${q(t.code)} AND attribute_defs = '[]';`);
+  }
+}
 out.push("");
 
 // refreshNames: also bring names of already-seeded rows up to date, but only rows an admin has never
@@ -133,6 +148,10 @@ function items(type: string, rows: Row[], parentType?: string, refreshNames = fa
       `VALUES (${q(type)}, ${q(code)}, ${q(en)}, ${q(he)}, ${parent}, ${(i + 1) * 10}, 1, ${q(JSON.stringify(extra?.attrs ?? {}))}, ${q(now)})` +
       (refreshNames ? ` ON CONFLICT(type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he, sort_order = excluded.sort_order WHERE master_items.updated_at IS NULL;` : ";"),
     );
+    // Items seeded before they carried attributes: fill them in, only where nobody has edited or set any.
+    if (extra?.attrs) {
+      out.push(`UPDATE master_items SET attributes = ${q(JSON.stringify(extra.attrs))} WHERE type_code = ${q(type)} AND code = ${q(code)} AND updated_at IS NULL AND attributes = '{}';`);
+    }
   });
   out.push("");
 }
@@ -146,6 +165,19 @@ SIMPLE.branch = [
   ["NTN-CENTER", "Netanya - City Center", "נתניה - מרכז העיר"], ["ETH-TOURIST", "Eilat - Tourist Center", "אילת - מרכז התיירות"],
 ];
 for (const [type, rows] of Object.entries(SIMPLE)) items(type, rows);
+
+// Demo staff per branch (what the "assisted by staff" question offers today). Codes are generated from
+// the English name, like any item an admin adds.
+const STAFF: Record<string, [string, string][]> = {
+  "TLV-ROTHSCHILD": [["Yael Cohen", "יעל כהן"], ["Itai Mor", "איתי מור"], ["Shira Ben-Ari", "שירה בן-ארי"], ["Omer Katz", "עומר כץ"]],
+  "JLM-JAFFA": [["Avi Steinberg", "אבי שטיינברג"], ["Noa Friedman", "נועה פרידמן"], ["Eitan Azulay", "איתן אזולאי"]],
+  "HFA-HADAR": [["Liat Peretz", "ליאת פרץ"], ["Ronen Asaf", "רונן אסף"], ["Dana Shapiro", "דנה שפירא"], ["Gil Bar-On", "גיל בר-און"]],
+  "BS-OLDCITY": [["Maya Sasson", "מאיה ששון"], ["Tomer Halevi", "תומר הלוי"], ["Adi Malka", "עדי מלכה"]],
+  "NTN-CENTER": [["Yossi Amar", "יוסי עמר"], ["Keren Tzur", "קרן צור"], ["Nadav Eliyahu", "נדב אליהו"], ["Sigal Dotan", "סיגל דותן"]],
+  "ETH-TOURIST": [["Roni Vaknin", "רוני וקנין"], ["Eyal Barkan", "אייל ברקן"], ["Hila Marom", "הילה מרום"]],
+};
+items("branch_staff", Object.entries(STAFF).flatMap(([branch, people]) =>
+  people.map(([en, he]) => [en.toUpperCase().replace(/[^A-Z0-9]+/g, "_"), en, he, { parent: branch }] as Row)), "branch");
 items("country", [...ISO_COUNTRIES].sort((a, b) => a[1].localeCompare(b[1], "en")).map(([c, en, he]) => [c, en, he] as Row), undefined, true);
 
 // Organisation levels named Region / Branch pick their units from the matching masters by default.

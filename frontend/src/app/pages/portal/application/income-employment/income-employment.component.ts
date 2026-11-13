@@ -1,10 +1,12 @@
-import { Component, OnInit, signal } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, OnInit, effect, signal } from '@angular/core';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApplicationService } from '../../../../core/services/application.service';
 import { EffectiveIdentityService } from '../../../../core/services/effective-identity.service';
-import { EMPLOYMENT_STATUSES } from '../../../../core/models';
+import { MasterListsService } from '../../../../core/services/master-lists.service';
+import { FieldOption } from '../../../../core/services/form-builder.service';
+import { reconcileStoredValue } from '../../../../shared/master-options';
 import { ApplicationAsideComponent } from '../../../../shared/application-aside/application-aside.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../../core/i18n/i18n.service';
@@ -24,11 +26,14 @@ export class IncomeEmploymentComponent implements OnInit {
   appRef = signal('');
   readOnly = signal(false);
   numberOfApplicants = signal(1);
-  statuses = EMPLOYMENT_STATUSES;
   applicant2Error = signal('');
 
   constructor(private fb: FormBuilder, private appSvc: ApplicationService,
-              public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService) {
+              public identity: EffectiveIdentityService, private router: Router, private i18n: I18nService,
+              private lists: MasterListsService) {
+    this.lists.load(['employment_status', 'employment_duration']);
+    // Saved records may hold the old display text ("Full-Time Employed"); map it to the code once the lists arrive.
+    effect(() => { this.lists.options('employment_status'); this.lists.options('employment_duration'); this.reconcileLegacyValues(); });
     this.form = this.fb.group({
       employmentStatus:   ['', Validators.required],
       employer:           [''],
@@ -74,6 +79,8 @@ export class IncomeEmploymentComponent implements OnInit {
           }
           if (data.applicant2) this.applicant2Form.patchValue(data.applicant2);
         }
+        // The lists may have arrived before this record did: map any old display text now.
+        this.reconcileLegacyValues();
         if (this.readOnly()) { this.form.disable(); this.applicant2Form.disable(); }
       }
     });
@@ -107,9 +114,35 @@ export class IncomeEmploymentComponent implements OnInit {
     this.additionalEmployments.removeAt(index);
   }
 
+  statusOptions(): FieldOption[] { return this.lists.options('employment_status'); }
+  durationOptions(): FieldOption[] { return this.lists.options('employment_duration'); }
+  optionLabel(o: FieldOption): string { return this.i18n.lang() === 'he' ? o.label.he || o.label.en : o.label.en; }
+
+  /** Whether an employment status carries employer details (employer, job title, duration). Read from the
+   * master's `isEmployed` attribute, so adding or renaming a status needs no code change. */
+  private hasEmployment(status: unknown): boolean {
+    const code = this.lists.normalise('employment_status', status);
+    if (!code) return !!status; // list not loaded yet (or unknown value): keep the section visible
+    return this.lists.items('employment_status').find((i) => i.code === code)?.attributes['isEmployed'] === true;
+  }
+
   isEmployedAt(group: any): boolean {
-    const s = group.get('employmentStatus')?.value;
-    return s && !['Retired', 'Unemployed', 'Student'].includes(s);
+    return this.hasEmployment(group.get('employmentStatus')?.value);
+  }
+
+  private reconcileLegacyValues(): void {
+    const fix = (control: AbstractControl | null, type: string) => {
+      const options = this.lists.options(type);
+      if (!control?.value || !options.length) return;
+      const fixed = reconcileStoredValue(options, control.value);
+      if (fixed === null) control.setValue('', { emitEvent: false });
+      else if (fixed !== control.value) control.setValue(fixed, { emitEvent: false });
+    };
+    const groups: (AbstractControl | null)[] = [this.form, this.applicant2Form, ...this.additionalEmployments.controls];
+    for (const g of groups) {
+      fix(g?.get('employmentStatus') ?? null, 'employment_status');
+      fix(g?.get('employmentDuration') ?? null, 'employment_duration');
+    }
   }
 
   get totalGrossIncome(): number {
@@ -153,8 +186,8 @@ export class IncomeEmploymentComponent implements OnInit {
 
   f(name: string) { return this.form.get(name); }
   f2(name: string) { return this.applicant2Form.get(name); }
-  isEmployed(): boolean { const s = this.f('employmentStatus')?.value; return s && !['Retired','Unemployed','Student'].includes(s); }
-  isEmployed2(): boolean { const s = this.f2('employmentStatus')?.value; return s && !['Retired','Unemployed','Student'].includes(s); }
+  isEmployed(): boolean { return this.hasEmployment(this.f('employmentStatus')?.value); }
+  isEmployed2(): boolean { return this.hasEmployment(this.f2('employmentStatus')?.value); }
 
   optLabel(namespace: string, value: string): string {
     return this.i18n.t(`${namespace}.${value}`);
