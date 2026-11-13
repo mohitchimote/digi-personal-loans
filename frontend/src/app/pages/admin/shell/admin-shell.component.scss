@@ -7,12 +7,27 @@
 .uw-header {
   display: flex;
   align-items: center;
-  gap: 32px;
-  padding: 0 24px;
+  gap: 16px;
+  padding: 0 24px 0 12px;
   height: 64px;
   background: var(--tcs-blue, #003F79);
   color: #fff;
   flex-shrink: 0;
+}
+
+.rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.12); }
+  &:focus-visible { outline: 2px solid var(--tcs-yellow, #F5A200); outline-offset: 2px; }
 }
 
 .uw-brand {
@@ -21,27 +36,11 @@
   gap: 8px;
   font-weight: 600;
   font-size: 1.05rem;
-}
-
-.uw-nav {
-  display: flex;
-  gap: 20px;
-  flex: 1;
-}
-
-.uw-nav a {
-  color: rgba(255, 255, 255, 0.8);
-  text-decoration: none;
-  font-size: 0.92rem;
-  padding: 8px 0;
-  border-bottom: 2px solid transparent;
-}
-
-.uw-nav a.active,
-.uw-nav a:hover {
   color: #fff;
-  border-bottom-color: var(--tcs-yellow, #F5A200);
+  text-decoration: none;
 }
+
+.uw-spacer { flex: 1; }
 
 .uw-header-right {
   display: flex;
@@ -55,9 +54,79 @@
   }
 }
 
+.uw-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+// Left rail. Logical properties (border-inline-end, padding-inline) so it mirrors under
+// html[dir="rtl"] without a separate stylesheet.
+.rail {
+  width: 248px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 8px 24px;
+  background: #fff;
+  border-inline-end: 1px solid rgba(0, 0, 0, 0.08);
+  transition: width 0.2s ease;
+
+  &.collapsed {
+    width: 64px;
+    .rail-label { display: none; }
+    .rail-group-title { height: 1px; margin: 10px 8px; padding: 0; overflow: hidden; background: rgba(0, 0, 0, 0.08); font-size: 0; }
+    .rail-item { justify-content: center; padding: 10px 0; }
+  }
+}
+
+.rail-group { margin-top: 12px; }
+
+.rail-group-title {
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: rgba(0, 0, 0, 0.78);
+  text-decoration: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  .material-icons { font-size: 20px; flex-shrink: 0; }
+  &:hover { background: rgba(0, 63, 121, 0.07); }
+  &:focus-visible { outline: 2px solid var(--tcs-blue, #003F79); outline-offset: -2px; }
+  &.active {
+    background: rgba(0, 63, 121, 0.1);
+    color: var(--tcs-blue, #003F79);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--tcs-yellow, #F5A200);
+  }
+}
+
+:host-context(html[dir="rtl"]) .rail-item.active { box-shadow: inset -3px 0 0 var(--tcs-yellow, #F5A200); }
+
 .uw-content {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   padding: 32px;
   background: var(--off-white);
+}
+
+// Phone width: the rail starts collapsed to icons only, so content keeps most of the screen.
+@media (max-width: 720px) {
+  .uw-header { padding-inline-end: 12px; }
+  .header-name { display: none; }
+  .rail:not(.collapsed) { position: absolute; z-index: 20; height: calc(100vh - 64px); box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15); }
+  .uw-content { padding: 16px; }
 }

@@ -139,7 +139,8 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/shell/admin-shell.component').then(m => m.AdminShellComponent),
     canActivate: [adminGuard],
     children: [
-      { path: '', redirectTo: 'users', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      { path: 'home', loadComponent: () => import('./pages/admin/home/admin-home.component').then(m => m.AdminHomeComponent) },
       { path: 'users', loadComponent: () => import('./pages/admin/users/admin-users.component').then(m => m.AdminUsersComponent) },
       { path: 'faqs',  loadComponent: () => import('./pages/admin/faqs/admin-faqs.component').then(m => m.AdminFaqsComponent) },
       { path: 'rules', loadComponent: () => import('./pages/admin/rules/admin-rules.component').then(m => m.AdminRulesComponent) },

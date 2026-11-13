@@ -1,22 +1,15 @@
 <div class="uw-shell">
   <header class="uw-header">
-    <div class="uw-brand">
+    <button class="rail-toggle" type="button" (click)="toggleRail()"
+            [attr.aria-label]="(collapsed() ? 'admin.nav.expand' : 'admin.nav.collapse') | translate"
+            [attr.aria-expanded]="!collapsed()">
+      <span class="material-icons">{{ collapsed() ? 'menu' : 'menu_open' }}</span>
+    </button>
+    <a class="uw-brand" routerLink="/admin/home">
       <app-brand-logo iconClass="mi-lg" />
       <span>{{ 'admin.brand' | translate }}</span>
-    </div>
-    <nav class="uw-nav">
-      <a routerLink="/admin/users" routerLinkActive="active">{{ 'admin.users' | translate }}</a>
-      <a routerLink="/admin/faqs" routerLinkActive="active">{{ 'admin.faqs' | translate }}</a>
-      <a routerLink="/admin/roles" routerLinkActive="active">{{ 'admin.roles' | translate }}</a>
-      <a routerLink="/admin/organisation" routerLinkActive="active">{{ 'admin.org' | translate }}</a>
-      <a routerLink="/admin/rules" routerLinkActive="active">{{ 'admin.rules' | translate }}</a>
-      <a routerLink="/admin/mandates" routerLinkActive="active">{{ 'admin.mandates' | translate }}</a>
-      <a routerLink="/admin/products" routerLinkActive="active">{{ 'admin.products' | translate }}</a>
-      <a routerLink="/admin/branding" routerLinkActive="active">{{ 'admin.branding' | translate }}</a>
-      <a routerLink="/admin/email-templates" routerLinkActive="active">{{ 'admin.emailTemplates' | translate }}</a>
-      <a routerLink="/admin/form-builder" routerLinkActive="active">{{ 'admin.formBuilder' | translate }}</a>
-      <a routerLink="/admin/workflow" routerLinkActive="active">{{ 'admin.wf' | translate }}</a>
-    </nav>
+    </a>
+    <div class="uw-spacer"></div>
     <div class="uw-header-right">
       <app-language-switcher />
       <div class="header-user">
@@ -27,7 +20,26 @@
     </div>
   </header>
 
-  <div class="uw-content">
-    <router-outlet />
+  <div class="uw-body">
+    <nav class="rail" [class.collapsed]="collapsed()" [attr.aria-label]="'admin.brand' | translate">
+      <a class="rail-item rail-home" routerLink="/admin/home" routerLinkActive="active"
+         [attr.title]="collapsed() ? ('admin.nav.home' | translate) : null">
+        <span class="material-icons">dashboard</span>
+        <span class="rail-label">{{ 'admin.nav.home' | translate }}</span>
+      </a>
+      <div class="rail-group" *ngFor="let group of nav">
+        <div class="rail-group-title">{{ group.labelKey | translate }}</div>
+        <a class="rail-item" *ngFor="let item of group.items"
+           [routerLink]="item.route" routerLinkActive="active"
+           [attr.title]="collapsed() ? (item.labelKey | translate) : null">
+          <span class="material-icons">{{ item.icon }}</span>
+          <span class="rail-label">{{ item.labelKey | translate }}</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="uw-content">
+      <router-outlet />
+    </main>
   </div>
 </div>

@@ -1,0 +1,17 @@
+<div class="admin-home">
+  <h1>{{ 'admin.nav.homeTitle' | translate }}</h1>
+  <p class="intro">{{ 'admin.nav.homeIntro' | translate }}</p>
+
+  <section class="group" *ngFor="let group of nav">
+    <h2>{{ group.labelKey | translate }}</h2>
+    <div class="cards">
+      <a class="card" *ngFor="let item of group.items" [routerLink]="item.route">
+        <span class="material-icons card-icon">{{ item.icon }}</span>
+        <span class="card-body">
+          <span class="card-title">{{ item.labelKey | translate }}</span>
+          <span class="card-desc">{{ item.descKey | translate }}</span>
+        </span>
+      </a>
+    </div>
+  </section>
+</div>
