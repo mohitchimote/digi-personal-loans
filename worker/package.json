@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "node scripts/guard-stable.mjs && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply digibank --local",
-    "db:migrate:remote": "wrangler d1 migrations apply digibank --remote",
+    "db:migrate:remote": "node scripts/guard-stable.mjs && wrangler d1 migrations apply digibank --remote",
     "db:seed:generate": "tsx scripts/seed-generate.ts > seed.sql",
     "db:seed:local": "wrangler d1 execute digibank --local --file=./seed.sql",
     "db:seed:remote": "wrangler d1 execute digibank --remote --file=./seed.sql",
