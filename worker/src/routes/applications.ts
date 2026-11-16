@@ -523,14 +523,18 @@ applications.get("/staff-activity", async (c) => {
   // application waits on the customer in that status, which is exactly what "action items" surfaces.
   const q = await resolveQueue(c, ["activity-staff", "activity-banker"]);
   const db = getDb(c.env.DB);
-  const apps = await db.select().from(loanApplications).where(await queueWhere(c, q));
+  const where = await queueWhere(c, q);
+  const apps = await db.select().from(loanApplications).where(where);
   const appByRef = new Map(apps.map((a) => [a.applicationRef, a]));
   if (apps.length === 0) return c.json([]);
 
+  // A subquery, not `inArray(ref, apps.map(...))`: D1 allows at most 100 bound values per
+  // statement, so a list of every visible application's ref fails with a 500 once there are
+  // more than 100 (UAT had 139). The subquery only binds the queue's few status/scope values.
   const notes = await db
     .select()
     .from(underwritingNotes)
-    .where(inArray(underwritingNotes.applicationRef, apps.map((a) => a.applicationRef)))
+    .where(inArray(underwritingNotes.applicationRef, db.select({ ref: loanApplications.applicationRef }).from(loanApplications).where(where)))
     .orderBy(desc(underwritingNotes.createdAt))
     .limit(50);
 
