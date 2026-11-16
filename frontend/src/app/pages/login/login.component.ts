@@ -18,10 +18,13 @@ export class LoginComponent {
   form: FormGroup;
   loading = signal(false);
   error = signal('');
+  /** Set when the National ID has accounts at several lenders: the user picks one. */
+  lenderChoices = signal<{ code: string | null; name: string }[]>([]);
 
   constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
     this.form = this.fb.group({
       nationalId: ['', [Validators.required, Validators.pattern(/^\d{9}$/)]],
+      lenderCode: [''],
     });
     // Set by the 401 interceptor (session-expired.interceptor.ts) via AuthService.logout()'s
     // router state — history.state survives the navigation but not a later reload, which is the
@@ -30,17 +33,27 @@ export class LoginComponent {
     if (message) this.error.set(message);
   }
 
+  /** Sign in to the chosen lender's account (the picker shown for a shared National ID). */
+  chooseLender(code: string | null): void {
+    this.form.patchValue({ lenderCode: code ?? '' });
+    this.submit();
+  }
+
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
     this.error.set('');
+    this.lenderChoices.set([]);
 
-    this.auth.requestLoginOtp(this.form.value).subscribe({
+    const { nationalId, lenderCode } = this.form.value;
+    this.auth.requestLoginOtp({ nationalId, lenderCode: lenderCode?.trim() || undefined }).subscribe({
       next: res => {
         this.loading.set(false);
-        if (res.success) {
+        if (res.success && res.data.requiresLenderChoice) {
+          this.lenderChoices.set(res.data.lenders ?? []);
+        } else if (res.success) {
           this.router.navigate(['/login/verify-otp'], {
-            state: { nationalId: res.data.nationalId, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
+            state: { nationalId: res.data.nationalId, lenderCode: res.data.lenderCode ?? undefined, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
           });
         } else {
           this.error.set(res.message || 'Login failed.');

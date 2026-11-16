@@ -19,8 +19,8 @@ export interface SystemList {
   label: Bilingual;
   /** The master this list's entries hang under (staff belong to a branch). */
   parentTypeCode: string | null;
-  list(db: Db, opts: { parentCode?: string; q?: string; limit: number }): Promise<ListEntry[]>;
-  find(db: Db, code: string): Promise<EntryFacts | null>;
+  list(db: Db, opts: { lenderId: number; parentCode?: string; q?: string; limit: number }): Promise<ListEntry[]>;
+  find(db: Db, lenderId: number, code: string): Promise<EntryFacts | null>;
 }
 
 /** The branch master item an org unit belongs to: its own link, or the nearest ancestor's. */
@@ -51,11 +51,11 @@ const staff: SystemList = {
   code: "staff",
   label: { en: "Bank staff (from Users)", he: "צוות הבנק (מתוך משתמשים)" },
   parentTypeCode: "branch",
-  async list(db, { parentCode, q, limit }) {
-    const roles = await staffRoleCodes(db);
+  async list(db, { lenderId, parentCode, q, limit }) {
+    const roles = await staffRoleCodes(db, lenderId);
     if (!roles.length) return [];
     let rows = await db.select({ uuid: users.uuid, fullName: users.fullName, orgUnitId: users.orgUnitId })
-      .from(users).where(and(inArray(users.role, roles), eq(users.enabled, true)));
+      .from(users).where(and(eq(users.lenderId, lenderId), inArray(users.role, roles), eq(users.enabled, true)));
     if (parentCode) {
       const units = new Set(await unitsOfBranch(db, parentCode));
       rows = rows.filter((r) => r.orgUnitId != null && units.has(r.orgUnitId));
@@ -69,10 +69,10 @@ const staff: SystemList = {
       .slice(0, limit)
       .map((r) => ({ code: r.uuid, name: { en: r.fullName!, he: r.fullName! }, parentCode: parentCode ?? null, attributes: {} }));
   },
-  async find(db, code) {
-    const [u] = await db.select({ role: users.role, enabled: users.enabled, orgUnitId: users.orgUnitId }).from(users).where(eq(users.uuid, code)).limit(1);
+  async find(db, lenderId, code) {
+    const [u] = await db.select({ role: users.role, enabled: users.enabled, orgUnitId: users.orgUnitId }).from(users).where(and(eq(users.lenderId, lenderId), eq(users.uuid, code))).limit(1);
     if (!u) return null;
-    const isStaff = (await staffRoleCodes(db)).includes(u.role);
+    const isStaff = (await staffRoleCodes(db, lenderId)).includes(u.role);
     return { active: !!u.enabled && isStaff, parentCode: await branchCodeOfUnit(db, u.orgUnitId) };
   },
 };

@@ -47,32 +47,32 @@ export async function resolveMandate(
 }
 
 /** The ranked role immediately above `rank` (a referral target), or null at the top. */
-export async function nextRoleUp(db: Db, rank: number | null): Promise<RoleConfig | null> {
-  const ladder = (await allRoleConfigs(db)).filter((r) => r.rank != null && r.rank > (rank ?? -1)).sort((a, b) => a.rank! - b.rank!);
+export async function nextRoleUp(db: Db, lenderId: number, rank: number | null): Promise<RoleConfig | null> {
+  const ladder = (await allRoleConfigs(db, lenderId)).filter((r) => r.rank != null && r.rank > (rank ?? -1)).sort((a, b) => a.rank! - b.rank!);
   return ladder[0] ?? null;
 }
 
 /** Role codes sitting at or below a rank - used to hide referred cases from more junior roles. */
-export async function roleCodesAbove(db: Db, rank: number): Promise<string[]> {
-  return (await allRoleConfigs(db)).filter((r) => r.rank != null && r.rank > rank).map((r) => r.code);
+export async function roleCodesAbove(db: Db, lenderId: number, rank: number): Promise<string[]> {
+  return (await allRoleConfigs(db, lenderId)).filter((r) => r.rank != null && r.rank > rank).map((r) => r.code);
 }
 
 /** If the case is referred to a role above `role`, the label of that role (the case is locked to
  * it); otherwise null. */
 export async function referralLockLabel(
   db: Db,
-  app: { status: string; referredToRole: string | null },
+  app: { status: string; referredToRole: string | null; lenderId: number },
   role: RoleConfig
 ): Promise<string | null> {
   if (app.status !== "REFERRED_TO_SENIOR" || !app.referredToRole || role.rank == null) return null;
-  const target = (await allRoleConfigs(db)).find((r) => r.code === app.referredToRole);
+  const target = (await allRoleConfigs(db, app.lenderId)).find((r) => r.code === app.referredToRole);
   return target?.rank != null && role.rank < target.rank ? target.label : null;
 }
 
 /** A case referred to a role can only be acted on by that role or one higher on the ladder. */
 export async function assertCanActOnReferral(
   db: Db,
-  app: { status: string; referredToRole: string | null },
+  app: { status: string; referredToRole: string | null; lenderId: number },
   role: RoleConfig
 ): Promise<void> {
   const label = await referralLockLabel(db, app, role);

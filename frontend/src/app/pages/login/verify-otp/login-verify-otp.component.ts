@@ -16,6 +16,7 @@ import { BrandLogoComponent } from '../../../shared/brand-logo/brand-logo.compon
 })
 export class LoginVerifyOtpComponent {
   nationalId = '';
+  lenderCode: string | undefined;
   demoOtp = signal('');
   otp = '';
   loading = signal(false);
@@ -27,12 +28,13 @@ export class LoginVerifyOtpComponent {
     private router: Router
   ) {
     const state = this.router.getCurrentNavigation()?.extras.state as
-      { nationalId?: string; demoOtp?: string } | undefined;
+      { nationalId?: string; lenderCode?: string; demoOtp?: string } | undefined;
     if (!state?.nationalId) {
       this.router.navigate(['/login']);
       return;
     }
     this.nationalId = state.nationalId;
+    this.lenderCode = state.lenderCode;
     this.demoOtp.set(state.demoOtp || '');
   }
 
@@ -41,7 +43,7 @@ export class LoginVerifyOtpComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.auth.verifyLoginOtp({ nationalId: this.nationalId, otp: this.otp }).subscribe({
+    this.auth.verifyLoginOtp({ nationalId: this.nationalId, otp: this.otp, lenderCode: this.lenderCode }).subscribe({
       next: res => {
         this.loading.set(false);
         if (res.success) {
@@ -65,7 +67,7 @@ export class LoginVerifyOtpComponent {
   resend(): void {
     this.resending.set(true);
     this.error.set('');
-    this.auth.requestLoginOtp({ nationalId: this.nationalId }).subscribe({
+    this.auth.requestLoginOtp({ nationalId: this.nationalId, lenderCode: this.lenderCode }).subscribe({
       next: res => {
         this.resending.set(false);
         if (res.success) {

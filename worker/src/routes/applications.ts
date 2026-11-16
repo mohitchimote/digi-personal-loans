@@ -9,7 +9,7 @@ import { loanPurpose } from "../lib/app-format";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
 import { generateDataVerification, resolveDataVerificationRule } from "../lib/data-verification";
 import { generateBusinessFinancialsAnalysis } from "../lib/business-financials";
-import { requireAuth, assertEntitlement, isStaff } from "../middleware/auth";
+import { requireAuth, assertEntitlement, isStaff, requireLender } from "../middleware/auth";
 import { SECTION_SCHEMAS, formatZodIssues } from "../lib/section-schemas";
 import { caseScopeCondition, assertCaseVisible } from "../lib/org";
 import { resolveMandate, nextRoleUp, roleCodesAbove, referralLockLabel } from "../lib/mandates";
@@ -51,7 +51,7 @@ function actorName(c: Context<AppEnv>): string {
 async function referralVisibility(db: Db, c: Context<AppEnv>) {
   const rank = c.get("authRole").rank;
   if (rank == null) return undefined;
-  const above = await roleCodesAbove(db, rank);
+  const above = await roleCodesAbove(db, requireLender(c), rank);
   if (above.length === 0) return undefined;
   return or(ne(loanApplications.status, "REFERRED_TO_SENIOR"), isNull(loanApplications.referredToRole), notInArray(loanApplications.referredToRole, above));
 }
@@ -134,9 +134,10 @@ async function validateSectionData(
       const parentCodeValue = parentValue == null ? "" : String(parentValue);
       // A cascade whose parent has nothing under it yet (country without states, state without cities)
       // takes free text rather than blocking the customer; the master gets filled in later.
-      if (dep && parentCodeValue && await hasNoChildren(db, f.optionsSource.master, parentCodeValue)) continue;
+      if (dep && parentCodeValue && await hasNoChildren(db, app.lenderId, f.optionsSource.master, parentCodeValue)) continue;
       const problem = masterValueProblem({
         item: await loadMasterItemFacts(db, f.optionsSource.master, String(value), {
+          lenderId: app.lenderId,
           valueAttribute: f.optionsSource.valueAttribute,
           parentCode: parentValue == null ? undefined : String(parentValue),
         }),
@@ -571,7 +572,7 @@ applications.get("/:appRef/mandate", async (c) => {
   await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   const role = c.get("authRole");
   const mandate = await resolveMandate(db, role.code, app.orgUnitId, app.applicationType);
-  const next = await nextRoleUp(db, role.rank);
+  const next = await nextRoleUp(db, app.lenderId, role.rank);
   return c.json({
     limit: mandate.limit,
     nextRole: next ? { code: next.code, label: next.label } : null,

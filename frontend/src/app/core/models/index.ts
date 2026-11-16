@@ -19,9 +19,15 @@ export interface AuthResponse {
   companyIndustry?: string;
   companyFoundedYear?: number;
   previousLogin?: string | null;
+  /** The lender this session runs inside; null for a platform (super admin) session. */
+  lenderId?: number | null;
+  lenderCode?: string | null;
+  lenderName?: string | null;
 }
 
 export interface RegisterRequest {
+  /** Optional: implied when only one lender is active. */
+  lenderCode?: string;
   email: string;
   nationalId: string;
   idIssueDate: string;
@@ -49,6 +55,7 @@ export interface CustomerProfileResponse {
 
 export interface RegisterInitiatedResponse {
   email: string;
+  lenderCode?: string;
   // Demo-only: in production this would be sent via SMS/email, not returned in the API response.
   demoOtp: string;
   otpExpiresInSeconds: number;
@@ -57,22 +64,29 @@ export interface RegisterInitiatedResponse {
 export interface OtpVerifyRequest {
   email: string;
   otp: string;
+  lenderCode?: string;
 }
 
 export interface LoginOtpRequest {
   nationalId: string;
+  lenderCode?: string;
 }
 
 export interface LoginVerifyRequest {
   nationalId: string;
   otp: string;
+  lenderCode?: string;
 }
 
 export interface LoginOtpInitiatedResponse {
   nationalId: string;
+  lenderCode?: string | null;
   // Demo-only: in production this would be sent via SMS, not returned in the API response.
   demoOtp: string;
   otpExpiresInSeconds: number;
+  /** Set instead of a code when the National ID has an account at several lenders. */
+  requiresLenderChoice?: boolean;
+  lenders?: { code: string | null; name: string }[];
 }
 
 /** Stage, owner and SLA clock of a case, from the workflow definition. */

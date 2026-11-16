@@ -39,8 +39,8 @@ export class AuthService {
     );
   }
 
-  resendOtp(email: string): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
-    return this.http.post<any>(`${API}/register/resend-otp`, { email });
+  resendOtp(email: string, lenderCode?: string): Observable<{ success: boolean; message: string; data: RegisterInitiatedResponse }> {
+    return this.http.post<any>(`${API}/register/resend-otp`, { email, lenderCode });
   }
 
   /** Banker-assisted registration — creates the customer account pre-verified (the Banker has
@@ -146,7 +146,20 @@ export class AuthService {
   }
 
   get isAdmin(): boolean {
-    return this.role === 'ADMIN';
+    return this.role === 'ADMIN' || this.role === 'SUPER_ADMIN';
+  }
+
+  /** The platform super admin: belongs to no lender, administers all of them. */
+  get isSuperAdmin(): boolean {
+    return this.role === 'SUPER_ADMIN';
+  }
+
+  get lenderCode(): string | null {
+    return this.currentUser()?.lenderCode ?? null;
+  }
+
+  get lenderName(): string | null {
+    return this.currentUser()?.lenderName ?? null;
   }
 
   get isBusinessOwner(): boolean {

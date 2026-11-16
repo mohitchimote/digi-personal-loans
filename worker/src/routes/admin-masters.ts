@@ -6,7 +6,7 @@ import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { masterTypes, masterItems, orgLevels, orgUnits } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { SYSTEM_LISTS, isSystemList } from "../lib/system-lists";
 import { recordAudit } from "../lib/audit";
 import {
@@ -301,15 +301,15 @@ mastersAdmin.delete("/items/:id", async (c) => {
 
 export const masters = new Hono<AppEnv>();
 
-async function pickList(db: Db, typeCode: string, parentCode?: string, q?: string, limit = 2000) {
-  if (isSystemList(typeCode)) return SYSTEM_LISTS[typeCode].list(db, { parentCode, q, limit });
-  const [type] = await db.select().from(masterTypes).where(eq(masterTypes.code, typeCode)).limit(1);
+async function pickList(db: Db, lenderId: number, typeCode: string, parentCode?: string, q?: string, limit = 2000) {
+  if (isSystemList(typeCode)) return SYSTEM_LISTS[typeCode].list(db, { lenderId, parentCode, q, limit });
+  const [type] = await db.select().from(masterTypes).where(and(eq(masterTypes.lenderId, lenderId), eq(masterTypes.code, typeCode))).limit(1);
   if (!type) throw new AppError("Unknown master.", 404);
-  const conds = [eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)];
+  const conds = [eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)];
   if (parentCode) {
     if (!type.parentTypeCode) throw new AppError("This master has no parent master.");
     const [p] = await db.select({ id: masterItems.id }).from(masterItems)
-      .where(and(eq(masterItems.typeCode, type.parentTypeCode), eq(masterItems.code, parentCode))).limit(1);
+      .where(and(eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, type.parentTypeCode), eq(masterItems.code, parentCode))).limit(1);
     if (!p) return [];
     conds.push(eq(masterItems.parentId, p.id));
   }
@@ -348,7 +348,7 @@ masters.get("/", async (c) => {
   const types = (c.req.query("types") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 25);
   if (types.length === 0) throw new AppError("Pass ?types=code1,code2.");
   const result: Record<string, Awaited<ReturnType<typeof pickList>>> = {};
-  for (const t of types) result[t] = await pickList(db, t);
+  for (const t of types) result[t] = await pickList(db, requireLender(c), t);
   return c.json(result);
 });
 
@@ -357,5 +357,5 @@ masters.get("/", async (c) => {
 masters.get("/:type", async (c) => {
   const db = getDb(c.env.DB);
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 2000, 1), 5000);
-  return c.json(await pickList(db, c.req.param("type"), c.req.query("parent") || undefined, c.req.query("q") || undefined, limit));
+  return c.json(await pickList(db, requireLender(c), c.req.param("type"), c.req.query("parent") || undefined, c.req.query("q") || undefined, limit));
 });

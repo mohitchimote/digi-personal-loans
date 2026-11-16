@@ -37,5 +37,9 @@ export const ENTITLEMENT_CATALOG: EntitlementDef[] = [
 
 export const ENTITLEMENT_KEYS = ENTITLEMENT_CATALOG.map((e) => e.key);
 
+// Held only by the platform super admin; never assignable to a lender's roles, so deliberately not
+// in the catalog the Roles page lists.
+export const PLATFORM_ENTITLEMENT_KEYS = ["platform.lenders", "platform.enterLender"];
+
 export const SCOPES = ["ALL", "UNIT_TREE", "UNIT_ONLY"] as const;
 export type Scope = (typeof SCOPES)[number];

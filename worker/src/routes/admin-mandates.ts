@@ -6,7 +6,7 @@ import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { mandates, orgUnits } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import { allRoleConfigs } from "../lib/roles";
 
@@ -27,8 +27,8 @@ function actorOf(c: { get: (k: "authUser") => { fullName: string | null; email: 
   return { actor: a.fullName?.trim() || a.email, actorRole: a.role };
 }
 
-async function validate(db: ReturnType<typeof getDb>, body: z.infer<typeof bodySchema>, selfId?: number) {
-  const role = (await allRoleConfigs(db)).find((r) => r.code === body.roleCode);
+async function validate(db: ReturnType<typeof getDb>, lenderId: number, body: z.infer<typeof bodySchema>, selfId?: number) {
+  const role = (await allRoleConfigs(db, lenderId)).find((r) => r.code === body.roleCode);
   if (!role || role.rank == null) throw new AppError("Mandates can only be set for roles on the escalation ladder (give the role a rank first).");
   if (body.orgUnitId != null) {
     const [u] = await db.select().from(orgUnits).where(eq(orgUnits.id, body.orgUnitId)).limit(1);
@@ -42,7 +42,7 @@ async function validate(db: ReturnType<typeof getDb>, body: z.infer<typeof bodyS
 mandatesAdmin.get("/", async (c) => {
   const db = getDb(c.env.DB);
   const rows = await db.select().from(mandates).orderBy(asc(mandates.roleCode), asc(mandates.id));
-  const ladder = (await allRoleConfigs(db))
+  const ladder = (await allRoleConfigs(db, requireLender(c)))
     .filter((r) => r.rank != null)
     .sort((a, b) => a.rank! - b.rank!)
     .map((r) => ({ code: r.code, label: r.label, rank: r.rank }));
@@ -52,7 +52,7 @@ mandatesAdmin.get("/", async (c) => {
 mandatesAdmin.post("/", zValidator("json", bodySchema), async (c) => {
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
-  await validate(db, body);
+  await validate(db, requireLender(c), body);
   const [saved] = await db.insert(mandates).values(body).returning();
   await recordAudit(db, { eventType: "MANDATE_CREATED", subjectType: "Mandate", subjectId: String(saved.id), detail: `${body.roleCode} unit=${body.orgUnitId ?? "any"} type=${body.applicationType ?? "any"} max=${body.maxAmount}`, ...actorOf(c) });
   return c.json(saved, 201);
@@ -64,7 +64,7 @@ mandatesAdmin.put("/:id", zValidator("json", bodySchema), async (c) => {
   const [existing] = await db.select().from(mandates).where(eq(mandates.id, id)).limit(1);
   if (!existing) throw new AppError("Mandate not found.", 404);
   const body = c.req.valid("json");
-  await validate(db, body, id);
+  await validate(db, requireLender(c), body, id);
   const [saved] = await db.update(mandates).set(body).where(eq(mandates.id, id)).returning();
   await recordAudit(db, { eventType: "MANDATE_UPDATED", subjectType: "Mandate", subjectId: String(id), detail: `${existing.maxAmount} -> ${body.maxAmount}`, ...actorOf(c) });
   return c.json(saved);

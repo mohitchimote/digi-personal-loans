@@ -18,5 +18,8 @@ export type AppEnv = {
   Variables: {
     authUser: AuthUser;
     authRole: RoleConfig;
+    /** The lender every query in this request is scoped to. Null only for a platform (super admin)
+     * token that has not entered a lender; routes that need a lender use requireLender(c). */
+    lenderId: number | null;
   };
 };

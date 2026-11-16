@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: agreed decisions, schema not started. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phase 1 (schema, migration 0021) and phase 2 (identity) done on `dev`; phase 3 (query isolation) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -36,6 +36,13 @@ Unique changes (SQLite needs table rebuilds):
 
 ## Cloning a lender (super admin)
 Copies configuration only: roles and entitlements, mandates, org levels and units, the **published** workflow and form versions (as version 1), masters, letters and images, e-mail templates, branding, products, rules, and lender settings. No customers, cases, documents or notifications. Org-unit parents, letter versions and similar are re-keyed through an old-to-new id map, in one atomic D1 batch. It creates the new lender's first admin.
+
+## Phase 2 as built
+- JWT carries `lnd` (the user's lender id, or 0 for a platform token). `requireAuth` loads the user and applies `decideLenderContext`: the row decides, the claim must agree, suspended lenders are refused, and a lender-less row is valid only for `SUPER_ADMIN`. Tokens issued before this release have no `lnd` and are rejected, so everyone signs in again once after deploy.
+- `c.get("lenderId")` is the lender of the request (null for a super admin who has not entered one); `requireLender(c)` throws 400 for null.
+- `SUPER_ADMIN` is a built-in role (not a row in `roles`): every lender entitlement plus `platform.lenders` and `platform.enterLender`. It satisfies `requireRole("ADMIN")`. Admin 99 is **not** converted yet: that waits for phase 5, so DIGI is never left without an admin before "enter as lender" exists.
+- Login: `/login/request-otp` and `/login/verify-otp` take an optional `lenderCode`. One match proceeds; several return `requiresLenderChoice` plus the lender names, and the login page shows a picker. Registration takes an optional `lenderCode` (implied when only one lender is active); e-mail and National ID are unique per lender.
+- Role lookups (`resolveRole`, `allRoleConfigs`, `staffRoleCodes`) and the master pick-list helpers now take a lender id, so the compiler lists every call site. Routes that do not yet filter by lender are the phase 3 sweep (for example the roles admin queries, FAQs, branding).
 
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.

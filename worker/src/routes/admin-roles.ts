@@ -6,7 +6,7 @@ import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { roles, roleEntitlements, users } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { recordAudit } from "../lib/audit";
 import { ENTITLEMENT_CATALOG, ENTITLEMENT_KEYS, SCOPES } from "../lib/entitlements";
 import { CUSTOMER_ROLES, invalidateRoleConfig } from "../lib/roles";
@@ -79,7 +79,7 @@ rolesAdmin.post("/", zValidator("json", createSchema), async (c) => {
   if (body.entitlements.length) {
     await db.insert(roleEntitlements).values([...new Set(body.entitlements)].map((e) => ({ roleCode: body.code, entitlement: e })));
   }
-  invalidateRoleConfig();
+  invalidateRoleConfig(requireLender(c));
   await recordAudit(db, { eventType: "ROLE_CREATED", subjectType: "Role", subjectId: body.code, detail: `${body.label}; scope=${body.scope}; ${body.entitlements.length} entitlements`, ...actorOf(c) });
   return c.json({ code: body.code }, 201);
 });
@@ -98,7 +98,7 @@ rolesAdmin.put("/:code", zValidator("json", bodySchema), async (c) => {
   await db.update(roles).set({ label: body.label, description: body.description ?? null, scope: body.scope, escalationRank: body.escalationRank ?? null }).where(eq(roles.code, code));
   await db.delete(roleEntitlements).where(eq(roleEntitlements.roleCode, code));
   if (after.length) await db.insert(roleEntitlements).values(after.map((e) => ({ roleCode: code, entitlement: e })));
-  invalidateRoleConfig();
+  invalidateRoleConfig(requireLender(c));
   const changed = existing.scope !== body.scope || existing.escalationRank !== (body.escalationRank ?? null) || before.length !== after.length || before.some((e) => !after.includes(e));
   if (changed) await revokeSessionsForRole(db, code);
   const added = after.filter((e) => !before.includes(e));
@@ -120,7 +120,7 @@ rolesAdmin.delete("/:code", async (c) => {
   if (n > 0) throw new AppError(`${n} user(s) still hold this role - reassign them first.`);
   await db.delete(roleEntitlements).where(eq(roleEntitlements.roleCode, code));
   await db.delete(roles).where(eq(roles.code, code));
-  invalidateRoleConfig();
+  invalidateRoleConfig(requireLender(c));
   await recordAudit(db, { eventType: "ROLE_DELETED", subjectType: "Role", subjectId: code, ...actorOf(c) });
   return c.body(null, 204);
 });

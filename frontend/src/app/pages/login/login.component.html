@@ -63,7 +63,19 @@
           </div>
         </div>
 
-        <button type="submit" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()">
+        <div class="db-form-group">
+          <label>{{ 'login.lenderCodeLabel' | translate }}</label>
+          <input class="db-input" type="text" maxlength="32" formControlName="lenderCode"
+                 [placeholder]="'login.lenderCodePlaceholder' | translate" autocomplete="off" />
+        </div>
+
+        <div class="lender-choice" *ngIf="lenderChoices().length">
+          <p>{{ 'login.chooseLender' | translate }}</p>
+          <button type="button" class="db-btn db-btn--secondary w-full mb-8" *ngFor="let l of lenderChoices()"
+                  [disabled]="loading()" (click)="chooseLender(l.code)">{{ l.name }}</button>
+        </div>
+
+        <button type="submit" class="db-btn db-btn--primary w-full mt-16" [disabled]="loading()" *ngIf="!lenderChoices().length">
           <span *ngIf="loading()">{{ 'login.sendingCode' | translate }}</span>
           <span *ngIf="!loading()">{{ 'login.sendCode' | translate }}</span>
         </button>

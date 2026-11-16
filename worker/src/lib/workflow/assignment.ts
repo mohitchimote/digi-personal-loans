@@ -73,15 +73,15 @@ const terminalStatuses = (def: WorkflowDefinition, track: string) =>
 /** Staff who may own a case in `stageKey`: holders of the stage's owning roles (or, with none
  * configured, any role that can open the pipeline), matched on org unit by the stage's unit rule,
  * and able to see the case under their own role's scope. Includes unavailable people (flagged). */
-export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: string | null, app: { orgUnitId: number | null }, track = "case"): Promise<Candidate[]> {
+export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: string | null, app: { orgUnitId: number | null; lenderId: number }, track = "case"): Promise<Candidate[]> {
   const stage = def.stages.find((s) => s.key === stageKey);
-  const configs = await allRoleConfigs(db);
+  const configs = await allRoleConfigs(db, app.lenderId);
   const roleCodes = stage?.owner?.roles?.length
     ? stage.owner.roles
     : configs.filter((r) => r.entitlements.has("queue.pipeline")).map((r) => r.code);
   if (roleCodes.length === 0) return [];
 
-  const staff = await db.select().from(users).where(and(inArray(users.role, roleCodes), eq(users.enabled, true)));
+  const staff = await db.select().from(users).where(and(eq(users.lenderId, app.lenderId), inArray(users.role, roleCodes), eq(users.enabled, true)));
   const rule = stage?.owner?.unitRule ?? "ANY";
   const caseAncestors = rule === "CASE_UNIT_OR_ANCESTOR" && app.orgUnitId != null ? await ancestorsOf(db, app.orgUnitId) : [];
 
@@ -91,7 +91,7 @@ export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: s
       if (rule === "CASE_UNIT" && u.orgUnitId !== app.orgUnitId) continue;
       if (rule === "CASE_UNIT_OR_ANCESTOR" && (u.orgUnitId == null || !caseAncestors.includes(u.orgUnitId))) continue;
     }
-    const cfg = await resolveRole(db, u.role);
+    const cfg = await resolveRole(db, app.lenderId, u.role);
     if (!cfg.isStaff || !(await isCaseVisible(db, u as AuthUser, cfg.scope, app))) continue;
     eligible.push(u);
   }
@@ -110,7 +110,7 @@ export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: s
 }
 
 /** Who a case entering `stageKey` should be given to, per that stage's routing mode (null = nobody). */
-export async function routeOnEntry(db: Db, def: WorkflowDefinition, app: { orgUnitId: number | null }, stageKey: string | null, track: string): Promise<Candidate | null> {
+export async function routeOnEntry(db: Db, def: WorkflowDefinition, app: { orgUnitId: number | null; lenderId: number }, stageKey: string | null, track: string): Promise<Candidate | null> {
   const stage = def.stages.find((s) => s.key === stageKey);
   const mode = stage?.routing?.mode ?? "MANUAL";
   if (mode === "MANUAL") return null;

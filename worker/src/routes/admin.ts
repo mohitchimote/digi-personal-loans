@@ -8,7 +8,7 @@ import { users, faqs, orgUnits } from "../db/schema";
 import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { toUserSummary } from "../lib/user-mappers";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { CUSTOMER_ROLES, staffRoleCodes } from "../lib/roles";
 import { recordAudit } from "../lib/audit";
 
@@ -20,7 +20,7 @@ admin.get("/users", async (c) => {
   const type = c.req.query("type");
   const rows =
     type === "staff"
-      ? await db.select().from(users).where(inArray(users.role, await staffRoleCodes(db)))
+      ? await db.select().from(users).where(inArray(users.role, await staffRoleCodes(db, requireLender(c))))
       : type === "customers"
         ? await db.select().from(users).where(inArray(users.role, CUSTOMER_ROLES))
         : await db.select().from(users);
@@ -33,7 +33,7 @@ admin.put("/users/:id/role", zValidator("json", z.object({ role: z.string() })),
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new AppError(`User not found: ${id}`);
   const { role } = c.req.valid("json");
-  if (!(await staffRoleCodes(db)).includes(role) && !CUSTOMER_ROLES.includes(role)) throw new AppError("Unknown role.");
+  if (!(await staffRoleCodes(db, requireLender(c))).includes(role) && !CUSTOMER_ROLES.includes(role)) throw new AppError("Unknown role.");
   // S2 — a role change invalidates any token already issued for this user; without this, the old
   // role's permissions stay live in the token's claims until natural (24h) expiry.
   const [updated] = await db
@@ -60,7 +60,7 @@ admin.put("/users/:id/org-unit", zValidator("json", z.object({ orgUnitId: z.numb
   const id = Number(c.req.param("id"));
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new AppError(`User not found: ${id}`);
-  if (!(await staffRoleCodes(db)).includes(user.role)) throw new AppError("Only staff users can be assigned to an org unit.");
+  if (!(await staffRoleCodes(db, requireLender(c))).includes(user.role)) throw new AppError("Only staff users can be assigned to an org unit.");
   const { orgUnitId } = c.req.valid("json");
   if (orgUnitId != null) {
     const [unit] = await db.select().from(orgUnits).where(eq(orgUnits.id, orgUnitId)).limit(1);
@@ -125,7 +125,7 @@ admin.post("/users", zValidator("json", createStaffSchema), async (c) => {
   if ((await db.select().from(users).where(eq(users.nationalId, body.nationalId)).limit(1)).length > 0) {
     return fail(c, "National ID already in use.");
   }
-  if (!(await staffRoleCodes(db)).includes(body.role)) {
+  if (!(await staffRoleCodes(db, requireLender(c))).includes(body.role)) {
     return fail(c, "Invalid staff role.");
   }
   if (body.orgUnitId != null) {

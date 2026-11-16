@@ -70,7 +70,7 @@ async function buildFacts(c: Context<AppEnv>, db: Db, app: LoanRow, actor: Actor
     caseVisible: actor.type === "SYSTEM" ? true : await isCaseVisible(db, user, role.scope, app),
     isOwner: user.id === app.customerId,
     mandateLimit: actor.type === "STAFF" && needsMandate ? (await resolveMandate(db, user.role, app.orgUnitId, app.applicationType)).limit : null,
-    ladder: (await allRoleConfigs(db)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
+    ladder: (await allRoleConfigs(db, app.lenderId)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
   };
 }
 

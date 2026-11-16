@@ -25,6 +25,7 @@ export class RegisterComponent {
     private router: Router
   ) {
     this.form = this.fb.group({
+      lenderCode: [''],
       accountType: ['PERSONAL' as 'PERSONAL' | 'BUSINESS'],
       companyName: [''],
       companyRegistrationNumber: [''],
@@ -69,14 +70,15 @@ export class RegisterComponent {
     this.loading.set(true);
     this.error.set('');
 
-    const { agreeTerms, ...req } = this.form.value;
+    const { agreeTerms, lenderCode, ...rest } = this.form.value;
+    const req = { ...rest, lenderCode: lenderCode?.trim() || undefined };
 
     this.auth.register(req).subscribe({
       next: res => {
         this.loading.set(false);
         if (res.success) {
           this.router.navigate(['/register/verify-otp'], {
-            state: { email: res.data.email, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
+            state: { email: res.data.email, lenderCode: res.data.lenderCode, demoOtp: res.data.demoOtp, otpExpiresInSeconds: res.data.otpExpiresInSeconds }
           });
         } else {
           this.error.set(res.message || 'Registration failed.');

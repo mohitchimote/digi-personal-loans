@@ -19,6 +19,7 @@ export class VerifyOtpComponent {
   email = '';
   demoOtp = signal('');
   otp = '';
+  lenderCode: string | undefined;
   loading = signal(false);
   resending = signal(false);
   error = signal('');
@@ -29,12 +30,13 @@ export class VerifyOtpComponent {
     private router: Router
   ) {
     const state = this.router.getCurrentNavigation()?.extras.state as
-      { email?: string; demoOtp?: string } | undefined;
+      { email?: string; lenderCode?: string; demoOtp?: string } | undefined;
     if (!state?.email) {
       this.router.navigate(['/register']);
       return;
     }
     this.email = state.email;
+    this.lenderCode = state.lenderCode;
     this.demoOtp.set(state.demoOtp || '');
   }
 
@@ -43,7 +45,7 @@ export class VerifyOtpComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.auth.verifyOtp({ email: this.email, otp: this.otp }).subscribe({
+    this.auth.verifyOtp({ email: this.email, otp: this.otp, lenderCode: this.lenderCode }).subscribe({
       next: res => {
         this.loading.set(false);
         if (res.success) {
@@ -64,7 +66,7 @@ export class VerifyOtpComponent {
   resend(): void {
     this.resending.set(true);
     this.error.set('');
-    this.auth.resendOtp(this.email).subscribe({
+    this.auth.resendOtp(this.email, this.lenderCode).subscribe({
       next: res => {
         this.resending.set(false);
         if (res.success) {
