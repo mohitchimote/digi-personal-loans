@@ -1,4 +1,26 @@
+import { sql } from "drizzle-orm";
 import { sqliteTable, text, integer, real, primaryKey, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+
+// Multi-tenancy: every tenant table carries lender_id. The column defaults to 1 (the first lender,
+// DIGI) so code written before lenders existed keeps working; new code always sets it explicitly.
+const lenderIdCol = () => integer("lender_id").notNull().default(1);
+
+export const lenders = sqliteTable("lenders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("ACTIVE"),
+  createdAt: text("created_at").notNull(),
+});
+
+// Everything descriptive about a lender (address, countries, currencies, locale, mail-from) lives
+// here as key -> JSON, so the lenders table stays minimal.
+export const lenderSettings = sqliteTable("lender_settings", {
+  lenderId: integer("lender_id").notNull(),
+  key: text("key").notNull(),
+  valueJson: text("value_json").notNull(),
+  updatedAt: text("updated_at"),
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.key] }) }));
 
 // Money fields use `real()` (float) rather than a fixed-point type — D1/SQLite
 // has no native DECIMAL. Acceptable for a sandbox demo at these amounts; if
@@ -8,10 +30,12 @@ import { sqliteTable, text, integer, real, primaryKey, uniqueIndex, index } from
 // the Java backend's LocalDateTime JSON.
 
 export const users = sqliteTable("users", {
+  // Null = super admin (belongs to no lender). See MULTI_TENANCY_DESIGN.md.
+  lenderId: integer("lender_id"),
   id: integer("id").primaryKey({ autoIncrement: true }),
   uuid: text("uuid").notNull().unique(),
-  email: text("email").notNull().unique(),
-  nationalId: text("national_id").notNull().unique(),
+  email: text("email").notNull(),
+  nationalId: text("national_id").notNull(),
   idIssueDate: text("id_issue_date"),
   fullName: text("full_name"),
   phoneNumber: text("phone_number"),
@@ -27,7 +51,7 @@ export const users = sqliteTable("users", {
   otpAttempts: integer("otp_attempts").notNull().default(0),
   // Business accounts only (role = BUSINESS_OWNER) — null for personal customers/staff.
   companyName: text("company_name"),
-  companyRegistrationNumber: text("company_registration_number").unique(),
+  companyRegistrationNumber: text("company_registration_number"),
   companyIndustry: text("company_industry"),
   companyFoundedYear: integer("company_founded_year"),
   // Drives which language server-generated content (notifications, etc.) is written in — synced
@@ -43,24 +67,34 @@ export const users = sqliteTable("users", {
   // assigned: such a user keeps the pre-hierarchy behaviour (sees every case), so existing
   // users and the demo are unaffected until an admin assigns units.
   orgUnitId: integer("org_unit_id"),
-});
+}, (t) => ({
+  lenderEmail: uniqueIndex("users_lender_email_unique").on(t.lenderId, t.email),
+  lenderNationalId: uniqueIndex("users_lender_national_id_unique").on(t.lenderId, t.nationalId),
+  lenderCompanyReg: uniqueIndex("users_lender_company_reg_unique").on(t.lenderId, t.companyRegistrationNumber),
+  superEmail: uniqueIndex("users_super_email_unique").on(t.email).where(sql`lender_id IS NULL`),
+  superNationalId: uniqueIndex("users_super_national_id_unique").on(t.nationalId).where(sql`lender_id IS NULL`),
+}));
 
 // Y1 — admin-defined levels of the organisational hierarchy (e.g. 1 Head Office, 2 Region,
 // 3 Branch). `depth` orders the levels; names and count are configuration, not code.
 export const orgLevels = sqliteTable("org_levels", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   depth: integer("depth").notNull(),
   // When set, units at this level are picked from this master (e.g. Branch -> the "branch" master)
   // instead of typed: their code and names come from the master item, so a branch is defined once.
   masterTypeCode: text("master_type_code"),
-});
+}, (t) => ({
+  lenderName: uniqueIndex("org_levels_lender_name_unique").on(t.lenderId, t.name),
+}));
 
 // Y1 — a node in the hierarchy. parentId null = root. A unit's level must be deeper than its
 // parent's (enforced in routes/admin-org.ts, not in SQL).
 export const orgUnits = sqliteTable("org_units", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
-  code: text("code").notNull().unique(),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   // Hebrew name; only known for units linked to a master item (copied from it and kept in sync).
   nameHe: text("name_he"),
@@ -74,6 +108,7 @@ export const orgUnits = sqliteTable("org_units", {
 }, (t) => ({
   // One unit per master item within a level (nulls are distinct, so unlinked units are unaffected).
   masterPerLevel: uniqueIndex("org_units_level_master_unique").on(t.levelId, t.masterCode),
+  lenderCode: uniqueIndex("org_units_lender_code_unique").on(t.lenderId, t.code),
 }));
 
 // Phase 2 - admin-defined staff roles. Customer roles (CUSTOMER, BUSINESS_OWNER) are built in and
@@ -81,7 +116,8 @@ export const orgUnits = sqliteTable("org_units", {
 // everything beneath it) | UNIT_ONLY (own org unit only). `locked` roles (ADMIN) always hold
 // every entitlement and cannot be edited or deleted, so nobody can lock themselves out of config.
 export const roles = sqliteTable("roles", {
-  code: text("code").primaryKey(),
+  lenderId: lenderIdCol(),
+  code: text("code").notNull(),
   label: text("label").notNull(),
   description: text("description"),
   scope: text("scope").notNull().default("ALL"),
@@ -91,13 +127,14 @@ export const roles = sqliteTable("roles", {
   // of the ladder. A referral goes to the next-higher rank; ranks are unique.
   escalationRank: integer("escalation_rank"),
   createdAt: text("created_at").notNull(),
-});
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.code] }) }));
 
 // Phase 3 - approval limits with organisational context. A row applies to a role, optionally
 // narrowed to an org unit (and everything beneath it) and/or an application type. The most
 // specific matching row wins (nearest org unit first, then type); a row with neither is the
 // role's default. Replaces the fixed five-column mandate_rules table (left in place, unused).
 export const mandates = sqliteTable("mandates", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   roleCode: text("role_code").notNull(),
   orgUnitId: integer("org_unit_id"),
@@ -108,6 +145,7 @@ export const mandates = sqliteTable("mandates", {
 // Phase 3 - chain of custody for escalations. One row per referral hop; resolvedAt is set when the
 // case is next decided, sent back, or referred further.
 export const caseReferrals = sqliteTable("case_referrals", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   fromRole: text("from_role").notNull(),
@@ -122,14 +160,16 @@ export const caseReferrals = sqliteTable("case_referrals", {
 // Entitlement keys come from the catalog in lib/entitlements.ts (code defines what can be
 // checked; this table decides which role holds which).
 export const roleEntitlements = sqliteTable("role_entitlements", {
+  lenderId: lenderIdCol(),
   roleCode: text("role_code").notNull(),
   entitlement: text("entitlement").notNull(),
-}, (t) => ({ pk: primaryKey({ columns: [t.roleCode, t.entitlement] }) }));
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.roleCode, t.entitlement] }) }));
 
 // Workflow engine (workflow-spec/README.md). Definitions are versioned like form_versions
 // (DRAFT -> PUBLISHED -> ARCHIVED); a case is pinned to the definition that was published when it
 // was registered, so workflow semantics never change under an in-flight case.
 export const wfDefinitions = sqliteTable("wf_definitions", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   definitionKey: text("definition_key").notNull(),
   version: integer("version").notNull(),
@@ -143,6 +183,7 @@ export const wfDefinitions = sqliteTable("wf_definitions", {
 });
 
 export const wfCases = sqliteTable("wf_cases", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull().unique(),
   definitionId: integer("definition_id").notNull(),
@@ -151,6 +192,7 @@ export const wfCases = sqliteTable("wf_cases", {
 
 // One row per track (case, disbursement, ...): where the case is now and since when.
 export const wfCaseTracks = sqliteTable("wf_case_tracks", {
+  lenderId: lenderIdCol(),
   applicationRef: text("application_ref").notNull(),
   trackKey: text("track_key").notNull(),
   status: text("status").notNull(),
@@ -163,6 +205,7 @@ export const wfCaseTracks = sqliteTable("wf_case_tracks", {
 // Immutable history of every workflow action. Replaces reading free-text notes to answer
 // "how long was it in review, and who moved it".
 export const wfTransitions = sqliteTable("wf_transitions", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   trackKey: text("track_key").notNull(),
@@ -181,6 +224,7 @@ export const wfTransitions = sqliteTable("wf_transitions", {
 });
 
 export const loanApplications = sqliteTable("loan_applications", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull().unique(),
   customerId: integer("customer_id").notNull(),
@@ -246,9 +290,10 @@ export const loanApplications = sqliteTable("loan_applications", {
   orgUnitId: integer("org_unit_id"),
   // Phase 3 - the role currently holding a referred case; null when not referred.
   referredToRole: text("referred_to_role"),
-});
+}, (t) => ({ lenderIdx: index("loan_applications_lender_idx").on(t.lenderId) }));
 
 export const underwritingNotes = sqliteTable("underwriting_notes", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   section: text("section").notNull(),
@@ -259,6 +304,7 @@ export const underwritingNotes = sqliteTable("underwriting_notes", {
 });
 
 export const brandingSettings = sqliteTable("branding_settings", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey(),
   primaryColor: text("primary_color").notNull().default("#003366"),
   secondaryColor: text("secondary_color").notNull().default("#002244"),
@@ -268,9 +314,10 @@ export const brandingSettings = sqliteTable("branding_settings", {
   gradientStart: text("gradient_start"),
   gradientEnd: text("gradient_end"),
   logoUrl: text("logo_url"),
-});
+}, (t) => ({ lenderUnique: uniqueIndex("branding_settings_lender_unique").on(t.lenderId) }));
 
 export const faqs = sqliteTable("faqs", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   category: text("category").notNull(),
   question: text("question").notNull(),
@@ -284,6 +331,7 @@ export const faqs = sqliteTable("faqs", {
 });
 
 export const generatedDocuments = sqliteTable("generated_documents", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   customerId: integer("customer_id").notNull(),
@@ -297,6 +345,7 @@ export const generatedDocuments = sqliteTable("generated_documents", {
 });
 
 export const uploadedDocuments = sqliteTable("uploaded_documents", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   customerId: integer("customer_id").notNull(),
@@ -310,6 +359,7 @@ export const uploadedDocuments = sqliteTable("uploaded_documents", {
 });
 
 export const notifications = sqliteTable("notifications", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   customerId: integer("customer_id").notNull(),
   title: text("title").notNull(),
@@ -321,8 +371,9 @@ export const notifications = sqliteTable("notifications", {
 });
 
 export const loanProducts = sqliteTable("loan_products", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
-  productCode: text("product_code").notNull().unique(),
+  productCode: text("product_code").notNull(),
   productName: text("product_name").notNull(),
   description: text("description"),
   annualInterestRate: real("annual_interest_rate"),
@@ -336,9 +387,12 @@ export const loanProducts = sqliteTable("loan_products", {
   riskCategories: text("risk_categories"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   productType: text("product_type").notNull().default("PERSONAL"),
-});
+}, (t) => ({
+  lenderCode: uniqueIndex("loan_products_lender_code_unique").on(t.lenderId, t.productCode),
+}));
 
 export const preApprovedOffers = sqliteTable("pre_approved_offers", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   nationalId: text("national_id").notNull(),
   productCode: text("product_code"),
@@ -353,6 +407,7 @@ export const preApprovedOffers = sqliteTable("pre_approved_offers", {
 });
 
 export const productSelections = sqliteTable("product_selections", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   applicationRef: text("application_ref").notNull(),
   productCode: text("product_code"),
@@ -370,6 +425,7 @@ export const productSelections = sqliteTable("product_selections", {
 // admin-editable behavior, but it now survives a redeploy.
 
 export const affordabilityRules = sqliteTable("affordability_rules", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey(),
   maxDti: real("max_dti").notNull().default(40),
   maxHti: real("max_hti").notNull().default(35),
@@ -379,16 +435,17 @@ export const affordabilityRules = sqliteTable("affordability_rules", {
   minCreditScore: integer("min_credit_score").notNull().default(5),
   autoApprovalThresholdSingle: real("auto_approval_threshold_single").notNull().default(30000),
   autoApprovalThresholdJoint: real("auto_approval_threshold_joint").notNull().default(50000),
-});
+}, (t) => ({ lenderUnique: uniqueIndex("affordability_rules_lender_unique").on(t.lenderId) }));
 
 export const mandateRules = sqliteTable("mandate_rules", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey(),
   underwriterLimit: real("underwriter_limit").notNull().default(100000),
   seniorUnderwriterLimit: real("senior_underwriter_limit").notNull().default(300000),
   headOfLendingLimit: real("head_of_lending_limit").notNull().default(750000),
   cooLimit: real("coo_limit").notNull().default(2000000),
   ceoLimit: real("ceo_limit").notNull().default(999999999),
-});
+}, (t) => ({ lenderUnique: uniqueIndex("mandate_rules_lender_unique").on(t.lenderId) }));
 
 // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — compliance audit trail, distinct from
 // underwritingNotes above (that one is customer/staff-facing case notes; this one is a flat,
@@ -397,6 +454,7 @@ export const mandateRules = sqliteTable("mandate_rules", {
 // decisioning routes only pass a display-name string (see applications.ts's addNote), so it stays
 // null there rather than risk misattributing a role.
 export const auditLog = sqliteTable("audit_log", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   occurredAt: text("occurred_at").notNull(),
   eventType: text("event_type").notNull(),
@@ -405,14 +463,15 @@ export const auditLog = sqliteTable("audit_log", {
   actor: text("actor"),
   actorRole: text("actor_role"),
   detail: text("detail"),
-});
+}, (t) => ({ lenderIdx: index("audit_log_lender_idx").on(t.lenderId) }));
 
 // One row per lifecycle event key (see lib/email-events.ts's EVENT_REGISTRY for the fixed list of
 // valid keys). Rows are lazily seeded on first read rather than pre-populated by a migration, so
 // the event list can grow later without a schema change — see lib/email.ts's getOrSeedTemplate.
 export const emailTemplates = sqliteTable("email_templates", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
-  eventKey: text("event_key").notNull().unique(),
+  eventKey: text("event_key").notNull(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
   toAddress: text("to_address"),
   ccAddress: text("cc_address"),
@@ -423,7 +482,9 @@ export const emailTemplates = sqliteTable("email_templates", {
   footer: text("footer"),
   updatedAt: text("updated_at"),
   updatedBy: text("updated_by"),
-});
+}, (t) => ({
+  lenderEvent: uniqueIndex("email_templates_lender_event_unique").on(t.lenderId, t.eventKey),
+}));
 
 // Admin Form Builder — versioned wizard section/field definitions. One flat table keyed by
 // formKey rather than a form_definitions/form_versions parent-child pair: there are only ever two
@@ -435,6 +496,7 @@ export const emailTemplates = sqliteTable("email_templates", {
 // Exactly one PUBLISHED row per formKey at a time; publishing archives the previous one rather
 // than deleting it, so version history (and a submitted application's frozen reference) survives.
 export const formVersions = sqliteTable("form_versions", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   formKey: text("form_key").notNull(),
   version: integer("version").notNull(),
@@ -454,7 +516,8 @@ export const formVersions = sqliteTable("form_versions", {
 // `attributeDefs` is a JSON array of {key,label:{en,he},kind:"text"|"number"|"boolean",required?}
 // describing the extra fields items of this type carry (e.g. a branch's address).
 export const masterTypes = sqliteTable("master_types", {
-  code: text("code").primaryKey(),
+  lenderId: lenderIdCol(),
+  code: text("code").notNull(),
   labelEn: text("label_en").notNull(),
   labelHe: text("label_he").notNull(),
   description: text("description"),
@@ -467,12 +530,13 @@ export const masterTypes = sqliteTable("master_types", {
   isSystem: integer("is_system", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull(),
-});
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.code] }) }));
 
 // Consumers store an item's `code` (stable, human-readable), never its id or its name, so renaming
 // or translating an item never breaks stored data. Deactivate rather than delete an item that has
 // been used: inactive items drop out of pick-lists but still resolve for existing records.
 export const masterItems = sqliteTable("master_items", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   typeCode: text("type_code").notNull(),
   code: text("code").notNull(),
@@ -485,16 +549,17 @@ export const masterItems = sqliteTable("master_items", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at"),
 }, (t) => ({
-  typeCodeUnique: uniqueIndex("master_items_type_code_unique").on(t.typeCode, t.code),
-  typeIdx: index("master_items_type_idx").on(t.typeCode),
+  typeCodeUnique: uniqueIndex("master_items_lender_type_code_unique").on(t.lenderId, t.typeCode, t.code),
+  typeIdx: index("master_items_lender_type_idx").on(t.lenderId, t.typeCode),
 }));
 
 // ---- Letters. Model and rules: letter-spec/. A letter template is versioned like a form: DRAFT while
 // being edited, PUBLISHED when issuable (one per template), ARCHIVED when replaced. An issued letter keeps
 // the template version and the data it was produced from, so it can be explained and reproduced for audit.
 export const letterTemplates = sqliteTable("letter_templates", {
+  lenderId: lenderIdCol(),
   // Generated from the English name, never typed.
-  key: text("key").primaryKey(),
+  key: text("key").notNull(),
   nameEn: text("name_en").notNull(),
   nameHe: text("name_he").notNull().default(""),
   description: text("description"),
@@ -502,9 +567,10 @@ export const letterTemplates = sqliteTable("letter_templates", {
   appliesTo: text("applies_to").notNull().default("BOTH"),
   createdAt: text("created_at").notNull(),
   createdBy: text("created_by"),
-});
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.key] }) }));
 
 export const letterVersions = sqliteTable("letter_versions", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   templateKey: text("template_key").notNull(),
   version: integer("version").notNull(),
@@ -516,11 +582,12 @@ export const letterVersions = sqliteTable("letter_versions", {
   publishedAt: text("published_at"),
   publishedBy: text("published_by"),
 }, (t) => ({
-  templateVersionUnique: uniqueIndex("letter_versions_template_version_unique").on(t.templateKey, t.version),
+  templateVersionUnique: uniqueIndex("letter_versions_lender_template_version_unique").on(t.lenderId, t.templateKey, t.version),
 }));
 
 // Named rules shared by every template ("Rate can change"); a condition can refer to one by id.
 export const letterSavedRules = sqliteTable("letter_saved_rules", {
+  lenderId: lenderIdCol(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   ruleJson: text("rule_json").notNull(),
@@ -531,6 +598,7 @@ export const letterSavedRules = sqliteTable("letter_saved_rules", {
 // Logos, signatures and seals live in the database (PNG or JPEG, size-capped) so a letter and its
 // pictures cannot drift apart. `dataBase64` is the file itself.
 export const letterImages = sqliteTable("letter_images", {
+  lenderId: lenderIdCol(),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   kind: text("kind").notNull().default("other"),
@@ -544,6 +612,7 @@ export const letterImages = sqliteTable("letter_images", {
 });
 
 export const lettersIssued = sqliteTable("letters_issued", {
+  lenderId: lenderIdCol(),
   id: integer("id").primaryKey({ autoIncrement: true }),
   templateKey: text("template_key").notNull(),
   templateVersion: integer("template_version").notNull(),

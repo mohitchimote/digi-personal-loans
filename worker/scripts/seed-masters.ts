@@ -145,7 +145,7 @@ function items(type: string, rows: Row[], parentType?: string, refreshNames = fa
     out.push(
       `INSERT ${refreshNames ? "" : "OR IGNORE "}INTO master_items (type_code, code, name_en, name_he, parent_id, sort_order, active, attributes, created_at) ` +
       `VALUES (${q(type)}, ${q(code)}, ${q(en)}, ${q(he)}, ${parent}, ${(i + 1) * 10}, 1, ${q(JSON.stringify(extra?.attrs ?? {}))}, ${q(now)})` +
-      (refreshNames ? ` ON CONFLICT(type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he, sort_order = excluded.sort_order WHERE master_items.updated_at IS NULL;` : ";"),
+      (refreshNames ? ` ON CONFLICT(lender_id, type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he, sort_order = excluded.sort_order WHERE master_items.updated_at IS NULL;` : ";"),
     );
     // Items seeded before they carried attributes: fill them in, only where nobody has edited or set any.
     if (extra?.attrs) {

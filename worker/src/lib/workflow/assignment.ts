@@ -164,7 +164,7 @@ export async function workflowInfoFor(db: Db, apps: LoanRow[], now = new Date())
     const statusDef = (track: string, status: string) => def.tracks.find((t) => t.key === track)?.statuses.find((s) => s.key === status);
     let rows = tracks.get(app.applicationRef) ?? [];
     if (!rows.some((r) => r.trackKey === "case")) {
-      rows = [...rows, { applicationRef: app.applicationRef, trackKey: "case", status: app.status, stage: statusDef("case", app.status)?.stage ?? null, enteredAt: app.updatedAt ?? now.toISOString(), assigneeUserId: null, assignedAt: null }];
+      rows = [...rows, { lenderId: app.lenderId, applicationRef: app.applicationRef, trackKey: "case", status: app.status, stage: statusDef("case", app.status)?.stage ?? null, enteredAt: app.updatedAt ?? now.toISOString(), assigneeUserId: null, assignedAt: null }];
     }
     // A track that is in progress (it has reached a stage and is not finished) wins, so a finished
     // or not-yet-started disbursement never hides the case's own clock.

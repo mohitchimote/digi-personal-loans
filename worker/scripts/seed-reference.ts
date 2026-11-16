@@ -120,7 +120,7 @@ async function nationalities() {
     emit(
       `INSERT INTO master_items (type_code, code, name_en, name_he, parent_id, sort_order, active, attributes, created_at) ` +
       `VALUES ('nationality', ${q(code)}, ${q(nEn)}, ${q(nHe)}, NULL, 0, 1, '{}', ${q(now)}) ` +
-      `ON CONFLICT(type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he WHERE master_items.updated_at IS NULL;`,
+      `ON CONFLICT(lender_id, type_code, code) DO UPDATE SET name_en = excluded.name_en, name_he = excluded.name_he WHERE master_items.updated_at IS NULL;`,
     );
   }
   // The old pick-list had an "Other" for people whose nationality isn't listed.

@@ -148,6 +148,13 @@
       "when": 1794596159604,
       "tag": "0020_familiar_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1794856630892,
+      "tag": "0021_lenders",
+      "breakpoints": true
     }
   ]
 }
