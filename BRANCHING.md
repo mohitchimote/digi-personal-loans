@@ -21,5 +21,8 @@ Two long-lived branches, two environments. Code branches and deployments are sep
 4. Merge `dev` into `master`, run `npm run db:migrate:remote`, then `npm run deploy`.
 5. Tag the release and note the Worker version id (for `wrangler rollback`).
 
+## Migration rule (multi-lender)
+Migrations are shared by every lender, so they must be additive: new columns nullable or defaulted, no renames or drops until a later release in which nothing uses the old name. See MULTI_TENANCY_DESIGN.md.
+
 ## Before sharing UAT externally
 `DEMO_MODE=true` shows the login OTP on screen, so anyone with the link can sign in as any ID. Decide whether to keep that.

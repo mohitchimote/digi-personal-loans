@@ -46,6 +46,17 @@ Copies configuration only: roles and entitlements, mandates, org levels and unit
 6. Enter as users inside a lender (lender admin).
 7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release.
 
+## Keeping lenders independent of each other
+One codebase, one schema, one Worker: a shared change reaches every lender at once, so lender differences live in data and configuration.
+- **Extra fields**: lender's own form definition plus `customData` JSON. No migration.
+- **Tables**: a genuinely new table is added for everyone by an additive migration and stays empty for others. A different *shape* of an existing table means that lender gets its own deployment (own Worker, DB and bucket, same codebase, as loans2 already is).
+- **Derived fields and rules**: calculated fields, affordability, mandates and workflows are configuration per lender. Logic configuration cannot express goes in a small code module chosen by a lender setting (for example `logic.affordability = "standard" | "lenderX"`), shipped to all and active only where selected.
+- **No lender names in code**: a test fails the build on `if (lender === "X")`-style checks.
+- **Feature flags**: `features.*` in `lender_settings`. New behaviour is off for every lender until enabled, starting with a test lender.
+- **Additive migrations only**: new columns are nullable or defaulted; renames and drops wait for a later release when nothing uses the old name.
+- **Versioned config**: forms and workflows are draft, published, archived; in-flight cases stay pinned. Rollback is republishing the previous version.
+- **Canary lender**: the e2e suite runs each shared change against a cloned lender with different config before UAT.
+
 ## Open points
 - Whether to hide the "which lenders is this ID registered at" picker behind the OTP step before real production use.
 - Which UAT cases to keep when purging (proposal: the handful from the latest demo runs plus one in each status).
