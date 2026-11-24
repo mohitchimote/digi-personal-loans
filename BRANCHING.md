@@ -28,6 +28,7 @@ Migrations are shared by every lender, so they must be additive: new columns nul
 `DEMO_MODE=true` shows the login OTP on screen, so anyone with the link can sign in as any ID. Decide whether to keep that.
 
 ## Release: multi-tenancy to UAT (UAT is at migration 0015; this brings 0016-0023)
+**ON HOLD (owner's decision, 2026-11-24).** This is not a multi-tenancy-only release: `dev` also carries masters, organisation, form-builder, workflow and Letters work (migrations 0016-0020 and the seeds below), and multi-tenancy builds on those tables. The owner does not want that configuration work on UAT yet, so everything waits and ships together. Keep `scripts/uat-keep.proposed.txt` (approved) and re-run the rehearsal against a fresh export of UAT before the real release.
 Rehearsed on a local copy of the UAT database (exported read-only from `digibank`) and run end to end on Dev (loans2). Nothing below has been run against UAT.
 
 **Decide first (owner)**
