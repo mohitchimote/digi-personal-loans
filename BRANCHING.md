@@ -48,6 +48,8 @@ Rehearsed on a local copy of the UAT database (exported read-only from `digibank
 9. Check: a kept customer signs in with their old National ID and opens their case; an underwriter's pipeline lists the kept cases; documents of kept cases still download.
 10. Tag `stable-2026-11-multitenancy`; record the Worker version id. Rollback = `wrangler rollback` for code plus a restore from step 1 for data.
 
-**Write budget** (D1 free plan: 100k row writes per day across the account): migrations and backfill, the purge (about 1,700 deletes), masters (about 5,900 rows) and Israel's reference data fit in one day. Other countries' cities are loaded on later days.
+**Write budget** (D1 free plan: 100k row writes per day across the account, shared by UAT and Dev; once it is used up every write fails, including the login code, with a 500 "daily row write limit" until midnight UTC). Tests that clone a lender on a remote database are expensive: each clone copies about 5,900 master items and their indexes, so six clones on loans2 on 2026-11-24 used the day's budget and took UAT's login down too. Run clone-heavy checks locally.
+
+**Release budget:** migrations and backfill, the purge (about 1,700 deletes), masters (about 5,900 rows) and Israel's reference data fit in one day. Other countries' cities are loaded on later days.
 
 **Rehearsal result** (copy of UAT, new code, local): 139 cases and 89 users backfilled to DIGI; admin 99 became super admin; purge 139 to 10 cases and 90 to 14 users with no orphaned rows; after seeds and apply-master-sources, a kept customer signed in without a code, their old case opened with its form definition, the pipeline, workflow state, actions, notes and document records all worked (20 checks).
