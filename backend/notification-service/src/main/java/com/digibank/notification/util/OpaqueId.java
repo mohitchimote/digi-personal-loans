@@ -3,12 +3,12 @@ package com.digibank.notification.util;
 import java.math.BigInteger;
 
 /**
- * S6 (ARCHITECTURE_REVIEW_GAPS.md) — API-boundary id obfuscation, deliberately not a schema
+ * S6 (PENDING_WORK.md) — API-boundary id obfuscation, deliberately not a schema
  * migration: internal auto-increment PKs are unchanged; only what crosses the API boundary (JSON
  * responses, path params) is opaque. Obfuscation against casual enumeration/business-intelligence
  * leakage, not cryptographic security — see document-service's identical class for the full
  * rationale. Duplicated per service rather than shared — no cross-service Java module exists yet
- * (Q2 note, ARCHITECTURE_REVIEW_GAPS.md).
+ * (Q2 note, PENDING_WORK.md).
  */
 public final class OpaqueId {
     private OpaqueId() {}

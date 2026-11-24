@@ -1,4 +1,4 @@
-// S3 (ARCHITECTURE_REVIEW_GAPS.md) — before this, nothing checked a file's actual content, only
+// S3 (PENDING_WORK.md) — before this, nothing checked a file's actual content, only
 // trusted whatever Content-Type the client claimed. Magic-byte detection against the first few
 // bytes, matching the allowlist the product's own upload pages accept (verify-id,
 // guarantor-details, documents.component.html's `accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"`).

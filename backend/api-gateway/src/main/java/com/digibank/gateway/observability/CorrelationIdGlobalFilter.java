@@ -17,7 +17,7 @@ import java.util.UUID;
  * CorrelationIdFilter picks it up) and the response (so a customer/support conversation can
  * reference it). This is the WebFlux/reactive equivalent of the servlet CorrelationIdFilter every
  * other service registers — Spring Cloud Gateway runs on WebFlux, not Spring MVC, so a
- * OncePerRequestFilter doesn't apply here (S4, ARCHITECTURE_REVIEW_GAPS.md).
+ * OncePerRequestFilter doesn't apply here (S4, PENDING_WORK.md).
  */
 @Component
 public class CorrelationIdGlobalFilter implements GlobalFilter, Ordered {

@@ -58,7 +58,7 @@ export const users = sqliteTable("users", {
   // from the frontend's language toggle, which is otherwise purely a client-side localStorage
   // setting the server has no visibility into.
   preferredLanguage: text("preferred_language").notNull().default("en"),
-  // S2 (ARCHITECTURE_REVIEW_GAPS.md) — every token issued before this timestamp is rejected on its
+  // S2 (PENDING_WORK.md) — every token issued before this timestamp is rejected on its
   // next use, regardless of expiry. Bumped by admin enable/disable/role-change actions and by the
   // user's own logout-everywhere action, so a stolen token or a role/disable change takes effect on
   // the next request rather than waiting out the token's full 24h natural expiry.
@@ -267,7 +267,7 @@ export const loanApplications = sqliteTable("loan_applications", {
   businessOutgoingsJson: text("business_outgoings_json"),
   businessCreditDeclarationsJson: text("business_credit_declarations_json"),
   businessFinancialsAnalysisJson: text("business_financials_analysis_json"),
-  // N1 (ARCHITECTURE_REVIEW_GAPS.md) — synthetic card-network transaction result from the
+  // N1 (PENDING_WORK.md) — synthetic card-network transaction result from the
   // fund-release step, generated once and cached here (same "fake it" pattern as the column above).
   cardPaymentResultJson: text("card_payment_result_json"),
 
@@ -309,7 +309,7 @@ export const brandingSettings = sqliteTable("branding_settings", {
   primaryColor: text("primary_color").notNull().default("#003366"),
   secondaryColor: text("secondary_color").notNull().default("#002244"),
   accentColor: text("accent_color").notNull().default("#FBB034"),
-  // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — net-new. Null means "no gradient configured", falls back to
+  // Q3 (PENDING_WORK.md) — net-new. Null means "no gradient configured", falls back to
   // a solid primaryColor background (see branding.service.ts's applyTheme()).
   gradientStart: text("gradient_start"),
   gradientEnd: text("gradient_end"),
@@ -447,7 +447,7 @@ export const mandateRules = sqliteTable("mandate_rules", {
   ceoLimit: real("ceo_limit").notNull().default(999999999),
 }, (t) => ({ lenderUnique: uniqueIndex("mandate_rules_lender_unique").on(t.lenderId) }));
 
-// Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — compliance audit trail, distinct from
+// Open Point #19 (PENDING_WORK.md) — compliance audit trail, distinct from
 // underwritingNotes above (that one is customer/staff-facing case notes; this one is a flat,
 // append-only record of auditable state changes, not shown in any UI). actorRole is only populated
 // from admin.ts's staff-management routes, which already have the full authUser in scope — the

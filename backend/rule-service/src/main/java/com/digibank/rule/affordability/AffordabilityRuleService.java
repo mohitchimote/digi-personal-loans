@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 /** Seeds the same defaults the old in-memory affordability-service.rules.AffordabilityRules bean
- * shipped with, then persists every subsequent admin edit (ARCHITECTURE_REVIEW_GAPS.md, G6) instead
+ * shipped with, then persists every subsequent admin edit (PENDING_WORK.md, G6) instead
  * of resetting on every restart. */
 @Service
 public class AffordabilityRuleService {

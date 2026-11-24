@@ -12,7 +12,7 @@ public class BrandingSettings {
     @Column(nullable = false)
     private String primaryColor = "#003366";
 
-    // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — worker/frontend already had this field end-to-end
+    // Q3 (PENDING_WORK.md) — worker/frontend already had this field end-to-end
     // (worker/src/db/schema.ts's brandingSettings.secondaryColor); Java was the one lagging.
     @Column(nullable = false)
     private String secondaryColor = "#002244";

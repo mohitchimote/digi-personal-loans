@@ -6,7 +6,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Lending-policy service (ARCHITECTURE_REVIEW_GAPS.md, G4/G6) — single source of truth for
+ * Lending-policy service (PENDING_WORK.md, G4/G6) — single source of truth for
  * approval mandates (the Worker's context mandates: by role, org unit and application type) and
  * affordability thresholds, with real persistence (digibank_rules schema).
  *

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging, replacing the
+  S4 remainder (PENDING_WORK.md) — structured JSON console logging, replacing the
   plain pattern-layout console output. CorrelationIdFilter already puts correlationId into MDC
   (S4's earlier slice) — LogstashEncoder includes every MDC entry as a top-level JSON field
   automatically, no extra wiring needed. logging.level.* in application.yml still applies on top

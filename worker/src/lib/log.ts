@@ -1,4 +1,4 @@
-// S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON logging, matching the Java side's
+// S4 remainder (PENDING_WORK.md) — structured JSON logging, matching the Java side's
 // logback.xml/LogstashEncoder shape (level/message/error/timestamp as top-level JSON fields).
 //
 // No correlationId field here, unlike the Java side — the worker has no equivalent request-scoped

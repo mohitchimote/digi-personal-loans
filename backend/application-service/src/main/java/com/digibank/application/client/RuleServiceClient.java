@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Client to rule-service (ARCHITECTURE_REVIEW_GAPS.md, G4) — internal-only, no gateway route, same as
+ * Client to rule-service (PENDING_WORK.md, G4) — internal-only, no gateway route, same as
  * AffordabilityClient's/DocumentClient's convention. The only thing asked of it now is the context mandate: the
  * largest amount a role may approve on a given case, from GET /internal/rules/mandates/resolve
  * ?role=&orgUnitId=&applicationType= which answers {limit, orgUnitId, applicationType} (the Worker's resolveMandate).

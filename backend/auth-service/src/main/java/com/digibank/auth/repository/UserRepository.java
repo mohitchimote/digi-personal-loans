@@ -19,7 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNationalId(String nationalId);
     Optional<User> findByUuid(String uuid);
     List<User> findByRoleIn(List<String> roles);
-    // S2 (ARCHITECTURE_REVIEW_GAPS.md) — backs GET /api/auth/revoked-since, polled by every other
+    // S2 (PENDING_WORK.md) — backs GET /api/auth/revoked-since, polled by every other
     // Java service (no Redis, no per-request inter-service call — see JwtAuthenticationFilter in
     // each of those services).
     List<User> findBySessionsRevokedAtAfter(LocalDateTime since);

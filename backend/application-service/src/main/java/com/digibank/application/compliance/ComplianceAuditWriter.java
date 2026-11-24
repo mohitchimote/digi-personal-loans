@@ -14,7 +14,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 /**
- * Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — resolved in favour of a shared MySQL
+ * Open Point #19 (PENDING_WORK.md) — resolved in favour of a shared MySQL
  * `digibank_audit` schema over a separate MongoDB-based store: reuses existing infra, same
  * no-new-infra reasoning as the S2/S5 decisions. This is a flat, append-only compliance record for
  * every service that performs an auditable state change — distinct from AuditTrailService's

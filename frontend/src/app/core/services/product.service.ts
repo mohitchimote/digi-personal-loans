@@ -35,7 +35,7 @@ export class ProductService {
 
   getPreApprovedOffer(nationalId: string): Observable<PreApprovedOffer | null> {
     // POST + wrapper body, not GET — a national ID shouldn't sit in a browser-facing GET URL.
-    // See ARCHITECTURE_REVIEW_GAPS.md S9.
+    // See PENDING_WORK.md S9.
     return this.http.post<PreApprovedOffer>(`${API}/pre-approved/lookup`, { nationalId }).pipe(
       catchError(() => of(null))
     );

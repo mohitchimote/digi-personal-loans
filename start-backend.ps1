@@ -1,14 +1,14 @@
 # DigiBank Backend Startup Script
 # Starts all microservices in separate PowerShell windows
 
-# service-registry (Eureka) goes first and gets a longer head start — ARCHITECTURE_REVIEW_GAPS.md
+# service-registry (Eureka) goes first and gets a longer head start — PENDING_WORK.md
 # G3: api-gateway's routes are now lb://<service> (resolved dynamically via the registry) instead
 # of hardcoded host:port, so it can only route once the registry is up and the target service has
 # registered. Every other service still starts fine without it (they only register themselves,
 # they don't depend on it to find anything), but the gateway will 500 on every route until the
 # registry is reachable and at least the target service has checked in.
 # rule-service and integration-service also go early, before the services that call them directly
-# (a static URL, not Eureka lb://) — ARCHITECTURE_REVIEW_GAPS.md G4/G5: affordability-service's
+# (a static URL, not Eureka lb://) — PENDING_WORK.md G4/G5: affordability-service's
 # rules assessment and application-service's mandate-limit enforcement call rule-service;
 # auth-service's OTP issuance and application-service's data-verification/business-financials calls
 # call integration-service. Every one of those services still starts up fine without it — only

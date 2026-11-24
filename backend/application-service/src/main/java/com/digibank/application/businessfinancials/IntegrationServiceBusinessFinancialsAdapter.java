@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Real implementation of BusinessFinancialsPort since G5 (ARCHITECTURE_REVIEW_GAPS.md) — delegates
+ * Real implementation of BusinessFinancialsPort since G5 (PENDING_WORK.md) — delegates
  * the actual generation to integration-service instead of running it locally
  * (SimulatedBusinessFinancialsAdapter's logic moved there unchanged). BusinessFinancialsAnalysisService
  * (the orchestrator that persists results) required no code change at all — exactly the payoff this

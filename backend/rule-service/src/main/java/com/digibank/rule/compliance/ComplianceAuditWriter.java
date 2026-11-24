@@ -14,13 +14,13 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 /**
- * Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — resolved in favour of a shared MySQL
+ * Open Point #19 (PENDING_WORK.md) — resolved in favour of a shared MySQL
  * `digibank_audit` schema over a separate MongoDB-based store: reuses existing infra, same
  * no-new-infra reasoning as the S2/S5 decisions. A flat, append-only compliance record for every
  * service that performs an auditable state change.
  *
  * Duplicated from application-service's class of the same name rather than shared — no cross-service
- * Java module exists yet (see Q2 note in ARCHITECTURE_REVIEW_GAPS.md, same constraint that already
+ * Java module exists yet (see Q2 note in PENDING_WORK.md, same constraint that already
  * applies to SessionRevocationCache and StaffRoles). Own small Hikari pool + JdbcTemplate, deliberately
  * outside the JPA-managed primary datasource.
  */

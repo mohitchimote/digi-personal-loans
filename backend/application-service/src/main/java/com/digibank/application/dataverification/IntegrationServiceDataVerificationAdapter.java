@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Real implementation of DataVerificationPort since G5 (ARCHITECTURE_REVIEW_GAPS.md) — delegates
+ * Real implementation of DataVerificationPort since G5 (PENDING_WORK.md) — delegates
  * the actual generation to integration-service instead of running it locally
  * (SimulatedDataVerificationAdapter's logic moved there unchanged). DataVerificationService (the
  * orchestrator that persists results and handles staff resolution) required no code change at all

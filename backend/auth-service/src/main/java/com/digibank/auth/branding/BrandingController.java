@@ -26,7 +26,7 @@ import java.util.UUID;
 @RestController
 public class BrandingController {
 
-    // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — matches worker/src/routes/branding.ts's ALLOWED_LOGO_TYPES
+    // Q3 (PENDING_WORK.md) — matches worker/src/routes/branding.ts's ALLOWED_LOGO_TYPES
     // and MAX_LOGO_BYTES exactly. SVG is XML text, not binary magic bytes, but Tika's detector
     // chain handles it via XML root-element sniffing, same mechanism as its binary detection.
     private static final Set<String> ALLOWED_LOGO_TYPES = Set.of("image/png", "image/jpeg", "image/svg+xml");

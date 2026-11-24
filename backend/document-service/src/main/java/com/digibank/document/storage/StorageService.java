@@ -24,7 +24,7 @@ import java.util.UUID;
 @Service
 public class StorageService {
 
-    // S3 (ARCHITECTURE_REVIEW_GAPS.md) — before this, nothing checked a file's actual content, only
+    // S3 (PENDING_WORK.md) — before this, nothing checked a file's actual content, only
     // trusted whatever Content-Type the client claimed. This is magic-byte detection (Tika sniffs
     // the real bytes, not the filename/header) against the shapes the product's own upload pages
     // accept (frontend/.../verify-id, guarantor-details, documents.component.html's `accept=`

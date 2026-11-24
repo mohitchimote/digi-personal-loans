@@ -1,4 +1,4 @@
-// N1 (ARCHITECTURE_REVIEW_GAPS.md) — simulated card-payment adapter, same "fake it" demo-synthesis
+// N1 (PENDING_WORK.md) — simulated card-payment adapter, same "fake it" demo-synthesis
 // pattern as business-financials.ts/data-verification.ts (ARCHITECTURE.md §6.3): deterministic
 // seed from applicationRef so the same application always produces the same synthetic result,
 // stable across reloads. No real card processor/PCI scope — a payment-provider decision (which

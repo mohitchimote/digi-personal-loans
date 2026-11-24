@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * Only implementation of OtpDeliveryPort today — calls integration-service, which simulates the
- * actual send (ARCHITECTURE_REVIEW_GAPS.md, G5). Deliberately fire-and-forget: a hung/unreachable
+ * actual send (PENDING_WORK.md, G5). Deliberately fire-and-forget: a hung/unreachable
  * integration-service must never block registration or login, since demoOtp is returned to the
  * caller independently of whether this "delivery" succeeds — same reasoning as
  * DecisioningService.generateFinalApprovalLetter's catch-and-ignore.

@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * S2 (ARCHITECTURE_REVIEW_GAPS.md) — this service owns no user table, so a role change or account
+ * S2 (PENDING_WORK.md) — this service owns no user table, so a role change or account
  * disable on auth-service otherwise has zero effect here until the token's natural 24h expiry.
  * Polls auth-service's GET /api/auth/revoked-since every 30s and keeps a small in-memory cache
  * instead of a per-request call back to auth-service or Redis (both ruled out for this item) — a

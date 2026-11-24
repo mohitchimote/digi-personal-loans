@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * S2 (ARCHITECTURE_REVIEW_GAPS.md) — this service owns no user table (see JwtAuthenticationFilter's
+ * S2 (PENDING_WORK.md) — this service owns no user table (see JwtAuthenticationFilter's
  * own javadoc: authentication is derived entirely from the token's signed claims, never a database
  * lookup), so a role change or account disable on auth-service otherwise has zero effect here until
  * the token's natural 24h expiry. Rather than a live per-request call back to auth-service (which

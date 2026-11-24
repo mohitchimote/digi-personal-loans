@@ -153,7 +153,7 @@ products.get("/selection/:appRef", async (c) => {
 });
 
 // POST + wrapper body, not GET — a customer's national ID shouldn't sit in a browser-facing GET URL
-// (server access logs, browser history, proxy logs). See ARCHITECTURE_REVIEW_GAPS.md S9.
+// (server access logs, browser history, proxy logs). See PENDING_WORK.md S9.
 products.post("/pre-approved/lookup", async (c) => {
   const db = getDb(c.env.DB);
   const lenderId = requireLender(c);

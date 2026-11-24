@@ -7,7 +7,7 @@ export interface BrandingSettings {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
-  // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — optional; unset means "no gradient configured", falls back
+  // Q3 (PENDING_WORK.md) — optional; unset means "no gradient configured", falls back
   // to the default primary -> secondary gradient (see styles.scss's --tcs-gradient default).
   gradientStart?: string | null;
   gradientEnd?: string | null;
@@ -46,7 +46,7 @@ export class BrandingService {
     return this.http.get<BrandingSettings>(`${API}/branding`);
   }
 
-  // gradientStart/gradientEnd (Q3, ARCHITECTURE_REVIEW_GAPS.md) are optional — pass null for
+  // gradientStart/gradientEnd (Q3, PENDING_WORK.md) are optional — pass null for
   // either to revert to the default derived (primary -> secondary) gradient.
   updateColors(
     primaryColor: string,

@@ -41,7 +41,7 @@ DigiBank brand: Blue `#003F79` + Yellow `#F5A200` + White, implemented entirely 
 
 ## Evidence on Hand
 
-Extensive existing functional and architecture documentation in this repo: `PROJECT_DOCUMENTATION.md`, `ARCHITECTURE.md`, `ARCHITECTURE_REVIEW_GAPS.md`, `PRODUCTION_READINESS.md`. A working, publicly deployed build at `https://digibank-personal-loans.mohit-chimote.workers.dev`. No real customer testimonials, case studies, or press exist — only synthetic demo personas and seeded/D1 test data; future work must not fabricate real customer evidence, benchmarks, or press.
+Extensive existing functional and architecture documentation in this repo: `../PROJECT_DOCUMENTATION.md`, `../ARCHITECTURE.md`, `../PENDING_WORK.md`, `../PRODUCTION_READINESS.md`. A working, publicly deployed build at `https://digibank-personal-loans.mohit-chimote.workers.dev`. No real customer testimonials, case studies, or press exist — only synthetic demo personas and seeded/D1 test data; future work must not fabricate real customer evidence, benchmarks, or press.
 
 ## Product Principles
 

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Client to rule-service (ARCHITECTURE_REVIEW_GAPS.md, G4) — internal-only, no gateway route.
+ * Client to rule-service (PENDING_WORK.md, G4) — internal-only, no gateway route.
  * Affordability thresholds are read on every /check assessment (via
  * rules.CachedAffordabilityRulesView), so results are cached briefly rather than round-tripping on
  * every request; an admin edit still lands within one cache window (10s) instead of requiring a

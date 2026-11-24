@@ -99,7 +99,7 @@ public class LoanApplication {
     private String businessFinancialsAnalysisJson;
 
     /** Synthetic card-network transaction result from the fund-release step (N1,
-     * ARCHITECTURE_REVIEW_GAPS.md) — generated once, on first authorisation, and cached here so it
+     * PENDING_WORK.md) — generated once, on first authorisation, and cached here so it
      * stays stable across reloads. Same "fake it" pattern as businessFinancialsAnalysisJson. */
     @Column(columnDefinition = "TEXT")
     private String cardPaymentResultJson;

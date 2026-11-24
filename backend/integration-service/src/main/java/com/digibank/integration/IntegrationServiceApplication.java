@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
- * The single outbound boundary to the outside world (ARCHITECTURE_REVIEW_GAPS.md, G5) — OTP/SMS/
+ * The single outbound boundary to the outside world (PENDING_WORK.md, G5) — OTP/SMS/
  * Email delivery, document/data verification (National ID + document OCR + credit-bureau
  * comparison), and business financials intelligence (Open Banking-style P&L/cashflow). Every
  * capability here is still simulated — no real provider is wired up (PRODUCTION_READINESS.md §7) —

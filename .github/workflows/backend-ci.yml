@@ -1,6 +1,6 @@
 name: Backend CI
 
-# ARCHITECTURE_REVIEW_GAPS.md, G2 — the repo had no CI/CD pipeline of any kind before this. Scope
+# PENDING_WORK.md, G2 — the repo had no CI/CD pipeline of any kind before this. Scope
 # here is deliberately CI (build, test, containerize, publish an image), not CD: there is no
 # decided deployment target yet (no container orchestration platform chosen, no environments
 # defined — doc Open Point 11), so this stops at "an image exists in the registry, ready to be
@@ -58,7 +58,7 @@ jobs:
       # Fast, native feedback ahead of the containerized build below (which repeats this build
       # inside the Dockerfile's own build stage — some duplication, but it keeps this step's logs
       # readable and fails fast before spending time on an image build that's doomed anyway).
-      # No test suite exists in this service yet (ARCHITECTURE_REVIEW_GAPS.md) — `verify` still
+      # No test suite exists in this service yet (PENDING_WORK.md) — `verify` still
       # exercises compile + package + Surefire's "no tests found" pass-through, and becomes a real
       # test gate the moment tests land, with no workflow change needed.
       - name: Build and verify (mvn)

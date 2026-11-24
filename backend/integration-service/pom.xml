@@ -15,7 +15,7 @@
     <artifactId>integration-service</artifactId>
     <version>1.0.0</version>
     <name>integration-service</name>
-    <description>DigiLend outbound integration boundary (OTP/SMS/Email delivery, document/data verification, business financials) — internal only, no gateway route. ARCHITECTURE_REVIEW_GAPS.md, G5.</description>
+    <description>DigiLend outbound integration boundary (OTP/SMS/Email delivery, document/data verification, business financials) — internal only, no gateway route. PENDING_WORK.md, G5.</description>
 
     <properties>
         <java.version>21</java.version>
@@ -25,7 +25,7 @@
 
     <dependencies>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
-        <!-- S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging. -->
+        <!-- S4 remainder (PENDING_WORK.md) — structured JSON console logging. -->
         <dependency><groupId>net.logstash.logback</groupId><artifactId>logstash-logback-encoder</artifactId><version>8.0</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
         <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-netflix-eureka-client</artifactId></dependency>

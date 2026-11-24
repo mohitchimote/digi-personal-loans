@@ -18,7 +18,7 @@ public class NotificationService {
         this.repository = repository;
     }
 
-    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — lets the controller check ownership (compare the
+    // S6 (PENDING_WORK.md) — lets the controller check ownership (compare the
     // authenticated caller against the notification's own customerId) before mutating it.
     public Notification getById(Long notificationId) {
         return repository.findById(notificationId)

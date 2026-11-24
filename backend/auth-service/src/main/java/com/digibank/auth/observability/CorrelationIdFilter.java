@@ -19,7 +19,7 @@ import java.util.UUID;
  *
  * Registered via CorrelationIdFilterConfig at the highest precedence so the ID exists for the
  * entire request lifecycle, including requests Spring Security rejects before reaching a
- * controller (S4, ARCHITECTURE_REVIEW_GAPS.md — makes the deck's "end-to-end request correlation"
+ * controller (S4, PENDING_WORK.md — makes the deck's "end-to-end request correlation"
  * claim true instead of removing it).
  */
 public class CorrelationIdFilter extends OncePerRequestFilter {

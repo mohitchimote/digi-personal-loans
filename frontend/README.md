@@ -1,59 +1,39 @@
 # Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.2.
+Angular 22 single-page app: customer and business wizards, banker, underwriter, admin and platform portals, in English
+and Hebrew (RTL). In production the Worker serves the built app and `/api/*` from the same origin.
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Commands
 
 ```bash
-ng generate component component-name
+npm install
+npx ng serve        # http://localhost:4200, /api is proxied to a local Worker on :8787 (proxy.conf.json)
+npx ng build        # output in dist/frontend (the Worker deploy scripts build it for you)
+npx ng test         # unit tests (Vitest-backed builder, no browser needed)
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Run the Worker first (`cd ../worker && npx wrangler dev`). See the root `README.md` for the whole picture.
 
-```bash
-ng generate --help
-```
+## Layout (`src/app`)
 
-## Building
+| Folder | Holds |
+|---|---|
+| `pages/` | One folder per screen, grouped by portal (`portal`, `business`, `banker`, `underwriter`, `admin`, `platform`, `login`, `register`) |
+| `shared/` | Reusable components (field select, dynamic field, headers, banners, workflow action buttons) and pipes |
+| `core/services/` | HTTP services, one per API area |
+| `core/guards/`, `core/interceptors/` | Route guards per portal; the auth interceptor (token, and the lender code on public calls) |
+| `core/i18n/` | `en.ts` and `he.ts` dictionaries (keep their keys in step) |
+| `core/letters/` | A **copy** of the Worker's letter format and rule engine, only to show sample values in the editor. Keep it in step with `worker/src/lib/letters` |
 
-To build the project run:
+## Conventions
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Standalone components, signals for local state, reactive forms for wizard steps. **Angular 22 makes components OnPush
+  unless they say otherwise**; code that mutates objects in place (the letter editor) sets `ChangeDetectionStrategy.Default`.
+- Every user-facing string goes through `'key' | translate` (or `I18nService.t()`), in both languages.
+- Brand colours are CSS custom properties set from the Branding admin screen; no hard-coded hex in components, and give
+  anything placed on a dark header an explicit light colour.
+- **Screens never name a master.** Options come from the form definition (`FormFieldOptionsService`), stored values are
+  shown with the `fieldLabel` pipe. See `ARCHITECTURE.md` section 6.11.
+- **Lenders:** the app asks the server which lender an address belongs to (`LenderHostService`); the login and
+  registration pages show the lender code field only on a shared address with several lenders. Public calls carry
+  `?lender=` from the remembered code. A banner shows while an administrator is viewing as another user (read-only).

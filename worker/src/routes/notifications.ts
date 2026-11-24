@@ -11,7 +11,7 @@ import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 export const notificationsRoute = new Hono<AppEnv>();
 notificationsRoute.use("*", requireAuth);
 
-// S6 (ARCHITECTURE_REVIEW_GAPS.md) — these routes had no ownership check at all: any authenticated
+// S6 (PENDING_WORK.md) — these routes had no ownership check at all: any authenticated
 // user could read/mark-read another customer's notifications by guessing a numeric customerId/id.
 // Same fix shape as documents.ts's assertOwnsDocument (S1).
 function assertOwnsCustomerId(c: any, customerId: number) {

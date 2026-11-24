@@ -39,7 +39,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- S5 (ARCHITECTURE_REVIEW_GAPS.md) — Spring Cloud Gateway's built-in RequestRateLimiter
+        <!-- S5 (PENDING_WORK.md) — Spring Cloud Gateway's built-in RequestRateLimiter
              is Redis-only (RedisRateLimiter); Redis was ruled out for this item, so this is an
              in-memory, per-instance token-bucket instead (see RateLimitGlobalFilter). -->
         <dependency>
@@ -47,7 +47,7 @@
             <artifactId>bucket4j-core</artifactId>
             <version>8.10.1</version>
         </dependency>
-        <!-- S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging, see
+        <!-- S4 remainder (PENDING_WORK.md) — structured JSON console logging, see
              src/main/resources/logback.xml. -->
         <dependency>
             <groupId>net.logstash.logback</groupId>

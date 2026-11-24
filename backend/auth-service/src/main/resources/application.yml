@@ -58,5 +58,5 @@ logging:
     com.digibank: INFO
     org.springframework.security: WARN
   # Console output is now structured JSON (logback-spring.xml, S4 remainder,
-  # ARCHITECTURE_REVIEW_GAPS.md) — CorrelationIdFilter's MDC value lands there as a top-level
+  # PENDING_WORK.md) — CorrelationIdFilter's MDC value lands there as a top-level
   # `correlationId` field automatically; the old plain-text pattern override this replaced is gone.

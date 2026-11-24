@@ -69,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String uuid = jwtTokenProvider.getUsernameFromToken(jwt);
             if (uuid != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(uuid);
-                // S2 (ARCHITECTURE_REVIEW_GAPS.md) — validateToken only checked username+expiry; it
+                // S2 (PENDING_WORK.md) — validateToken only checked username+expiry; it
                 // never actually enforced the disabled/locked flags buildUserDetails() already
                 // computes from the live row, so a disabled account's already-issued token stayed
                 // usable here until natural expiry. Also rejects any token issued before this

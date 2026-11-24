@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 /**
- * N1 (ARCHITECTURE_REVIEW_GAPS.md) — simulated card-payment adapter, same "fake it" demo-synthesis
+ * N1 (PENDING_WORK.md) — simulated card-payment adapter, same "fake it" demo-synthesis
  * pattern as businessfinancials.BusinessFinancialsGenerator / dataverification.DataVerificationGenerator
  * (ARCHITECTURE.md §6.3): deterministic seed from applicationRef.hashCode() so the same application
  * always produces the same synthetic result, stable across reloads. No real card processor/PCI

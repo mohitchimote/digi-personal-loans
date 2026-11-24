@@ -30,7 +30,7 @@ public class OtpService {
         user.setOtpAttempts(0);
         userRepository.save(user);
 
-        // ARCHITECTURE_REVIEW_GAPS.md, G5 — real delivery attempt via integration-service,
+        // PENDING_WORK.md, G5 — real delivery attempt via integration-service,
         // alongside (not instead of) the demoOtp the caller still returns directly for on-screen
         // display, since no real SMS/email provider exists to actually deliver this to the user.
         boolean hasPhone = user.getPhoneNumber() != null && !user.getPhoneNumber().isBlank();

@@ -15,7 +15,7 @@
     <artifactId>service-registry</artifactId>
     <version>1.0.0</version>
     <name>service-registry</name>
-    <description>DigiLend service discovery (Eureka) — ARCHITECTURE_REVIEW_GAPS.md, G3</description>
+    <description>DigiLend service discovery (Eureka) — PENDING_WORK.md, G3</description>
 
     <properties>
         <java.version>21</java.version>

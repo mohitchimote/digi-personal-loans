@@ -12,7 +12,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableScheduling // S2 — SessionRevocationCache's poll() (ARCHITECTURE_REVIEW_GAPS.md)
+@EnableScheduling // S2 — SessionRevocationCache's poll() (PENDING_WORK.md)
 public class ApplicationServiceApplication {
 
     public static void main(String[] args) {

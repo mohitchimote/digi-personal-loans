@@ -15,7 +15,7 @@
     <artifactId>rule-service</artifactId>
     <version>1.0.0</version>
     <name>rule-service</name>
-    <description>DigiLend lending-policy microservice (approval mandates, affordability thresholds). Internal, except the mandate admin API which the gateway routes here. ARCHITECTURE_REVIEW_GAPS.md, G4/G6.</description>
+    <description>DigiLend lending-policy microservice (approval mandates, affordability thresholds). Internal, except the mandate admin API which the gateway routes here. PENDING_WORK.md, G4/G6.</description>
 
     <properties>
         <java.version>21</java.version>
@@ -26,7 +26,7 @@
 
     <dependencies>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
-        <!-- S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging. -->
+        <!-- S4 remainder (PENDING_WORK.md) — structured JSON console logging. -->
         <dependency><groupId>net.logstash.logback</groupId><artifactId>logstash-logback-encoder</artifactId><version>8.0</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
         <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-netflix-eureka-client</artifactId></dependency>

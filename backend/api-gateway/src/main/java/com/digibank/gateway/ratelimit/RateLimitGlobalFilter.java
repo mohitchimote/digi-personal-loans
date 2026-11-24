@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * S5 (ARCHITECTURE_REVIEW_GAPS.md) — no gateway-level rate limiting existed before this. Spring
+ * S5 (PENDING_WORK.md) — no gateway-level rate limiting existed before this. Spring
  * Cloud Gateway's built-in RequestRateLimiter needs Redis (RedisRateLimiter, Lua-script-backed);
  * Redis was explicitly ruled out for this item, so this is an in-memory token bucket
  * (bucket4j) keyed by client IP instead — per-instance limits, not cluster-wide, a known and

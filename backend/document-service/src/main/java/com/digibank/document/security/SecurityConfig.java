@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Mirrors worker/src/routes/documents.ts: blanket requireAuth at the filter-chain level; the
  * per-resource ownership check (a customer may only download/view their own documents, staff
  * may reach any) lives in StorageController/GenerationController instead, since it depends on
- * which document is being fetched, not the route shape (S1, ARCHITECTURE_REVIEW_GAPS.md).
+ * which document is being fetched, not the route shape (S1, PENDING_WORK.md).
  */
 @Configuration
 @EnableWebSecurity

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 /**
- * Ported from application-service's SimulatedBusinessFinancialsAdapter (ARCHITECTURE_REVIEW_GAPS.md,
+ * Ported from application-service's SimulatedBusinessFinancialsAdapter (PENDING_WORK.md,
  * G5) — the actual generation logic is unchanged, only where it runs. No OCR/document-extraction or
  * Open Banking integration exists — uploaded financial statements/bank statements are never read;
  * figures are synthetic, seeded by applicationRef so they're stable across reloads (same "fake it"

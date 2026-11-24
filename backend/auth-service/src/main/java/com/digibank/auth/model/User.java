@@ -44,7 +44,7 @@ public class User {
     private String companyIndustry;
     private Integer companyFoundedYear;
 
-    // S2 (ARCHITECTURE_REVIEW_GAPS.md) — every token issued before this timestamp is rejected on
+    // S2 (PENDING_WORK.md) — every token issued before this timestamp is rejected on
     // its next use, regardless of expiry. Bumped by admin enable/disable/role-change actions and by
     // the user's own logout-everywhere action.
     private LocalDateTime sessionsRevokedAt;

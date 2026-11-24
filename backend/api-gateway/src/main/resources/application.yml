@@ -50,7 +50,7 @@ spring:
                 maxAge: 3600
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Access-Control-Allow-Origin Access-Control-Expose-Headers Access-Control-Max-Age Vary, RETAIN_UNIQUE
-          # ARCHITECTURE_REVIEW_GAPS.md, G3 — every uri below is now `lb://<eureka-service-id>` instead
+          # PENDING_WORK.md, G3 — every uri below is now `lb://<eureka-service-id>` instead
           # of a hardcoded/env-var host:port. Spring Cloud LoadBalancer resolves the service-id against
           # whatever the service-registry currently has registered (see eureka: block below), so a
           # route survives an instance restarting on a different port/host without a gateway config

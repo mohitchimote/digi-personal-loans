@@ -72,7 +72,7 @@ export class AuthService {
   /** @param sessionExpiredMessage set only by the 401 interceptor (session-expired.interceptor.ts)
    * — a manual "Log out" click never passes this, so the login screen stays silent for that case. */
   logout(sessionExpiredMessage?: string): void {
-    // S2 (ARCHITECTURE_REVIEW_GAPS.md) — a manual logout now also revokes server-side (the token
+    // S2 (PENDING_WORK.md) — a manual logout now also revokes server-side (the token
     // stays otherwise valid until its 24h expiry if only cleared client-side). Fire-and-forget:
     // logout must proceed immediately regardless of network state, and never on the
     // session-expired path — that token is already invalid, there's nothing to revoke.

@@ -21,7 +21,7 @@ function assertOwnsDocument(c: any, documentCustomerId: number) {
   }
 }
 
-// S6 (ARCHITECTURE_REVIEW_GAPS.md) — opaque ids at the API boundary; see lib/opaque-id.ts. Two
+// S6 (PENDING_WORK.md) — opaque ids at the API boundary; see lib/opaque-id.ts. Two
 // prefixes since generatedDocuments and uploadedDocuments are separate tables with overlapping
 // numeric ids — without namespacing, a "doc" id could collide with an "upl" id under the same
 // obfuscated value.

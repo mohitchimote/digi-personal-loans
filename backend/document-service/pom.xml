@@ -30,14 +30,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- S4 remainder (ARCHITECTURE_REVIEW_GAPS.md) — structured JSON console logging, see
+        <!-- S4 remainder (PENDING_WORK.md) — structured JSON console logging, see
              src/main/resources/logback.xml. -->
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>8.0</version>
         </dependency>
-        <!-- S2 (ARCHITECTURE_REVIEW_GAPS.md) — SessionRevocationCache's RestTemplateBuilder needs
+        <!-- S2 (PENDING_WORK.md) — SessionRevocationCache's RestTemplateBuilder needs
              this starter in Spring Boot 4.x; this service made no outbound HTTP calls before S2. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -101,7 +101,7 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
-        <!-- S3 (ARCHITECTURE_REVIEW_GAPS.md) — magic-byte content-type detection for uploads.
+        <!-- S3 (PENDING_WORK.md) — magic-byte content-type detection for uploads.
              Pure-Java, no native/system dependency; not a malware scanner (see StorageService). -->
         <dependency>
             <groupId>org.apache.tika</groupId>

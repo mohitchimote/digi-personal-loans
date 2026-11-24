@@ -12,7 +12,7 @@ export function actorOf(c: Context<AppEnv>) {
 }
 
 
-// Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — resolved in favour of a plain table over a
+// Open Point #19 (PENDING_WORK.md) — resolved in favour of a plain table over a
 // separate MongoDB-based store (no new infra to run, same reasoning as S2/S5's Redis decision).
 // Never allowed to block or fail the real action it's recording, same convention as this project's
 // other non-critical side effects (email sending, document generation).

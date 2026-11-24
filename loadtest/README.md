@@ -61,7 +61,7 @@ Total journeys in the load phase = `THREADS × LOOPS`. Each journey is ~13 HTTP 
 
 ## Why a separate "setup" phase registers users first
 
-`api-gateway`'s rate limiter (S5, `ARCHITECTURE_REVIEW_GAPS.md`) caps `/api/auth/login/**`
+`api-gateway`'s rate limiter (S5, `PENDING_WORK.md`) caps `/api/auth/login/**`
 and `/api/auth/register/**` at **10 requests/minute per client IP**. A real load test hitting
 those endpoints on every iteration would mostly measure the rate limiter, not the wizard/
 affordability code paths. So this plan registers `POOL_SIZE` customers **once**, in a JMeter

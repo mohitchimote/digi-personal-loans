@@ -1,5 +1,5 @@
 <!-- SEED: this direction has been built and validated across the full 9-step
-customer wizard (design-prototype/ — Loan Requirements through Review &
+customer wizard (design-exploration/design-prototype/ — Loan Requirements through Review &
 Submit, standalone static pages, not yet wired into frontend/). It is not
 yet the app's shipped visual system. Re-run `/impeccable document` once this
 direction is approved and implemented in the real Angular app, to capture

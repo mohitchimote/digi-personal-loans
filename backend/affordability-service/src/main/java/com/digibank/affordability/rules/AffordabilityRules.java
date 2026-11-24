@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 /**
  * Wire shape for rule-service's GET/PUT /internal/rules/affordability. Fetched/updated via
- * client.RuleServiceClient (ARCHITECTURE_REVIEW_GAPS.md, G4); no longer a Spring-managed bean
+ * client.RuleServiceClient (PENDING_WORK.md, G4); no longer a Spring-managed bean
  * holding state itself — rule-service persists it now (G6), this is just the deserialized value.
  *
  * Still implements AffordabilityRulesView so it can be handed straight to assessment code that

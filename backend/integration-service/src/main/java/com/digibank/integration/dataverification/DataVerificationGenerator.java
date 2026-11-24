@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Ported from application-service's SimulatedDataVerificationAdapter (ARCHITECTURE_REVIEW_GAPS.md,
+ * Ported from application-service's SimulatedDataVerificationAdapter (PENDING_WORK.md,
  * G5) — the actual generation logic is unchanged, only where it runs. Generates a demo-only,
  * deterministic-per-application "discrepancy check" comparing the customer's self-declared
  * Application Data against synthetic Document Data (no OCR exists — uploaded files are never read)

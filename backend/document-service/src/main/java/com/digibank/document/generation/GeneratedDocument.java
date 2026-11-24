@@ -14,7 +14,7 @@ public class GeneratedDocument {
     @JsonIgnore
     private Long id;
 
-    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — the real numeric id never crosses the API boundary; see
+    // S6 (PENDING_WORK.md) — the real numeric id never crosses the API boundary; see
     // UploadedDocument's identical pattern.
     @JsonProperty("id")
     public String getOpaqueId() { return OpaqueId.encode("doc", id); }

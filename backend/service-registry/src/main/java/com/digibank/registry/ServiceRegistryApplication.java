@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
 
 /**
- * Service discovery registry (ARCHITECTURE_REVIEW_GAPS.md, G3) — replaces api-gateway's hardcoded
+ * Service discovery registry (PENDING_WORK.md, G3) — replaces api-gateway's hardcoded
  * localhost:8081-8086 routes and every inter-service RestTemplate's static URL with dynamic,
  * name-based lookup. Every other service in backend/ registers itself here on startup
  * (spring.application.name is the registered service ID) and api-gateway/application-service/

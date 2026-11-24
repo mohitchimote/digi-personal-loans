@@ -1,6 +1,6 @@
 import { AppError } from "./errors";
 
-// S6 (ARCHITECTURE_REVIEW_GAPS.md) — API-boundary ID obfuscation, deliberately not a schema
+// S6 (PENDING_WORK.md) — API-boundary ID obfuscation, deliberately not a schema
 // migration: internal numeric auto-increment PKs are unchanged everywhere; only what crosses the
 // API boundary (JSON responses, path params) is opaque. This is obfuscation against casual
 // enumeration/business-intelligence leakage (e.g. inferring customer/document volume), not

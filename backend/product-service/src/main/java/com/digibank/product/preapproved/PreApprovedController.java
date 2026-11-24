@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Pre-approved offers context (ARCHITECTURE.md §10) — split out of the old ProductController.
  * Endpoint paths unchanged, except the lookup below (2026-09-09 architecture review, see
- * ARCHITECTURE_REVIEW_GAPS.md S9).
+ * PENDING_WORK.md S9).
  */
 @RestController
 @RequestMapping("/api/products")

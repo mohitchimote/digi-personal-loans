@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableScheduling // S2 — SessionRevocationCache's poll() (ARCHITECTURE_REVIEW_GAPS.md)
+@EnableScheduling // S2 — SessionRevocationCache's poll() (PENDING_WORK.md)
 public class AffordabilityServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(AffordabilityServiceApplication.class, args);

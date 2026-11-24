@@ -3,7 +3,7 @@ package com.digibank.document.util;
 import java.math.BigInteger;
 
 /**
- * S6 (ARCHITECTURE_REVIEW_GAPS.md) — API-boundary id obfuscation, deliberately not a schema
+ * S6 (PENDING_WORK.md) — API-boundary id obfuscation, deliberately not a schema
  * migration: internal auto-increment PKs are unchanged; only what crosses the API boundary (JSON
  * responses, path params) is opaque. This is obfuscation against casual enumeration/business-
  * intelligence leakage, not cryptographic security — anyone with the source can reverse it, same
@@ -12,7 +12,7 @@ import java.math.BigInteger;
  * each stack has its own id space — kept identical purely so one mental model covers both).
  *
  * Duplicated per service rather than shared — no cross-service Java module exists yet (see the Q2
- * note in ARCHITECTURE_REVIEW_GAPS.md, same constraint already applied to SessionRevocationCache).
+ * note in PENDING_WORK.md, same constraint already applied to SessionRevocationCache).
  */
 public final class OpaqueId {
     private OpaqueId() {}

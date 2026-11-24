@@ -52,6 +52,6 @@ management:
         include: health,info
 
 logging:
-  # Console output is now structured JSON (logback.xml, S4 remainder, ARCHITECTURE_REVIEW_GAPS.md)
+  # Console output is now structured JSON (logback.xml, S4 remainder, PENDING_WORK.md)
   # — CorrelationIdFilter's MDC value lands there as a top-level `correlationId` field
   # automatically; the old plain-text pattern override this replaced is gone.

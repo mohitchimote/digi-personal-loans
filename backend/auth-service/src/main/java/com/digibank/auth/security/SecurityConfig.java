@@ -64,7 +64,7 @@ public class SecurityConfig {
                         "/api/auth/login/request-otp", "/api/auth/login/verify-otp", "/api/auth/faqs").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/logo/**").permitAll()
                 // Polled by the other 5 Java services' session-revocation cache (S2,
-                // ARCHITECTURE_REVIEW_GAPS.md) — same internal-service-reachable pattern as
+                // PENDING_WORK.md) — same internal-service-reachable pattern as
                 // /api/branding above, no PII in the response (userId + timestamp pairs only).
                 .requestMatchers(HttpMethod.GET, "/api/auth/revoked-since").permitAll()
                 // Service-to-service reads (org units, role ladder, eligible staff). This path is under the

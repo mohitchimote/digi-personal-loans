@@ -12,7 +12,7 @@
   --tcs-yellow:      #FBB034;
   --tcs-yellow-dark: #D4901C;
   --tcs-yellow-rgb:  251, 176, 52;
-  // Q3 (ARCHITECTURE_REVIEW_GAPS.md) — admin-configurable brand gradient (login hero panel).
+  // Q3 (PENDING_WORK.md) — admin-configurable brand gradient (login hero panel).
   // Default matches the gradient this replaced exactly, so an unconfigured tenant looks identical
   // to before this — BrandingService.applyTheme() overrides this when gradientStart/End are set.
   --tcs-gradient: linear-gradient(160deg, var(--tcs-blue-dark) 0%, var(--tcs-blue) 45%, var(--tcs-secondary) 100%);

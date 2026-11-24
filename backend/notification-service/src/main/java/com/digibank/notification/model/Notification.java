@@ -15,7 +15,7 @@ public class Notification {
     @JsonIgnore
     private Long id;
 
-    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — the real numeric id never crosses the API boundary; same
+    // S6 (PENDING_WORK.md) — the real numeric id never crosses the API boundary; same
     // pattern as document-service's UploadedDocument/GeneratedDocument.
     @JsonProperty("id")
     public String getOpaqueId() { return OpaqueId.encode("ntf", id); }

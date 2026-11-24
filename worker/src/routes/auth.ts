@@ -241,7 +241,7 @@ auth.get("/validate", requireAuth, async (c) => {
   return success(c, "Token is valid.", user.uuid);
 });
 
-// S2 (ARCHITECTURE_REVIEW_GAPS.md) — no logout/session-invalidation endpoint existed before this;
+// S2 (PENDING_WORK.md) — no logout/session-invalidation endpoint existed before this;
 // "logging out" was purely a client-side token discard, so a copied/leaked token stayed valid until
 // its natural 24h expiry regardless. Bumping sessionsRevokedAt invalidates this token (and every
 // other one already issued for this user) on its very next use.

@@ -37,7 +37,7 @@
             </elementProp>
             <elementProp name="" elementType="Header">
               <!-- Register AND verify-otp both match the rate limiter's "/api/auth/register"
-                   prefix, so they share one bucket (ARCHITECTURE_REVIEW_GAPS.md S5) - each pool
+                   prefix, so they share one bucket (PENDING_WORK.md S5) - each pool
                    iteration gets its own simulated client IP (set below by the PreProcessor) so
                    registering POOL_SIZE users never gets throttled regardless of pool size. -->
               <stringProp name="Header.name">X-Forwarded-For</stringProp>

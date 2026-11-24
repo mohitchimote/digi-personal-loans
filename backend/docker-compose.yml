@@ -1,4 +1,4 @@
-# Local/dev orchestration for the 8 backend components (ARCHITECTURE_REVIEW_GAPS.md, G1 + G3).
+# Local/dev orchestration for the 8 backend components (PENDING_WORK.md, G1 + G3).
 # This is NOT the production deployment target — that's container orchestration across two
 # availability zones with managed MySQL (DigiLend_Production_Architecture.docx §8). This compose
 # file exists so the services can be built, run, and integration-tested together without eight
@@ -12,10 +12,10 @@
 # NOT build/run-verified against a real Docker engine — this development machine has neither
 # Docker nor WSL installed. Written correctly against each service's actual config (ports,
 # artifact names, inter-service URL env vars all confirmed directly against pom.xml/application.yml
-# — see ARCHITECTURE_REVIEW_GAPS.md, G1/G3), but treat the first `docker compose up --build` as the
+# — see PENDING_WORK.md, G1/G3), but treat the first `docker compose up --build` as the
 # real verification step, not this comment. The Eureka registration + lb:// gateway routing
 # mechanics themselves ARE runtime-verified — just not inside these exact containers, since no
-# Docker engine is available here (see G3's note in the gap tracker for the real end-to-end test
+# Docker engine is available here (see G3 in PENDING_WORK.md section 8 (details in git history) for the real end-to-end test
 # that was run instead, against plain jars on this host).
 
 services:
@@ -34,7 +34,7 @@ services:
       retries: 10
       start_period: 30s
 
-  # ARCHITECTURE_REVIEW_GAPS.md, G3 — Eureka service registry. Every other service below registers
+  # PENDING_WORK.md, G3 — Eureka service registry. Every other service below registers
   # with it on startup; api-gateway resolves its routes (lb://<service>) against it instead of a
   # hardcoded host:port.
   service-registry:
@@ -48,7 +48,7 @@ services:
       retries: 10
       start_period: 20s
 
-  # ARCHITECTURE_REVIEW_GAPS.md, G5 — the single outbound boundary to the outside world (OTP/SMS/
+  # PENDING_WORK.md, G5 — the single outbound boundary to the outside world (OTP/SMS/
   # Email delivery, data/document verification, business financials). No gateway route — called
   # service-to-service only, per DigiLend_Production_Architecture.docx's service catalog. Holds no
   # state of its own, so no datasource here (unlike rule-service).
@@ -79,7 +79,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-root}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
       # Its own outbound call to integration-service (OTP delivery) stays on this static URL, same
-      # reasoning as application-service's inter-service URLs below (G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      # reasoning as application-service's inter-service URLs below (G3 in PENDING_WORK.md).
       INTEGRATION_SERVICE_URL: http://integration-service:8088
     volumes:
       - auth-branding:/app/branding-store
@@ -97,7 +97,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # ARCHITECTURE_REVIEW_GAPS.md, G4/G6 — lending-policy service (mandate limits, affordability
+  # PENDING_WORK.md, G4/G6 — lending-policy service (mandate limits, affordability
   # thresholds), extracted out of application-service's/affordability-service's old in-memory
   # beans. No gateway route — called service-to-service only, per DigiLend_Production_Architecture
   # .docx's service catalog.
@@ -130,7 +130,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set this in .env}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
       # Its own outbound call to rule-service stays on this static URL, same reasoning as
-      # application-service's inter-service URLs below (G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      # application-service's inter-service URLs below (G3 in PENDING_WORK.md).
       RULE_SERVICE_URL: http://rule-service:8087
     depends_on:
       service-registry:
@@ -201,7 +201,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-root}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
       # Its own outbound call to auth-service for branding stays on this static URL from G1 —
-      # deliberately not converted to Eureka/lb:// (see G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      # deliberately not converted to Eureka/lb:// (see G3 in PENDING_WORK.md).
       AUTH_SERVICE_URL: http://auth-service:8081
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
@@ -256,7 +256,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-root}
       EUREKA_SERVER_URL: http://service-registry:8761/eureka/
       # Its own outbound calls to these 4 services stay on static URLs from G1 — deliberately not
-      # converted to Eureka/lb:// (see G3 in ARCHITECTURE_REVIEW_GAPS.md).
+      # converted to Eureka/lb:// (see G3 in PENDING_WORK.md).
       NOTIFICATION_SERVICE_URL: http://notification-service:8086
       DOCUMENT_SERVICE_URL: http://document-service:8085
       AFFORDABILITY_SERVICE_URL: http://affordability-service:8083
@@ -290,7 +290,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # ARCHITECTURE_REVIEW_GAPS.md, G3 — no more per-route *_SERVICE_URL env vars here. Every route in
+  # PENDING_WORK.md, G3 — no more per-route *_SERVICE_URL env vars here. Every route in
   # api-gateway's application.yml is now lb://<service>, resolved dynamically against
   # service-registry. This is the one component whose routing genuinely requires the registry to
   # be reachable and the target service to have registered — every other service above keeps

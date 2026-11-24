@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
 /** Singleton row (id is always 1) — replaces the old in-memory affordability-service.rules
- * .AffordabilityRules bean's fields (ARCHITECTURE_REVIEW_GAPS.md, G4/G6). A single settings row is
+ * .AffordabilityRules bean's fields (PENDING_WORK.md, G4/G6). A single settings row is
  * the simplest persistence shape for a value that has exactly one current version, admin-edited as
  * a whole via PUT /internal/rules/affordability. */
 @Entity

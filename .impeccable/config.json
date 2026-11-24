@@ -19,7 +19,7 @@
         "rule": "dark-glow",
         "value": "*",
         "files": [
-          "design-prototype/index.html"
+          "design-exploration/design-prototype/index.html"
         ],
         "createdAt": "2026-09-18T15:50:39.160Z",
         "reason": "Intentional, disciplined use: every glow shadow carries a real offset+blur (never zero-offset), per craft-floor's own Depth rule, and is restricted to exactly the gold-accented elements (primary button, slider thumb, brand mark) per DESIGN.md's 'Flat-By-Default Rule' — nothing else in this system gets a shadow."
@@ -28,7 +28,7 @@
         "rule": "dark-glow",
         "value": "*",
         "files": [
-          "design-prototype/*.html"
+          "design-exploration/design-prototype/*.html"
         ],
         "createdAt": "2026-09-18T16:17:09.453Z",
         "reason": "Intentional, disciplined use across the whole Signal Gold direction: every glow shadow carries a real offset+blur (never zero-offset) and is restricted to gold-accented elements only, per DESIGN.md's Flat-By-Default Rule. Scoped to every wizard-step page since they all share the same styles.css tokens/components (supersedes the earlier index.html-only ignore)."

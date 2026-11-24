@@ -173,7 +173,7 @@ async function resolveFormSchema(db: Db, app: InferSelectModel<typeof loanApplic
   }
 }
 
-// S6 (ARCHITECTURE_REVIEW_GAPS.md) — "list this customer's applications" had no ownership check at
+// S6 (PENDING_WORK.md) — "list this customer's applications" had no ownership check at
 // all: any authenticated user could enumerate another customer's applications by guessing a numeric
 // customerId. Same fix shape as documents.ts's assertOwnsDocument (S1).
 function assertOwnsCustomerId(c: Context<AppEnv>, customerId: number) {

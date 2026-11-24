@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Internal-only contract (no api-gateway route) — application-service's
  * decisioning.IntegrationServiceCardPaymentAdapter (implements CardPaymentPort) calls this. Same
  * shape as businessfinancials.BusinessFinancialsController. POST + wrapper body throughout, not
- * GET (S9, ARCHITECTURE_REVIEW_GAPS.md). */
+ * GET (S9, PENDING_WORK.md). */
 @RestController
 @RequestMapping("/internal/integration/card-payment")
 public class CardPaymentController {

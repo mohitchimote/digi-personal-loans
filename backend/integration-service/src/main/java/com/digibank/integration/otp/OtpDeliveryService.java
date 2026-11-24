@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Simulated OTP/SMS/Email delivery (ARCHITECTURE_REVIEW_GAPS.md, G5) — no real SMS/email provider
+ * Simulated OTP/SMS/Email delivery (PENDING_WORK.md, G5) — no real SMS/email provider
  * is wired up (auth-service's OtpService still returns the code directly in its own API response
  * for on-screen display, exactly as before; that's unrelated to and unaffected by this class). This
  * exists so the delivery attempt travels through a real internal service call instead of being a

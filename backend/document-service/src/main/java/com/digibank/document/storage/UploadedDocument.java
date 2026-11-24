@@ -14,7 +14,7 @@ public class UploadedDocument {
     @JsonIgnore
     private Long id;
 
-    // S6 (ARCHITECTURE_REVIEW_GAPS.md) — the real numeric id never crosses the API boundary; every
+    // S6 (PENDING_WORK.md) — the real numeric id never crosses the API boundary; every
     // response carries this opaque token in its place, decoded back by OpaqueId.decode wherever a
     // controller receives one as a path variable.
     @JsonProperty("id")

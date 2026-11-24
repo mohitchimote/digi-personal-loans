@@ -12,7 +12,7 @@ import java.io.IOException;
 /**
  * Forwards the current request's correlation ID (CorrelationIdFilter, MDC) onto every outbound
  * internal RestTemplate call, so the ID survives a gateway -> service -> service hop rather than
- * resetting at each boundary (S4, ARCHITECTURE_REVIEW_GAPS.md).
+ * resetting at each boundary (S4, PENDING_WORK.md).
  */
 @Component
 public class CorrelationIdRequestInterceptor implements ClientHttpRequestInterceptor {
