@@ -98,3 +98,12 @@ export async function findUsersByEmail(db: Db, email: string, lenderCode?: strin
   const code = lenderCode?.trim().toUpperCase();
   return rows.filter((r) => !code || r.lender?.code.toUpperCase() === code).map((r) => r.user);
 }
+
+/**
+ * Updates the row of a user the caller has already resolved (a login, a registration, or the
+ * signed-in user themself). It is keyed by that row's own id, so it cannot touch another lender's
+ * user; it lives here because it is also used before any lender context exists (OTP flows).
+ */
+export function updateUserRow(db: Db, user: { id: number }, set: Partial<typeof users.$inferInsert>) {
+  return db.update(users).set(set).where(eq(users.id, user.id)).returning();
+}

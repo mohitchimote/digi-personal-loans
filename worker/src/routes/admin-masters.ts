@@ -6,9 +6,10 @@ import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { masterTypes, masterItems, orgLevels, orgUnits } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { requireAuth, requireRole, requireLender } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender, optionalAuth, publicLender } from "../middleware/auth";
+import { inLender } from "../lib/lender-scope";
 import { SYSTEM_LISTS, isSystemList } from "../lib/system-lists";
-import { recordAudit } from "../lib/audit";
+import { recordAudit, actorOf } from "../lib/audit";
 import {
   attributeDefsSchema, validateAttributes, typeCreatesCycle, parseJson, generateCode, generateAttributeKey, normaliseName,
   CODE_RE, type AttributeDef,
@@ -71,13 +72,9 @@ const itemSchema = z.object({
   attributes: z.record(z.unknown()).optional(),
 });
 
-function actorOf(c: { get: (k: "authUser") => { fullName: string | null; email: string; role: string } }) {
-  const a = c.get("authUser");
-  return { actor: a.fullName?.trim() || a.email, actorRole: a.role };
-}
 
-async function getType(db: Db, code: string) {
-  const [t] = await db.select().from(masterTypes).where(eq(masterTypes.code, code)).limit(1);
+async function getType(db: Db, lenderId: number, code: string) {
+  const [t] = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId, eq(masterTypes.code, code))).limit(1);
   if (!t) throw new AppError("Master type not found.", 404);
   return t;
 }
@@ -98,23 +95,25 @@ mastersAdmin.get("/system-lists", (c) =>
 
 mastersAdmin.get("/types", async (c) => {
   const db = getDb(c.env.DB);
-  const types = await db.select().from(masterTypes).orderBy(asc(masterTypes.sortOrder), asc(masterTypes.labelEn));
-  const counts = await db.select({ typeCode: masterItems.typeCode, n: count() }).from(masterItems).groupBy(masterItems.typeCode);
+  const lenderId = requireLender(c);
+  const types = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId)).orderBy(asc(masterTypes.sortOrder), asc(masterTypes.labelEn));
+  const counts = await db.select({ typeCode: masterItems.typeCode, n: count() }).from(masterItems).where(inLender(masterItems, lenderId)).groupBy(masterItems.typeCode);
   const byType = new Map(counts.map((r) => [r.typeCode, r.n]));
   return c.json(types.map((t) => shapeType(t, byType.get(t.code) ?? 0)));
 });
 
 mastersAdmin.post("/types", zValidator("json", typeCreate), async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = c.req.valid("json");
   if (body.code) throw new AppError(NO_TYPED_CODE);
-  const all = await db.select().from(masterTypes);
+  const all = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId));
   const taken = new Set(all.map((t) => t.code));
   if (all.some((t) => normaliseName(t.labelEn) === normaliseName(body.labelEn))) throw new AppError("A master with that name already exists.");
   const code = generateCode(body.labelEn, (x) => taken.has(x), { lower: true, fallback: "MASTER" });
   if (body.parentTypeCode && !all.some((t) => t.code === body.parentTypeCode)) throw new AppError("Unknown parent master.");
   const [saved] = await db.insert(masterTypes).values({
-    code, labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null,
+    lenderId, code, labelEn: body.labelEn, labelHe: body.labelHe, description: body.description ?? null,
     parentTypeCode: body.parentTypeCode ?? null, parentRequired: body.parentRequired ?? true,
     attributeDefs: JSON.stringify(finaliseAttributes(body.attributeDefs ?? [], [])),
     sortOrder: body.sortOrder ?? 0, isSystem: false, createdAt: new Date().toISOString(),
@@ -125,17 +124,18 @@ mastersAdmin.post("/types", zValidator("json", typeCreate), async (c) => {
 
 mastersAdmin.put("/types/:code", zValidator("json", typeBase), async (c) => {
   const db = getDb(c.env.DB);
-  const existing = await getType(db, c.req.param("code"));
+  const lenderId = requireLender(c);
+  const existing = await getType(db, lenderId, c.req.param("code"));
   const body = c.req.valid("json");
   const parentTypeCode = body.parentTypeCode === undefined ? existing.parentTypeCode : body.parentTypeCode;
-  const all = await db.select().from(masterTypes);
+  const all = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId));
   if (parentTypeCode) {
     if (!all.some((t) => t.code === parentTypeCode)) throw new AppError("Unknown parent master.");
     const map = new Map(all.map((t) => [t.code, t.parentTypeCode]));
     if (typeCreatesCycle(existing.code, parentTypeCode, (k) => map.get(k))) throw new AppError("That parent would make the masters loop back on themselves.");
   }
   if (parentTypeCode !== existing.parentTypeCode) {
-    const [{ n }] = await db.select({ n: count() }).from(masterItems).where(eq(masterItems.typeCode, existing.code));
+    const [{ n }] = await db.select({ n: count() }).from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.typeCode, existing.code)));
     if (n > 0) throw new AppError("This master already has items - the parent master can't change. Delete the items first.");
   }
   // Removing a required attribute definition that items depend on is harmless (values just stop
@@ -148,20 +148,21 @@ mastersAdmin.put("/types/:code", zValidator("json", typeBase), async (c) => {
       ? JSON.stringify(finaliseAttributes(body.attributeDefs, parseJson<AttributeDef[]>(existing.attributeDefs, [])))
       : existing.attributeDefs,
     sortOrder: body.sortOrder ?? existing.sortOrder,
-  }).where(eq(masterTypes.code, existing.code)).returning();
+  }).where(inLender(masterTypes, lenderId, eq(masterTypes.code, existing.code))).returning();
   await recordAudit(db, { eventType: "MASTER_TYPE_UPDATED", subjectType: "MasterType", subjectId: saved.code, detail: saved.labelEn, ...actorOf(c) });
   return c.json(shapeType(saved));
 });
 
 mastersAdmin.delete("/types/:code", async (c) => {
   const db = getDb(c.env.DB);
-  const existing = await getType(db, c.req.param("code"));
+  const lenderId = requireLender(c);
+  const existing = await getType(db, lenderId, c.req.param("code"));
   if (existing.isSystem) throw new AppError("Built-in masters can't be deleted.");
-  const [{ n }] = await db.select({ n: count() }).from(masterItems).where(eq(masterItems.typeCode, existing.code));
+  const [{ n }] = await db.select({ n: count() }).from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.typeCode, existing.code)));
   if (n > 0) throw new AppError("This master still has items - delete them first.");
-  const [child] = await db.select().from(masterTypes).where(eq(masterTypes.parentTypeCode, existing.code)).limit(1);
+  const [child] = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId, eq(masterTypes.parentTypeCode, existing.code))).limit(1);
   if (child) throw new AppError(`"${child.labelEn}" depends on this master - change or delete it first.`);
-  await db.delete(masterTypes).where(eq(masterTypes.code, existing.code));
+  await db.delete(masterTypes).where(inLender(masterTypes, lenderId, eq(masterTypes.code, existing.code)));
   await recordAudit(db, { eventType: "MASTER_TYPE_DELETED", subjectType: "MasterType", subjectId: existing.code, ...actorOf(c) });
   return c.body(null, 204);
 });
@@ -175,13 +176,14 @@ function likePattern(term: string): string {
 // never loads a whole master. ?limit (<=500, default 100) &offset &q (code or either name) &parentId
 mastersAdmin.get("/types/:code/items", async (c) => {
   const db = getDb(c.env.DB);
-  const type = await getType(db, c.req.param("code"));
+  const lenderId = requireLender(c);
+  const type = await getType(db, lenderId, c.req.param("code"));
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 100, 1), 500);
   const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
   const q = (c.req.query("q") ?? "").trim().slice(0, 100);
   const parentId = c.req.query("parentId") ? Number(c.req.query("parentId")) : null;
   const idFilter = c.req.query("id") ? Number(c.req.query("id")) : null;
-  const conds = [eq(masterItems.typeCode, type.code)];
+  const conds = [eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, type.code)];
   if (idFilter != null && Number.isInteger(idFilter)) conds.push(eq(masterItems.id, idFilter));
   if (parentId != null && Number.isInteger(parentId)) conds.push(eq(masterItems.parentId, parentId));
   if (q) {
@@ -193,12 +195,12 @@ mastersAdmin.get("/types/:code/items", async (c) => {
     )!);
   }
   const where = and(...conds);
-  const [{ n }] = await db.select({ n: count() }).from(masterItems).where(where);
-  const rows = await db.select().from(masterItems).where(where)
+  const [{ n }] = await db.select({ n: count() }).from(masterItems).where(inLender(masterItems, lenderId, where));
+  const rows = await db.select().from(masterItems).where(inLender(masterItems, lenderId, where))
     .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn)).limit(limit).offset(offset);
   // Parent names for display (one extra query for at most `limit` distinct parents).
   const pids = [...new Set(rows.map((r) => r.parentId).filter((v): v is number => v != null))];
-  const parents = pids.length ? await db.select().from(masterItems).where(inArray(masterItems.id, pids)) : [];
+  const parents = pids.length ? await db.select().from(masterItems).where(inLender(masterItems, lenderId, inArray(masterItems.id, pids))) : [];
   const pById = new Map(parents.map((p) => [p.id, p]));
   return c.json({
     items: rows.map((r) => ({
@@ -211,12 +213,12 @@ mastersAdmin.get("/types/:code/items", async (c) => {
 });
 
 /** Validates parent (right type, no cycle) and attributes; returns the DB values. */
-async function prepareItem(db: Db, type: typeof masterTypes.$inferSelect, body: z.infer<typeof itemSchema>) {
+async function prepareItem(db: Db, lenderId: number, type: typeof masterTypes.$inferSelect, body: z.infer<typeof itemSchema>) {
   const parentId = body.parentId ?? null;
   if (type.parentTypeCode) {
     if (parentId == null && type.parentRequired) throw new AppError(`A parent is required (pick a ${type.parentTypeCode.replace(/_/g, " ")}).`);
     if (parentId != null) {
-      const [parent] = await db.select().from(masterItems).where(eq(masterItems.id, parentId)).limit(1);
+      const [parent] = await db.select().from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.id, parentId))).limit(1);
       if (!parent || parent.typeCode !== type.parentTypeCode) throw new AppError("The parent must come from the parent master.");
     }
   } else if (parentId != null) {
@@ -233,10 +235,11 @@ async function prepareItem(db: Db, type: typeof masterTypes.$inferSelect, body: 
 
 mastersAdmin.post("/types/:code/items", zValidator("json", itemSchema), async (c) => {
   const db = getDb(c.env.DB);
-  const type = await getType(db, c.req.param("code"));
+  const lenderId = requireLender(c);
+  const type = await getType(db, lenderId, c.req.param("code"));
   const body = c.req.valid("json");
   if (body.code) throw new AppError(NO_TYPED_CODE);
-  const prepared = await prepareItem(db, type, body);
+  const prepared = await prepareItem(db, lenderId, type, body);
 
   // Code: from the English name, unique within the master. Only rows whose code shares the base can
   // clash, so that is all we load. The same rows reveal a duplicate: the same name (ignoring case,
@@ -244,7 +247,7 @@ mastersAdmin.post("/types/:code/items", zValidator("json", itemSchema), async (c
   const base = generateCode(body.nameEn, () => false);
   const likeBase = base.replace(/[\\%_]/g, (m) => `\\${m}`) + "\\_%";
   const related = await db.select({ code: masterItems.code, nameEn: masterItems.nameEn, parentId: masterItems.parentId }).from(masterItems)
-    .where(and(eq(masterItems.typeCode, type.code), or(eq(masterItems.code, base), sql`${masterItems.code} LIKE ${likeBase} ESCAPE '\\'`)));
+    .where(and(eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, type.code), or(eq(masterItems.code, base), sql`${masterItems.code} LIKE ${likeBase} ESCAPE '\\'`)));
   const wanted = normaliseName(body.nameEn);
   if (related.some((r) => (r.parentId ?? null) === prepared.parentId && normaliseName(r.nameEn) === wanted)) {
     throw new AppError(`"${body.nameEn.trim()}" already exists in this master.`);
@@ -253,7 +256,7 @@ mastersAdmin.post("/types/:code/items", zValidator("json", itemSchema), async (c
   const code = generateCode(body.nameEn, (x) => taken.has(x));
 
   const [saved] = await db.insert(masterItems).values({
-    typeCode: type.code, code, nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId,
+    lenderId, typeCode: type.code, code, nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId,
     sortOrder: body.sortOrder ?? 0, active: body.active ?? true, attributes: prepared.attributes,
     createdAt: new Date().toISOString(),
   }).returning();
@@ -263,23 +266,24 @@ mastersAdmin.post("/types/:code/items", zValidator("json", itemSchema), async (c
 
 mastersAdmin.put("/items/:id", zValidator("json", itemSchema), async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const id = Number(c.req.param("id"));
-  const [existing] = await db.select().from(masterItems).where(eq(masterItems.id, id)).limit(1);
+  const [existing] = await db.select().from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.id, id))).limit(1);
   if (!existing) throw new AppError("Item not found.", 404);
-  const type = await getType(db, existing.typeCode);
+  const type = await getType(db, lenderId, existing.typeCode);
   const body = c.req.valid("json");
   // The code is what other records store, so it can't be edited after creation.
   if (body.code !== undefined && body.code !== existing.code) throw new AppError("An item's code can't be changed - other records refer to it. Add a new item instead.");
-  const prepared = await prepareItem(db, type, body);
+  const prepared = await prepareItem(db, lenderId, type, body);
   const [saved] = await db.update(masterItems).set({
     nameEn: body.nameEn, nameHe: body.nameHe, parentId: prepared.parentId, sortOrder: body.sortOrder ?? existing.sortOrder,
     active: body.active ?? existing.active, attributes: prepared.attributes, updatedAt: new Date().toISOString(),
-  }).where(eq(masterItems.id, id)).returning();
+  }).where(inLender(masterItems, lenderId, eq(masterItems.id, id))).returning();
   // Organisation units picked from this item carry a copy of its names: keep them in step.
-  const levels = await db.select({ id: orgLevels.id }).from(orgLevels).where(eq(orgLevels.masterTypeCode, type.code));
+  const levels = await db.select({ id: orgLevels.id }).from(orgLevels).where(inLender(orgLevels, lenderId, eq(orgLevels.masterTypeCode, type.code)));
   if (levels.length) {
     await db.update(orgUnits).set({ name: saved.nameEn, nameHe: saved.nameHe })
-      .where(and(inArray(orgUnits.levelId, levels.map((l) => l.id)), eq(orgUnits.masterCode, saved.code)));
+      .where(inLender(orgUnits, lenderId, inArray(orgUnits.levelId, levels.map((l) => l.id)), eq(orgUnits.masterCode, saved.code)));
   }
   await recordAudit(db, { eventType: "MASTER_ITEM_UPDATED", subjectType: "MasterItem", subjectId: `${type.code}:${saved.code}`, detail: saved.nameEn, ...actorOf(c) });
   return c.json(shapeItem(saved));
@@ -287,12 +291,13 @@ mastersAdmin.put("/items/:id", zValidator("json", itemSchema), async (c) => {
 
 mastersAdmin.delete("/items/:id", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const id = Number(c.req.param("id"));
-  const [existing] = await db.select().from(masterItems).where(eq(masterItems.id, id)).limit(1);
+  const [existing] = await db.select().from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.id, id))).limit(1);
   if (!existing) throw new AppError("Item not found.", 404);
-  const [child] = await db.select().from(masterItems).where(eq(masterItems.parentId, id)).limit(1);
+  const [child] = await db.select().from(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.parentId, id))).limit(1);
   if (child) throw new AppError(`"${child.nameEn}" sits under this item - move or delete it first.`);
-  await db.delete(masterItems).where(eq(masterItems.id, id));
+  await db.delete(masterItems).where(inLender(masterItems, lenderId, eq(masterItems.id, id)));
   await recordAudit(db, { eventType: "MASTER_ITEM_DELETED", subjectType: "MasterItem", subjectId: `${existing.typeCode}:${existing.code}`, detail: existing.nameEn, ...actorOf(c) });
   return c.body(null, 204);
 });
@@ -303,13 +308,13 @@ export const masters = new Hono<AppEnv>();
 
 async function pickList(db: Db, lenderId: number, typeCode: string, parentCode?: string, q?: string, limit = 2000) {
   if (isSystemList(typeCode)) return SYSTEM_LISTS[typeCode].list(db, { lenderId, parentCode, q, limit });
-  const [type] = await db.select().from(masterTypes).where(and(eq(masterTypes.lenderId, lenderId), eq(masterTypes.code, typeCode))).limit(1);
+  const [type] = await db.select().from(masterTypes).where(inLender(masterTypes, lenderId, eq(masterTypes.code, typeCode))).limit(1);
   if (!type) throw new AppError("Unknown master.", 404);
   const conds = [eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, typeCode), eq(masterItems.active, true)];
   if (parentCode) {
     if (!type.parentTypeCode) throw new AppError("This master has no parent master.");
     const [p] = await db.select({ id: masterItems.id }).from(masterItems)
-      .where(and(eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, type.parentTypeCode), eq(masterItems.code, parentCode))).limit(1);
+      .where(inLender(masterItems, lenderId, eq(masterItems.typeCode, type.parentTypeCode), eq(masterItems.code, parentCode))).limit(1);
     if (!p) return [];
     conds.push(eq(masterItems.parentId, p.id));
   }
@@ -321,10 +326,10 @@ async function pickList(db: Db, lenderId: number, typeCode: string, parentCode?:
       sql`${masterItems.nameHe} LIKE ${pat} ESCAPE '\\'`,
     )!);
   }
-  const rows = await db.select().from(masterItems).where(and(...conds))
+  const rows = await db.select().from(masterItems).where(inLender(masterItems, lenderId, ...conds))
     .orderBy(asc(masterItems.sortOrder), asc(masterItems.nameEn)).limit(limit);
   const parentIds = rows.map((r) => r.parentId).filter((v): v is number => v != null);
-  const parents = parentIds.length ? await db.select().from(masterItems).where(inArray(masterItems.id, [...new Set(parentIds)])) : [];
+  const parents = parentIds.length ? await db.select().from(masterItems).where(inLender(masterItems, lenderId, inArray(masterItems.id, [...new Set(parentIds)]))) : [];
   const parentCodeById = new Map(parents.map((p) => [p.id, p.code]));
   const out = rows.map((r) => ({
     code: r.code,
@@ -336,6 +341,7 @@ async function pickList(db: Db, lenderId: number, typeCode: string, parentCode?:
 }
 
 // System lists (bank staff) carry people's names, so unlike the masters they are for signed-in users only.
+masters.use("*", optionalAuth);
 masters.use("/", async (c, next) => {
   const wanted = (c.req.query("types") ?? "").split(",").map((t) => t.trim());
   return wanted.some(isSystemList) ? requireAuth(c, next) : next();
@@ -348,7 +354,9 @@ masters.get("/", async (c) => {
   const types = (c.req.query("types") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 25);
   if (types.length === 0) throw new AppError("Pass ?types=code1,code2.");
   const result: Record<string, Awaited<ReturnType<typeof pickList>>> = {};
-  for (const t of types) result[t] = await pickList(db, requireLender(c), t);
+  const lenderId = await publicLender(c, db);
+  if (lenderId == null) throw new AppError("Please enter your lender code.");
+  for (const t of types) result[t] = await pickList(db, lenderId, t);
   return c.json(result);
 });
 
@@ -357,5 +365,7 @@ masters.get("/", async (c) => {
 masters.get("/:type", async (c) => {
   const db = getDb(c.env.DB);
   const limit = Math.min(Math.max(Number(c.req.query("limit")) || 2000, 1), 5000);
-  return c.json(await pickList(db, requireLender(c), c.req.param("type"), c.req.query("parent") || undefined, c.req.query("q") || undefined, limit));
+  const lenderId = await publicLender(c, db);
+  if (lenderId == null) throw new AppError("Please enter your lender code.");
+  return c.json(await pickList(db, lenderId, c.req.param("type"), c.req.query("parent") || undefined, c.req.query("q") || undefined, limit));
 });

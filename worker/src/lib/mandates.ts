@@ -1,13 +1,14 @@
 import { eq } from "drizzle-orm";
+import { inLender } from "./lender-scope";
 import type { Db } from "../db/client";
 import { mandates, orgUnits, caseReferrals } from "../db/schema";
 import { allRoleConfigs, type RoleConfig } from "./roles";
 import { AppError } from "./errors";
 
 /** The org unit itself then each ancestor, nearest first. */
-export async function ancestorChain(db: Db, unitId: number | null): Promise<number[]> {
+export async function ancestorChain(db: Db, lenderId: number, unitId: number | null): Promise<number[]> {
   if (unitId == null) return [];
-  const rows = await db.select({ id: orgUnits.id, parentId: orgUnits.parentId }).from(orgUnits);
+  const rows = await db.select({ id: orgUnits.id, parentId: orgUnits.parentId }).from(orgUnits).where(inLender(orgUnits, lenderId));
   const parentOf = new Map(rows.map((r) => [r.id, r.parentId]));
   const chain: number[] = [];
   let cur: number | null | undefined = unitId;
@@ -30,12 +31,13 @@ export interface ResolvedMandate {
  * No matching row at all means no approval authority (limit 0). */
 export async function resolveMandate(
   db: Db,
+  lenderId: number,
   roleCode: string,
   orgUnitId: number | null,
   applicationType: string | null
 ): Promise<ResolvedMandate> {
-  const rows = await db.select().from(mandates).where(eq(mandates.roleCode, roleCode));
-  const chain = await ancestorChain(db, orgUnitId);
+  const rows = await db.select().from(mandates).where(inLender(mandates, lenderId, eq(mandates.roleCode, roleCode)));
+  const chain = await ancestorChain(db, lenderId, orgUnitId);
   const candidates = rows
     .filter((m) => (m.orgUnitId == null || chain.includes(m.orgUnitId)) && (m.applicationType == null || m.applicationType === applicationType))
     .map((m) => ({ m, unitDist: m.orgUnitId == null ? Number.POSITIVE_INFINITY : chain.indexOf(m.orgUnitId), typeMatch: m.applicationType != null }));
@@ -79,10 +81,10 @@ export async function assertCanActOnReferral(
   if (label) throw new AppError(`This case has been referred to ${label} and can only be actioned at that level or above.`, 403);
 }
 
-export async function closeReferrals(db: Db, applicationRef: string): Promise<void> {
+export async function closeReferrals(db: Db, lenderId: number, applicationRef: string): Promise<void> {
   const now = new Date().toISOString();
-  const open = await db.select({ id: caseReferrals.id, resolvedAt: caseReferrals.resolvedAt }).from(caseReferrals).where(eq(caseReferrals.applicationRef, applicationRef));
+  const open = await db.select({ id: caseReferrals.id, resolvedAt: caseReferrals.resolvedAt }).from(caseReferrals).where(inLender(caseReferrals, lenderId, eq(caseReferrals.applicationRef, applicationRef)));
   for (const r of open) {
-    if (r.resolvedAt == null) await db.update(caseReferrals).set({ resolvedAt: now }).where(eq(caseReferrals.id, r.id));
+    if (r.resolvedAt == null) await db.update(caseReferrals).set({ resolvedAt: now }).where(inLender(caseReferrals, lenderId, eq(caseReferrals.id, r.id)));
   }
 }

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { desc, eq } from "drizzle-orm";
+import { inLender } from "../lib/lender-scope";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { generatedDocuments, uploadedDocuments } from "../db/schema";
+import { generatedDocuments, uploadedDocuments, loanApplications } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { generateOfferPack } from "../lib/document-pack";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireLender } from "../middleware/auth";
 import { isAllowedUpload } from "../lib/file-signature";
 import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
@@ -71,7 +72,8 @@ documents.post("/generate", async (c) => {
     throw new AppError(`Unknown document type: ${req.documentType}`);
   }
 
-  const pack = await generateOfferPack(db, c.env, req, req.documentType === "FINAL_APPROVAL_LETTER");
+  await assertAppInLender(c, req.applicationRef);
+  const pack = await generateOfferPack(db, c.env, { ...req, lenderId: requireLender(c) }, req.documentType === "FINAL_APPROVAL_LETTER");
   return c.json(pack.map(toGeneratedDocSummary));
 });
 
@@ -81,7 +83,7 @@ documents.get("/customer/:customerId", async (c) => {
   const rows = await db
     .select()
     .from(generatedDocuments)
-    .where(eq(generatedDocuments.customerId, customerId))
+    .where(inLender(generatedDocuments, requireLender(c), eq(generatedDocuments.customerId, customerId)))
     .orderBy(desc(generatedDocuments.generatedAt));
   return c.json(rows.map(toGeneratedDocSummary));
 });
@@ -92,17 +94,25 @@ documents.get("/application/:appRef", async (c) => {
   const rows = await db
     .select()
     .from(generatedDocuments)
-    .where(eq(generatedDocuments.applicationRef, appRef))
+    .where(inLender(generatedDocuments, requireLender(c), eq(generatedDocuments.applicationRef, appRef)))
     .orderBy(desc(generatedDocuments.generatedAt));
   return c.json(rows.map(toGeneratedDocSummary));
 });
+
+/** The application a document request names must belong to the caller's lender. */
+async function assertAppInLender(c: any, appRef: string) {
+  const db = getDb(c.env.DB);
+  const [app] = await db.select({ ref: loanApplications.applicationRef }).from(loanApplications)
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef))).limit(1);
+  if (!app) throw new AppError("Application not found.", 404);
+}
 
 async function serveGenerated(c: any, disposition: "attachment" | "inline") {
   const bucket = requireBucket(c);
   const db = getDb(c.env.DB);
   const rawDocId = c.req.param("docId");
   const docId = decodeOpaqueId("doc", rawDocId);
-  const [doc] = await db.select().from(generatedDocuments).where(eq(generatedDocuments.id, docId)).limit(1);
+  const [doc] = await db.select().from(generatedDocuments).where(inLender(generatedDocuments, requireLender(c), eq(generatedDocuments.id, docId))).limit(1);
   if (!doc) throw new AppError(`Document not found: ${rawDocId}`);
   assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.filePath);
@@ -136,12 +146,15 @@ documents.post("/upload", async (c) => {
     throw new AppError("Unsupported file type. Allowed: PDF, JPEG, PNG, DOC, DOCX.");
   }
 
-  const key = `uploaded/${appRef}/${crypto.randomUUID()}_${file.name}`;
+  await assertAppInLender(c, appRef);
+  const lenderId = requireLender(c);
+  const key = `lender-${lenderId}/uploaded/${appRef}/${crypto.randomUUID()}_${file.name}`;
   await bucket.put(key, bytes, { httpMetadata: { contentType: file.type || "application/octet-stream" } });
 
   const [saved] = await db
     .insert(uploadedDocuments)
     .values({
+      lenderId,
       applicationRef: appRef,
       customerId,
       documentType: docType,
@@ -161,7 +174,7 @@ documents.get("/uploaded/:appRef", async (c) => {
   const rows = await db
     .select()
     .from(uploadedDocuments)
-    .where(eq(uploadedDocuments.applicationRef, appRef))
+    .where(inLender(uploadedDocuments, requireLender(c), eq(uploadedDocuments.applicationRef, appRef)))
     .orderBy(desc(uploadedDocuments.uploadedAt));
   return c.json(rows.map(toUploadedDocSummary));
 });
@@ -171,7 +184,7 @@ async function serveUploaded(c: any, disposition: "attachment" | "inline") {
   const db = getDb(c.env.DB);
   const rawId = c.req.param("id");
   const id = decodeOpaqueId("upl", rawId);
-  const [doc] = await db.select().from(uploadedDocuments).where(eq(uploadedDocuments.id, id)).limit(1);
+  const [doc] = await db.select().from(uploadedDocuments).where(inLender(uploadedDocuments, requireLender(c), eq(uploadedDocuments.id, id))).limit(1);
   if (!doc) throw new AppError(`Uploaded document not found: ${rawId}`);
   assertOwnsDocument(c, doc.customerId);
   const obj = await bucket.get(doc.storagePath);

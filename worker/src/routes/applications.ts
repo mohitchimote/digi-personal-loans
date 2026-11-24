@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull, ne, notInArray, or } from "drizzle-orm"
 import type { AppEnv } from "../types";
 import { getDb, type Db } from "../db/client";
 import { loanApplications, underwritingNotes, caseReferrals } from "../db/schema";
+import { inLender, assertUserInLender } from "../lib/lender-scope";
 import { AppError } from "../lib/errors";
 import { columnForSection, calculateCompletion, nextSection, generateApplicationRef, flattenAllSectionValues } from "../lib/sections";
 import { loanPurpose } from "../lib/app-format";
@@ -192,20 +193,22 @@ function originOrgUnitId(c: Context<AppEnv>): number | null {
 
 const waitUntilOf = (c: Context<AppEnv>): WaitUntil => (p) => c.executionCtx.waitUntil(p);
 
-async function getByRef(db: Db, appRef: string) {
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+async function getByRef(db: Db, lenderId: number, appRef: string) {
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, lenderId, eq(loanApplications.applicationRef, appRef))).limit(1);
   if (!app) throw new AppError(`Application not found: ${appRef}`);
   return app;
 }
 
 applications.post("/start", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const { customerId, customerEmail } = await c.req.json<{ customerId: number; customerEmail: string }>();
+  await assertUserInLender(db, lenderId, customerId);
 
   const [existing] = await db
     .select()
     .from(loanApplications)
-    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, ["DRAFT", "WAITING_CUSTOMER"]))))
+    .where(inLender(loanApplications, lenderId, eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, lenderId, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (existing) return c.json(existing);
@@ -214,6 +217,7 @@ applications.post("/start", async (c) => {
   const [created] = await db
     .insert(loanApplications)
     .values({
+      lenderId,
       applicationRef: generateApplicationRef(),
       customerId,
       customerEmail,
@@ -232,12 +236,14 @@ applications.post("/start", async (c) => {
 
 applications.post("/start-business", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const { customerId, customerEmail } = await c.req.json<{ customerId: number; customerEmail: string }>();
+  await assertUserInLender(db, lenderId, customerId);
 
   const [existing] = await db
     .select()
     .from(loanApplications)
-    .where(and(eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, ["DRAFT", "WAITING_CUSTOMER"]))))
+    .where(inLender(loanApplications, lenderId, eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, lenderId, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (existing) return c.json(existing);
@@ -246,6 +252,7 @@ applications.post("/start-business", async (c) => {
   const [created] = await db
     .insert(loanApplications)
     .values({
+      lenderId,
       applicationRef: generateApplicationRef(),
       customerId,
       customerEmail,
@@ -268,13 +275,15 @@ applications.post("/start-business", async (c) => {
 // those two stops explicitly via nextSection()'s MANDATORY_STOPS.
 applications.post("/start-pre-approved", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const { customerId, customerEmail, nationalId } = await c.req.json<{
     customerId: number;
     customerEmail: string;
     nationalId: string;
   }>();
+  await assertUserInLender(db, lenderId, customerId);
 
-  const offer = await getPreApprovedOffer(db, nationalId);
+  const offer = await getPreApprovedOffer(db, lenderId, nationalId);
   if (!offer) throw new AppError("No pre-approved offer found for this customer.");
 
   const now = new Date().toISOString();
@@ -400,6 +409,7 @@ applications.post("/start-pre-approved", async (c) => {
   });
 
   const draft = {
+    lenderId,
     applicationRef,
     customerId,
     customerEmail,
@@ -425,10 +435,10 @@ applications.post("/start-pre-approved", async (c) => {
 
   const [created] = await db
     .insert(loanApplications)
-    .values({ ...draft, completionPercentage })
+    .values({ ...draft, lenderId, completionPercentage })
     .returning();
 
-  await consumePreApprovedOffer(db, nationalId);
+  await consumePreApprovedOffer(db, lenderId, nationalId);
   await loadCase(db, created);
   return c.json(created);
 });
@@ -438,7 +448,7 @@ applications.put("/:appRef/section", async (c) => {
   const appRef = c.req.param("appRef");
   const { section, data } = await c.req.json<{ section: string; data: Record<string, unknown> }>();
 
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
   const validated = await validateSectionData(db, app, section, data);
@@ -460,7 +470,7 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
   const appRef = c.req.param("appRef");
   const { section, data } = await c.req.json<{ section: string; data: Record<string, unknown> }>();
 
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   const column = columnForSection(section);
   if (!column) throw new AppError(`Unknown section: ${section}`);
   const validated = await validateSectionData(db, app, section, data);
@@ -476,11 +486,12 @@ applications.put("/:appRef/section-by-underwriter", async (c) => {
 
 // Queue status lists, the entitlement that opens each queue, and whether the org-scope and
 // referral-visibility filters apply all come from the workflow definition (workflow-spec).
-async function queueWhere(c: Context<AppEnv>, q: QueueDef) {
+async function queueConditions(c: Context<AppEnv>, q: QueueDef) {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   return and(
     inArray(loanApplications.status, q.statuses),
-    q.applyScope ? await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope) : undefined,
+    q.applyScope ? await caseScopeCondition(db, lenderId, c.get("authUser"), c.get("authRole").scope) : undefined,
     q.hideReferredAbove ? await referralVisibility(db, c) : undefined,
   );
 }
@@ -497,13 +508,13 @@ async function queueRows(c: Context<AppEnv>, rows: (typeof loanApplications.$inf
 applications.get("/pipeline", async (c) => {
   const q = await resolveQueue(c, ["pipeline"]);
   const db = getDb(c.env.DB);
-  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(loanApplications.submittedAt)));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), await queueConditions(c, q))).orderBy(loanApplications.submittedAt)));
 });
 
 applications.get("/banker-queue", async (c) => {
   const q = await resolveQueue(c, ["banker-queue"]);
   const db = getDb(c.env.DB);
-  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt))));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), await queueConditions(c, q))).orderBy(desc(loanApplications.updatedAt))));
 });
 
 // Broader than /pipeline and /banker-queue (which drive their respective list pages and
@@ -512,7 +523,7 @@ applications.get("/banker-queue", async (c) => {
 applications.get("/home-stats", async (c) => {
   const q = await resolveQueue(c, ["home-stats-staff", "home-stats-banker"]);
   const db = getDb(c.env.DB);
-  return c.json(await queueRows(c, await db.select().from(loanApplications).where(await queueWhere(c, q)).orderBy(desc(loanApplications.updatedAt))));
+  return c.json(await queueRows(c, await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), await queueConditions(c, q))).orderBy(desc(loanApplications.updatedAt))));
 });
 
 // Backs the Home dashboard's "Action Items" and "Recent Notifications" panels. There's no
@@ -524,8 +535,9 @@ applications.get("/staff-activity", async (c) => {
   // application waits on the customer in that status, which is exactly what "action items" surfaces.
   const q = await resolveQueue(c, ["activity-staff", "activity-banker"]);
   const db = getDb(c.env.DB);
-  const where = await queueWhere(c, q);
-  const apps = await db.select().from(loanApplications).where(where);
+  const lenderId = requireLender(c);
+  const conditions = await queueConditions(c, q);
+  const apps = await db.select().from(loanApplications).where(inLender(loanApplications, lenderId, conditions));
   const appByRef = new Map(apps.map((a) => [a.applicationRef, a]));
   if (apps.length === 0) return c.json([]);
 
@@ -535,7 +547,7 @@ applications.get("/staff-activity", async (c) => {
   const notes = await db
     .select()
     .from(underwritingNotes)
-    .where(inArray(underwritingNotes.applicationRef, db.select({ ref: loanApplications.applicationRef }).from(loanApplications).where(where)))
+    .where(inLender(underwritingNotes, lenderId, inArray(underwritingNotes.applicationRef, db.select({ ref: loanApplications.applicationRef }).from(loanApplications).where(inLender(loanApplications, lenderId, conditions)))))
     .orderBy(desc(underwritingNotes.createdAt))
     .limit(50);
 
@@ -568,10 +580,10 @@ applications.get("/staff-activity", async (c) => {
 applications.get("/:appRef/mandate", async (c) => {
   assertEntitlement(c, "mandates.view");
   const db = getDb(c.env.DB);
-  const app = await getByRef(db, c.req.param("appRef"));
+  const app = await getByRef(db, requireLender(c), c.req.param("appRef"));
   await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   const role = c.get("authRole");
-  const mandate = await resolveMandate(db, role.code, app.orgUnitId, app.applicationType);
+  const mandate = await resolveMandate(db, app.lenderId, role.code, app.orgUnitId, app.applicationType);
   const next = await nextRoleUp(db, app.lenderId, role.rank);
   return c.json({
     limit: mandate.limit,
@@ -585,9 +597,9 @@ applications.get("/:appRef/referrals", async (c) => {
   if (!isStaff(c)) throw new AppError("Forbidden.", 403);
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
-  const rows = await db.select().from(caseReferrals).where(eq(caseReferrals.applicationRef, appRef)).orderBy(caseReferrals.createdAt);
+  const rows = await db.select().from(caseReferrals).where(inLender(caseReferrals, app.lenderId, eq(caseReferrals.applicationRef, appRef))).orderBy(caseReferrals.createdAt);
   return c.json(rows);
 });
 
@@ -598,7 +610,7 @@ applications.get("/customer/:customerId", async (c) => {
   const rows = await db
     .select()
     .from(loanApplications)
-    .where(eq(loanApplications.customerId, customerId))
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.customerId, customerId)))
     .orderBy(desc(loanApplications.createdAt));
   return c.json(rows);
 });
@@ -610,7 +622,7 @@ applications.get("/customer/:customerId/current", async (c) => {
   const [app] = await db
     .select()
     .from(loanApplications)
-    .where(eq(loanApplications.customerId, customerId))
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.customerId, customerId)))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
   if (!app) throw new AppError(`No application found for customer: ${customerId}`);
@@ -623,7 +635,7 @@ applications.get("/:appRef/notes", async (c) => {
   const rows = await db
     .select()
     .from(underwritingNotes)
-    .where(eq(underwritingNotes.applicationRef, appRef))
+    .where(inLender(underwritingNotes, requireLender(c), eq(underwritingNotes.applicationRef, appRef)))
     .orderBy(desc(underwritingNotes.createdAt));
   return c.json(rows);
 });
@@ -645,7 +657,7 @@ applications.post("/:appRef/notes", async (c) => {
 // swallow e.g. /pipeline or /banker-queue as an appRef.
 applications.get("/:appRef", async (c) => {
   const db = getDb(c.env.DB);
-  const app = await getByRef(db, c.req.param("appRef"));
+  const app = await getByRef(db, requireLender(c), c.req.param("appRef"));
   await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   return c.json(await withResolvedFormVersion(db, app));
 });
@@ -654,11 +666,11 @@ applications.put("/:appRef/affordability-result", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
   const result = await c.req.json<Record<string, unknown>>();
-  await getByRef(db, appRef);
+  await getByRef(db, requireLender(c), appRef);
   const [updated] = await db
     .update(loanApplications)
     .set({ affordabilityResultJson: JSON.stringify(result), updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef))
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef)))
     .returning();
   return c.json(updated);
 });
@@ -719,19 +731,19 @@ applications.post("/:appRef/disbursement/second-check", async (c) => c.json(awai
 applications.get("/:appRef/data-verification", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   if (app.dataVerificationJson) return c.json(JSON.parse(app.dataVerificationJson));
 
   // The address on the application holds a city code; the document check compares names.
   const personal = (() => { try { return app.personalDetailsJson ? JSON.parse(app.personalDetailsJson) : null; } catch { return null; } })();
   const forCheck = personal?.city
-    ? { ...app, personalDetailsJson: JSON.stringify({ ...personal, city: await masterItemNameEn(db, "city", String(personal.city)) }) }
+    ? { ...app, personalDetailsJson: JSON.stringify({ ...personal, city: await masterItemNameEn(db, app.lenderId, "city", String(personal.city)) }) }
     : app;
   const summary = generateDataVerification(forCheck);
   await db
     .update(loanApplications)
     .set({ dataVerificationJson: JSON.stringify(summary), updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef));
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef)));
   return c.json(summary);
 });
 
@@ -739,7 +751,7 @@ applications.post("/:appRef/data-verification/resolve", async (c) => {
   assertEntitlement(c, "case.resolveVerification");
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   const body = await c.req.json<{ ruleKey: string; action: string; note?: string }>();
 
   const summary = app.dataVerificationJson ? JSON.parse(app.dataVerificationJson) : generateDataVerification(app);
@@ -748,20 +760,20 @@ applications.post("/:appRef/data-verification/resolve", async (c) => {
   await db
     .update(loanApplications)
     .set({ dataVerificationJson: JSON.stringify(resolved), updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef));
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef)));
   return c.json(resolved);
 });
 
 applications.get("/:appRef/business-financials-analysis", async (c) => {
   const db = getDb(c.env.DB);
   const appRef = c.req.param("appRef");
-  const app = await getByRef(db, appRef);
+  const app = await getByRef(db, requireLender(c), appRef);
   if (app.businessFinancialsAnalysisJson) return c.json(JSON.parse(app.businessFinancialsAnalysisJson));
 
   const analysis = generateBusinessFinancialsAnalysis(app);
   await db
     .update(loanApplications)
     .set({ businessFinancialsAnalysisJson: JSON.stringify(analysis), updatedAt: new Date().toISOString() })
-    .where(eq(loanApplications.applicationRef, appRef));
+    .where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef)));
   return c.json(analysis);
 });

@@ -19,6 +19,7 @@ import { friendlyDocumentName } from "./pdf/approval-letter";
 // final approval, since `approvedAmount` can differ from the originally requested amount.
 
 export interface OfferPackData {
+  lenderId: number;
   applicationRef: string;
   customerId: number;
   customerName: string;
@@ -36,11 +37,12 @@ async function storeDocument(
   documentType: string,
   pdfBytes: Uint8Array
 ) {
-  const key = `generated/${data.applicationRef}/${documentType}_${crypto.randomUUID()}.pdf`;
+  const key = `lender-${data.lenderId}/generated/${data.applicationRef}/${documentType}_${crypto.randomUUID()}.pdf`;
   await bucket.put(key, pdfBytes, { httpMetadata: { contentType: "application/pdf" } });
   const [saved] = await db
     .insert(generatedDocuments)
     .values({
+      lenderId: data.lenderId,
       applicationRef: data.applicationRef,
       customerId: data.customerId,
       documentType,

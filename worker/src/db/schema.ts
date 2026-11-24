@@ -588,12 +588,12 @@ export const letterVersions = sqliteTable("letter_versions", {
 // Named rules shared by every template ("Rate can change"); a condition can refer to one by id.
 export const letterSavedRules = sqliteTable("letter_saved_rules", {
   lenderId: lenderIdCol(),
-  id: text("id").primaryKey(),
+  id: text("id").notNull(),
   name: text("name").notNull(),
   ruleJson: text("rule_json").notNull(),
   updatedAt: text("updated_at"),
   updatedBy: text("updated_by"),
-});
+}, (t) => ({ pk: primaryKey({ columns: [t.lenderId, t.id] }) }));
 
 // Logos, signatures and seals live in the database (PNG or JPEG, size-capped) so a letter and its
 // pictures cannot drift apart. `dataBase64` is the file itself.

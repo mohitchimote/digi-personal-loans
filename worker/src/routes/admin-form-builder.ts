@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { AppError } from "../lib/errors";
 import { success } from "../lib/api-response";
 import { FORM_KEYS, isFormKey, type FormKey } from "../lib/form-schema-types";
@@ -34,7 +34,7 @@ formBuilderAdmin.get("/forms", async (c) => {
   const db = getDb(c.env.DB);
   const forms = await Promise.all(
     FORM_KEYS.map(async (formKey) => {
-      const versions = await listVersions(db, formKey);
+      const versions = await listVersions(db, requireLender(c), formKey);
       const published = versions.find((v) => v.status === "PUBLISHED") ?? null;
       return {
         formKey,
@@ -51,14 +51,14 @@ formBuilderAdmin.get("/forms/:formKey/versions", async (c) => {
   const formKey = c.req.param("formKey");
   requireKnownFormKey(formKey);
   const db = getDb(c.env.DB);
-  const versions = await listVersions(db, formKey as any);
+  const versions = await listVersions(db, requireLender(c), formKey as any);
   return c.json(versions.map((v) => ({ ...v, schemaJson: undefined })));
 });
 
 formBuilderAdmin.get("/versions/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const db = getDb(c.env.DB);
-  const version = await getVersionById(db, id);
+  const version = await getVersionById(db, requireLender(c), id);
   if (!version) throw new AppError("Form version not found.", 404);
   return c.json(version);
 });
@@ -71,7 +71,7 @@ formBuilderAdmin.post("/forms/:formKey/draft", zValidator("json", createDraftSch
   const { sourceVersionId } = c.req.valid("json");
   const db = getDb(c.env.DB);
   const authUser = c.get("authUser");
-  const draft = await createDraftFrom(db, formKey as any, sourceVersionId ?? null, authUser.email);
+  const draft = await createDraftFrom(db, requireLender(c), formKey as any, sourceVersionId ?? null, authUser.email);
   return success(c, "Draft created.", draft, 201);
 });
 
@@ -86,7 +86,7 @@ formBuilderAdmin.put("/versions/:id", zValidator("json", updateDraftSchema), asy
   const id = Number(c.req.param("id"));
   const body = c.req.valid("json");
   const db = getDb(c.env.DB);
-  const updated = await updateDraft(db, id, body);
+  const updated = await updateDraft(db, requireLender(c), id, body);
   return success(c, "Draft saved.", updated);
 });
 
@@ -94,14 +94,14 @@ formBuilderAdmin.post("/versions/:id/publish", async (c) => {
   const id = Number(c.req.param("id"));
   const db = getDb(c.env.DB);
   const authUser = c.get("authUser");
-  const published = await publishVersion(db, id, authUser.email);
+  const published = await publishVersion(db, requireLender(c), id, authUser.email);
   return success(c, `Published as v${published.version}.`, published);
 });
 
 formBuilderAdmin.delete("/versions/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const db = getDb(c.env.DB);
-  await discardDraft(db, id);
+  await discardDraft(db, requireLender(c), id);
   return success(c, "Draft discarded.", null);
 });
 
@@ -113,18 +113,18 @@ formBuilderAdmin.post("/forms/:formKey/apply-master-sources", async (c) => {
   const formKey = c.req.param("formKey");
   requireKnownFormKey(formKey);
   const db = getDb(c.env.DB);
-  const published = await getPublishedVersion(db, formKey as FormKey);
+  const published = await getPublishedVersion(db, requireLender(c), formKey as FormKey);
   if (!published) throw new AppError("No published version for this form yet.", 404);
   const { schema, changes } = applyMasterSources(formKey as FormKey, parseSchema(published));
   if (changes.length === 0) return success(c, "Already up to date.", { changes });
   const authUser = c.get("authUser");
-  const draft = await createDraftFrom(db, formKey as FormKey, published.id, authUser.email);
+  const draft = await createDraftFrom(db, requireLender(c), formKey as FormKey, published.id, authUser.email);
   try {
-    await updateDraft(db, draft.id, { schemaJson: JSON.stringify(schema), changeNote: `Options now come from masters (${changes.length} field${changes.length === 1 ? "" : "s"})` });
-    const version = await publishVersion(db, draft.id, authUser.email);
+    await updateDraft(db, requireLender(c), draft.id, { schemaJson: JSON.stringify(schema), changeNote: `Options now come from masters (${changes.length} field${changes.length === 1 ? "" : "s"})` });
+    const version = await publishVersion(db, requireLender(c), draft.id, authUser.email);
     return success(c, `Published as v${version.version}.`, { version: version.version, changes });
   } catch (e) {
-    await discardDraft(db, draft.id).catch(() => undefined); // do not leave a half-made draft behind
+    await discardDraft(db, requireLender(c), draft.id).catch(() => undefined); // do not leave a half-made draft behind
     throw e;
   }
 });
@@ -136,7 +136,7 @@ formBuilderAdmin.get("/forms/:formKey/published", async (c) => {
   const formKey = c.req.param("formKey");
   requireKnownFormKey(formKey);
   const db = getDb(c.env.DB);
-  const version = await getPublishedVersion(db, formKey as any);
+  const version = await getPublishedVersion(db, requireLender(c), formKey as any);
   if (!version) throw new AppError("No published version for this form yet.", 404);
   return c.json(version);
 });

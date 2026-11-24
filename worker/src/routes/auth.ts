@@ -9,8 +9,9 @@ import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { generateAndAssignOtp, verifyOtpForUser, OTP_VALIDITY_SECONDS } from "../lib/otp";
 import { buildAuthResponse, toCustomerProfile } from "../lib/user-mappers";
-import { requireAuth, requireRole, requireEntitlement, requireLender } from "../middleware/auth";
-import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender } from "../lib/lenders";
+import { requireAuth, requireRole, requireEntitlement, requireLender, optionalAuth, publicLender } from "../middleware/auth";
+import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender, updateUserRow } from "../lib/lenders";
+import { inLender } from "../lib/lender-scope";
 
 export const auth = new Hono<AppEnv>();
 
@@ -88,9 +89,12 @@ async function pendingRegistration(db: ReturnType<typeof getDb>, email: string, 
   return pool[0];
 }
 
-auth.get("/faqs", async (c) => {
+auth.get("/faqs", optionalAuth, async (c) => {
   const db = getDb(c.env.DB);
-  const rows = await db.select().from(faqs).orderBy(asc(faqs.category), asc(faqs.displayOrder));
+  // Public, like branding: the lender comes from ?lender=CODE (or is the only active one).
+  const lenderId = await publicLender(c, db);
+  if (lenderId == null) return c.json([]);
+  const rows = await db.select().from(faqs).where(inLender(faqs, lenderId)).orderBy(asc(faqs.category), asc(faqs.displayOrder));
   return c.json(rows);
 });
 
@@ -129,11 +133,7 @@ auth.post(
     if (user.emailVerified) throw new AppError("This account is already verified.");
 
     const verified = await verifyOtpForUser(db, user, otp);
-    const [updated] = await db
-      .update(users)
-      .set({ emailVerified: true, enabled: true, lastLogin: new Date().toISOString() })
-      .where(eq(users.id, verified.id))
-      .returning();
+    const [updated] = await updateUserRow(db, verified, { emailVerified: true, enabled: true, lastLogin: new Date().toISOString() });
 
     const response = await buildAuthResponse(db, updated, c.env.JWT_SECRET);
     return success(c, "Registration successful. Welcome to DigiBank.", response);
@@ -197,11 +197,7 @@ auth.post(
 
       const verified = await verifyOtpForUser(db, user, otp);
       const previousLogin = verified.lastLogin; // captured before this login overwrites it below
-      const [updated] = await db
-        .update(users)
-        .set({ lastLogin: new Date().toISOString() })
-        .where(eq(users.id, verified.id))
-        .returning();
+      const [updated] = await updateUserRow(db, verified, { lastLogin: new Date().toISOString() });
 
       const response = { ...(await buildAuthResponse(db, updated, c.env.JWT_SECRET)), previousLogin };
       return success(c, "Login successful.", response);
@@ -234,7 +230,7 @@ auth.get("/validate", requireAuth, async (c) => {
 auth.post("/logout", requireAuth, async (c) => {
   const db = getDb(c.env.DB);
   const user = c.get("authUser");
-  await db.update(users).set({ sessionsRevokedAt: new Date().toISOString() }).where(eq(users.id, user.id));
+  await updateUserRow(db, user, { sessionsRevokedAt: new Date().toISOString() });
   return success(c, "Logged out.", null);
 });
 
@@ -248,7 +244,7 @@ auth.put(
     const db = getDb(c.env.DB);
     const user = c.get("authUser");
     const { preferredLanguage } = c.req.valid("json");
-    await db.update(users).set({ preferredLanguage }).where(eq(users.id, user.id));
+    await updateUserRow(db, user, { preferredLanguage });
     return success(c, "Language preference updated.", { preferredLanguage });
   }
 );

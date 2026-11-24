@@ -1,9 +1,9 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { brandingSettings } from "../db/schema";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender, optionalAuth, publicLender } from "../middleware/auth";
+import { inLender } from "../lib/lender-scope";
 import { AppError } from "../lib/errors";
 
 const ALLOWED_LOGO_TYPES: Record<string, string> = {
@@ -23,16 +23,36 @@ function requireBucket(c: any) {
 // Public: GET /api/branding, GET /api/branding/logo/**
 export const branding = new Hono<AppEnv>();
 
-async function currentSettings(db: ReturnType<typeof getDb>) {
-  const [existing] = await db.select().from(brandingSettings).where(eq(brandingSettings.id, 1)).limit(1);
+async function currentSettings(db: ReturnType<typeof getDb>, lenderId: number) {
+  const [existing] = await db.select().from(brandingSettings).where(inLender(brandingSettings, lenderId)).limit(1);
   if (existing) return existing;
-  const [created] = await db.insert(brandingSettings).values({ id: 1 }).returning();
+  const [created] = await db.insert(brandingSettings).values({ lenderId }).returning();
   return created;
 }
 
-branding.get("/", async (c) => {
+// Public, so the lender is not known from a token: the login and register pages pass ?lender=CODE
+// (the same code the login uses), and a single-lender deployment needs none. Without a usable code
+// the neutral defaults are returned rather than any one lender's branding.
+const NEUTRAL_BRANDING = { primaryColor: "#003366", secondaryColor: "#002244", accentColor: "#FBB034", gradientStart: null, gradientEnd: null, logoUrl: null };
+
+branding.get("/", optionalAuth, async (c) => {
   const db = getDb(c.env.DB);
-  return c.json(await currentSettings(db));
+  const lenderId = await publicLender(c, db);
+  if (lenderId == null) return c.json(NEUTRAL_BRANDING);
+  return c.json(await currentSettings(db, lenderId));
+});
+
+// Logos live under lender-<id>/branding/ in storage; the id is part of the URL. Logos uploaded
+// before lenders existed are at branding/<file> and keep their old URL.
+branding.get("/logo/:lenderId/:filename", async (c) => {
+  const bucket = requireBucket(c);
+  const lenderId = Number(c.req.param("lenderId"));
+  if (!Number.isInteger(lenderId)) return c.notFound();
+  const obj = await bucket.get(`lender-${lenderId}/branding/${c.req.param("filename")}`);
+  if (!obj) return c.notFound();
+  return new Response(obj.body, {
+    headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream" },
+  });
 });
 
 branding.get("/logo/:filename", async (c) => {
@@ -54,6 +74,7 @@ brandingAdmin.use("*", requireAuth, requireRole("ADMIN"));
 
 brandingAdmin.put("/", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.json<{
     primaryColor?: string;
     secondaryColor?: string;
@@ -61,7 +82,7 @@ brandingAdmin.put("/", async (c) => {
     gradientStart?: string | null;
     gradientEnd?: string | null;
   }>();
-  const settings = await currentSettings(db);
+  const settings = await currentSettings(db, lenderId);
   const [updated] = await db
     .update(brandingSettings)
     .set({
@@ -71,7 +92,7 @@ brandingAdmin.put("/", async (c) => {
       gradientStart: body.gradientStart !== undefined ? body.gradientStart : settings.gradientStart,
       gradientEnd: body.gradientEnd !== undefined ? body.gradientEnd : settings.gradientEnd,
     })
-    .where(eq(brandingSettings.id, 1))
+    .where(inLender(brandingSettings, lenderId))
     .returning();
   return c.json(updated);
 });
@@ -79,6 +100,7 @@ brandingAdmin.put("/", async (c) => {
 brandingAdmin.post("/logo", async (c) => {
   const bucket = requireBucket(c);
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.parseBody();
 
   const file = body["file"];
@@ -89,21 +111,24 @@ brandingAdmin.post("/logo", async (c) => {
 
   const filename = `logo_${crypto.randomUUID()}.${ext}`;
   const bytes = await file.arrayBuffer();
-  await bucket.put(`branding/${filename}`, bytes, { httpMetadata: { contentType: file.type } });
+  await bucket.put(`lender-${lenderId}/branding/${filename}`, bytes, { httpMetadata: { contentType: file.type } });
 
-  const settings = await currentSettings(db);
+  const settings = await currentSettings(db, lenderId);
   const previousLogoUrl = settings.logoUrl;
   const [updated] = await db
     .update(brandingSettings)
-    .set({ logoUrl: `/api/branding/logo/${filename}` })
-    .where(eq(brandingSettings.id, 1))
+    .set({ logoUrl: `/api/branding/logo/${lenderId}/${filename}` })
+    .where(inLender(brandingSettings, lenderId))
     .returning();
 
   // Best-effort cleanup of the previous logo — a failure here shouldn't fail the upload itself,
   // the new logo is already saved and live.
   if (previousLogoUrl?.startsWith("/api/branding/logo/")) {
-    const previousFilename = previousLogoUrl.replace("/api/branding/logo/", "");
-    await bucket.delete(`branding/${previousFilename}`).catch(() => {});
+    // New URLs are /logo/<lenderId>/<file>; older ones are /logo/<file> (stored at branding/<file>).
+    const rest = previousLogoUrl.replace("/api/branding/logo/", "");
+    const key = rest.includes("/") ? `lender-${rest.split("/")[0]}/branding/${rest.split("/")[1]}` : `branding/${rest}`;
+    // Only ever delete within the caller's own lender (or the pre-lender folder).
+    if (key.startsWith(`lender-${lenderId}/`) || key.startsWith("branding/")) await bucket.delete(key).catch(() => {});
   }
 
   return c.json(updated);

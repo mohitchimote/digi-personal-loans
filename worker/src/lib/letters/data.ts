@@ -33,7 +33,7 @@ export async function buildLetterData(db: Db, app: App, extra: { decisionReason?
   const addr = business ? company : personal;
   const branchCode = business ? company.preferredBranch : personal.preferredBranch;
 
-  const names = (master: string, code: unknown) => masterItemNames(db, master, [str(code)].filter((c): c is string => !!c));
+  const names = (master: string, code: unknown) => masterItemNames(db, app.lenderId, master, [str(code)].filter((c): c is string => !!c));
   const [purpose, branch, relationship, industry, country, city] = await Promise.all([
     names(business ? "business_loan_purpose" : "loan_purpose", loanReq.loanPurpose),
     names("branch", branchCode),

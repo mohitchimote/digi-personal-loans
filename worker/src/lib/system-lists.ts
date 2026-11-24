@@ -24,13 +24,13 @@ export interface SystemList {
 }
 
 /** The branch master item an org unit belongs to: its own link, or the nearest ancestor's. */
-async function branchCodeOfUnit(db: Db, unitId: number | null): Promise<string | null> {
+async function branchCodeOfUnit(db: Db, lenderId: number, unitId: number | null): Promise<string | null> {
   const seen = new Set<number>();
   let cur = unitId;
   while (cur != null && !seen.has(cur)) {
     seen.add(cur);
     const [row] = await db.select({ parentId: orgUnits.parentId, masterCode: orgUnits.masterCode, masterType: orgLevels.masterTypeCode })
-      .from(orgUnits).innerJoin(orgLevels, eq(orgLevels.id, orgUnits.levelId)).where(eq(orgUnits.id, cur)).limit(1);
+      .from(orgUnits).innerJoin(orgLevels, eq(orgLevels.id, orgUnits.levelId)).where(and(eq(orgUnits.lenderId, lenderId), eq(orgUnits.id, cur))).limit(1);
     if (!row) return null;
     if (row.masterType === "branch" && row.masterCode) return row.masterCode;
     cur = row.parentId;
@@ -39,11 +39,11 @@ async function branchCodeOfUnit(db: Db, unitId: number | null): Promise<string |
 }
 
 /** Org units that stand for a branch (a unit linked to that item in the Branch master), with everything beneath them. */
-async function unitsOfBranch(db: Db, branchCode: string): Promise<number[]> {
+async function unitsOfBranch(db: Db, lenderId: number, branchCode: string): Promise<number[]> {
   const roots = await db.select({ id: orgUnits.id }).from(orgUnits).innerJoin(orgLevels, eq(orgLevels.id, orgUnits.levelId))
-    .where(and(eq(orgLevels.masterTypeCode, "branch"), eq(orgUnits.masterCode, branchCode)));
+    .where(and(eq(orgUnits.lenderId, lenderId), eq(orgLevels.masterTypeCode, "branch"), eq(orgUnits.masterCode, branchCode)));
   const ids = new Set<number>();
-  for (const r of roots) for (const id of await subtreeIds(db, r.id)) ids.add(id);
+  for (const r of roots) for (const id of await subtreeIds(db, lenderId, r.id)) ids.add(id);
   return [...ids];
 }
 
@@ -57,7 +57,7 @@ const staff: SystemList = {
     let rows = await db.select({ uuid: users.uuid, fullName: users.fullName, orgUnitId: users.orgUnitId })
       .from(users).where(and(eq(users.lenderId, lenderId), inArray(users.role, roles), eq(users.enabled, true)));
     if (parentCode) {
-      const units = new Set(await unitsOfBranch(db, parentCode));
+      const units = new Set(await unitsOfBranch(db, lenderId, parentCode));
       rows = rows.filter((r) => r.orgUnitId != null && units.has(r.orgUnitId));
     } else {
       rows = rows.filter((r) => r.orgUnitId != null);
@@ -73,7 +73,7 @@ const staff: SystemList = {
     const [u] = await db.select({ role: users.role, enabled: users.enabled, orgUnitId: users.orgUnitId }).from(users).where(and(eq(users.lenderId, lenderId), eq(users.uuid, code))).limit(1);
     if (!u) return null;
     const isStaff = (await staffRoleCodes(db, lenderId)).includes(u.role);
-    return { active: !!u.enabled && isStaff, parentCode: await branchCodeOfUnit(db, u.orgUnitId) };
+    return { active: !!u.enabled && isStaff, parentCode: await branchCodeOfUnit(db, lenderId, u.orgUnitId) };
   },
 };
 

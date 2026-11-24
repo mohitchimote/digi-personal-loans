@@ -3,8 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { requireAuth, requireRole } from "../middleware/auth";
-import { recordAudit } from "../lib/audit";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
+import { recordAudit, actorOf } from "../lib/audit";
 import { ENTITLEMENT_CATALOG, ENTITLEMENT_KEYS } from "../lib/entitlements";
 import { validateDefinition } from "../lib/workflow/validate";
 import { createDraft, discardDraft, ensureDefaultDefinition, getDefinitionRow, listDefinitions, publishDraft, saveDraft } from "../lib/workflow/store";
@@ -15,10 +15,6 @@ import { createDraft, discardDraft, ensureDefaultDefinition, getDefinitionRow, l
 export const workflowAdmin = new Hono<AppEnv>();
 workflowAdmin.use("*", requireAuth, requireRole("ADMIN"));
 
-const who = (c: { get: (k: "authUser") => { fullName: string | null; email: string; role: string } }) => {
-  const u = c.get("authUser");
-  return { actor: u.fullName?.trim() || u.email, actorRole: u.role };
-};
 
 const summary = (r: Awaited<ReturnType<typeof getDefinitionRow>>) => ({
   id: r.id, key: r.definitionKey, version: r.version, status: r.status, changeNote: r.changeNote,
@@ -41,13 +37,13 @@ workflowAdmin.get("/catalog", (c) =>
 workflowAdmin.get("/definitions", async (c) => {
   const db = getDb(c.env.DB);
   // A fresh environment has no rows until something seeds the bundled default; the builder must not open empty.
-  await ensureDefaultDefinition(db);
-  const rows = await listDefinitions(db);
+  await ensureDefaultDefinition(db, requireLender(c));
+  const rows = await listDefinitions(db, requireLender(c));
   return c.json(rows.map((r) => ({ ...summary(r), caseCount: r.caseCount })));
 });
 
 workflowAdmin.get("/definitions/:id", async (c) => {
-  const row = await getDefinitionRow(getDb(c.env.DB), Number(c.req.param("id")));
+  const row = await getDefinitionRow(getDb(c.env.DB), requireLender(c), Number(c.req.param("id")));
   return c.json({ ...summary(row), definition: JSON.parse(row.definitionJson) });
 });
 
@@ -59,8 +55,8 @@ workflowAdmin.post("/validate", zValidator("json", z.object({ definition: z.unkn
 
 workflowAdmin.post("/definitions/:key/draft", zValidator("json", z.object({ sourceId: z.number().int().optional() }).default({})), async (c) => {
   const db = getDb(c.env.DB);
-  const { row, existing } = await createDraft(db, c.req.param("key"), c.req.valid("json").sourceId, who(c).actor);
-  if (!existing) await recordAudit(db, { eventType: "WORKFLOW_DRAFT_CREATED", subjectType: "WorkflowDefinition", subjectId: String(row.id), detail: `${row.definitionKey} v${row.version}`, ...who(c) });
+  const { row, existing } = await createDraft(db, requireLender(c), c.req.param("key"), c.req.valid("json").sourceId, actorOf(c).actor);
+  if (!existing) await recordAudit(db, { eventType: "WORKFLOW_DRAFT_CREATED", subjectType: "WorkflowDefinition", subjectId: String(row.id), detail: `${row.definitionKey} v${row.version}`, ...actorOf(c) });
   return c.json({ ...summary(row), existing }, existing ? 200 : 201);
 });
 
@@ -68,25 +64,25 @@ workflowAdmin.put("/definitions/:id", zValidator("json", z.object({ definition: 
   const db = getDb(c.env.DB);
   const id = Number(c.req.param("id"));
   const body = c.req.valid("json");
-  const r = await saveDraft(db, id, body.definition, body.changeNote ?? null);
+  const r = await saveDraft(db, requireLender(c), id, body.definition, body.changeNote ?? null);
   if (!r.ok) return c.json({ success: false, message: "The definition is not valid.", errors: r.errors }, 400);
-  await recordAudit(db, { eventType: "WORKFLOW_DRAFT_SAVED", subjectType: "WorkflowDefinition", subjectId: String(id), detail: body.changeNote ?? null, ...who(c) });
+  await recordAudit(db, { eventType: "WORKFLOW_DRAFT_SAVED", subjectType: "WorkflowDefinition", subjectId: String(id), detail: body.changeNote ?? null, ...actorOf(c) });
   return c.json(summary(r.row));
 });
 
 workflowAdmin.post("/definitions/:id/publish", async (c) => {
   const db = getDb(c.env.DB);
   const id = Number(c.req.param("id"));
-  const r = await publishDraft(db, id, who(c).actor);
+  const r = await publishDraft(db, requireLender(c), id, actorOf(c).actor);
   if (!r.ok) return c.json({ success: false, message: "The definition cannot be published.", errors: r.errors }, 400);
-  await recordAudit(db, { eventType: "WORKFLOW_DEFINITION_PUBLISHED", subjectType: "WorkflowDefinition", subjectId: String(id), detail: `${r.row.definitionKey} v${r.row.version}`, ...who(c) });
+  await recordAudit(db, { eventType: "WORKFLOW_DEFINITION_PUBLISHED", subjectType: "WorkflowDefinition", subjectId: String(id), detail: `${r.row.definitionKey} v${r.row.version}`, ...actorOf(c) });
   return c.json(summary(r.row));
 });
 
 workflowAdmin.delete("/definitions/:id", async (c) => {
   const db = getDb(c.env.DB);
   const id = Number(c.req.param("id"));
-  await discardDraft(db, id);
-  await recordAudit(db, { eventType: "WORKFLOW_DRAFT_DISCARDED", subjectType: "WorkflowDefinition", subjectId: String(id), ...who(c) });
+  await discardDraft(db, requireLender(c), id);
+  await recordAudit(db, { eventType: "WORKFLOW_DRAFT_DISCARDED", subjectType: "WorkflowDefinition", subjectId: String(id), ...actorOf(c) });
   return c.body(null, 204);
 });

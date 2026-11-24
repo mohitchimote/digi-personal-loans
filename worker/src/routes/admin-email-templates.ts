@@ -6,7 +6,8 @@ import type { AppEnv } from "../types";
 import type { Db } from "../db/client";
 import { getDb } from "../db/client";
 import { emailTemplates } from "../db/schema";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { inLender } from "../lib/lender-scope";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { AppError } from "../lib/errors";
 import { success, fail } from "../lib/api-response";
 import { EVENT_REGISTRY, EVENT_KEYS, isKnownEventKey, SAMPLE_VARIABLES } from "../lib/email-events";
@@ -17,10 +18,10 @@ import { renderTemplate, deliverEmail, splitAddresses, getBrandingForEmail } fro
 export const emailTemplatesAdmin = new Hono<AppEnv>();
 emailTemplatesAdmin.use("*", requireAuth, requireRole("ADMIN"));
 
-async function getOrSeedTemplate(db: Db, eventKey: string) {
-  const [existing] = await db.select().from(emailTemplates).where(eq(emailTemplates.eventKey, eventKey)).limit(1);
+async function getOrSeedTemplate(db: Db, lenderId: number, eventKey: string) {
+  const [existing] = await db.select().from(emailTemplates).where(inLender(emailTemplates, lenderId, eq(emailTemplates.eventKey, eventKey))).limit(1);
   if (existing) return existing;
-  const [created] = await db.insert(emailTemplates).values({ eventKey }).returning();
+  const [created] = await db.insert(emailTemplates).values({ lenderId, eventKey }).returning();
   return created;
 }
 
@@ -34,7 +35,7 @@ emailTemplatesAdmin.get("/events", (c) => {
 
 emailTemplatesAdmin.get("/", async (c) => {
   const db = getDb(c.env.DB);
-  const rows = await Promise.all(EVENT_KEYS.map((key) => getOrSeedTemplate(db, key)));
+  const rows = await Promise.all(EVENT_KEYS.map((key) => getOrSeedTemplate(db, requireLender(c), key)));
   const withMeta = rows.map((row) => ({ ...row, ...EVENT_REGISTRY[row.eventKey] }));
   return c.json(withMeta);
 });
@@ -54,7 +55,7 @@ emailTemplatesAdmin.put("/:eventKey", zValidator("json", upsertSchema), async (c
   const eventKey = c.req.param("eventKey");
   requireKnownEvent(eventKey);
   const db = getDb(c.env.DB);
-  await getOrSeedTemplate(db, eventKey);
+  await getOrSeedTemplate(db, requireLender(c), eventKey);
   const body = c.req.valid("json");
   const authUser = c.get("authUser");
   const [updated] = await db
@@ -64,7 +65,7 @@ emailTemplatesAdmin.put("/:eventKey", zValidator("json", upsertSchema), async (c
       updatedAt: new Date().toISOString(),
       updatedBy: authUser.email,
     })
-    .where(eq(emailTemplates.eventKey, eventKey))
+    .where(inLender(emailTemplates, requireLender(c), eq(emailTemplates.eventKey, eventKey)))
     .returning();
   return c.json({ ...updated, ...EVENT_REGISTRY[eventKey] });
 });
@@ -83,7 +84,7 @@ emailTemplatesAdmin.post("/:eventKey/preview", zValidator("json", draftFieldsSch
   requireKnownEvent(eventKey);
   const db = getDb(c.env.DB);
   const draft = c.req.valid("json");
-  const existing = await getOrSeedTemplate(db, eventKey);
+  const existing = await getOrSeedTemplate(db, requireLender(c), eventKey);
   const fields = {
     subject: draft.subject ?? existing.subject,
     headerContent: draft.headerContent ?? existing.headerContent,
@@ -91,7 +92,7 @@ emailTemplatesAdmin.post("/:eventKey/preview", zValidator("json", draftFieldsSch
     signature: draft.signature ?? existing.signature,
     footer: draft.footer ?? existing.footer,
   };
-  const branding = await getBrandingForEmail(db);
+  const branding = await getBrandingForEmail(db, requireLender(c));
   const rendered = renderTemplate(branding, fields, SAMPLE_VARIABLES);
   return c.json({ html: rendered.html });
 });
@@ -101,7 +102,7 @@ emailTemplatesAdmin.post("/:eventKey/test", zValidator("json", draftFieldsSchema
   requireKnownEvent(eventKey);
   const db = getDb(c.env.DB);
   const draft = c.req.valid("json");
-  const existing = await getOrSeedTemplate(db, eventKey);
+  const existing = await getOrSeedTemplate(db, requireLender(c), eventKey);
   const fields = {
     subject: draft.subject ?? existing.subject,
     headerContent: draft.headerContent ?? existing.headerContent,
@@ -111,7 +112,7 @@ emailTemplatesAdmin.post("/:eventKey/test", zValidator("json", draftFieldsSchema
   };
   const ccSource = draft.ccAddress ?? existing.ccAddress;
 
-  const branding = await getBrandingForEmail(db);
+  const branding = await getBrandingForEmail(db, requireLender(c));
   const rendered = renderTemplate(branding, fields, SAMPLE_VARIABLES);
   const authUser = c.get("authUser");
 

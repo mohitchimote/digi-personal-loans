@@ -1,5 +1,7 @@
 import { computeCalculated } from "../calculated";
 import { and, eq, isNull } from "drizzle-orm";
+import { inLender } from "../lender-scope";
+import { requireLender } from "../../middleware/auth";
 import type { Context } from "hono";
 import { getDb, type Db } from "../../db/client";
 import { caseReferrals, loanApplications, underwritingNotes, wfCaseTracks, wfTransitions } from "../../db/schema";
@@ -69,7 +71,7 @@ async function buildFacts(c: Context<AppEnv>, db: Db, app: LoanRow, actor: Actor
   return {
     caseVisible: actor.type === "SYSTEM" ? true : await isCaseVisible(db, user, role.scope, app),
     isOwner: user.id === app.customerId,
-    mandateLimit: actor.type === "STAFF" && needsMandate ? (await resolveMandate(db, user.role, app.orgUnitId, app.applicationType)).limit : null,
+    mandateLimit: actor.type === "STAFF" && needsMandate ? (await resolveMandate(db, app.lenderId, user.role, app.orgUnitId, app.applicationType)).limit : null,
     ladder: (await allRoleConfigs(db, app.lenderId)).filter((r) => r.rank != null).map((r) => ({ code: r.code, label: r.label, rank: r.rank as number })),
   };
 }
@@ -82,7 +84,7 @@ export interface ActionsView { allowed: ActionInfo[]; blocked: Record<string, { 
  * Input-dependent rules (amount, reason, mandate) are enforced when the action is actually run. */
 export async function describeActions(c: Context<AppEnv>, appRef: string): Promise<ActionsView> {
   const db = getDb(c.env.DB);
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef))).limit(1);
   if (!app) throw new AppError(`Application not found: ${appRef}`);
   const actor = callerActor(c);
   // A customer may only ask about their own case; staff are subject to org scope.
@@ -105,7 +107,7 @@ export async function describeActions(c: Context<AppEnv>, appRef: string): Promi
  * required entitlements and the scope/referral filters all come from the definition. */
 export async function resolveQueue(c: Context<AppEnv>, keys: string[]): Promise<QueueDef> {
   const db = getDb(c.env.DB);
-  const def = parseDefinition(await ensureDefaultDefinition(db));
+  const def = parseDefinition(await ensureDefaultDefinition(db, requireLender(c)));
   const actor = callerActor(c);
   for (const key of keys) {
     if (queueAccess(def, { actor, queue: key }).ok) return def.queues.find((q) => q.key === key)!;
@@ -117,10 +119,10 @@ function transitionHasGuard(def: WorkflowDefinition, action: string, type: strin
   return !!findTransition(def, action)?.transition.guards.some((g) => g.type === type);
 }
 
-async function insertNote(db: Db, appRef: string, section: string, note: string, noteType: string, createdBy: string): Promise<NoteRow> {
-  const [saved] = await db.insert(underwritingNotes).values({ applicationRef: appRef, section, note, noteType, createdBy, createdAt: new Date().toISOString() }).returning();
+async function insertNote(db: Db, lenderId: number, appRef: string, section: string, note: string, noteType: string, createdBy: string): Promise<NoteRow> {
+  const [saved] = await db.insert(underwritingNotes).values({ lenderId, applicationRef: appRef, section, note, noteType, createdBy, createdAt: new Date().toISOString() }).returning();
   // Open Point #19: every decisioning action is audited through its note, as it always was.
-  await recordAudit(db, { eventType: noteType, subjectType: "LoanApplication", subjectId: appRef, actor: createdBy, detail: note });
+  await recordAudit(db, { lenderId, eventType: noteType, subjectType: "LoanApplication", subjectId: appRef, actor: createdBy, detail: note });
   return saved;
 }
 
@@ -130,7 +132,7 @@ export interface RunResult { app: LoanRow; /** The last note this action recorde
  * when the action is not allowed; otherwise persists the new state and returns the fresh row. */
 export async function runAction(c: Context<AppEnv>, appRef: string, o: RunOptions): Promise<RunResult> {
   const db = getDb(c.env.DB);
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef))).limit(1);
   if (!app) throw new AppError(`Application not found: ${appRef}`);
 
   const loaded = await loadCase(db, app);
@@ -144,7 +146,7 @@ export async function runAction(c: Context<AppEnv>, appRef: string, o: RunOption
   await persist(db, app, loaded.definitionId, loaded.definition, result, o, actor, now);
   const note = await runHostEffects(c, db, app, result, o, actor);
 
-  const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+  const [fresh] = await db.select().from(loanApplications).where(inLender(loanApplications, app.lenderId, eq(loanApplications.applicationRef, appRef))).limit(1);
   return { app: fresh, note };
 }
 
@@ -177,29 +179,29 @@ async function persist(
   const ownerSet = stageChanged ? { assigneeUserId: routed?.userId ?? null, assignedAt: routed ? now : null } : {};
 
   const queries: unknown[] = [];
-  if (Object.keys(set).length > 0) queries.push(db.update(loanApplications).set(set).where(eq(loanApplications.applicationRef, app.applicationRef)));
+  if (Object.keys(set).length > 0) queries.push(db.update(loanApplications).set(set).where(inLender(loanApplications, app.lenderId, eq(loanApplications.applicationRef, app.applicationRef))));
   if (statusChanged) {
     queries.push(
       db.insert(wfCaseTracks)
-        .values({ applicationRef: app.applicationRef, trackKey: r.track, status: r.to.status, stage: r.to.stage, enteredAt: now, ...ownerSet })
+        .values({ lenderId: app.lenderId, applicationRef: app.applicationRef, trackKey: r.track, status: r.to.status, stage: r.to.stage, enteredAt: now, ...ownerSet })
         .onConflictDoUpdate({ target: [wfCaseTracks.applicationRef, wfCaseTracks.trackKey], set: { status: r.to.status, stage: r.to.stage, enteredAt: now, ...ownerSet } }),
     );
   }
   // History records real workflow moves, not notes or staff edits (those have no target status).
   if (transition.to) {
     queries.push(db.insert(wfTransitions).values({
-      applicationRef: app.applicationRef, trackKey: r.track, action: r.log.action,
+      lenderId: app.lenderId, applicationRef: app.applicationRef, trackKey: r.track, action: r.log.action,
       fromStatus: r.log.fromStatus, toStatus: r.log.toStatus, fromStage: r.log.fromStage, toStage: r.log.toStage,
       actorType: r.log.actorType, actorUserId: r.log.actorUserId, actorName: r.log.actorName, actorRole: r.log.actorRole,
       reason: r.log.reason, at: r.log.at, definitionId,
     }));
   }
   if (r.referral.close) {
-    queries.push(db.update(caseReferrals).set({ resolvedAt: now }).where(and(eq(caseReferrals.applicationRef, app.applicationRef), isNull(caseReferrals.resolvedAt))));
+    queries.push(db.update(caseReferrals).set({ resolvedAt: now }).where(inLender(caseReferrals, app.lenderId, eq(caseReferrals.applicationRef, app.applicationRef), isNull(caseReferrals.resolvedAt))));
   }
   if (r.referral.open) {
     queries.push(db.insert(caseReferrals).values({
-      applicationRef: app.applicationRef, fromRole: actor.role ?? "SYSTEM", fromUserId: actor.userId, fromName: actor.name,
+      lenderId: app.lenderId, applicationRef: app.applicationRef, fromRole: actor.role ?? "SYSTEM", fromUserId: actor.userId, fromName: actor.name,
       toRole: r.referral.open.toRole, reason: r.log.reason, createdAt: now,
     }));
   }
@@ -209,42 +211,42 @@ async function persist(
   // workflow definition (and its notification/email/document subscribers) uses.
   if (auditsEvent(r)) {
     await recordAudit(db, {
-      eventType: r.event, subjectType: "LoanApplication", subjectId: app.applicationRef,
+      lenderId: app.lenderId, eventType: r.event, subjectType: "LoanApplication", subjectId: app.applicationRef,
       actor: r.log.actorName, actorRole: r.log.actorRole,
       detail: `${r.action}: ${r.log.fromStatus} -> ${r.log.toStatus}${r.log.reason ? ` (${r.log.reason})` : ""}`,
     });
   }
   if (routed) {
-    await recordAudit(db, { eventType: "CASE_AUTO_ASSIGNED", subjectType: "LoanApplication", subjectId: app.applicationRef, actor: "System (Routing)", detail: `${routed.name} (${r.to.stage})` });
+    await recordAudit(db, { lenderId: app.lenderId, eventType: "CASE_AUTO_ASSIGNED", subjectType: "LoanApplication", subjectId: app.applicationRef, actor: "System (Routing)", detail: `${routed.name} (${r.to.stage})` });
   }
 }
 
 async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: TransitionSuccess, o: RunOptions, actor: Actor): Promise<NoteRow | null> {
   let lastNote: NoteRow | null = null;
   let lang: "en" | "he" | null = null;
-  const language = async () => (lang ??= await getPreferredLanguage(db, app.customerId));
+  const language = async () => (lang ??= await getPreferredLanguage(db, app.lenderId, app.customerId));
 
   for (const e of r.hostEffects) {
     switch (e.type) {
       case "NOTE":
-        lastNote = await insertNote(db, app.applicationRef, String(e.section ?? "general"), String(e.text ?? ""), String(e.noteType ?? "NOTE"), actor.name);
+        lastNote = await insertNote(db, app.lenderId, app.applicationRef, String(e.section ?? "general"), String(e.text ?? ""), String(e.noteType ?? "NOTE"), actor.name);
         break;
       case "NOTIFY": {
         await warmLoanPurposeNames(db, app);
         const spec = buildNotification(String(e.template), app, await language(), (e.vars ?? {}) as Vars);
-        if (spec) await sendNotification(db, app.customerId, spec.title, spec.message, spec.type, app.applicationRef);
+        if (spec) await sendNotification(db, app.lenderId, app.customerId, spec.title, spec.message, spec.type, app.applicationRef);
         break;
       }
       case "EMAIL":
         o.waitUntil(sendTemplatedEmail(db, c.env, String(e.event), app, buildEmailVars(String(e.event), (e.vars ?? {}) as Vars, await language())));
         break;
       case "GENERATE_DOC":
-        await generateFinalApprovalLetter(db, c.env, app.applicationRef);
+        await generateFinalApprovalLetter(db, c.env, app.lenderId, app.applicationRef);
         break;
       case "CARD_PAYMENT": {
         // N1 - generate once, then persist: a repeat call never regenerates the synthetic transaction.
         const json = app.cardPaymentResultJson ?? JSON.stringify(authoriseCardPayment(app.applicationRef, app.approvedAmount));
-        await db.update(loanApplications).set({ cardPaymentResultJson: json }).where(eq(loanApplications.applicationRef, app.applicationRef));
+        await db.update(loanApplications).set({ cardPaymentResultJson: json }).where(inLender(loanApplications, app.lenderId, eq(loanApplications.applicationRef, app.applicationRef)));
         break;
       }
       case "RUN_AUTO_APPROVAL":
@@ -259,7 +261,7 @@ async function runHostEffects(c: Context<AppEnv>, db: Db, app: LoanRow, r: Trans
 /** Auto-approval is a convenience; failures fall back to manual underwriter review. */
 async function maybeAutoApprove(c: Context<AppEnv>, db: Db, app: LoanRow, waitUntil: WaitUntil) {
   try {
-    const [fresh] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, app.applicationRef)).limit(1);
+    const [fresh] = await db.select().from(loanApplications).where(inLender(loanApplications, app.lenderId, eq(loanApplications.applicationRef, app.applicationRef))).limit(1);
     const a = fresh ?? app;
     // Business loans always go to manual review for now: the threshold is sized for personal loans
     // and reads loanRequirementsJson, which business applications never populate.
@@ -268,7 +270,7 @@ async function maybeAutoApprove(c: Context<AppEnv>, db: Db, app: LoanRow, waitUn
     if (JSON.parse(a.affordabilityResultJson).passed !== true) return;
 
     const personal = a.personalDetailsJson ? JSON.parse(a.personalDetailsJson) : null;
-    const threshold = await getAutoApprovalThreshold(db, !!(personal && personal.applicant2 != null));
+    const threshold = await getAutoApprovalThreshold(db, app.lenderId, !!(personal && personal.applicant2 != null));
     if (threshold == null) return;
 
     const loan = a.loanRequirementsJson ? JSON.parse(a.loanRequirementsJson) : null;
@@ -284,9 +286,9 @@ async function maybeAutoApprove(c: Context<AppEnv>, db: Db, app: LoanRow, waitUn
 // Generates the full final-approval offer pack (cover letter + Key Facts Statement + Repayment
 // Schedule, re-run against the actually-approved amount). Swallow-all: document generation failure
 // (including R2 not being enabled yet) must never block an underwriting decision.
-async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
+async function generateFinalApprovalLetter(db: Db, env: Env, lenderId: number, appRef: string) {
   try {
-    const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, appRef)).limit(1);
+    const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, lenderId, eq(loanApplications.applicationRef, appRef))).limit(1);
     if (!app) return;
     const isBusiness = app.applicationType === "BUSINESS";
     // Business applications never populate loanRequirementsJson; their loan amount lives in companyDetailsJson.
@@ -305,7 +307,7 @@ async function generateFinalApprovalLetter(db: Db, env: Env, appRef: string) {
     await generateOfferPack(
       db, env,
       {
-        applicationRef: app.applicationRef, customerId: app.customerId, customerName, loanAmount: approvedAmount,
+        lenderId: app.lenderId, applicationRef: app.applicationRef, customerId: app.customerId, customerName, loanAmount: approvedAmount,
         productName: product.productName ?? "", interestRate: product.interestRate ?? product.apr ?? 0,
         termMonths: product.termMonths ?? 0, monthlyRepayment: product.monthlyRepayment ?? 0,
       },

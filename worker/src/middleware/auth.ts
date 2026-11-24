@@ -1,4 +1,5 @@
 import type { Context, Next } from "hono";
+import { resolveRegistrationLender } from "../lib/lenders";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { users } from "../db/schema";
@@ -11,6 +12,30 @@ import type { AppEnv } from "../types";
 // Mirrors JwtAuthenticationFilter + SecurityConfig's `anyRequest().authenticated()`
 // default: any route not explicitly public requires a valid Bearer token.
 export async function requireAuth(c: Context<AppEnv>, next: Next) {
+  await authenticate(c);
+  await next();
+}
+
+/** For public routes that are lender-specific (branding, FAQs, pick-lists on the registration
+ * form): a valid token sets the lender as usual; with no token (or a stale one) the request stays
+ * anonymous and the route works out the lender from ?lender=CODE with publicLender(). */
+export async function optionalAuth(c: Context<AppEnv>, next: Next) {
+  if (c.req.header("Authorization")?.startsWith("Bearer ")) {
+    try { await authenticate(c); } catch { /* anonymous */ }
+  }
+  await next();
+}
+
+/** The lender of a public request: the signed-in user's own, else the one named by ?lender=CODE,
+ * else the only active lender. Null when it cannot be told (callers then return neutral content). */
+export async function publicLender(c: Context<AppEnv>, db: ReturnType<typeof getDb>): Promise<number | null> {
+  const known = c.get("lenderId");
+  if (known != null) return known;
+  const lender = await resolveRegistrationLender(db, c.req.query("lender")).catch(() => null);
+  return lender?.id ?? null;
+}
+
+async function authenticate(c: Context<AppEnv>) {
   const header = c.req.header("Authorization");
   if (!header || !header.startsWith("Bearer ")) {
     throw new AppError("Token is invalid or expired.", 401);
@@ -52,7 +77,6 @@ export async function requireAuth(c: Context<AppEnv>, next: Next) {
   // so every later check is a plain synchronous lookup. A platform token outside any lender holds
   // only the built-in super admin role, which does not depend on a lender.
   c.set("authRole", await resolveRole(db, lenderId ?? 0, user.role));
-  await next();
 }
 
 // Mirrors SecurityConfig's per-path `.hasRole(...)` rules

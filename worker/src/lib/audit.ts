@@ -1,6 +1,16 @@
 import { auditLog } from "../db/schema";
 import type { Db } from "../db/client";
 import { logError } from "./log";
+import type { Context } from "hono";
+import type { AppEnv } from "../types";
+import { requireLender } from "../middleware/auth";
+
+/** Who is acting, plus the lender the action belongs to; spread into a recordAudit call. */
+export function actorOf(c: Context<AppEnv>) {
+  const a = c.get("authUser");
+  return { lenderId: requireLender(c), actor: a.fullName?.trim() || a.email, actorRole: a.role };
+}
+
 
 // Open Point #19 (ARCHITECTURE_REVIEW_GAPS.md) — resolved in favour of a plain table over a
 // separate MongoDB-based store (no new infra to run, same reasoning as S2/S5's Redis decision).
@@ -9,6 +19,7 @@ import { logError } from "./log";
 export async function recordAudit(
   db: Db,
   params: {
+    lenderId: number;
     eventType: string;
     subjectType: string;
     subjectId: string;
@@ -19,6 +30,7 @@ export async function recordAudit(
 ): Promise<void> {
   try {
     await db.insert(auditLog).values({
+      lenderId: params.lenderId,
       occurredAt: new Date().toISOString(),
       eventType: params.eventType,
       subjectType: params.subjectType,

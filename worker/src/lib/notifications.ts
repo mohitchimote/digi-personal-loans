@@ -1,14 +1,15 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { notifications, users } from "../db/schema";
+import { inLender } from "./lender-scope";
 import type { Lang } from "./app-format";
 import { logError } from "./log";
 
 /** Server-generated content (this file, sendTemplatedEmail) has no other way to know which
  * language to write in — the frontend's language toggle is purely client-side (localStorage), so
  * this is the only source of truth once we're on the server. */
-export async function getPreferredLanguage(db: Db, customerId: number): Promise<Lang> {
-  const [user] = await db.select({ preferredLanguage: users.preferredLanguage }).from(users).where(eq(users.id, customerId)).limit(1);
+export async function getPreferredLanguage(db: Db, lenderId: number, customerId: number): Promise<Lang> {
+  const [user] = await db.select({ preferredLanguage: users.preferredLanguage }).from(users).where(inLender(users, lenderId, eq(users.id, customerId))).limit(1);
   return user?.preferredLanguage === "he" ? "he" : "en";
 }
 
@@ -17,6 +18,7 @@ export async function getPreferredLanguage(db: Db, customerId: number): Promise<
 // failures should never block an underwriting decision, matching the Java client's swallow-and-log.
 export async function sendNotification(
   db: Db,
+  lenderId: number,
   customerId: number,
   title: string,
   message: string,
@@ -25,6 +27,7 @@ export async function sendNotification(
 ) {
   try {
     await db.insert(notifications).values({
+      lenderId,
       customerId,
       title,
       message,

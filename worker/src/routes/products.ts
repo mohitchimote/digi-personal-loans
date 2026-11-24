@@ -1,13 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
+import { inLender } from "../lib/lender-scope";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
-import { loanProducts, productSelections } from "../db/schema";
+import { loanProducts, productSelections, loanApplications } from "../db/schema";
 import { AppError } from "../lib/errors";
 import { calculateMonthlyRepayment } from "../lib/repayment";
 import { getPreApprovedOffer, consumePreApprovedOffer } from "../lib/pre-approved";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { cached, invalidatePrefix } from "../lib/cache";
 import { formatZodIssues } from "../lib/section-schemas";
 
@@ -23,8 +24,8 @@ const PRODUCTS_TTL_MS = 30_000;
 // Every admin mutation below (create/update/delete) invalidates this prefix so a change — e.g.
 // toggling a product inactive — is reflected on the customer's very next Product Selection call,
 // not after the TTL expires.
-function invalidateProductsCache() {
-  invalidatePrefix(PRODUCTS_CACHE_PREFIX);
+function invalidateProductsCache(lenderId: number) {
+  invalidatePrefix(`${PRODUCTS_CACHE_PREFIX}${lenderId}:`);
 }
 
 interface EligibilityRequest {
@@ -79,14 +80,15 @@ function toEligibleProduct(p: typeof loanProducts.$inferSelect, req: Eligibility
 
 products.post("/eligible", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const req = await c.req.json<EligibilityRequest>();
   const productType = req.productType ?? "PERSONAL";
 
-  const all = await cached(`${PRODUCTS_CACHE_PREFIX}${productType}`, PRODUCTS_TTL_MS, () =>
+  const all = await cached(`${PRODUCTS_CACHE_PREFIX}${lenderId}:${productType}`, PRODUCTS_TTL_MS, () =>
     db
       .select()
       .from(loanProducts)
-      .where(and(eq(loanProducts.active, true), eq(loanProducts.productType, productType)))
+      .where(inLender(loanProducts, lenderId, eq(loanProducts.active, true), eq(loanProducts.productType, productType)))
   );
 
   const eligible = all
@@ -104,14 +106,17 @@ products.post("/eligible", async (c) => {
 
 products.post("/select", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.json<{ applicationRef: string; productCode: string; termMonths?: number }>();
 
   const [product] = await db
     .select()
     .from(loanProducts)
-    .where(and(eq(loanProducts.active, true), eq(loanProducts.productCode, body.productCode)))
+    .where(inLender(loanProducts, lenderId, eq(loanProducts.active, true), eq(loanProducts.productCode, body.productCode)))
     .limit(1);
   if (!product) throw new AppError(`Product not found: ${body.productCode}`);
+  const [ownApp] = await db.select({ ref: loanApplications.applicationRef }).from(loanApplications).where(inLender(loanApplications, lenderId, eq(loanApplications.applicationRef, body.applicationRef))).limit(1);
+  if (!ownApp) throw new AppError("Application not found.", 404);
 
   const term = body.termMonths ?? product.minTermMonths ?? 12;
   const monthlyRepayment = calculateMonthlyRepayment(product.annualInterestRate ?? 0, 100000, term);
@@ -120,6 +125,7 @@ products.post("/select", async (c) => {
   const [saved] = await db
     .insert(productSelections)
     .values({
+      lenderId,
       applicationRef: body.applicationRef,
       productCode: product.productCode,
       productName: product.productName,
@@ -135,11 +141,12 @@ products.post("/select", async (c) => {
 
 products.get("/selection/:appRef", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const appRef = c.req.param("appRef");
   const [selection] = await db
     .select()
     .from(productSelections)
-    .where(eq(productSelections.applicationRef, appRef))
+    .where(inLender(productSelections, lenderId, eq(productSelections.applicationRef, appRef)))
     .limit(1);
   if (!selection) throw new AppError(`No product selected for application: ${appRef}`);
   return c.json(selection);
@@ -149,53 +156,58 @@ products.get("/selection/:appRef", async (c) => {
 // (server access logs, browser history, proxy logs). See ARCHITECTURE_REVIEW_GAPS.md S9.
 products.post("/pre-approved/lookup", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.json();
   const result = preApprovedLookupSchema.safeParse(body);
   if (!result.success) throw new AppError(`Invalid request: ${formatZodIssues(result.error)}`);
-  const offer = await getPreApprovedOffer(db, result.data.nationalId);
+  const offer = await getPreApprovedOffer(db, lenderId, result.data.nationalId);
   if (!offer) return c.body(null, 404);
   return c.json(offer);
 });
 
 products.post("/pre-approved/:nationalId/consume", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const nationalId = c.req.param("nationalId");
-  const offer = await getPreApprovedOffer(db, nationalId);
+  const offer = await getPreApprovedOffer(db, lenderId, nationalId);
   if (!offer) throw new AppError("No pre-approved offer found for this National ID.");
-  await consumePreApprovedOffer(db, nationalId);
+  await consumePreApprovedOffer(db, lenderId, nationalId);
   return c.json({ ...offer, consumed: true });
 });
 
 products.get("/admin/all", async (c) => {
   const db = getDb(c.env.DB);
-  const rows = await db.select().from(loanProducts).orderBy(asc(loanProducts.productType), asc(loanProducts.productName));
+  const lenderId = requireLender(c);
+  const rows = await db.select().from(loanProducts).where(inLender(loanProducts, lenderId)).orderBy(asc(loanProducts.productType), asc(loanProducts.productName));
   return c.json(rows);
 });
 
 products.post("/admin", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.json<Partial<typeof loanProducts.$inferInsert>>();
   if (!body.productCode?.trim()) throw new AppError("Product code is required.");
-  const [existing] = await db.select().from(loanProducts).where(eq(loanProducts.productCode, body.productCode)).limit(1);
+  const [existing] = await db.select().from(loanProducts).where(inLender(loanProducts, lenderId, eq(loanProducts.productCode, body.productCode))).limit(1);
   if (existing) throw new AppError(`Product code already exists: ${body.productCode}`);
 
   const [created] = await db
     .insert(loanProducts)
-    .values({ ...body, productCode: body.productCode, productType: body.productType?.trim() || "PERSONAL" } as any)
+    .values({ ...body, lenderId, productCode: body.productCode, productType: body.productType?.trim() || "PERSONAL" } as any)
     .returning();
-  invalidateProductsCache();
+  invalidateProductsCache(lenderId);
   return c.json(created, 201);
 });
 
 products.put("/admin/:id", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const id = Number(c.req.param("id"));
-  const [existing] = await db.select().from(loanProducts).where(eq(loanProducts.id, id)).limit(1);
+  const [existing] = await db.select().from(loanProducts).where(inLender(loanProducts, lenderId, eq(loanProducts.id, id))).limit(1);
   if (!existing) throw new AppError(`Product not found: ${id}`);
 
   const body = await c.req.json<Partial<typeof loanProducts.$inferInsert>>();
   if (body.productCode && body.productCode !== existing.productCode) {
-    const [dup] = await db.select().from(loanProducts).where(eq(loanProducts.productCode, body.productCode)).limit(1);
+    const [dup] = await db.select().from(loanProducts).where(inLender(loanProducts, lenderId, eq(loanProducts.productCode, body.productCode))).limit(1);
     if (dup) throw new AppError(`Product code already exists: ${body.productCode}`);
   }
 
@@ -217,18 +229,19 @@ products.put("/admin/:id", async (c) => {
       active: body.active ?? existing.active,
       productType: body.productType ?? existing.productType,
     })
-    .where(eq(loanProducts.id, id))
+    .where(inLender(loanProducts, lenderId, eq(loanProducts.id, id)))
     .returning();
-  invalidateProductsCache();
+  invalidateProductsCache(lenderId);
   return c.json(updated);
 });
 
 products.delete("/admin/:id", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const id = Number(c.req.param("id"));
-  const [existing] = await db.select().from(loanProducts).where(eq(loanProducts.id, id)).limit(1);
+  const [existing] = await db.select().from(loanProducts).where(inLender(loanProducts, lenderId, eq(loanProducts.id, id))).limit(1);
   if (!existing) throw new AppError(`Product not found: ${id}`);
-  await db.delete(loanProducts).where(eq(loanProducts.id, id));
-  invalidateProductsCache();
+  await db.delete(loanProducts).where(inLender(loanProducts, lenderId, eq(loanProducts.id, id)));
+  invalidateProductsCache(lenderId);
   return c.body(null, 204);
 });

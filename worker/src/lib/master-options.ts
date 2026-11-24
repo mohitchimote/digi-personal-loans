@@ -76,9 +76,9 @@ export function masterValueProblem(args: {
   return null;
 }
 
-export async function assertMasterSources(db: Db, schema: FormVersionSchema): Promise<void> {
+export async function assertMasterSources(db: Db, lenderId: number, schema: FormVersionSchema): Promise<void> {
   if (!schema.sections.some((s) => s.fields.some((f) => f.optionsSource))) return;
-  const rows = await db.select({ code: masterTypes.code, parentTypeCode: masterTypes.parentTypeCode, attributeDefs: masterTypes.attributeDefs }).from(masterTypes);
+  const rows = await db.select({ code: masterTypes.code, parentTypeCode: masterTypes.parentTypeCode, attributeDefs: masterTypes.attributeDefs }).from(masterTypes).where(eq(masterTypes.lenderId, lenderId));
   const types = new Map(rows.map((r) => {
     let keys: string[] = [];
     try { keys = (JSON.parse(r.attributeDefs) as { key: string }[]).map((d) => d.key); } catch { /* none */ }
@@ -116,7 +116,7 @@ export async function loadMasterItemFacts(
   const facts = await Promise.all(candidates.map(async (item) => {
     let parentCode: string | null = null;
     if (item.parentId != null) {
-      const [p] = await db.select({ code: masterItems.code }).from(masterItems).where(eq(masterItems.id, item.parentId)).limit(1);
+      const [p] = await db.select({ code: masterItems.code }).from(masterItems).where(and(eq(masterItems.lenderId, opts.lenderId), eq(masterItems.id, item.parentId))).limit(1);
       parentCode = p?.code ?? null;
     }
     return { active: item.active, parentCode } satisfies MasterItemFacts;
@@ -140,21 +140,21 @@ export async function hasNoChildren(db: Db, lenderId: number, master: string, pa
 }
 
 /** The English name of a master item, or the value itself when it is not a code (free text, old records). */
-export async function masterItemNameEn(db: Db, master: string, code: string): Promise<string> {
+export async function masterItemNameEn(db: Db, lenderId: number, master: string, code: string): Promise<string> {
   if (!code) return code;
   const [row] = await db.select({ nameEn: masterItems.nameEn }).from(masterItems)
-    .where(and(eq(masterItems.typeCode, master), eq(masterItems.code, code))).limit(1);
+    .where(and(eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, master), eq(masterItems.code, code))).limit(1);
   return row?.nameEn ?? code;
 }
 
 /** The English and Hebrew names of master items by code, for filling letters. Codes that are not found
  * (free text, old records) come back as themselves in both languages. */
-export async function masterItemNames(db: Db, master: string, codes: string[]): Promise<Map<string, { en: string; he: string }>> {
+export async function masterItemNames(db: Db, lenderId: number, master: string, codes: string[]): Promise<Map<string, { en: string; he: string }>> {
   const out = new Map<string, { en: string; he: string }>();
   const wanted = [...new Set(codes.filter(Boolean))];
   if (wanted.length === 0) return out;
   const rows = await db.select({ code: masterItems.code, nameEn: masterItems.nameEn, nameHe: masterItems.nameHe }).from(masterItems)
-    .where(and(eq(masterItems.typeCode, master), inArray(masterItems.code, wanted)));
+    .where(and(eq(masterItems.lenderId, lenderId), eq(masterItems.typeCode, master), inArray(masterItems.code, wanted)));
   for (const r of rows) out.set(r.code, { en: r.nameEn, he: r.nameHe || r.nameEn });
   for (const c of wanted) if (!out.has(c)) out.set(c, { en: c, he: c });
   return out;

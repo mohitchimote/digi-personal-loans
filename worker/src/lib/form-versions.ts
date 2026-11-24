@@ -1,6 +1,7 @@
+import { inLender } from "./lender-scope";
 import { assertMasterSources } from "./master-options";
 import { formatZodIssues } from "./section-schemas";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { formVersions, type loanApplications } from "../db/schema";
 import type { InferSelectModel } from "drizzle-orm";
@@ -16,22 +17,22 @@ export function formKeyFor(applicationType: string): FormKey {
   return applicationType === "BUSINESS" ? "business-loan-wizard" : "personal-loan-wizard";
 }
 
-export async function getPublishedVersion(db: Db, formKey: FormKey): Promise<FormVersionRow | null> {
+export async function getPublishedVersion(db: Db, lenderId: number, formKey: FormKey): Promise<FormVersionRow | null> {
   const [row] = await db
     .select()
     .from(formVersions)
-    .where(and(eq(formVersions.formKey, formKey), eq(formVersions.status, "PUBLISHED")))
+    .where(inLender(formVersions, lenderId, eq(formVersions.formKey, formKey), eq(formVersions.status, "PUBLISHED")))
     .limit(1);
   return row ?? null;
 }
 
-export async function getVersionById(db: Db, id: number): Promise<FormVersionRow | null> {
-  const [row] = await db.select().from(formVersions).where(eq(formVersions.id, id)).limit(1);
+export async function getVersionById(db: Db, lenderId: number, id: number): Promise<FormVersionRow | null> {
+  const [row] = await db.select().from(formVersions).where(inLender(formVersions, lenderId, eq(formVersions.id, id))).limit(1);
   return row ?? null;
 }
 
-export async function listVersions(db: Db, formKey: FormKey): Promise<FormVersionRow[]> {
-  return db.select().from(formVersions).where(eq(formVersions.formKey, formKey)).orderBy(desc(formVersions.version));
+export async function listVersions(db: Db, lenderId: number, formKey: FormKey): Promise<FormVersionRow[]> {
+  return db.select().from(formVersions).where(inLender(formVersions, lenderId, eq(formVersions.formKey, formKey))).orderBy(desc(formVersions.version));
 }
 
 export function parseSchema(row: FormVersionRow): FormVersionSchema {
@@ -49,9 +50,9 @@ export function parseSchema(row: FormVersionRow): FormVersionSchema {
 //   completion check, which is what can un-tick a previously-complete section).
 export async function resolveActiveSchemaVersion(db: Db, app: App): Promise<FormVersionRow | null> {
   if (app.formVersionId != null) {
-    return getVersionById(db, app.formVersionId);
+    return getVersionById(db, app.lenderId, app.formVersionId);
   }
-  return getPublishedVersion(db, formKeyFor(app.applicationType));
+  return getPublishedVersion(db, app.lenderId, formKeyFor(app.applicationType));
 }
 
 // The read-path counterpart to the write-path decisions above: attaches the info the wizard and
@@ -85,17 +86,19 @@ export async function withResolvedFormVersion(db: Db, app: App) {
 
 export async function createDraftFrom(
   db: Db,
+  lenderId: number,
   formKey: FormKey,
   sourceVersionId: number | null,
   createdBy: string | null
 ): Promise<FormVersionRow> {
-  const source = sourceVersionId != null ? await getVersionById(db, sourceVersionId) : await getPublishedVersion(db, formKey);
-  const siblings = await listVersions(db, formKey);
+  const source = sourceVersionId != null ? await getVersionById(db, lenderId, sourceVersionId) : await getPublishedVersion(db, lenderId, formKey);
+  const siblings = await listVersions(db, lenderId, formKey);
   const nextVersion = (siblings[0]?.version ?? 0) + 1;
   const schemaJson = source ? source.schemaJson : JSON.stringify({ sections: [] } satisfies FormVersionSchema);
   const [created] = await db
     .insert(formVersions)
     .values({
+      lenderId,
       formKey,
       version: nextVersion,
       status: "DRAFT",
@@ -109,10 +112,11 @@ export async function createDraftFrom(
 
 export async function updateDraft(
   db: Db,
+  lenderId: number,
   id: number,
   fields: { schemaJson?: string; changeNote?: string | null }
 ): Promise<FormVersionRow> {
-  const existing = await getVersionById(db, id);
+  const existing = await getVersionById(db, lenderId, id);
   if (!existing) throw new AppError("Form version not found.", 404);
   if (existing.status !== "DRAFT") throw new AppError("Only a draft version can be edited.", 400);
   if (fields.schemaJson) {
@@ -121,7 +125,7 @@ export async function updateDraft(
     const result = formVersionSchemaSchema.safeParse(JSON.parse(fields.schemaJson));
     // A shape problem is the admin's to fix: say what it is (400) rather than surfacing a bare 500.
     if (!result.success) throw new AppError(`Invalid form schema: ${formatZodIssues(result.error)}`, 400);
-    await assertMasterSources(db, result.data);
+    await assertMasterSources(db, lenderId, result.data);
   }
   const [updated] = await db
     .update(formVersions)
@@ -129,16 +133,16 @@ export async function updateDraft(
       schemaJson: fields.schemaJson ?? existing.schemaJson,
       changeNote: fields.changeNote !== undefined ? fields.changeNote : existing.changeNote,
     })
-    .where(eq(formVersions.id, id))
+    .where(inLender(formVersions, lenderId, eq(formVersions.id, id)))
     .returning();
   return updated;
 }
 
-export async function discardDraft(db: Db, id: number): Promise<void> {
-  const existing = await getVersionById(db, id);
+export async function discardDraft(db: Db, lenderId: number, id: number): Promise<void> {
+  const existing = await getVersionById(db, lenderId, id);
   if (!existing) throw new AppError("Form version not found.", 404);
   if (existing.status !== "DRAFT") throw new AppError("Only a draft version can be discarded.", 400);
-  await db.delete(formVersions).where(eq(formVersions.id, id));
+  await db.delete(formVersions).where(inLender(formVersions, lenderId, eq(formVersions.id, id)));
 }
 
 // Archive-then-promote, as two sequential statements rather than a wrapped transaction — this
@@ -148,27 +152,29 @@ export async function discardDraft(db: Db, id: number): Promise<void> {
 // consistent-with-the-rest-of-this-codebase risk rather than new infrastructure.
 export async function publishVersion(
   db: Db,
+  lenderId: number,
   id: number,
   publishedBy: string
 ): Promise<FormVersionRow> {
-  const draft = await getVersionById(db, id);
+  const draft = await getVersionById(db, lenderId, id);
   if (!draft) throw new AppError("Form version not found.", 404);
   if (draft.status !== "DRAFT") throw new AppError("Only a draft version can be published.", 400);
   // Masters can be changed or removed after the draft was saved: re-check before it goes live.
-  await assertMasterSources(db, parseSchema(draft));
+  await assertMasterSources(db, lenderId, parseSchema(draft));
 
-  const currentlyPublished = await getPublishedVersion(db, draft.formKey as FormKey);
+  const currentlyPublished = await getPublishedVersion(db, lenderId, draft.formKey as FormKey);
   if (currentlyPublished) {
-    await db.update(formVersions).set({ status: "ARCHIVED" }).where(eq(formVersions.id, currentlyPublished.id));
+    await db.update(formVersions).set({ status: "ARCHIVED" }).where(inLender(formVersions, lenderId, eq(formVersions.id, currentlyPublished.id)));
   }
 
   const [published] = await db
     .update(formVersions)
     .set({ status: "PUBLISHED", publishedAt: new Date().toISOString(), publishedBy })
-    .where(eq(formVersions.id, id))
+    .where(inLender(formVersions, lenderId, eq(formVersions.id, id)))
     .returning();
 
   await recordAudit(db, {
+    lenderId: draft.lenderId,
     eventType: "FORM_VERSION_PUBLISHED",
     subjectType: "form_versions",
     subjectId: String(id),

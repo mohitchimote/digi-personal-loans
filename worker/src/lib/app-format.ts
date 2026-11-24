@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { inLender } from "./lender-scope";
 import { masterItems } from "../db/schema";
 import { normaliseName } from "./masters";
 import { parseSchema, resolveActiveSchemaVersion } from "./form-versions";
@@ -48,18 +49,19 @@ export async function warmLoanPurposeNames(
   } catch { /* an unreadable definition: fall back to readable codes below */ }
   if (!master) return;
   if (masterByApplication.size > 500) masterByApplication.clear();
-  masterByApplication.set(app.applicationRef, master);
+  const cacheKey = `${app.lenderId}:${master}`;
+  masterByApplication.set(app.applicationRef, cacheKey);
 
-  const cached = purposeNamesByMaster.get(master);
+  const cached = purposeNamesByMaster.get(cacheKey);
   if (cached && Date.now() - cached.at < PURPOSE_CACHE_MS) return;
-  const rows = await db.select().from(masterItems).where(eq(masterItems.typeCode, master));
+  const rows = await db.select().from(masterItems).where(inLender(masterItems, app.lenderId, eq(masterItems.typeCode, master)));
   const byCode = new Map<string, PurposeName>();
   const byName = new Map<string, PurposeName>();
   for (const r of rows) {
     byCode.set(r.code, { en: r.nameEn, he: r.nameHe });
     byName.set(normaliseName(r.nameEn), { en: r.nameEn, he: r.nameHe }); // applications saved before purposes were masters
   }
-  purposeNamesByMaster.set(master, { at: Date.now(), byCode, byName });
+  purposeNamesByMaster.set(cacheKey, { at: Date.now(), byCode, byName });
 }
 
 /** The wording for a stored purpose: a master code, or older display text. Pure, so it can be tested. */

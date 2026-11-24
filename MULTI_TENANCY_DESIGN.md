@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: phase 1 (schema, migration 0021) and phase 2 (identity) done on `dev`; phase 3 (query isolation) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -44,10 +44,24 @@ Copies configuration only: roles and entitlements, mandates, org levels and unit
 - Login: `/login/request-otp` and `/login/verify-otp` take an optional `lenderCode`. One match proceeds; several return `requiresLenderChoice` plus the lender names, and the login page shows a picker. Registration takes an optional `lenderCode` (implied when only one lender is active); e-mail and National ID are unique per lender.
 - Role lookups (`resolveRole`, `allRoleConfigs`, `staffRoleCodes`) and the master pick-list helpers now take a lender id, so the compiler lists every call site. Routes that do not yet filter by lender are the phase 3 sweep (for example the roles admin queries, FAQs, branding).
 
+## Phase 3 as built
+- `inLender(table, lenderId, ...conditions)` (lib/lender-scope.ts) is the one filter. Every read, update and delete of a tenant table goes through it, and every insert sets `lenderId` explicitly (after any spread of a request body, so a body cannot choose its lender). Lender-less code is limited to `lib/lenders.ts`, `middleware/auth.ts` (login and token lookups) and `lib/otp.ts` (OTP columns of a user row already resolved).
+- `test/lender-isolation.test.ts` reads `db/schema.ts` for the tables that have a `lender_id` column and fails if any `.from/.update/.delete/.insert/.join` of one has no `inLender`/`lenderId` in its statement. `scripts/lender-isolation-check.mjs` is the behavioural proof: two lenders on a scratch worker, 60 checks (cross-lender reads, writes, deletes, same codes in both lenders, lender ids in bodies ignored, public routes).
+- Library functions take the lender id (`ensureDefaultDefinition`, `getPublishedVersion`, `resolveMandate`, `closeReferrals`, `getAffordabilityRules`, `masterItemNames`, ...), so the compiler listed every caller. Where a case row is in hand the lender comes from it (`app.lenderId`), so the workflow engine, notifications, e-mail and offer pack never use the caller's lender for a different lender's case.
+- `recordAudit` requires `lenderId`; the six copies of `actorOf` are one (lib/audit.ts) and add the lender, so every audit row carries it. Before this, audit rows silently took the column default (lender 1).
+- A customer or user id taken from a request body (start application, notifications) must belong to the caller's lender (`assertUserInLender`); an application ref in a document, product or letter request must too.
+- Caches are keyed by lender: affordability rules, products, role config, loan-purpose names. R2 keys of new files are prefixed `lender-<id>/` (offer pack, uploads, letters, logos). Existing files keep their old keys; the stored path is what is read back. Logo URLs are now `/api/branding/logo/<lenderId>/<file>`; the old `/logo/<file>` still serves the pre-lender folder.
+- **Public routes** (branding, FAQs, masters pick-lists on the registration form) have no token. `optionalAuth` uses the signed-in user's lender if there is a valid token; otherwise `publicLender` takes `?lender=CODE`, or the only active lender. With several lenders and no code: pick-lists answer 400 "enter your lender code", branding returns neutral colours, FAQs return an empty list. The frontend still has to send `?lender=` once there is more than one lender (phase 4).
+- **Corrections to phase 1 found on the way:**
+  - `branding_settings`, `affordability_rules` (and `mandate_rules`) are one row per lender, but code looked up `id = 1`. A second lender's row has a different id, so that lookup would never find it. They now look up by lender, and the affordability save is an upsert.
+  - `letter_saved_rules.id` was still a global primary key, so two lenders could not both save a rule called "Rate can change". Migration 0022 makes it `(lender_id, id)`.
+  - `seed.sql` inserted staff users with no `lender_id` (the users column has no default), so a freshly seeded database had staff who could not sign in. The seed now sets lender 1.
+- Not done here (belongs to later phases): the frontend sending `?lender=`, `SUPER_ADMIN` console, enter-as, cloning, and the UAT purge.
+
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.
 2. Identity: JWT claims, login with lender code and account picker, `SUPER_ADMIN`.
-3. Isolation: scoping helper, convert all queries, caches and R2 keys, static check, cross-lender tests.
+3. Isolation: scoping helper, convert all queries, caches and R2 keys, static check, cross-lender tests. **Done.**
 4. Lender admin: existing admin screens scoped to the lender, nothing new.
 5. Super admin console: lenders list, create, suspend, clone, enter as.
 6. Enter as users inside a lender (lender admin).

@@ -3,10 +3,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { loanApplications, orgUnits, users, wfCaseTracks } from "../db/schema";
-import { assertEntitlement, isStaff, requireAuth } from "../middleware/auth";
+import { assertEntitlement, isStaff, requireAuth, requireLender } from "../middleware/auth";
+import { inLender } from "../lib/lender-scope";
 import { AppError } from "../lib/errors";
 import { assertCaseVisible, caseScopeCondition } from "../lib/org";
-import { recordAudit } from "../lib/audit";
+import { recordAudit, actorOf } from "../lib/audit";
 import { describeActions, runAction } from "../lib/workflow/host";
 import { loadCase, projectPublished, statusesByCategory } from "../lib/workflow/store";
 import { eligibleStaff, workflowInfoFor, type CaseWorkflowInfo } from "../lib/workflow/assignment";
@@ -17,7 +18,7 @@ import { eligibleStaff, workflowInfoFor, type CaseWorkflowInfo } from "../lib/wo
 export const workflow = new Hono<AppEnv>();
 workflow.use("*", requireAuth);
 
-workflow.get("/definition", async (c) => c.json(await projectPublished(getDb(c.env.DB))));
+workflow.get("/definition", async (c) => c.json(await projectPublished(getDb(c.env.DB), requireLender(c))));
 
 workflow.get("/cases/:ref/actions", async (c) => c.json(await describeActions(c, c.req.param("ref"))));
 
@@ -40,7 +41,7 @@ workflow.post("/cases/:ref/actions/:action", async (c) => {
   // CASE_VISIBLE, so org scope / ownership is enforced here as well: this endpoint must never be a
   // way around who can see a case.
   const db = getDb(c.env.DB);
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, ref)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, ref))).limit(1);
   if (!app) throw new AppError("Application not found.", 404);
   if (isStaff(c)) await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   else if (c.get("authUser").id !== app.customerId) throw new AppError("Application not found.", 404);
@@ -54,14 +55,13 @@ workflow.post("/cases/:ref/actions/:action", async (c) => {
 
 // ------------------------------------------------------------------ ownership
 
-const who = (c: Context<AppEnv>) => { const u = c.get("authUser"); return { actor: u.fullName?.trim() || u.email, actorRole: u.role }; };
 
 /** Loads the case and the ownership context every ownership endpoint needs; staff only. */
 async function ownershipContext(c: Context<AppEnv>) {
   if (!isStaff(c)) throw new AppError("Forbidden.", 403);
   const db = getDb(c.env.DB);
   const ref = c.req.param("ref")!;
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, ref)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, ref))).limit(1);
   if (!app) throw new AppError("Application not found.", 404);
   await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   const loaded = await loadCase(db, app); // registers the case's workflow rows if it has none yet
@@ -71,15 +71,15 @@ async function ownershipContext(c: Context<AppEnv>) {
   return { db, ref, app, loaded, info };
 }
 
-async function setOwner(db: ReturnType<typeof getDb>, ref: string, info: CaseWorkflowInfo, userId: number | null) {
+async function setOwner(db: ReturnType<typeof getDb>, lenderId: number, ref: string, info: CaseWorkflowInfo, userId: number | null) {
   await db.update(wfCaseTracks)
     .set({ assigneeUserId: userId, assignedAt: userId == null ? null : new Date().toISOString() })
-    .where(and(eq(wfCaseTracks.applicationRef, ref), eq(wfCaseTracks.trackKey, info.track)));
+    .where(inLender(wfCaseTracks, lenderId, eq(wfCaseTracks.applicationRef, ref), eq(wfCaseTracks.trackKey, info.track)));
 }
 
 async function respond(c: Context<AppEnv>, ref: string) {
   const db = getDb(c.env.DB);
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, ref)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, ref))).limit(1);
   return c.json((await workflowInfoFor(db, [app])).get(ref));
 }
 
@@ -87,7 +87,7 @@ async function respond(c: Context<AppEnv>, ref: string) {
 workflow.get("/cases/:ref/state", async (c) => {
   const db = getDb(c.env.DB);
   const ref = c.req.param("ref");
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, ref)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, ref))).limit(1);
   if (!app) throw new AppError("Application not found.", 404);
   if (isStaff(c)) await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
   else if (app.customerId !== c.get("authUser").id) throw new AppError("Application not found.", 404);
@@ -110,8 +110,8 @@ workflow.post("/cases/:ref/claim", async (c) => {
   if (!eligible.some((e) => e.userId === me.id)) throw new AppError("Your role does not own cases in this stage.", 403);
   if (info.assigneeUserId === me.id) return respond(c, ref);
   if (info.assigneeUserId != null) throw new AppError(`This case is already assigned to ${info.assigneeName ?? "someone else"}. Ask for it to be reassigned.`, 409);
-  await setOwner(db, ref, info, me.id);
-  await recordAudit(db, { eventType: "CASE_CLAIMED", subjectType: "LoanApplication", subjectId: ref, detail: info.stage, ...who(c) });
+  await setOwner(db, app.lenderId, ref, info, me.id);
+  await recordAudit(db, { eventType: "CASE_CLAIMED", subjectType: "LoanApplication", subjectId: ref, detail: info.stage, ...actorOf(c) });
   return respond(c, ref);
 });
 
@@ -125,18 +125,18 @@ workflow.post("/cases/:ref/assign", async (c) => {
   const eligible = await eligibleStaff(db, loaded.definition, info.stage, app, info.track);
   const pick = eligible.find((e) => e.userId === target);
   if (!pick) throw new AppError("That person cannot own cases in this stage or cannot see this case.", 400);
-  await setOwner(db, ref, info, target);
-  await recordAudit(db, { eventType: info.assigneeUserId == null ? "CASE_ASSIGNED" : "CASE_REASSIGNED", subjectType: "LoanApplication", subjectId: ref, detail: `${info.assigneeName ?? "unassigned"} -> ${pick.name}`, ...who(c) });
+  await setOwner(db, app.lenderId, ref, info, target);
+  await recordAudit(db, { eventType: info.assigneeUserId == null ? "CASE_ASSIGNED" : "CASE_REASSIGNED", subjectType: "LoanApplication", subjectId: ref, detail: `${info.assigneeName ?? "unassigned"} -> ${pick.name}`, ...actorOf(c) });
   return respond(c, ref);
 });
 
 // Give a case back to the queue. The owner can; so can anyone with case.assign.
 workflow.post("/cases/:ref/release", async (c) => {
-  const { db, ref, info } = await ownershipContext(c);
+  const { db, ref, app, info } = await ownershipContext(c);
   if (info.assigneeUserId == null) return respond(c, ref);
   if (info.assigneeUserId !== c.get("authUser").id) assertEntitlement(c, "case.assign");
-  await setOwner(db, ref, info, null);
-  await recordAudit(db, { eventType: "CASE_RELEASED", subjectType: "LoanApplication", subjectId: ref, detail: info.assigneeName, ...who(c) });
+  await setOwner(db, app.lenderId, ref, info, null);
+  await recordAudit(db, { eventType: "CASE_RELEASED", subjectType: "LoanApplication", subjectId: ref, detail: info.assigneeName, ...actorOf(c) });
   return respond(c, ref);
 });
 
@@ -153,8 +153,8 @@ workflow.put("/availability", async (c) => {
   const { available } = await c.req.json<{ available?: boolean }>();
   if (typeof available !== "boolean") throw new AppError("available must be true or false.", 400);
   const db = getDb(c.env.DB);
-  await db.update(users).set({ isAvailable: available }).where(eq(users.id, c.get("authUser").id));
-  await recordAudit(db, { eventType: available ? "STAFF_AVAILABLE" : "STAFF_UNAVAILABLE", subjectType: "User", subjectId: String(c.get("authUser").id), ...who(c) });
+  await db.update(users).set({ isAvailable: available }).where(inLender(users, requireLender(c), eq(users.id, c.get("authUser").id)));
+  await recordAudit(db, { eventType: available ? "STAFF_AVAILABLE" : "STAFF_UNAVAILABLE", subjectType: "User", subjectId: String(c.get("authUser").id), ...actorOf(c) });
   return c.json({ available });
 });
 
@@ -169,9 +169,9 @@ const empty = (): Counts => ({ green: 0, amber: 0, red: 0, unassigned: 0, total:
 workflow.get("/sla-summary", async (c) => {
   if (!isStaff(c)) throw new AppError("Forbidden.", 403);
   const db = getDb(c.env.DB);
-  const open = await statusesByCategory(db, ["ACTIVE"]);
+  const open = await statusesByCategory(db, requireLender(c), ["ACTIVE"]);
   if (open.length === 0) return c.json({ units: [], noUnit: empty() });
-  const apps = await db.select().from(loanApplications).where(and(inArray(loanApplications.status, open), await caseScopeCondition(db, c.get("authUser"), c.get("authRole").scope)));
+  const apps = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), inArray(loanApplications.status, open), await caseScopeCondition(db, requireLender(c), c.get("authUser"), c.get("authRole").scope)));
   const info = await workflowInfoFor(db, apps);
 
   const own = new Map<number | null, Counts>();
@@ -185,7 +185,7 @@ workflow.get("/sla-summary", async (c) => {
     own.set(a.orgUnitId, row);
   }
 
-  const units = await db.select().from(orgUnits);
+  const units = await db.select().from(orgUnits).where(inLender(orgUnits, requireLender(c)));
   const parent = new Map(units.map((u) => [u.id, u.parentId]));
   const rollup = new Map<number, Counts>();
   for (const [unitId, counts] of own) {

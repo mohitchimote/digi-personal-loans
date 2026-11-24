@@ -1,8 +1,9 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import type { Env } from "../../types";
 import { generatedDocuments, letterImages, letterSavedRules, letterTemplates, letterVersions, lettersIssued, loanApplications } from "../../db/schema";
 import { AppError } from "../errors";
+import { inLender } from "../lender-scope";
 import { renderLetterPdf, type LetterImageFile } from "../pdf/letter-renderer";
 import { buildLetterData } from "./data";
 import { LETTER_DICTIONARY } from "./dictionary";
@@ -22,8 +23,8 @@ export function parseDocument(json: string): LetterDocument {
   return r.data;
 }
 
-export async function loadSavedRules(db: Db): Promise<SavedRule[]> {
-  const rows = await db.select().from(letterSavedRules);
+export async function loadSavedRules(db: Db, lenderId: number): Promise<SavedRule[]> {
+  const rows = await db.select().from(letterSavedRules).where(inLender(letterSavedRules, lenderId));
   const out: SavedRule[] = [];
   for (const r of rows) {
     const parsed = savedRule.safeParse({ id: r.id, name: r.name, rule: safeJson(r.ruleJson) });
@@ -54,35 +55,35 @@ export function imageIdsIn(doc: LetterDocument): string[] {
   return [...ids];
 }
 
-export async function loadImages(db: Db, ids: string[]): Promise<Map<string, LetterImageFile>> {
+export async function loadImages(db: Db, lenderId: number, ids: string[]): Promise<Map<string, LetterImageFile>> {
   const out = new Map<string, LetterImageFile>();
   if (ids.length === 0) return out;
-  const rows = await db.select().from(letterImages).where(inArray(letterImages.id, ids));
+  const rows = await db.select().from(letterImages).where(inLender(letterImages, lenderId, inArray(letterImages.id, ids)));
   for (const r of rows) out.set(r.id, { mimeType: r.mimeType, bytes: decodeBase64(r.dataBase64) });
   return out;
 }
 
-export async function knownImageIds(db: Db): Promise<Set<string>> {
-  return new Set((await db.select({ id: letterImages.id }).from(letterImages)).map((r) => r.id));
+export async function knownImageIds(db: Db, lenderId: number): Promise<Set<string>> {
+  return new Set((await db.select({ id: letterImages.id }).from(letterImages).where(inLender(letterImages, lenderId))).map((r) => r.id));
 }
 
 /** Validates a document against the live dictionary, the shared saved rules and the stored images. */
-export async function validateDocument(db: Db, doc: LetterDocument): Promise<LetterIssue[]> {
-  return validateLetter(doc, LETTER_DICTIONARY, await loadSavedRules(db), { knownImageIds: await knownImageIds(db) });
+export async function validateDocument(db: Db, lenderId: number, doc: LetterDocument): Promise<LetterIssue[]> {
+  return validateLetter(doc, LETTER_DICTIONARY, await loadSavedRules(db, lenderId), { knownImageIds: await knownImageIds(db, lenderId) });
 }
 
 export interface Rendered { pdf: Uint8Array; missing: string[]; decisions: unknown[]; data: Record<string, unknown> }
 
 /** Resolves a document against data in both languages and draws it. */
-export async function renderDocument(db: Db, doc: LetterDocument, data: Record<string, unknown>, fontBytes: FontBytes, title: string): Promise<Rendered> {
-  const letters = resolveBoth({ document: doc, dictionary: LETTER_DICTIONARY, savedRules: await loadSavedRules(db), data, today: new Date().toISOString().slice(0, 10) });
-  const images = await loadImages(db, imageIdsIn(doc));
+export async function renderDocument(db: Db, lenderId: number, doc: LetterDocument, data: Record<string, unknown>, fontBytes: FontBytes, title: string): Promise<Rendered> {
+  const letters = resolveBoth({ document: doc, dictionary: LETTER_DICTIONARY, savedRules: await loadSavedRules(db, lenderId), data, today: new Date().toISOString().slice(0, 10) });
+  const images = await loadImages(db, lenderId, imageIdsIn(doc));
   const pdf = await renderLetterPdf({ letters, fontBytes, images, title });
   return { pdf, missing: [...new Set([...letters.en.missing, ...letters.he.missing])], decisions: letters.en.decisions, data };
 }
 
-export async function publishedVersion(db: Db, templateKey: string) {
-  const [v] = await db.select().from(letterVersions).where(and(eq(letterVersions.templateKey, templateKey), eq(letterVersions.status, "PUBLISHED"))).orderBy(desc(letterVersions.version)).limit(1);
+export async function publishedVersion(db: Db, lenderId: number, templateKey: string) {
+  const [v] = await db.select().from(letterVersions).where(inLender(letterVersions, lenderId, eq(letterVersions.templateKey, templateKey), eq(letterVersions.status, "PUBLISHED"))).orderBy(desc(letterVersions.version)).limit(1);
   return v ?? null;
 }
 
@@ -90,32 +91,32 @@ export async function publishedVersion(db: Db, templateKey: string) {
  * Issues a published letter for an application: refuses if the template has errors or the application lacks a
  * value the letter prints, then stores the PDF, the version used and the data it was built from.
  */
-export async function issueLetter(db: Db, env: Env, fontBytes: FontBytes, args: { templateKey: string; applicationRef: string; issuedBy: string; decisionReason?: string }) {
+export async function issueLetter(db: Db, env: Env, fontBytes: FontBytes, args: { lenderId: number; templateKey: string; applicationRef: string; issuedBy: string; decisionReason?: string }) {
   if (!env.DOCUMENTS) throw new AppError("Document storage is not enabled on this account.", 503);
-  const [template] = await db.select().from(letterTemplates).where(eq(letterTemplates.key, args.templateKey)).limit(1);
+  const [template] = await db.select().from(letterTemplates).where(inLender(letterTemplates, args.lenderId, eq(letterTemplates.key, args.templateKey))).limit(1);
   if (!template) throw new AppError("That letter does not exist.", 404);
-  const version = await publishedVersion(db, args.templateKey);
+  const version = await publishedVersion(db, args.lenderId, args.templateKey);
   if (!version) throw new AppError("That letter has no published version yet.", 409);
-  const [app] = await db.select().from(loanApplications).where(eq(loanApplications.applicationRef, args.applicationRef)).limit(1);
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, args.lenderId, eq(loanApplications.applicationRef, args.applicationRef))).limit(1);
   if (!app) throw new AppError("Application not found.", 404);
   if (template.appliesTo !== "BOTH" && template.appliesTo !== app.applicationType) throw new AppError(`This letter is only for ${template.appliesTo.toLowerCase()} applications.`, 409);
 
   const doc = parseDocument(version.documentJson);
-  const issues = await validateDocument(db, doc);
+  const issues = await validateDocument(db, args.lenderId, doc);
   if (hasErrors(issues)) throw new AppError("The published letter has errors and cannot be issued.", 409);
   const data = await buildLetterData(db, app, { decisionReason: args.decisionReason });
-  const out = await renderDocument(db, doc, data, fontBytes, `${template.nameEn} ${args.applicationRef}`);
+  const out = await renderDocument(db, args.lenderId, doc, data, fontBytes, `${template.nameEn} ${args.applicationRef}`);
   if (out.missing.length) throw new AppError(`This application is missing information the letter prints: ${out.missing.join(", ")}.`, 422);
 
-  const key = `letters/${args.applicationRef}/${args.templateKey}_v${version.version}_${crypto.randomUUID()}.pdf`;
+  const key = `lender-${args.lenderId}/letters/${args.applicationRef}/${args.templateKey}_v${version.version}_${crypto.randomUUID()}.pdf`;
   await env.DOCUMENTS.put(key, out.pdf, { httpMetadata: { contentType: "application/pdf" } });
   const now = new Date().toISOString();
   const [doc2] = await db.insert(generatedDocuments).values({
-    applicationRef: args.applicationRef, customerId: app.customerId, documentType: `LETTER_${args.templateKey}`,
+    lenderId: args.lenderId, applicationRef: args.applicationRef, customerId: app.customerId, documentType: `LETTER_${args.templateKey}`,
     documentName: template.nameEn, filePath: key, fileSize: out.pdf.byteLength, mimeType: "application/pdf", generatedAt: now,
   }).returning();
   const [issued] = await db.insert(lettersIssued).values({
-    templateKey: args.templateKey, templateVersion: version.version, applicationRef: args.applicationRef, issuedAt: now, issuedBy: args.issuedBy,
+    lenderId: args.lenderId, templateKey: args.templateKey, templateVersion: version.version, applicationRef: args.applicationRef, issuedAt: now, issuedBy: args.issuedBy,
     dataJson: JSON.stringify(data), decisionsJson: JSON.stringify(out.decisions), generatedDocumentId: doc2.id,
   }).returning();
   return { issued, document: doc2 };

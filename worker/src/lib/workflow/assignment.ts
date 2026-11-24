@@ -3,6 +3,7 @@ import type { Db } from "../../db/client";
 import { loanApplications, orgUnits, users, wfCases, wfCaseTracks } from "../../db/schema";
 import type { AuthUser } from "../../types";
 import { isCaseVisible } from "../org";
+import { inLender } from "../lender-scope";
 import { allRoleConfigs, resolveRole } from "../roles";
 import { ensureDefaultDefinition, getDefinitionRow, parseDefinition } from "./store";
 import type { Label, StageDef, WorkflowDefinition } from "./types";
@@ -59,8 +60,8 @@ export function slaStatus(stage: StageDef | undefined, enteredAt: string, now: D
   };
 }
 
-async function ancestorsOf(db: Db, unitId: number): Promise<number[]> {
-  const all = await db.select({ id: orgUnits.id, parentId: orgUnits.parentId }).from(orgUnits);
+async function ancestorsOf(db: Db, lenderId: number, unitId: number): Promise<number[]> {
+  const all = await db.select({ id: orgUnits.id, parentId: orgUnits.parentId }).from(orgUnits).where(inLender(orgUnits, lenderId));
   const parent = new Map(all.map((u) => [u.id, u.parentId]));
   const out: number[] = [];
   for (let id: number | null | undefined = unitId; id != null && !out.includes(id); id = parent.get(id)) out.push(id);
@@ -83,7 +84,7 @@ export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: s
 
   const staff = await db.select().from(users).where(and(eq(users.lenderId, app.lenderId), inArray(users.role, roleCodes), eq(users.enabled, true)));
   const rule = stage?.owner?.unitRule ?? "ANY";
-  const caseAncestors = rule === "CASE_UNIT_OR_ANCESTOR" && app.orgUnitId != null ? await ancestorsOf(db, app.orgUnitId) : [];
+  const caseAncestors = rule === "CASE_UNIT_OR_ANCESTOR" && app.orgUnitId != null ? await ancestorsOf(db, app.lenderId, app.orgUnitId) : [];
 
   const eligible: typeof staff = [];
   for (const u of staff) {
@@ -98,7 +99,7 @@ export async function eligibleStaff(db: Db, def: WorkflowDefinition, stageKey: s
   if (eligible.length === 0) return [];
 
   const done = terminalStatuses(def, track);
-  const owned = await db.select().from(wfCaseTracks).where(and(inArray(wfCaseTracks.assigneeUserId, eligible.map((u) => u.id)), eq(wfCaseTracks.trackKey, track)));
+  const owned = await db.select().from(wfCaseTracks).where(inLender(wfCaseTracks, app.lenderId, inArray(wfCaseTracks.assigneeUserId, eligible.map((u) => u.id)), eq(wfCaseTracks.trackKey, track)));
   return eligible.map((u) => {
     const mine = owned.filter((t) => t.assigneeUserId === u.id);
     return {
@@ -139,24 +140,25 @@ export async function workflowInfoFor(db: Db, apps: LoanRow[], now = new Date())
   const out = new Map<string, CaseWorkflowInfo>();
   if (apps.length === 0) return out;
   const refs = apps.map((a) => a.applicationRef);
+  const lenderId = apps[0].lenderId;
 
   const pinned = new Map<string, number>();
   const tracks = new Map<string, (typeof wfCaseTracks.$inferSelect)[]>();
   for (const part of chunk(refs, 50)) {
-    for (const r of await db.select().from(wfCases).where(inArray(wfCases.applicationRef, part))) pinned.set(r.applicationRef, r.definitionId);
-    for (const t of await db.select().from(wfCaseTracks).where(inArray(wfCaseTracks.applicationRef, part))) {
+    for (const r of await db.select().from(wfCases).where(inLender(wfCases, lenderId, inArray(wfCases.applicationRef, part)))) pinned.set(r.applicationRef, r.definitionId);
+    for (const t of await db.select().from(wfCaseTracks).where(inLender(wfCaseTracks, lenderId, inArray(wfCaseTracks.applicationRef, part)))) {
       tracks.set(t.applicationRef, [...(tracks.get(t.applicationRef) ?? []), t]);
     }
   }
 
-  const published = await ensureDefaultDefinition(db);
+  const published = await ensureDefaultDefinition(db, lenderId);
   const defs = new Map<number, WorkflowDefinition>([[published.id, parseDefinition(published)]]);
-  for (const id of new Set(pinned.values())) if (!defs.has(id)) defs.set(id, parseDefinition(await getDefinitionRow(db, id)));
+  for (const id of new Set(pinned.values())) if (!defs.has(id)) defs.set(id, parseDefinition(await getDefinitionRow(db, lenderId, id)));
 
   const assigneeIds = [...new Set([...tracks.values()].flat().map((t) => t.assigneeUserId).filter((x): x is number => x != null))];
   const names = new Map<number, string>();
   for (const part of chunk(assigneeIds, 50)) {
-    for (const u of await db.select().from(users).where(inArray(users.id, part))) names.set(u.id, u.fullName?.trim() || u.email);
+    for (const u of await db.select().from(users).where(inLender(users, lenderId, inArray(users.id, part)))) names.set(u.id, u.fullName?.trim() || u.email);
   }
 
   for (const app of apps) {

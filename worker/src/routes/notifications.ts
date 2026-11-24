@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import { and, count, desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
 import { notifications } from "../db/schema";
 import { AppError } from "../lib/errors";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireLender } from "../middleware/auth";
+import { inLender, assertUserInLender } from "../lib/lender-scope";
 import { encodeOpaqueId, decodeOpaqueId } from "../lib/opaque-id";
 
 export const notificationsRoute = new Hono<AppEnv>();
@@ -30,54 +31,61 @@ function toNotificationSummary(n: typeof notifications.$inferSelect) {
 
 notificationsRoute.get("/customer/:customerId", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const customerId = Number(c.req.param("customerId"));
   assertOwnsCustomerId(c, customerId);
   const rows = await db
     .select()
     .from(notifications)
-    .where(eq(notifications.customerId, customerId))
+    .where(inLender(notifications, lenderId, eq(notifications.customerId, customerId)))
     .orderBy(desc(notifications.createdAt));
   return c.json(rows.map(toNotificationSummary));
 });
 
 notificationsRoute.get("/customer/:customerId/unread-count", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const customerId = Number(c.req.param("customerId"));
   assertOwnsCustomerId(c, customerId);
   const [row] = await db
     .select({ value: count() })
     .from(notifications)
-    .where(and(eq(notifications.customerId, customerId), eq(notifications.isRead, false)));
+    .where(inLender(notifications, lenderId, eq(notifications.customerId, customerId), eq(notifications.isRead, false)));
   return c.json({ count: row?.value ?? 0 });
 });
 
 notificationsRoute.put("/:id/read", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const id = decodeOpaqueId("ntf", c.req.param("id"));
-  const [existing] = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+  const [existing] = await db.select().from(notifications).where(inLender(notifications, lenderId, eq(notifications.id, id))).limit(1);
   if (!existing) throw new AppError("Notification not found.", 404);
   assertOwnsCustomerId(c, existing.customerId);
-  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  await db.update(notifications).set({ isRead: true }).where(inLender(notifications, lenderId, eq(notifications.id, id)));
   return c.body(null, 200);
 });
 
 notificationsRoute.put("/customer/:customerId/read-all", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const customerId = Number(c.req.param("customerId"));
   assertOwnsCustomerId(c, customerId);
   await db
     .update(notifications)
     .set({ isRead: true })
-    .where(and(eq(notifications.customerId, customerId), eq(notifications.isRead, false)));
+    .where(inLender(notifications, lenderId, eq(notifications.customerId, customerId), eq(notifications.isRead, false)));
   return c.body(null, 200);
 });
 
 notificationsRoute.post("/create", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const body = await c.req.json<{ customerId: number | string; title: string; message: string; type?: string; applicationRef?: string }>();
+  await assertUserInLender(db, lenderId, Number(body.customerId));
   const [created] = await db
     .insert(notifications)
     .values({
+      lenderId,
       customerId: Number(body.customerId),
       title: body.title,
       message: body.message,
@@ -135,12 +143,15 @@ const WELCOME_MESSAGES = {
 
 notificationsRoute.post("/customer/:customerId/seed-welcome", async (c) => {
   const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
   const customerId = Number(c.req.param("customerId"));
   const body = await c.req.json<{ lang?: string }>().catch(() => ({ lang: undefined }));
   const lang = body.lang === "he" ? "he" : "en";
   const now = new Date().toISOString();
+  await assertUserInLender(db, lenderId, customerId);
   await db.insert(notifications).values(
     WELCOME_MESSAGES[lang].map((m) => ({
+      lenderId,
       customerId,
       title: m.title,
       message: m.message,

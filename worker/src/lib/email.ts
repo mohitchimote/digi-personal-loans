@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { inLender } from "./lender-scope";
 import type { Db } from "../db/client";
 import type { Env } from "../types";
 import { emailTemplates, brandingSettings, type loanApplications } from "../db/schema";
@@ -101,8 +102,8 @@ export function splitAddresses(raw: string | null | undefined): string[] | undef
   return list.length ? list : undefined;
 }
 
-export async function getBrandingForEmail(db: Db): Promise<BrandingInfo> {
-  const [existing] = await db.select().from(brandingSettings).where(eq(brandingSettings.id, 1)).limit(1);
+export async function getBrandingForEmail(db: Db, lenderId: number): Promise<BrandingInfo> {
+  const [existing] = await db.select().from(brandingSettings).where(inLender(brandingSettings, lenderId)).limit(1);
   return { primaryColor: existing?.primaryColor ?? "#003366", logoUrl: existing?.logoUrl ?? null };
 }
 
@@ -185,7 +186,7 @@ export async function sendTemplatedEmail(
   extraVariables: Record<string, string>
 ) {
   try {
-    const [template] = await db.select().from(emailTemplates).where(eq(emailTemplates.eventKey, eventKey)).limit(1);
+    const [template] = await db.select().from(emailTemplates).where(inLender(emailTemplates, app.lenderId, eq(emailTemplates.eventKey, eventKey))).limit(1);
     if (!template || !template.enabled) return;
 
     const to = template.toAddress?.trim() || app.customerEmail;
@@ -200,7 +201,7 @@ export async function sendTemplatedEmail(
       ...extraVariables,
     };
 
-    const branding = await getBrandingForEmail(db);
+    const branding = await getBrandingForEmail(db, app.lenderId);
     const rendered = renderTemplate(branding, template, variables);
     const result = await deliverEmail(env, { to, cc, subject: rendered.subject, html: rendered.html, text: rendered.text });
     if (!result.ok) {

@@ -36,9 +36,9 @@ const staffUsers: SeedUser[] = [
 ];
 for (const u of staffUsers) {
   lines.push(
-    `INSERT INTO users (uuid, email, national_id, id_issue_date, full_name, role, created_at, enabled, email_verified, otp_attempts)
-     SELECT lower(hex(randomblob(16))), ${sqlStr(u.email)}, ${sqlStr(u.nationalId)}, '2015-01-01', ${sqlStr(u.fullName)}, ${sqlStr(u.role)}, '${nowIso()}', 1, 1, 0
-     WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = ${sqlStr(u.email)});`
+    `INSERT INTO users (lender_id, uuid, email, national_id, id_issue_date, full_name, role, created_at, enabled, email_verified, otp_attempts)
+     SELECT 1, lower(hex(randomblob(16))), ${sqlStr(u.email)}, ${sqlStr(u.nationalId)}, '2015-01-01', ${sqlStr(u.fullName)}, ${sqlStr(u.role)}, '${nowIso()}', 1, 1, 0
+     WHERE NOT EXISTS (SELECT 1 FROM users WHERE lender_id = 1 AND email = ${sqlStr(u.email)});`
   );
 }
 
