@@ -12,6 +12,7 @@
     <div class="uw-spacer"></div>
     <div class="uw-header-right">
       <app-language-switcher />
+      <span class="lender-badge" *ngIf="auth.lenderName" [attr.title]="auth.lenderCode">{{ auth.lenderName }}</span>
       <div class="header-user">
         <span class="user-avatar-sm">{{ (auth.userFullName || 'U')[0] }}</span>
         <span class="header-name">{{ auth.userFullName }}</span>

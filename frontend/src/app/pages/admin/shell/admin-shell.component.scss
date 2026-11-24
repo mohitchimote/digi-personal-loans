@@ -130,3 +130,14 @@
   .rail:not(.collapsed) { position: absolute; z-index: 20; height: calc(100vh - 64px); box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15); }
   .uw-content { padding: 16px; }
 }
+
+// Which lender this admin is administering (every admin screen is scoped to it).
+.lender-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: .85;
+  white-space: nowrap;
+}

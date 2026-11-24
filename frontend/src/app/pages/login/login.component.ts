@@ -1,3 +1,4 @@
+import { rememberLender } from '../../core/services/lender-context';
 import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -49,6 +50,7 @@ export class LoginComponent {
     this.auth.requestLoginOtp({ nationalId, lenderCode: lenderCode?.trim() || undefined }).subscribe({
       next: res => {
         this.loading.set(false);
+        if (res.success) rememberLender(res.data.lenderCode);
         if (res.success && res.data.requiresLenderChoice) {
           this.lenderChoices.set(res.data.lenders ?? []);
         } else if (res.success) {

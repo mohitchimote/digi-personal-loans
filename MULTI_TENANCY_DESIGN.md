@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) built, not yet committed; phase 5 next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -58,11 +58,18 @@ Copies configuration only: roles and entitlements, mandates, org levels and unit
   - `seed.sql` inserted staff users with no `lender_id` (the users column has no default), so a freshly seeded database had staff who could not sign in. The seed now sets lender 1.
 - Not done here (belongs to later phases): the frontend sending `?lender=`, `SUPER_ADMIN` console, enter-as, cloning, and the UAT purge.
 
+## Phase 4 as built
+The admin screens needed no new endpoints: every route behind them was scoped in phase 3, so a lender admin already sees and changes only their lender. What phase 4 adds is the frontend side:
+- `core/services/lender-context.ts` remembers a lender code (from `?lender=CODE` in the page link, the last sign-in, or the login page). The auth interceptor adds `?lender=` to the public GETs (branding, FAQs, registration pick-lists) when nobody is signed in. A lender gives its customers `https://<host>/?lender=CODE`.
+- Branding is reloaded whenever someone signs in or out, so the page takes on that lender's colours and logo.
+- The admin header shows the lender's name, so an admin always knows which lender the screens are scoped to.
+Build-checked only; not yet clicked through in a browser with two lenders.
+
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.
 2. Identity: JWT claims, login with lender code and account picker, `SUPER_ADMIN`.
 3. Isolation: scoping helper, convert all queries, caches and R2 keys, static check, cross-lender tests. **Done.**
-4. Lender admin: existing admin screens scoped to the lender, nothing new.
+4. Lender admin: existing admin screens scoped to the lender, nothing new. **Done (frontend side; see above).**
 5. Super admin console: lenders list, create, suspend, clone, enter as.
 6. Enter as users inside a lender (lender admin).
 7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release.

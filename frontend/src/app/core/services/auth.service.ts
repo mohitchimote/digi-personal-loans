@@ -1,3 +1,4 @@
+import { rememberLender } from './lender-context';
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -193,6 +194,7 @@ export class AuthService {
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));
+    rememberLender(auth.lenderCode);
     this.currentUser.set(auth);
     this.lastAccessedToastShown = false;
   }
