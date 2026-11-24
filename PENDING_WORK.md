@@ -170,6 +170,7 @@ deliberately not listed here: it was agreed as implementation-phase work and is 
 - [ ] **N2** Core banking integration landscape: Product Sync, Customer Information File, CASA accounts, disbursements, collateral (P2, XL). The largest unscoped item; not engineering-ready until there is a specification and an owner.
 - [ ] **N3** Reporting schema and data-warehouse replication, including masking personal data in the copy (P2, L). Same.
 - [ ] **C6** The manual PowerPoint edit for the architecture deck (the six-schema table omits `digibank_rules`, and §7.1 and open point 3 still describe rule-service thresholds as unbuilt). The deck and docx are not in this repository.
+- [ ] Java `workflow-service` (`TransitionService`): an idempotency key replays the stored response before the caller's visibility and permissions are checked, so someone who knows a key sees the first caller's response (code review 2026-11-24, not verified). Check authorization first, or bind the key to the caller.
 - [ ] Workflow: the RED-flag exception-note rule is enforced in the UI only; make it a server-side guard (`workflow-spec/CORRECTIONS.md`, "Not moved into the workflow").
 - [ ] Load test: `POST /api/applications/start` has a persistent slow tail (p99 224 ms at 300 samples) that is not explained yet.
 - [ ] `PRODUCTION_READINESS.md` residuals: finding 2 (ownership-check gap, matches the Worker), 7 (e-mail template escaping when built in Java), 8 (dependency freshness) and 9 (opaque IDs beyond documents and notifications).

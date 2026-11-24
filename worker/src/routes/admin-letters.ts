@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { desc, eq, like } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { inLender } from "../lib/lender-scope";
 import type { AppEnv } from "../types";
 import { getDb } from "../db/client";
@@ -14,8 +14,9 @@ import { LETTER_DICTIONARY, STORED_ON_APPLICATION } from "../lib/letters/diction
 import { SAMPLE_DATA, SAMPLE_LETTER } from "../lib/letters/samples";
 import { letterDocument, rule as ruleSchema } from "../lib/letters/types";
 import { buildLetterData } from "../lib/letters/data";
-import { EMPTY_LETTER, decodeBase64, loadSavedRules, parseDocument, renderDocument, validateDocument } from "../lib/letters/service";
+import { EMPTY_LETTER, decodeBase64, loadSavedRules, parseDocument, refersToRule, renderDocument, usesImage, validateDocument } from "../lib/letters/service";
 import { hasErrors } from "../lib/letters/validate";
+import { MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, sniffImage } from "../lib/letters/image";
 import { LETTER_FONT_BYTES } from "../lib/pdf/letter-fonts";
 
 // Admin side of letters: dictionary, shared rules, pictures, templates and their versions, validation,
@@ -72,10 +73,10 @@ lettersAdmin.put("/rules/:id", zValidator("json", ruleBody), async (c) => {
 lettersAdmin.delete("/rules/:id", async (c) => {
   const db = getDb(c.env.DB);
   const id = c.req.param("id");
-  const needle = `%"t":"ref","id":"${id}"%`;
-  const inTemplate = await db.select({ id: letterVersions.id }).from(letterVersions).where(inLender(letterVersions, requireLender(c), like(letterVersions.documentJson, needle))).limit(1);
-  const inRule = await db.select({ id: letterSavedRules.id }).from(letterSavedRules).where(inLender(letterSavedRules, requireLender(c), like(letterSavedRules.ruleJson, needle))).limit(1);
-  if (inTemplate.length || inRule.length) throw new AppError("This rule is used by a letter or another rule, so it cannot be deleted.", 409);
+  const lenderId = requireLender(c);
+  const docs = await db.select({ json: letterVersions.documentJson }).from(letterVersions).where(inLender(letterVersions, lenderId));
+  const rules = await db.select({ id: letterSavedRules.id, json: letterSavedRules.ruleJson }).from(letterSavedRules).where(inLender(letterSavedRules, lenderId));
+  if (docs.some((d) => refersToRule(d.json, id)) || rules.some((r) => r.id !== id && refersToRule(r.json, id))) throw new AppError("This rule is used by a letter or another rule, so it cannot be deleted.", 409);
   await db.delete(letterSavedRules).where(inLender(letterSavedRules, requireLender(c), eq(letterSavedRules.id, id)));
   await recordAudit(db, { eventType: "LETTER_RULE_DELETED", subjectType: "LetterRule", subjectId: id, ...actorOf(c) });
   return c.json({ ok: true });
@@ -84,34 +85,16 @@ lettersAdmin.delete("/rules/:id", async (c) => {
 // ---- pictures (PNG or JPEG, kept in the database)
 
 const MAX_IMAGE_BYTES = 500 * 1024;
-
-/** Type and pixel size from the file's own header; null when it is neither a PNG nor a JPEG. */
-export function sniffImage(b: Uint8Array): { mimeType: "image/png" | "image/jpeg"; width: number; height: number } | null {
-  if (b.length > 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
-    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
-    return { mimeType: "image/png", width: dv.getUint32(16), height: dv.getUint32(20) };
-  }
-  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) {
-    let i = 2;
-    while (i + 9 < b.length) {
-      if (b[i] !== 0xff) { i++; continue; }
-      const marker = b[i + 1];
-      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
-        return { mimeType: "image/jpeg", height: (b[i + 5] << 8) | b[i + 6], width: (b[i + 7] << 8) | b[i + 8] };
-      }
-      i += 2 + ((b[i + 2] << 8) | b[i + 3]);
-    }
-    return { mimeType: "image/jpeg", width: 0, height: 0 };
-  }
-  return null;
-}
+// Base64 is 4 characters per 3 bytes (plus an optional data: prefix); bounding the text rejects an oversized body
+// before it is decoded into memory.
+const MAX_IMAGE_BASE64_CHARS = Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 200;
 
 lettersAdmin.get("/images", async (c) => {
   const rows = await getDb(c.env.DB).select({ id: letterImages.id, name: letterImages.name, kind: letterImages.kind, mimeType: letterImages.mimeType, width: letterImages.width, height: letterImages.height, sizeBytes: letterImages.sizeBytes, createdAt: letterImages.createdAt }).from(letterImages).where(inLender(letterImages, requireLender(c))).orderBy(letterImages.name);
   return c.json(rows);
 });
 
-lettersAdmin.post("/images", zValidator("json", z.object({ name: z.string().trim().min(1).max(80), kind: z.enum(["logo", "signature", "seal", "other"]).default("other"), dataBase64: z.string().min(1) })), async (c) => {
+lettersAdmin.post("/images", zValidator("json", z.object({ name: z.string().trim().min(1).max(80), kind: z.enum(["logo", "signature", "seal", "other"]).default("other"), dataBase64: z.string().min(1).max(MAX_IMAGE_BASE64_CHARS) })), async (c) => {
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
   const b64 = body.dataBase64.replace(/^data:[^,]*,/, "");
@@ -120,6 +103,9 @@ lettersAdmin.post("/images", zValidator("json", z.object({ name: z.string().trim
   if (bytes.length > MAX_IMAGE_BYTES) throw new AppError(`The picture is ${(bytes.length / 1024).toFixed(0)} KB; the limit is ${MAX_IMAGE_BYTES / 1024} KB.`);
   const kind = sniffImage(bytes);
   if (!kind) throw new AppError("Only PNG and JPEG pictures can be used.");
+  if (kind.width > MAX_IMAGE_SIDE || kind.height > MAX_IMAGE_SIDE || kind.width * kind.height > MAX_IMAGE_PIXELS) {
+    throw new AppError(`The picture is ${kind.width} x ${kind.height} pixels; the limit is ${MAX_IMAGE_SIDE} on a side and ${MAX_IMAGE_PIXELS / 1_000_000} million pixels.`);
+  }
   const id = crypto.randomUUID();
   await db.insert(letterImages).values({ lenderId: requireLender(c), id, name: body.name, kind: body.kind, mimeType: kind.mimeType, width: kind.width || null, height: kind.height || null, sizeBytes: bytes.length, dataBase64: b64, createdAt: now(), createdBy: actorOf(c).actor });
   await recordAudit(db, { eventType: "LETTER_IMAGE_ADDED", subjectType: "LetterImage", subjectId: id, detail: body.name, ...actorOf(c) });
@@ -135,8 +121,8 @@ lettersAdmin.get("/images/:id/file", async (c) => {
 lettersAdmin.delete("/images/:id", async (c) => {
   const db = getDb(c.env.DB);
   const id = c.req.param("id");
-  const used = await db.select({ id: letterVersions.id }).from(letterVersions).where(inLender(letterVersions, requireLender(c), like(letterVersions.documentJson, `%"imageId":"${id}"%`))).limit(1);
-  if (used.length) throw new AppError("This picture is used by a letter, so it cannot be deleted.", 409);
+  const docs = await db.select({ json: letterVersions.documentJson }).from(letterVersions).where(inLender(letterVersions, requireLender(c)));
+  if (docs.some((d) => usesImage(d.json, id))) throw new AppError("This picture is used by a letter, so it cannot be deleted.", 409);
   await db.delete(letterImages).where(inLender(letterImages, requireLender(c), eq(letterImages.id, id)));
   await recordAudit(db, { eventType: "LETTER_IMAGE_DELETED", subjectType: "LetterImage", subjectId: id, ...actorOf(c) });
   return c.json({ ok: true });
@@ -258,8 +244,12 @@ lettersAdmin.post("/templates/:key/publish", async (c) => {
   if (hasErrors(issues)) return c.json({ message: "Fix the errors before publishing.", issues }, 422);
   const at = now(), by = actorOf(c).actor;
   // Exactly one PUBLISHED version: the previous one is archived, never deleted, so issued letters can be traced.
-  await db.update(letterVersions).set({ status: "ARCHIVED" }).where(inLender(letterVersions, t.lenderId, eq(letterVersions.templateKey, t.key), eq(letterVersions.status, "PUBLISHED")));
-  await db.update(letterVersions).set({ status: "PUBLISHED", publishedAt: at, publishedBy: by }).where(inLender(letterVersions, t.lenderId, eq(letterVersions.id, draft.id)));
+  // One atomic batch (as the workflow publish does), so a failure between the two can never leave the letter
+  // with no published version, or with two.
+  await db.batch([
+    db.update(letterVersions).set({ status: "ARCHIVED" }).where(inLender(letterVersions, t.lenderId, eq(letterVersions.templateKey, t.key), eq(letterVersions.status, "PUBLISHED"))),
+    db.update(letterVersions).set({ status: "PUBLISHED", publishedAt: at, publishedBy: by }).where(inLender(letterVersions, t.lenderId, eq(letterVersions.id, draft.id))),
+  ]);
   await recordAudit(db, { eventType: "LETTER_PUBLISHED", subjectType: "LetterTemplate", subjectId: t.key, detail: `v${draft.version}`, ...actorOf(c) });
   return c.json({ version: draft.version, issues });
 });

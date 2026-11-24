@@ -41,6 +41,31 @@ export function decodeBase64(b64: string): Uint8Array {
   return out;
 }
 
+/** Calls `visit` on every object nested anywhere in a parsed JSON value. */
+function walkObjects(value: unknown, visit: (o: Record<string, unknown>) => void): void {
+  if (Array.isArray(value)) { for (const v of value) walkObjects(v, visit); return; }
+  if (value && typeof value === "object") {
+    visit(value as Record<string, unknown>);
+    for (const v of Object.values(value)) walkObjects(v, visit);
+  }
+}
+
+/** Whether a stored document or rule refers to the saved rule `ruleId` (a `{ t: "ref", id }` node anywhere in it).
+ * Reads the JSON rather than matching text, so ids with `_` or `%` and any key order are handled. Unreadable JSON
+ * counts as "may refer to it", so a delete is refused rather than risked. */
+export function refersToRule(json: string, ruleId: string): boolean {
+  let found = false;
+  try { walkObjects(JSON.parse(json), (o) => { if (o.t === "ref" && o.id === ruleId) found = true; }); } catch { return json.includes(ruleId); }
+  return found;
+}
+
+/** Whether a stored document uses the picture `imageId` (an `imageId` property anywhere in it). */
+export function usesImage(json: string, imageId: string): boolean {
+  let found = false;
+  try { walkObjects(JSON.parse(json), (o) => { if (o.imageId === imageId) found = true; }); } catch { return json.includes(imageId); }
+  return found;
+}
+
 /** Every image id a document names, anywhere in it. */
 export function imageIdsIn(doc: LetterDocument): string[] {
   const ids = new Set<string>();
@@ -111,13 +136,22 @@ export async function issueLetter(db: Db, env: Env, fontBytes: FontBytes, args: 
   const key = `lender-${args.lenderId}/letters/${args.applicationRef}/${args.templateKey}_v${version.version}_${crypto.randomUUID()}.pdf`;
   await env.DOCUMENTS.put(key, out.pdf, { httpMetadata: { contentType: "application/pdf" } });
   const now = new Date().toISOString();
-  const [doc2] = await db.insert(generatedDocuments).values({
-    lenderId: args.lenderId, applicationRef: args.applicationRef, customerId: app.customerId, documentType: `LETTER_${args.templateKey}`,
-    documentName: template.nameEn, filePath: key, fileSize: out.pdf.byteLength, mimeType: "application/pdf", generatedAt: now,
-  }).returning();
-  const [issued] = await db.insert(lettersIssued).values({
-    lenderId: args.lenderId, templateKey: args.templateKey, templateVersion: version.version, applicationRef: args.applicationRef, issuedAt: now, issuedBy: args.issuedBy,
-    dataJson: JSON.stringify(data), decisionsJson: JSON.stringify(out.decisions), generatedDocumentId: doc2.id,
-  }).returning();
-  return { issued, document: doc2 };
+  // The id of the document row is needed for the issue record, so these are two statements; if either fails,
+  // what was written is removed again so no orphaned file or half-recorded letter is left behind.
+  let doc2: typeof generatedDocuments.$inferSelect | undefined;
+  try {
+    [doc2] = await db.insert(generatedDocuments).values({
+      lenderId: args.lenderId, applicationRef: args.applicationRef, customerId: app.customerId, documentType: `LETTER_${args.templateKey}`,
+      documentName: template.nameEn, filePath: key, fileSize: out.pdf.byteLength, mimeType: "application/pdf", generatedAt: now,
+    }).returning();
+    const [issued] = await db.insert(lettersIssued).values({
+      lenderId: args.lenderId, templateKey: args.templateKey, templateVersion: version.version, applicationRef: args.applicationRef, issuedAt: now, issuedBy: args.issuedBy,
+      dataJson: JSON.stringify(data), decisionsJson: JSON.stringify(out.decisions), generatedDocumentId: doc2.id,
+    }).returning();
+    return { issued, document: doc2 };
+  } catch (e) {
+    if (doc2) await db.delete(generatedDocuments).where(inLender(generatedDocuments, args.lenderId, eq(generatedDocuments.id, doc2.id))).catch(() => undefined);
+    await env.DOCUMENTS.delete(key).catch(() => undefined);
+    throw e;
+  }
 }

@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { desc, eq } from "drizzle-orm";
@@ -7,6 +7,7 @@ import { getDb } from "../db/client";
 import { generatedDocuments, letterTemplates, lettersIssued, loanApplications } from "../db/schema";
 import { assertEntitlement, requireAuth, requireLender } from "../middleware/auth";
 import { inLender } from "../lib/lender-scope";
+import { assertCaseVisible } from "../lib/org";
 import { AppError } from "../lib/errors";
 import { recordAudit, actorOf } from "../lib/audit";
 import { issueLetter, publishedVersion } from "../lib/letters/service";
@@ -17,12 +18,21 @@ import { LETTER_FONT_BYTES } from "../lib/pdf/letter-fonts";
 export const letters = new Hono<AppEnv>();
 letters.use("*", requireAuth);
 
+/** The application, in the caller's lender and within the caller's org scope. Out of scope reads as "not found",
+ * like everywhere else: a letter carries the customer's data, so being able to issue or download one for a case
+ * the caller cannot see would be a way around case visibility. */
+async function visibleApplication(c: Context<AppEnv>, db: ReturnType<typeof getDb>, appRef: string) {
+  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, appRef))).limit(1);
+  if (!app) throw new AppError("Application not found.", 404);
+  await assertCaseVisible(db, c.get("authUser"), c.get("authRole").scope, app);
+  return app;
+}
+
 /** Published letters that can be produced for this application. */
 letters.get("/available/:appRef", async (c) => {
   assertEntitlement(c, "letters.issue");
   const db = getDb(c.env.DB);
-  const [app] = await db.select().from(loanApplications).where(inLender(loanApplications, requireLender(c), eq(loanApplications.applicationRef, c.req.param("appRef")))).limit(1);
-  if (!app) throw new AppError("Application not found.", 404);
+  const app = await visibleApplication(c, db, c.req.param("appRef"));
   const templates = await db.select().from(letterTemplates).where(inLender(letterTemplates, requireLender(c))).orderBy(letterTemplates.nameEn);
   const out = [];
   for (const t of templates) {
@@ -36,6 +46,7 @@ letters.get("/available/:appRef", async (c) => {
 letters.get("/issued/:appRef", async (c) => {
   assertEntitlement(c, "letters.issue");
   const db = getDb(c.env.DB);
+  await visibleApplication(c, db, c.req.param("appRef"));
   const rows = await db.select().from(lettersIssued).where(inLender(lettersIssued, requireLender(c), eq(lettersIssued.applicationRef, c.req.param("appRef")))).orderBy(desc(lettersIssued.issuedAt));
   const names = new Map((await db.select({ key: letterTemplates.key, nameEn: letterTemplates.nameEn }).from(letterTemplates).where(inLender(letterTemplates, requireLender(c)))).map((t) => [t.key, t.nameEn]));
   return c.json(rows.map((r) => ({ id: r.id, templateKey: r.templateKey, name: names.get(r.templateKey) ?? r.templateKey, templateVersion: r.templateVersion, issuedAt: r.issuedAt, issuedBy: r.issuedBy })));
@@ -45,6 +56,7 @@ letters.post("/issue", zValidator("json", z.object({ templateKey: z.string().min
   assertEntitlement(c, "letters.issue");
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
+  await visibleApplication(c, db, body.applicationRef);
   const user = c.get("authUser");
   const by = user.fullName?.trim() || user.email;
   const { issued } = await issueLetter(db, c.env, LETTER_FONT_BYTES, { ...body, lenderId: requireLender(c), issuedBy: by });
@@ -56,6 +68,7 @@ letters.post("/issue", zValidator("json", z.object({ templateKey: z.string().min
 letters.get("/issued/:appRef/:id/pdf", async (c) => {
   assertEntitlement(c, "letters.issue");
   const db = getDb(c.env.DB);
+  await visibleApplication(c, db, c.req.param("appRef"));
   const [row] = await db.select().from(lettersIssued).where(inLender(lettersIssued, requireLender(c), eq(lettersIssued.id, Number(c.req.param("id"))), eq(lettersIssued.applicationRef, c.req.param("appRef")))).limit(1);
   if (!row?.generatedDocumentId) throw new AppError("Letter not found.", 404);
   const [doc] = await db.select().from(generatedDocuments).where(inLender(generatedDocuments, requireLender(c), eq(generatedDocuments.id, row.generatedDocumentId))).limit(1);
