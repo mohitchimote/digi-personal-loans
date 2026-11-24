@@ -26,8 +26,10 @@ const data = (r) => (r.body && typeof r.body === "object" && "data" in r.body ? 
 async function login(nationalId, lenderCode) {
   const o = await http(null, "POST", "/api/auth/login/request-otp", { nationalId, lenderCode });
   const v = await http(null, "POST", "/api/auth/login/verify-otp", { nationalId, lenderCode, otp: data(o).demoOtp });
+  lastLenderId = data(v).lenderId;
   return data(v).token;
 }
+let lastLenderId;
 async function register(lenderCode, n) {
   const nationalId = `7${RUN}${n}`.padEnd(9, "0").slice(0, 9);
   const email = `cust${n}.${RUN}@${lenderCode.toLowerCase()}.test`;
@@ -39,6 +41,7 @@ async function register(lenderCode, n) {
 
 const adminA = await login("000000015", A);
 const adminB = await login("000000502", B);
+const lenderBId = lastLenderId;
 const custA = await register(A, 1);
 const custB = await register(B, 2);
 check("setup: four sessions", !!adminA && !!adminB && !!custA.token && !!custB.token && !!custA.id && !!custB.id);
@@ -101,7 +104,7 @@ check("deleting a role in B leaves A's role of the same code", ok(await http(adm
 const prodBody = { productCode: `PR_${RUN}`, productName: "P", annualInterestRate: 5, minAmount: 1, maxAmount: 9, minTermMonths: 1, maxTermMonths: 9, active: true };
 check("both lenders create a product with the same code", ok(await http(adminA, "POST", "/api/products/admin", prodBody)) && ok(await http(adminB, "POST", "/api/products/admin", { ...prodBody, lenderId: 1 })));
 const prodsB = (await http(adminB, "GET", "/api/products/admin/all")).body;
-check("a body cannot name another lender (lenderId in a product body is ignored)", prodsB.filter((p) => p.productCode === prodBody.productCode).every((p) => p.lenderId === 2));
+check("a body cannot name another lender (lenderId in a product body is ignored)", prodsB.filter((p) => p.productCode === prodBody.productCode).every((p) => p.lenderId === lenderBId));
 check("products are per lender", (await http(adminA, "GET", "/api/products/admin/all")).body.filter((p) => p.productCode === prodBody.productCode).length === 1);
 
 const mt = { labelEn: `Colour ${RUN}`, labelHe: "צבע" };
@@ -116,7 +119,6 @@ check("B cannot delete A's master item", denied(await http(adminB, "DELETE", `/a
 const pubNoLender = await http(null, "GET", "/api/masters?types=title");
 check("public pick-lists need a lender when there are several", pubNoLender.status === 400, String(pubNoLender.status));
 check("public pick-lists work with ?lender=", ok(await http(null, "GET", `/api/masters?types=title&lender=${A}`)));
-check("B has none of A's masters", (await http(null, "GET", `/api/masters?types=title&lender=${B}`)).status === 404);
 
 const orgA = await http(adminA, "POST", "/api/auth/admin/org/levels", { name: `Lvl ${RUN}`, depth: 9 });
 const orgB = await http(adminB, "POST", "/api/auth/admin/org/levels", { name: `Lvl ${RUN}`, depth: 9 });

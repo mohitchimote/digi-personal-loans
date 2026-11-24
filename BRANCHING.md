@@ -26,3 +26,27 @@ Migrations are shared by every lender, so they must be additive: new columns nul
 
 ## Before sharing UAT externally
 `DEMO_MODE=true` shows the login OTP on screen, so anyone with the link can sign in as any ID. Decide whether to keep that.
+
+## Release: multi-tenancy to UAT (UAT is at migration 0015; this brings 0016-0023)
+Rehearsed on a local copy of the UAT database (exported read-only from `digibank`) and run end to end on Dev (loans2). Nothing below has been run against UAT.
+
+**Decide first (owner)**
+1. The cases to keep: `worker/scripts/uat-keep.proposed.txt` (10 of 139: the latest manual demo cases plus one per status). Edit the list, then regenerate the SQL.
+2. Admin 99 (`000000099`) becomes the platform super admin (migration 0023). UAT has **no other admin**, so a DIGI admin must be created right after (step 8). Pick that person's National ID and e-mail.
+3. `DEMO_MODE` (unchanged question, see below) and that **everyone signs in again once** (old tokens carry no lender claim).
+
+**Steps (in this order)**
+1. Backup: `wrangler d1 export digibank --remote --output uat-before.sql`; note the D1 Time Travel bookmark (`wrangler d1 time-travel info digibank`) if available on the plan. Migrations 0021/0022 rebuild tables and are not reversible by code.
+2. Merge `dev` into `master` (owner pushes), tag nothing yet.
+3. `npm run db:migrate:remote` (guarded): applies 0016-0023. Existing rows all become lender 1 (DIGI).
+4. Purge: `node scripts/uat-purge.mjs --keep <list> > purge.sql`; first run the "stored files" query printed at the top of `purge.sql` to list R2 keys, then `wrangler d1 execute digibank --remote --file purge.sql`; then delete those keys from R2 (`digibank-documents`).
+5. Seeds (UAT has no masters or organisation yet): `seed-masters.sql`; reference data in stages for Israel (`node scripts/seed-reference-stage.mjs IL > /tmp/il.sql`); `scripts/seed-org-structure.sql`; `seed-form-versions.sql` (idempotent).
+6. `npm run deploy` (guarded; clean `master` equal to `origin/master`). Note the Worker version id.
+7. Sign in as admin 99 (lands on the platform console), enter DIGI.
+8. Create DIGI's admin (Users, Add staff user, role Admin), sign in as them, and run **apply master sources** on both forms (API: `POST /api/auth/admin/form-builder/forms/<formKey>/apply-master-sources`; there is no button for it yet).
+9. Check: a kept customer signs in with their old National ID and opens their case; an underwriter's pipeline lists the kept cases; documents of kept cases still download.
+10. Tag `stable-2026-11-multitenancy`; record the Worker version id. Rollback = `wrangler rollback` for code plus a restore from step 1 for data.
+
+**Write budget** (D1 free plan: 100k row writes per day across the account): migrations and backfill, the purge (about 1,700 deletes), masters (about 5,900 rows) and Israel's reference data fit in one day. Other countries' cities are loaded on later days.
+
+**Rehearsal result** (copy of UAT, new code, local): 139 cases and 89 users backfilled to DIGI; admin 99 became super admin; purge 139 to 10 cases and 90 to 14 users with no orphaned rows; after seeds and apply-master-sources, a kept customer signed in without a code, their old case opened with its form definition, the pipeline, workflow state, actions, notes and document records all worked (20 checks).

@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phases 4 (lender admin), 5 (super admin console) and 6 (enter as a user) built; phase 7 (two-lender e2e, UAT purge and promotion) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phases 4 to 6 built; phase 7: tests on Dev (loans2) done and the UAT release rehearsed and written up (BRANCHING.md, "Release: multi-tenancy to UAT"); the UAT purge and promotion wait for the owner's go. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -95,6 +95,12 @@ Build-checked only; not yet clicked through in a browser with two lenders.
 - **UI**: "View as" on the Users screen (staff and customers; not shown for administrators or disabled users); a red banner on every screen ("You are viewing as X (role) · read-only · signed in as Y", Exit view). Exit returns to the Users screen.
 - Verified: 27 checks in `scripts/impersonation-check.mjs` (view works as the user and not as the admin; every write refused; admins, other lenders, nesting, non-admins, disabled users refused; platform admin inside versus outside a lender; exit; logout; disabling the administrator or the user ends the view; audit rows), 408 unit tests, and a browser click-through (users list, view as, banner, exit).
 
+## Phase 7 as done
+- **Dev (loans2)**: deployed `dev` (Worker version `45fa68de`), which applied migrations 0021-0023 to `digibank2`. Admin 99 became the super admin; DIGI's admin (`000000015`) was created through the console; two lenders cloned from DIGI (about 5,900 master items each, copied in one batch). Results on the real deployment: `lender-isolation-check.mjs` 60/60 between two cloned lenders, `impersonation-check.mjs` 27/27, `platform-check.mjs` 50 of 51 on the first run (the failure was a test assumption, fixed; the fixed script passes 60/60 locally; the address checks that need another Host header are skipped on a real URL and were verified locally).
+- **Test debris left on loans2** (suspended, so it behaves as a single-lender system again): lenders ISOA, ISOB and four more from the platform check, their test customers and data, and one disabled test admin in DIGI. There is no "delete lender" by design.
+- **UAT rehearsal** on an export of `digibank`: see BRANCHING.md. Findings: UAT lacks the masters and organisation entirely (needs the seeds), its only admin is admin 99 (so a DIGI admin must be created at release time), and the purge script (`scripts/uat-purge.mjs`, 10 cases kept) leaves no orphaned rows.
+- **Not done**: the purge and promotion themselves (owner's go), the Playwright `e2e/` suite across two lenders (it is untracked and was not touched), and loading other countries' reference data for new lenders.
+
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.
 2. Identity: JWT claims, login with lender code and account picker, `SUPER_ADMIN`.
@@ -102,7 +108,7 @@ Build-checked only; not yet clicked through in a browser with two lenders.
 4. Lender admin: existing admin screens scoped to the lender, nothing new. **Done (frontend side; see above).**
 5. Super admin console: lenders list, create, suspend, clone, enter as. **Done.**
 6. Enter as users inside a lender (lender admin). **Done.**
-7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release.
+7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release. **Tests and rehearsal done; the release itself waits for the owner.**
 
 ## Keeping lenders independent of each other
 One codebase, one schema, one Worker: a shared change reaches every lender at once, so lender differences live in data and configuration.
