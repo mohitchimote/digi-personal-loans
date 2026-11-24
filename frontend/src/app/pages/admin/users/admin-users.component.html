@@ -119,6 +119,9 @@
             <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u, 'staff')">
               {{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}
             </button>
+            <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="canViewAs(u)" (click)="viewAs(u)" [title]="'viewas.hint' | translate">
+              {{ 'viewas.action' | translate }}
+            </button>
           </td>
         </tr>
       </tbody>
@@ -173,6 +176,9 @@
             <div class="action-group">
               <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggleEnabled(u, 'customers')">
                 {{ u.enabled ? ('admin.disable' | translate) : ('admin.enable' | translate) }}
+              </button>
+              <button class="db-btn db-btn--ghost db-btn--sm" *ngIf="canViewAs(u)" (click)="viewAs(u)" [title]="'viewas.hint' | translate">
+                {{ 'viewas.action' | translate }}
               </button>
               <ng-container *ngIf="deleteConfirmId() === u.id; else deleteBtn">
                 <span class="delete-confirm-text">{{ 'admin.deleteConfirm' | translate }}</span>

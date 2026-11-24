@@ -196,6 +196,31 @@ export class AuthService {
     this.storeSession(auth);
   }
 
+  /** An administrator is viewing the system as another user: the session is read-only. */
+  get isViewingAs(): boolean {
+    return !!this.currentUser()?.viewingAs;
+  }
+
+  /** Where this session lands: the home of its role. */
+  get homePath(): string {
+    return this.isAtPlatformLevel ? '/platform'
+      : this.isAdmin ? '/admin/home'
+      : this.isUnderwriter ? '/underwriter/pipeline'
+      : this.isBanker ? '/banker/queue'
+      : this.isBusinessOwner ? '/business/dashboard'
+      : '/portal/dashboard';
+  }
+
+  /** Administrator: view the system as one of the lender's users. Read-only and audited. */
+  enterAs(userId: number): Observable<{ success: boolean; data: AuthResponse }> {
+    return this.http.post<any>(`${API_BASE}/api/auth/admin/users/${userId}/enter-as`, {}).pipe(tap(res => this.storeSession(res.data)));
+  }
+
+  /** Leave the view and get the administrator's own session back. */
+  exitViewAs(): Observable<{ success: boolean; data: AuthResponse }> {
+    return this.http.post<any>(`${API}/exit-impersonation`, {}).pipe(tap(res => this.storeSession(res.data)));
+  }
+
   /** A super admin who is inside a lender (entered from the platform console). */
   get isInsideLender(): boolean {
     return this.isSuperAdmin && this.currentUser()?.lenderId != null;

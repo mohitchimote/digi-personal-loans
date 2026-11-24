@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) and phase 5 (super admin console) built; phase 6 next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phases 4 (lender admin), 5 (super admin console) and 6 (enter as a user) built; phase 7 (two-lender e2e, UAT purge and promotion) next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -86,13 +86,22 @@ Build-checked only; not yet clicked through in a browser with two lenders.
   - Verified: 60 checks in `scripts/platform-check.mjs` (28 of them hosts and sign-in) and 400 unit tests.
 - Not in this phase: enter *as a user* inside a lender (phase 6), a UI to load large reference data for a new lender, editing `lender_settings`.
 
+## Phase 6 as built
+- **What**: a lender admin (or a platform admin who has entered the lender) can view the system as one of the lender's users: Users screen, "View as". The session is a normal token for that user plus an `act` claim naming the administrator (`jwt.ts`); `requireAuth` still loads the user row, and also loads the administrator and re-checks everything on every request (`lib/impersonation.ts`, `mayViewAs`).
+- **Rules**: the administrator must be enabled, with sessions not revoked, an `ADMIN` of the user's lender, or a `SUPER_ADMIN` inside it. The user must be in that lender (otherwise "not found"), enabled, not the administrator, and not an administrator. No nesting. Disabling or signing out the administrator, or disabling the user, ends the view on the next request.
+- **Read-only (decision, not in the original design)**: the session can only read (GET/HEAD/OPTIONS); everything else answers 403, except exit and logout. Reason: an administrator who could act as an underwriter could approve loans and bypass the maker-checker separation, and the design asks only to "see the screens as that user". Revisit if support needs to act on someone's behalf; that would need its own entitlement and an audit entry per action. Known gap: a few GET handlers write (for example the data-verification summary is generated and stored on first read), and the underwriter's "available for new cases" toggle fails with 403 in a view.
+- **Audit**: `USER_VIEW_AS_STARTED` and `USER_VIEW_AS_ENDED` in the lender's trail, with the administrator as the actor.
+- **Endpoints**: `POST /api/auth/admin/users/:id/enter-as`; `POST /api/auth/exit-impersonation` (gives back the administrator's own session, inside the lender for a platform admin). Logging out of a view does not sign the viewed user out.
+- **UI**: "View as" on the Users screen (staff and customers; not shown for administrators or disabled users); a red banner on every screen ("You are viewing as X (role) · read-only · signed in as Y", Exit view). Exit returns to the Users screen.
+- Verified: 27 checks in `scripts/impersonation-check.mjs` (view works as the user and not as the admin; every write refused; admins, other lenders, nesting, non-admins, disabled users refused; platform admin inside versus outside a lender; exit; logout; disabling the administrator or the user ends the view; audit rows), 408 unit tests, and a browser click-through (users list, view as, banner, exit).
+
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.
 2. Identity: JWT claims, login with lender code and account picker, `SUPER_ADMIN`.
 3. Isolation: scoping helper, convert all queries, caches and R2 keys, static check, cross-lender tests. **Done.**
 4. Lender admin: existing admin screens scoped to the lender, nothing new. **Done (frontend side; see above).**
 5. Super admin console: lenders list, create, suspend, clone, enter as. **Done.**
-6. Enter as users inside a lender (lender admin).
+6. Enter as users inside a lender (lender admin). **Done.**
 7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release.
 
 ## Keeping lenders independent of each other

@@ -6,6 +6,7 @@ import { users } from "../db/schema";
 import { verifyJwt } from "../lib/jwt";
 import { AppError } from "../lib/errors";
 import { resolveRole } from "../lib/roles";
+import { mayViewAs, isReadMethod, VIEW_AS_ALLOWED_WRITES } from "../lib/impersonation";
 import { getLenderById, decideLenderContext, SUPER_ADMIN_ROLE } from "../lib/lenders";
 import type { AppEnv } from "../types";
 
@@ -58,7 +59,7 @@ async function authenticate(c: Context<AppEnv>) {
   }
   const token = header.slice(7);
 
-  let verified: { uuid: string; issuedAt: number; lenderId: number };
+  let verified: { uuid: string; issuedAt: number; lenderId: number; actor?: string };
   try {
     verified = await verifyJwt(token, c.env.JWT_SECRET);
   } catch {
@@ -86,6 +87,19 @@ async function authenticate(c: Context<AppEnv>) {
   const decided = decideLenderContext(user, verified.lenderId, ownLender, !!claimed);
   if (!decided.ok) throw new AppError("Token is invalid or expired.", 401);
   const lenderId = decided.lenderId;
+
+  // "Enter as": the token also names the administrator behind the user. The administrator is
+  // checked as strictly as the user (still enabled, sessions not revoked, still allowed to do this),
+  // so disabling or signing out the administrator ends the session at once, and the session can only read.
+  if (verified.actor) {
+    const [actor] = await db.select().from(users).where(eq(users.uuid, verified.actor)).limit(1);
+    const stale = !actor || (actor.sessionsRevokedAt && verified.issuedAt * 1000 < Date.parse(actor.sessionsRevokedAt));
+    if (stale || !mayViewAs(actor, user, lenderId).ok) throw new AppError("Token is invalid or expired.", 401);
+    if (!isReadMethod(c.req.method) && !VIEW_AS_ALLOWED_WRITES.has(c.req.path)) {
+      throw new AppError("This session is read-only while viewing as another user. Exit to make changes.", 403);
+    }
+    c.set("actingUser", actor);
+  }
 
   c.set("authUser", user);
   c.set("lenderId", lenderId);

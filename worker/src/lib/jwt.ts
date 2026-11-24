@@ -6,9 +6,10 @@ const JWT_EXPIRATION_SECONDS = 24 * 60 * 60;
 // `lnd` is the lender the token is for: the user's own lender, or 0 for a platform (super admin)
 // token that is not inside any lender. requireAuth checks it against the user's row, so a token
 // can never be replayed against a different lender than the one it was issued for.
-export async function signJwt(subjectUuid: string, secret: string, lenderId: number): Promise<string> {
+// `act` is set only while an administrator is viewing the system as the subject (see impersonation.ts).
+export async function signJwt(subjectUuid: string, secret: string, lenderId: number, actorUuid?: string): Promise<string> {
   const key = new TextEncoder().encode(secret);
-  return new SignJWT({ lnd: lenderId })
+  return new SignJWT({ lnd: lenderId, ...(actorUuid ? { act: actorUuid } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(subjectUuid)
     .setIssuedAt()
@@ -20,6 +21,8 @@ export interface VerifiedJwt {
   uuid: string;
   issuedAt: number; // seconds since epoch — used for S2 session-revocation comparison
   lenderId: number; // 0 = platform token (not inside any lender)
+  /** uuid of the administrator who is viewing as `uuid`, when this is an "enter as" token. */
+  actor?: string;
 }
 
 export async function verifyJwt(token: string, secret: string): Promise<VerifiedJwt> {
@@ -28,7 +31,7 @@ export async function verifyJwt(token: string, secret: string): Promise<Verified
   if (!payload.sub) throw new Error("Token has no subject.");
   if (!payload.iat) throw new Error("Token has no issued-at claim.");
   if (typeof payload.lnd !== "number") throw new Error("Token has no lender claim.");
-  return { uuid: payload.sub, issuedAt: payload.iat, lenderId: payload.lnd };
+  return { uuid: payload.sub, issuedAt: payload.iat, lenderId: payload.lnd, actor: typeof payload.act === "string" ? payload.act : undefined };
 }
 
 export const JWT_EXPIRES_IN_MS = JWT_EXPIRATION_SECONDS * 1000;

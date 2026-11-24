@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AdminService, UserSummary, OrgUnit, RoleRow } from '../../../core/services/admin.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-admin-users',
@@ -33,7 +35,20 @@ export class AdminUsersComponent implements OnInit {
   deleteConfirmId = signal<number | null>(null);
   deleting = signal(false);
 
-  constructor(private adminSvc: AdminService, private i18n: I18nService) {}
+  constructor(private adminSvc: AdminService, private i18n: I18nService, private auth: AuthService, private router: Router) {}
+
+  /** Administrators cannot be viewed as; neither can disabled users. */
+  canViewAs(u: UserSummary): boolean {
+    return u.enabled && u.role !== 'ADMIN' && u.role !== 'SUPER_ADMIN';
+  }
+
+  /** See the screens as this user: read-only, audited, flagged on every page. */
+  viewAs(u: UserSummary): void {
+    this.auth.enterAs(u.id).subscribe({
+      next: () => this.router.navigate([this.auth.homePath]),
+      error: e => this.error.set(e?.error?.message ?? this.i18n.t('viewas.failed')),
+    });
+  }
 
   ngOnInit(): void {
     this.loadStaff();

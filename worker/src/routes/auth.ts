@@ -10,8 +10,9 @@ import { AppError } from "../lib/errors";
 import { generateAndAssignOtp, verifyOtpForUser, OTP_VALIDITY_SECONDS } from "../lib/otp";
 import { buildAuthResponse, toCustomerProfile } from "../lib/user-mappers";
 import { requireAuth, requireRole, requireEntitlement, requireLender, optionalAuth, publicLender, hostLender, lenderCodeFor } from "../middleware/auth";
-import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender, updateUserRow, countActiveLenders } from "../lib/lenders";
+import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender, updateUserRow, countActiveLenders, getLenderById } from "../lib/lenders";
 import { inLender } from "../lib/lender-scope";
+import { recordAudit } from "../lib/audit";
 
 export const auth = new Hono<AppEnv>();
 
@@ -247,8 +248,22 @@ auth.get("/validate", requireAuth, async (c) => {
 auth.post("/logout", requireAuth, async (c) => {
   const db = getDb(c.env.DB);
   const user = c.get("authUser");
+  // Leaving an "enter as" view must not sign out the user being viewed.
+  if (c.get("actingUser")) return success(c, "Logged out.", null);
   await updateUserRow(db, user, { sessionsRevokedAt: new Date().toISOString() });
   return success(c, "Logged out.", null);
+});
+
+// End an "enter as" session: a fresh session for the administrator (inside the lender, for a platform admin).
+auth.post("/exit-impersonation", requireAuth, async (c) => {
+  const db = getDb(c.env.DB);
+  const admin = c.get("actingUser");
+  if (!admin) throw new AppError("You are not viewing as another user.", 400);
+  const target = c.get("authUser");
+  const lenderId = c.get("lenderId");
+  await recordAudit(db, { lenderId: target.lenderId!, eventType: "USER_VIEW_AS_ENDED", subjectType: "User", subjectId: String(target.id), actor: admin.fullName?.trim() || admin.email, actorRole: admin.role });
+  const inside = admin.lenderId == null && lenderId != null ? await getLenderById(db, lenderId) : null;
+  return success(c, "Back to your own session.", await buildAuthResponse(db, admin, c.env.JWT_SECRET, inside));
 });
 
 // The frontend's language toggle is otherwise purely client-side (localStorage) — this is what

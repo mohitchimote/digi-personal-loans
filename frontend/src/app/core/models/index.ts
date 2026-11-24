@@ -23,6 +23,8 @@ export interface AuthResponse {
   lenderId?: number | null;
   lenderCode?: string | null;
   lenderName?: string | null;
+  /** Set while an administrator is viewing the system as this user (read-only). */
+  viewingAs?: { administrator: string } | null;
 }
 
 export interface RegisterRequest {

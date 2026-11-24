@@ -12,6 +12,9 @@ import { toUserSummary } from "../lib/user-mappers";
 import { requireAuth, requireRole, requireLender } from "../middleware/auth";
 import { CUSTOMER_ROLES, staffRoleCodes } from "../lib/roles";
 import { recordAudit, actorOf } from "../lib/audit";
+import { mayViewAs } from "../lib/impersonation";
+import { buildAuthResponse } from "../lib/user-mappers";
+import { getLenderById } from "../lib/lenders";
 
 export const admin = new Hono<AppEnv>();
 admin.use("*", requireAuth, requireRole("ADMIN"));
@@ -219,4 +222,20 @@ admin.delete("/faqs/:id", async (c) => {
   const id = Number(c.req.param("id"));
   await db.delete(faqs).where(inLender(faqs, lenderId, eq(faqs.id, id)));
   return c.body(null, 204);
+});
+
+// "Enter as": see the screens as one of this lender's users (read-only; rules in lib/impersonation.ts).
+// Always audited, and the session carries the administrator's identity so the UI can flag it.
+admin.post("/users/:id/enter-as", async (c) => {
+  const db = getDb(c.env.DB);
+  const lenderId = requireLender(c);
+  if (c.get("actingUser")) throw new AppError("Exit the current view first.", 403);
+  const admin = c.get("authUser");
+  const [target] = await db.select().from(users).where(inLender(users, lenderId, eq(users.id, Number(c.req.param("id"))))).limit(1);
+  if (!target) throw new AppError("User not found.", 404);
+  const decision = mayViewAs(admin, target, lenderId);
+  if (!decision.ok) throw new AppError(decision.reason, 403);
+  await recordAudit(db, { eventType: "USER_VIEW_AS_STARTED", subjectType: "User", subjectId: String(target.id), detail: `${target.role} ${target.fullName ?? target.email}`, ...actorOf(c) });
+  const lender = await getLenderById(db, lenderId);
+  return success(c, `Viewing as ${target.fullName ?? target.email}.`, await buildAuthResponse(db, target, c.env.JWT_SECRET, lender, admin));
 });

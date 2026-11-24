@@ -4,12 +4,13 @@ import { BrandingService } from './core/services/branding.service';
 import { AuthService } from './core/services/auth.service';
 import { captureLenderFromUrl } from './core/services/lender-context';
 import { WorkflowService } from './core/services/workflow.service';
+import { ViewingAsBannerComponent } from './shared/viewing-as-banner/viewing-as-banner.component';
 import { ConnectionWatchdogBannerComponent } from './shared/connection-watchdog-banner/connection-watchdog-banner.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ConnectionWatchdogBannerComponent],
-  template: '<app-connection-watchdog-banner /><router-outlet />',
+  imports: [RouterOutlet, ConnectionWatchdogBannerComponent, ViewingAsBannerComponent],
+  template: '<app-viewing-as-banner /><app-connection-watchdog-banner /><router-outlet />',
   styleUrl: './app.scss'
 })
 export class App implements OnInit {

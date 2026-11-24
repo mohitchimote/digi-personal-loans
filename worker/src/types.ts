@@ -21,5 +21,7 @@ export type AppEnv = {
     /** The lender every query in this request is scoped to. Null only for a platform (super admin)
      * token that has not entered a lender; routes that need a lender use requireLender(c). */
     lenderId: number | null;
+    /** Set only in an "enter as" session: the administrator behind the user in `authUser`. */
+    actingUser?: AuthUser;
   };
 };
