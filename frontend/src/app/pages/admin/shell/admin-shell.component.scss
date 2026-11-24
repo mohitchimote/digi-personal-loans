@@ -141,3 +141,10 @@
   opacity: .85;
   white-space: nowrap;
 }
+
+// Shown while a platform admin is inside a lender, so nobody forgets whose data this is.
+.inside-banner {
+  display: flex; align-items: center; gap: 12px; padding: 6px 24px;
+  background: #fff3cd; color: #664d03; border-bottom: 1px solid #ffe69c; font-size: 13px;
+  button { margin-inline-start: auto; }
+}

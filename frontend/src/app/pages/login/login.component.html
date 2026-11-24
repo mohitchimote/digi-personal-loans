@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <div class="db-form-group">
+        <div class="db-form-group" *ngIf="host.askForLenderCode()">
           <label>{{ 'login.lenderCodeLabel' | translate }}</label>
           <input class="db-input" type="text" maxlength="32" formControlName="lenderCode"
                  [placeholder]="'login.lenderCodePlaceholder' | translate" autocomplete="off" />

@@ -69,7 +69,7 @@
       <div class="db-alert db-alert--error" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
 
       <form [formGroup]="form" (ngSubmit)="submit()">
-        <div class="db-form-group">
+        <div class="db-form-group" *ngIf="host.askForLenderCode()">
           <label>{{ 'register.lenderCodeLabel' | translate }}</label>
           <input class="db-input" type="text" maxlength="32" formControlName="lenderCode"
                  [placeholder]="'register.lenderCodePlaceholder' | translate" autocomplete="off" />

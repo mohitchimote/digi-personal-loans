@@ -27,8 +27,9 @@ function tenantTables(): Map<string, string> {
 }
 
 // Pre-auth and platform code that legitimately looks across lenders (login lookups, lender admin).
+// routes/platform.ts and lib/lender-clone.ts are the super admin's cross-lender console and the clone engine.
 // lib/otp.ts only updates the OTP columns of a user row it was handed (keyed by that user's own id).
-const EXEMPT = new Set(["db/schema.ts", "lib/lenders.ts", "middleware/auth.ts", "lib/otp.ts"]);
+const EXEMPT = new Set(["db/schema.ts", "lib/lenders.ts", "middleware/auth.ts", "lib/otp.ts", "routes/platform.ts", "lib/lender-clone.ts"]);
 
 export function findUnscoped(file: string, text: string, tables: Map<string, string>): string[] {
   const names = [...tables.keys()].join("|");

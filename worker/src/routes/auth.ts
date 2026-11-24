@@ -9,8 +9,8 @@ import { success, fail } from "../lib/api-response";
 import { AppError } from "../lib/errors";
 import { generateAndAssignOtp, verifyOtpForUser, OTP_VALIDITY_SECONDS } from "../lib/otp";
 import { buildAuthResponse, toCustomerProfile } from "../lib/user-mappers";
-import { requireAuth, requireRole, requireEntitlement, requireLender, optionalAuth, publicLender } from "../middleware/auth";
-import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender, updateUserRow } from "../lib/lenders";
+import { requireAuth, requireRole, requireEntitlement, requireLender, optionalAuth, publicLender, hostLender, lenderCodeFor } from "../middleware/auth";
+import { findLoginAccounts, findUsersByEmail, resolveRegistrationLender, updateUserRow, countActiveLenders } from "../lib/lenders";
 import { inLender } from "../lib/lender-scope";
 
 export const auth = new Hono<AppEnv>();
@@ -80,14 +80,30 @@ async function createUser(
 
 // The registration being verified. The same e-mail can be registered at two lenders, so when it is
 // and no lender code was given the customer has to say which one they mean.
-async function pendingRegistration(db: ReturnType<typeof getDb>, email: string, lenderCode?: string | null) {
-  const matches = await findUsersByEmail(db, email, lenderCode);
+async function pendingRegistration(db: ReturnType<typeof getDb>, email: string, lenderCode?: string | null, hostLenderId: number | null = null) {
+  const matches = await findUsersByEmail(db, email, lenderCode, hostLenderId);
   const pending = matches.filter((u) => !u.emailVerified);
   const pool = pending.length ? pending : matches;
   if (pool.length === 0) throw new AppError("No registration found for this email.");
   if (pool.length > 1) throw new AppError("Please enter your lender code.");
   return pool[0];
 }
+
+// Which lender this address is for, so the login and registration pages know whether to ask for a
+// lender code at all: never on a lender's own address, and not when there is only one lender.
+const LOGIN_FAILED = "That code is incorrect or has expired. Please request a new one.";
+/** A code shaped like a real one, for answers about accounts that do not exist or may not sign in here. */
+const decoyOtp = () => (crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).toString().padStart(6, "0");
+
+auth.get("/context", async (c) => {
+  const db = getDb(c.env.DB);
+  const byHost = await hostLender(c, db);
+  return c.json({
+    lender: byHost ? { code: byHost.code, name: byHost.name } : null,
+    hostMapped: !!byHost,
+    choiceNeeded: !byHost && (await countActiveLenders(db)) > 1,
+  });
+});
 
 auth.get("/faqs", optionalAuth, async (c) => {
   const db = getDb(c.env.DB);
@@ -101,7 +117,7 @@ auth.get("/faqs", optionalAuth, async (c) => {
 auth.post("/register", zValidator("json", registerSchema), async (c) => {
   const db = getDb(c.env.DB);
   const body = c.req.valid("json");
-  const lender = await resolveRegistrationLender(db, body.lenderCode);
+  const lender = await resolveRegistrationLender(db, await lenderCodeFor(c, db, body.lenderCode), (await hostLender(c, db))?.id ?? null);
   const saved = await createUser(db, lender.id, body, { enabled: false, emailVerified: false });
   const demoOtp = await generateAndAssignOtp(db, saved);
   return success(
@@ -129,7 +145,7 @@ auth.post(
   async (c) => {
     const db = getDb(c.env.DB);
     const { email, otp, lenderCode } = c.req.valid("json");
-    const user = await pendingRegistration(db, email, lenderCode);
+    const user = await pendingRegistration(db, email, await lenderCodeFor(c, db, lenderCode), (await hostLender(c, db))?.id ?? null);
     if (user.emailVerified) throw new AppError("This account is already verified.");
 
     const verified = await verifyOtpForUser(db, user, otp);
@@ -143,7 +159,7 @@ auth.post(
 auth.post("/register/resend-otp", zValidator("json", z.object({ email: z.string().email(), lenderCode: lenderCodeSchema })), async (c) => {
   const db = getDb(c.env.DB);
   const { email, lenderCode } = c.req.valid("json");
-  const user = await pendingRegistration(db, email, lenderCode);
+  const user = await pendingRegistration(db, email, await lenderCodeFor(c, db, lenderCode), (await hostLender(c, db))?.id ?? null);
   if (user.emailVerified) throw new AppError("This account is already verified.");
 
   const demoOtp = await generateAndAssignOtp(db, user);
@@ -154,29 +170,29 @@ auth.post("/register/resend-otp", zValidator("json", z.object({ email: z.string(
   });
 });
 
-// A National ID can sign in to one account per lender. With a lender code the account is that
-// lender's; without one, a single match is used and several matches ask the user to choose.
+// A National ID can sign in to one account per lender. With a lender code (or on a lender's own
+// address) the account is that lender's; without one, a single match is used and several matches
+// ask the user to choose.
+//
+// What this endpoint says must not reveal whether an account exists: an unknown ID, a disabled
+// account, an account of a lender that is only reachable at its own address, and a real account all
+// get the same success-shaped answer (the code of the decoy never works). The one thing that has to
+// differ is the picker for an ID that has accounts at several lenders reachable from this address,
+// which lists only those lenders; lenders with their own address never appear in it.
 auth.post("/login/request-otp", zValidator("json", z.object({ nationalId: nationalIdSchema, lenderCode: lenderCodeSchema })), async (c) => {
   const db = getDb(c.env.DB);
   const { nationalId, lenderCode } = c.req.valid("json");
-  const accounts = await findLoginAccounts(db, nationalId, lenderCode);
-  if (accounts.length === 0) throw new AppError("No account found for this National ID.");
+  const hostL = await hostLender(c, db);
+  const code = hostL?.code ?? (lenderCode?.trim() || undefined);
+  const accounts = (await findLoginAccounts(db, nationalId, code, hostL?.id ?? null)).filter((a) => a.user.enabled);
   if (accounts.length > 1) {
     return success(c, "Choose which lender to sign in to.", {
       requiresLenderChoice: true,
       lenders: accounts.map((a) => ({ code: a.lender?.code ?? null, name: a.lender?.name ?? "Platform administration" })),
     });
   }
-  const { user, lender } = accounts[0];
-  if (!user.enabled) throw new AppError("This account is disabled. Please contact support.");
-
-  const demoOtp = await generateAndAssignOtp(db, user);
-  return success(c, "A login code has been generated.", {
-    nationalId: user.nationalId,
-    lenderCode: lender?.code ?? null,
-    demoOtp,
-    otpExpiresInSeconds: OTP_VALIDITY_SECONDS,
-  });
+  const demoOtp = accounts.length === 1 ? await generateAndAssignOtp(db, accounts[0].user) : decoyOtp();
+  return success(c, "A login code has been generated.", { nationalId, lenderCode: code ?? null, demoOtp, otpExpiresInSeconds: OTP_VALIDITY_SECONDS });
 });
 
 // Unlike every other auth endpoint (which returns 400 on business-rule errors), the Java
@@ -189,11 +205,11 @@ auth.post(
     const db = getDb(c.env.DB);
     const { nationalId, otp, lenderCode } = c.req.valid("json");
     try {
-      const accounts = await findLoginAccounts(db, nationalId, lenderCode);
-      if (accounts.length === 0) throw new AppError("No account found for this National ID.");
-      if (accounts.length > 1) throw new AppError("Please choose your lender.");
+      const hostL = await hostLender(c, db);
+      const accounts = (await findLoginAccounts(db, nationalId, await lenderCodeFor(c, db, lenderCode), hostL?.id ?? null)).filter((a) => a.user.enabled);
+      // No account, a disabled one, an ambiguous one and a wrong code all fail the same way.
+      if (accounts.length !== 1) throw new AppError(LOGIN_FAILED);
       const { user } = accounts[0];
-      if (!user.enabled) throw new AppError("This account is disabled. Please contact support.");
 
       const verified = await verifyOtpForUser(db, user, otp);
       const previousLogin = verified.lastLogin; // captured before this login overwrites it below
@@ -201,9 +217,10 @@ auth.post(
 
       const response = { ...(await buildAuthResponse(db, updated, c.env.JWT_SECRET)), previousLogin };
       return success(c, "Login successful.", response);
-    } catch (e) {
-      const message = e instanceof AppError ? e.message : "Login failed.";
-      return fail(c, message, 401);
+    } catch {
+      // One message for every failure (missing, expired, locked or wrong code), so this cannot be
+      // used to find out which National IDs have an account.
+      return fail(c, LOGIN_FAILED, 401);
     }
   }
 );

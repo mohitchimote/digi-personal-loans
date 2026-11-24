@@ -16,6 +16,7 @@ import { formBuilderAdmin } from "./routes/admin-form-builder";
 import { orgAdmin } from "./routes/admin-org";
 import { mastersAdmin, masters } from "./routes/admin-masters";
 import { lettersAdmin } from "./routes/admin-letters";
+import { platform } from "./routes/platform";
 import { letters } from "./routes/letters";
 import { forms } from "./routes/forms";
 import { rolesAdmin } from "./routes/admin-roles";
@@ -77,5 +78,6 @@ app.route("/api/products", products);
 app.route("/api/notifications", notificationsRoute);
 app.route("/api/documents", documents);
 app.route("/api/letters", letters);
+app.route("/api/platform", platform);
 
 export default app;

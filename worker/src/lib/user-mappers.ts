@@ -2,18 +2,19 @@ import type { AuthUser } from "../types";
 import { signJwt, JWT_EXPIRES_IN_MS } from "./jwt";
 import { resolveRole } from "./roles";
 import type { Db } from "../db/client";
-import { getLenderById } from "./lenders";
+import { getLenderById, type Lender } from "./lenders";
 
-export async function buildAuthResponse(db: Db, user: AuthUser, jwtSecret: string) {
-  // A lender user's token is for their own lender; a platform account starts at lender 0 (none).
-  const lenderId = user.lenderId ?? 0;
+export async function buildAuthResponse(db: Db, user: AuthUser, jwtSecret: string, inside?: Lender | null) {
+  // A lender user's token is for their own lender; a platform account starts at lender 0 (none), or
+  // is inside the lender it has entered (`inside`, super admin only).
+  const lenderId = inside?.id ?? user.lenderId ?? 0;
   const token = await signJwt(user.uuid, jwtSecret, lenderId);
   // Phase 2 - the client gates its UI on these (the server still enforces every one itself).
   const roleConfig = await resolveRole(db, lenderId, user.role);
-  const lender = user.lenderId != null ? await getLenderById(db, user.lenderId) : null;
+  const lender = inside ?? (user.lenderId != null ? await getLenderById(db, user.lenderId) : null);
   return {
     token,
-    lenderId: user.lenderId,
+    lenderId: lender?.id ?? null,
     lenderCode: lender?.code ?? null,
     lenderName: lender?.name ?? null,
     tokenType: "Bearer",

@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { PlatformService } from '../../../core/services/platform.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { LanguageSwitcherComponent } from '../../../shared/language-switcher/language-switcher.component';
@@ -20,7 +21,12 @@ export class AdminShellComponent {
   readonly nav = ADMIN_NAV;
   readonly collapsed = signal(this.loadCollapsed());
 
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, private platform: PlatformService, private router: Router) {}
+
+  /** Leave the lender and return to the platform console. */
+  backToPlatform(): void {
+    this.platform.exit().subscribe({ next: () => this.router.navigate(['/platform']) });
+  }
 
   toggleRail(): void {
     const next = !this.collapsed();

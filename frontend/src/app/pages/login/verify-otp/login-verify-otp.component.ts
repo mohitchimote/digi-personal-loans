@@ -47,7 +47,8 @@ export class LoginVerifyOtpComponent {
       next: res => {
         this.loading.set(false);
         if (res.success) {
-          const dest = this.auth.isAdmin ? '/admin/home'
+          const dest = this.auth.isAtPlatformLevel ? '/platform'
+            : this.auth.isAdmin ? '/admin/home'
             : this.auth.isUnderwriter ? '/underwriter/pipeline'
             : this.auth.isBanker ? '/banker/queue'
             : this.auth.isBusinessOwner ? '/business/dashboard'

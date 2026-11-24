@@ -21,6 +21,12 @@
     </div>
   </header>
 
+  <div class="inside-banner" *ngIf="auth.isInsideLender">
+    <span class="material-icons mi-sm">domain</span>
+    <span>{{ 'platform.insideBanner' | translate }} <strong>{{ auth.lenderName }}</strong></span>
+    <button class="db-btn db-btn--ghost db-btn--sm" (click)="backToPlatform()">{{ 'platform.backToPlatform' | translate }}</button>
+  </div>
+
   <div class="uw-body">
     <nav class="rail" [class.collapsed]="collapsed()" [attr.aria-label]="'admin.brand' | translate">
       <a class="rail-item rail-home" routerLink="/admin/home" routerLinkActive="active"

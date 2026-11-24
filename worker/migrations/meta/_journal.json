@@ -162,6 +162,13 @@
       "when": 1795513570271,
       "tag": "0022_saved_rules_per_lender",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1795515246344,
+      "tag": "0023_admin99_super_admin",
+      "breakpoints": true
     }
   ]
 }

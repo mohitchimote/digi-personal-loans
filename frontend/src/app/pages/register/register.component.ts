@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { LanguageSwitcherComponent } from '../../shared/language-switcher/language-switcher.component';
+import { LenderHostService } from '../../core/services/lender-host.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 
 @Component({
@@ -22,7 +23,8 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder,
     private auth: AuthService,
-    private router: Router
+    private router: Router,
+    public host: LenderHostService
   ) {
     this.form = this.fb.group({
       lenderCode: [''],

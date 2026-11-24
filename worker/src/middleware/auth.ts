@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { resolveRegistrationLender } from "../lib/lenders";
+import { resolveRegistrationLender, findLenderByHost, type Lender } from "../lib/lenders";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { users } from "../db/schema";
@@ -26,13 +26,29 @@ export async function optionalAuth(c: Context<AppEnv>, next: Next) {
   await next();
 }
 
-/** The lender of a public request: the signed-in user's own, else the one named by ?lender=CODE,
+/** The lender of a public request: the signed-in user's own, else the one that owns the address, else ?lender=CODE,
  * else the only active lender. Null when it cannot be told (callers then return neutral content). */
 export async function publicLender(c: Context<AppEnv>, db: ReturnType<typeof getDb>): Promise<number | null> {
   const known = c.get("lenderId");
   if (known != null) return known;
+  const byHost = await hostLender(c, db);
+  if (byHost) return byHost.id;
   const lender = await resolveRegistrationLender(db, c.req.query("lender")).catch(() => null);
   return lender?.id ?? null;
+}
+
+/** The lender that owns the address the request came to (its configured domain), if any. */
+export async function hostLender(c: Context<AppEnv>, db: ReturnType<typeof getDb>): Promise<Lender | null> {
+  // On Cloudflare the request URL's host and the Host header are the same address. The header is read
+  // first because `wrangler dev` builds the URL from the connection, which makes local tests with
+  // another host name impossible otherwise.
+  return findLenderByHost(db, c.req.header("host") ?? new URL(c.req.url).host);
+}
+
+/** On a lender's own address the lender is that one whatever the client sent; elsewhere the code
+ * the client sent (if any) is used. Login and registration go through this. */
+export async function lenderCodeFor(c: Context<AppEnv>, db: ReturnType<typeof getDb>, sent?: string | null): Promise<string | undefined> {
+  return (await hostLender(c, db))?.code ?? (sent?.trim() || undefined);
 }
 
 async function authenticate(c: Context<AppEnv>) {

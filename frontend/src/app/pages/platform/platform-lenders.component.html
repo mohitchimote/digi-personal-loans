@@ -1,0 +1,104 @@
+<header class="platform-header">
+  <span class="material-icons">domain</span>
+  <strong>{{ 'platform.title' | translate }}</strong>
+  <span class="spacer"></span>
+  <app-language-switcher />
+  <span class="who">{{ auth.userFullName }}</span>
+  <button class="db-btn db-btn--ghost db-btn--sm" (click)="auth.logout()">{{ 'common.signOut' | translate }}</button>
+</header>
+
+<main class="platform-main">
+  <div class="page-header mb-24">
+    <h2>{{ 'platform.lenders' | translate }}</h2>
+    <p class="page-sub">{{ 'platform.subtitle' | translate }}</p>
+  </div>
+
+  <div class="db-alert db-alert--error mb-16" *ngIf="error()"><span class="material-icons mi-sm">warning</span> {{ error() }}</div>
+  <div class="db-alert db-alert--success mb-16" *ngIf="notice()"><span class="material-icons mi-sm">check_circle</span> {{ notice() }}</div>
+
+  <div class="form-actions mb-16">
+    <button class="db-btn db-btn--primary db-btn--sm" (click)="startNew()">+ {{ 'platform.new' | translate }}</button>
+  </div>
+
+  <div class="db-card mb-24" *ngIf="showForm()">
+    <div class="card-header"><h3>{{ 'platform.new' | translate }}</h3></div>
+    <p class="page-sub mb-16">{{ 'platform.copyHint' | translate }}</p>
+    <div class="grid-2">
+      <div class="db-form-group">
+        <label>{{ 'platform.code' | translate }}</label>
+        <input class="db-input" [(ngModel)]="form.code" maxlength="16" placeholder="BETA" />
+      </div>
+      <div class="db-form-group">
+        <label>{{ 'platform.name' | translate }}</label>
+        <input class="db-input" [(ngModel)]="form.name" />
+      </div>
+    </div>
+    <div class="db-form-group">
+      <label>{{ 'platform.copyFrom' | translate }}</label>
+      <select class="db-input" [(ngModel)]="form.cloneFromLenderId">
+        <option *ngFor="let l of lenders()" [ngValue]="l.id">{{ l.name }} ({{ l.code }})</option>
+      </select>
+    </div>
+    <h4 class="mb-8">{{ 'platform.firstAdmin' | translate }}</h4>
+    <div class="grid-3">
+      <div class="db-form-group"><label>{{ 'platform.adminName' | translate }}</label><input class="db-input" [(ngModel)]="form.adminName" /></div>
+      <div class="db-form-group"><label>{{ 'platform.adminEmail' | translate }}</label><input class="db-input" type="email" [(ngModel)]="form.adminEmail" /></div>
+      <div class="db-form-group"><label>{{ 'platform.adminNationalId' | translate }}</label><input class="db-input" [(ngModel)]="form.adminNationalId" maxlength="9" /></div>
+    </div>
+    <div class="form-actions">
+      <button class="db-btn db-btn--primary db-btn--sm" [disabled]="saving()" (click)="create()">{{ (saving() ? 'platform.creating' : 'platform.create') | translate }}</button>
+      <button class="db-btn db-btn--ghost db-btn--sm" [disabled]="saving()" (click)="showForm.set(false)">{{ 'common.cancel' | translate }}</button>
+    </div>
+  </div>
+
+  <div class="loading-row" *ngIf="loading()"><span class="spinner"></span></div>
+
+  <div class="db-card" *ngIf="!loading()">
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>{{ 'platform.code' | translate }}</th>
+          <th>{{ 'platform.name' | translate }}</th>
+          <th>{{ 'platform.status' | translate }}</th>
+          <th>{{ 'platform.domains' | translate }}</th>
+          <th class="num">{{ 'platform.users' | translate }}</th>
+          <th class="num">{{ 'platform.applications' | translate }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let l of lenders()">
+          <td><strong>{{ l.code }}</strong></td>
+          <td>
+            <ng-container *ngIf="renamingId() !== l.id">{{ l.name }}</ng-container>
+            <span class="rename" *ngIf="renamingId() === l.id">
+              <input class="db-input" [(ngModel)]="renameValue" (keyup.enter)="saveRename(l)" />
+              <button class="db-btn db-btn--primary db-btn--sm" (click)="saveRename(l)">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="renamingId.set(null)">{{ 'common.cancel' | translate }}</button>
+            </span>
+          </td>
+          <td><span class="db-badge" [ngClass]="l.status === 'ACTIVE' ? 'db-badge--approved' : 'db-badge--declined'">{{ (l.status === 'ACTIVE' ? 'platform.active' : 'platform.suspended') | translate }}</span></td>
+          <td>
+            <ng-container *ngIf="domainsId() !== l.id">
+              <span class="domain" *ngFor="let d of l.domains">{{ d }}</span>
+              <span class="muted" *ngIf="!l.domains.length">{{ 'platform.noDomains' | translate }}</span>
+              <button class="link-btn" (click)="startDomains(l)">{{ 'platform.edit' | translate }}</button>
+            </ng-container>
+            <span class="rename" *ngIf="domainsId() === l.id">
+              <input class="db-input" [(ngModel)]="domainsValue" (keyup.enter)="saveDomains(l)" placeholder="loans.example.com" />
+              <button class="db-btn db-btn--primary db-btn--sm" (click)="saveDomains(l)">{{ 'common.save' | translate }}</button>
+              <button class="db-btn db-btn--ghost db-btn--sm" (click)="domainsId.set(null)">{{ 'common.cancel' | translate }}</button>
+            </span>
+          </td>
+          <td class="num">{{ l.users }}</td>
+          <td class="num">{{ l.applications }}</td>
+          <td class="actions">
+            <button class="db-btn db-btn--primary db-btn--sm" (click)="enter(l)">{{ 'platform.enter' | translate }}</button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="startRename(l)">{{ 'platform.rename' | translate }}</button>
+            <button class="db-btn db-btn--ghost db-btn--sm" (click)="toggle(l)">{{ (l.status === 'ACTIVE' ? 'platform.suspend' : 'platform.activate') | translate }}</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>

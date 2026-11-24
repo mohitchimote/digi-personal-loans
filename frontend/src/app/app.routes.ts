@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { underwriterGuard } from './core/guards/underwriter.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { superAdminGuard } from './core/guards/super-admin.guard';
 import { businessGuard } from './core/guards/business.guard';
 import { bankerGuard } from './core/guards/banker.guard';
 import { assistGuard } from './core/guards/assist.guard';
@@ -133,6 +134,11 @@ export const routes: Routes = [
         ]
       },
     ]
+  },
+  {
+    path: 'platform',
+    loadComponent: () => import('./pages/platform/platform-lenders.component').then(m => m.PlatformLendersComponent),
+    canActivate: [superAdminGuard],
   },
   {
     path: 'admin',

@@ -191,6 +191,21 @@ export class AuthService {
     return this.currentUser()?.previousLogin ?? null;
   }
 
+  /** Swap the stored session for another one of the same person (a super admin entering or leaving a lender). */
+  replaceSession(auth: AuthResponse): void {
+    this.storeSession(auth);
+  }
+
+  /** A super admin who is inside a lender (entered from the platform console). */
+  get isInsideLender(): boolean {
+    return this.isSuperAdmin && this.currentUser()?.lenderId != null;
+  }
+
+  /** A super admin at platform level, not inside any lender: sees the console, not the lender screens. */
+  get isAtPlatformLevel(): boolean {
+    return this.isSuperAdmin && this.currentUser()?.lenderId == null;
+  }
+
   private storeSession(auth: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, auth.token);
     localStorage.setItem(USER_KEY, JSON.stringify(auth));

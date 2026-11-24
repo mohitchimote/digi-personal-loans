@@ -1,6 +1,6 @@
 # Multi-tenancy (lenders): design
 
-Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) built, not yet committed; phase 5 next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
+Status: phases 1 (schema, migration 0021), 2 (identity) and 3 (query isolation, migration 0022) done on `dev`; phase 4 (lender admin) and phase 5 (super admin console) built; phase 6 next. Built on `dev` and deployed to loans2 only; reaches UAT as one promotion (see BRANCHING.md).
 
 ## Decisions
 1. A **customer belongs to one lender**. The same national ID may register at two lenders as two separate accounts.
@@ -65,12 +65,33 @@ The admin screens needed no new endpoints: every route behind them was scoped in
 - The admin header shows the lender's name, so an admin always knows which lender the screens are scoped to.
 Build-checked only; not yet clicked through in a browser with two lenders.
 
+## Phase 5 as built
+- **API** (`routes/platform.ts`, `/api/platform`, entitlement `platform.lenders`, held only by `SUPER_ADMIN`): list lenders with user and application counts; create (below); rename; suspend / activate; `POST /lenders/:id/enter` (a new token for the same super admin with `lnd` = that lender, returned in the normal auth-response shape with the lender filled in); `POST /exit` (back to `lnd` 0). Enter, exit, create, rename, suspend and activate are audited in the affected lender's trail. This file and the clone engine are the only code exempt from the lender-isolation test.
+- **Create = clone** (`lib/lender-clone.ts`): a new lender is always a copy of another lender's configuration, plus its first admin (ADMIN role, verified, signs in with the demo OTP like anyone). The lender row, ~30 `INSERT ... SELECT` statements and the admin user run in one D1 batch, so a failure leaves nothing. Copied: roles and entitlements, masters, org levels and units, mandates, the published workflow and form versions (as version 1), letters (published versions as version 1, with pictures re-keyed inside the letter documents), saved rules, e-mail templates, branding, products, affordability rules, FAQs, lender settings. Not copied: users, cases, documents, notifications, pre-approved offers, issued letters, audit. Rows that point at other rows are re-keyed through natural keys (org unit code, level name, master item code).
+- **Large masters**: a master type with more than 5000 items (cities) is copied without its items, and so are its children; the response lists them so the new lender's reference data can be loaded separately (`seed-reference-stage.mjs`-style). Everything smaller is copied in full.
+- **Suspend** needs no new enforcement: `decideLenderContext` already refuses every token of a suspended lender and login skips its accounts. Nothing is deleted.
+- **Migration 0023** turns admin 99 (national ID `000000099`) into the first `SUPER_ADMIN` (no lender); a no-op where that user does not exist. DIGI keeps its own lender admins.
+- **Frontend**: `/platform` (super admin only): lenders table, new-lender form (copy from, first admin), rename, suspend, enter. A super admin with no lender who opens an admin URL is sent to the console; after login they land there. Inside a lender the admin header shows a yellow "You are inside this lender as a platform administrator" banner with "Back to platform", and the lender badge.
+- Verified: `scripts/platform-check.mjs` (32 checks on a scratch worker: platform access, clone contents and re-keying, enter/exit, suspend/activate, rename), a second run with letters, pictures and mandates in the source, and a click-through in a browser (login, console, enter DIGI, banner, back).
+- **Lender addresses (added after the first cut of phase 5).** A lender can be reached on its own hostnames, stored as the lender setting `domains` and edited in the console ("Addresses"). Why: banks want customers to use a link that looks like theirs (`loans.theirbank.com`), and it removes the need to type a lender code.
+  - Resolution on public routes: signed-in user's lender, else the lender that owns the request host, else `?lender=CODE`, else the only active lender. On a lender's own address login and registration are forced to that lender whatever code the client sends, and platform accounts are not found there, so the account picker (and its disclosure of which lenders an ID is registered at) never appears on such an address.
+  - `GET /api/auth/context` tells the frontend `{ lender, hostMapped, choiceNeeded }`. The login and registration pages show the lender code field only when `choiceNeeded` (a shared address with several lenders, e.g. the platform host or workers.dev). The `?lender=` link and the remembered code remain as the fallback until the production routing is decided.
+  - A host belongs to one lender (rejected otherwise); a clone does not inherit its source's addresses; the lookup is cached for 60 seconds and cleared when addresses are saved.
+  - Cloudflare side (not done by the app): each address needs DNS and a certificate, e.g. a Custom Domain on the Worker or a wildcard route for sub-domains of our own domain. Adding one needs no redeploy. `wrangler dev` rewrites the host to the production route's hostname, so local tests use a config without `[[routes]]`.
+  - Verified: 47 checks in `scripts/platform-check.mjs` (15 of them host cases) and a browser check of the login page on a lender address versus a shared one.
+- **Sign-in hardening (follow-up to the addresses).**
+  - *Own address only:* once a lender has an address of its own, its accounts and registrations work only there. Knowing its lender code on a shared address (or on another lender's address) gets nothing. A lender without its own address still works by code on shared addresses, which is what UAT and loans2 do today. This answers the "ex-employee who knows the old lender's code" case for lenders that have their own address; for all lenders, the lender admin disabling the account remains the control that matters.
+  - *No account enumeration at login:* `login/request-otp` answers a known ID, an unknown ID, a disabled account and an account that may not sign in at this address identically (a success-shaped answer whose code never works), and `login/verify-otp` fails every case (no account, disabled, ambiguous, never requested, expired, locked, wrong code) with one message and status 401. The lender picker still appears for an ID with accounts at several lenders reachable from the address, but lists only those; lenders with their own address never appear in it, so in production (own addresses) it effectively goes away.
+  - Not changed: the registration messages ("an account with this e-mail / National ID already exists", "no registration found") still reveal existence within a lender; the login code is still returned to the page (demo mode, no SMS/e-mail channel yet); there is no rate limit beyond the 5-attempt counter per issued code; response timing differs slightly between real and decoy accounts.
+  - Verified: 60 checks in `scripts/platform-check.mjs` (28 of them hosts and sign-in) and 400 unit tests.
+- Not in this phase: enter *as a user* inside a lender (phase 6), a UI to load large reference data for a new lender, editing `lender_settings`.
+
 ## Phases
 1. Schema: `lenders`, `lender_settings`, `lender_id` columns, backfill to lender 1 (`DIGI`), per-lender uniques. Rehearsed on a copy of the UAT DB.
 2. Identity: JWT claims, login with lender code and account picker, `SUPER_ADMIN`.
 3. Isolation: scoping helper, convert all queries, caches and R2 keys, static check, cross-lender tests. **Done.**
 4. Lender admin: existing admin screens scoped to the lender, nothing new. **Done (frontend side; see above).**
-5. Super admin console: lenders list, create, suspend, clone, enter as.
+5. Super admin console: lenders list, create, suspend, clone, enter as. **Done.**
 6. Enter as users inside a lender (lender admin).
 7. Test: e2e across two lenders on loans2; UAT purge and promotion as one release.
 
