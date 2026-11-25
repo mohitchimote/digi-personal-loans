@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "node scripts/guard-stable.mjs && wrangler deploy",
+    "deploy": "node scripts/guard-stable.mjs && cd ../frontend && npm run build && cd ../worker && wrangler deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply digibank --local",
     "db:migrate:remote": "node scripts/guard-stable.mjs && wrangler d1 migrations apply digibank --remote",
