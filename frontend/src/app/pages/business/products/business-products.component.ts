@@ -8,6 +8,7 @@ import { EffectiveIdentityService } from '../../../core/services/effective-ident
 import { EligibleProduct } from '../../../core/models';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { dnbScoreToLenderGrade } from '../../../core/utils/credit-score.util';
+import { initialTerm } from '../../../core/utils/term.util';
 
 @Component({
   selector: 'app-business-products',
@@ -55,7 +56,7 @@ export class BusinessProductsComponent implements OnInit {
         }).subscribe({
           next: list => {
             this.products.set(list);
-            list.forEach(p => { this.selectedTerm[p.productId] = p.minTermMonths; });
+            list.forEach(p => { this.selectedTerm[p.productId] = initialTerm(term, p.minTermMonths, p.maxTermMonths); });
             this.loading.set(false);
           },
           error: () => this.loading.set(false)
