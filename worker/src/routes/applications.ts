@@ -211,7 +211,7 @@ applications.post("/start", async (c) => {
     .where(inLender(loanApplications, lenderId, eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, lenderId, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
-  if (existing) return c.json(existing);
+  if (existing) return c.json(await withResolvedFormVersion(db, existing));
 
   const now = new Date().toISOString();
   const [created] = await db
@@ -231,7 +231,7 @@ applications.post("/start", async (c) => {
     })
     .returning();
   await loadCase(db, created);
-  return c.json(created);
+  return c.json(await withResolvedFormVersion(db, created));
 });
 
 applications.post("/start-business", async (c) => {
@@ -246,7 +246,7 @@ applications.post("/start-business", async (c) => {
     .where(inLender(loanApplications, lenderId, eq(loanApplications.customerId, customerId), inArray(loanApplications.status, await statusesByCategory(db, lenderId, ["DRAFT", "WAITING_CUSTOMER"]))))
     .orderBy(desc(loanApplications.updatedAt))
     .limit(1);
-  if (existing) return c.json(existing);
+  if (existing) return c.json(await withResolvedFormVersion(db, existing));
 
   const now = new Date().toISOString();
   const [created] = await db
@@ -266,7 +266,7 @@ applications.post("/start-business", async (c) => {
     })
     .returning();
   await loadCase(db, created);
-  return c.json(created);
+  return c.json(await withResolvedFormVersion(db, created));
 });
 
 // Fast-track entry point for an existing customer accepting a pre-approved offer. Pre-fills every
@@ -440,7 +440,7 @@ applications.post("/start-pre-approved", async (c) => {
 
   await consumePreApprovedOffer(db, lenderId, nationalId);
   await loadCase(db, created);
-  return c.json(created);
+  return c.json(await withResolvedFormVersion(db, created));
 });
 
 applications.put("/:appRef/section", async (c) => {
